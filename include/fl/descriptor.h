@@ -33,6 +33,10 @@ namespace fl
 
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const = 0;
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true);
+	static void addProducts ();  ///< Registers with the Factory all basic Comparison classes other than ComparisonCombo.
   };
 
   class Descriptor;
@@ -45,12 +49,16 @@ namespace fl
   {
   public:
 	ComparisonCombo (std::vector<Descriptor *> & descriptors);
+	ComparisonCombo (std::istream & stream);
 	virtual ~ComparisonCombo ();  ///< Delete all comparisons we are holding.
 
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
 	virtual float value (int index, const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;  ///< Compares one specific feature vector from the set.
 	Vector<float> extract (int index, const Vector<float> & value) const;  ///< Returns one specific feature vector from the set.
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true);
 
 	std::vector<Comparison *> comparisons;
 	std::vector<int> dimensions;
@@ -71,8 +79,13 @@ namespace fl
   {
   public:
 	NormalizedCorrelation (bool subtractMean = true);
+	NormalizedCorrelation (std::istream & stream);
+
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true);
 
 	bool subtractMean;  ///< Indicates that during normalization, subtract the mean of the elements in the vector.
   };
@@ -85,6 +98,8 @@ namespace fl
   class MetricEuclidean : public Comparison
   {
   public:
+	MetricEuclidean () {}
+	MetricEuclidean (std::istream & stream);
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
   };
 
@@ -96,6 +111,8 @@ namespace fl
   class HistogramIntersection : public Comparison
   {
   public:
+	HistogramIntersection () {}
+	HistogramIntersection (std::istream & stream);
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
   };
 
@@ -106,6 +123,8 @@ namespace fl
   class ChiSquared : public Comparison
   {
   public:
+	ChiSquared () {}
+	ChiSquared (std::istream & stream);
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
   };
 
@@ -117,8 +136,6 @@ namespace fl
   public:
 	virtual ~Descriptor ();
 
-	virtual Vector<float> value (const Image & image, const Point & point);  ///< Calls PointAffine version with default values for scale, angle and shape.
-	virtual Vector<float> value (const Image & image, const PointInterest & point);  ///< Calls PointAffine version with default values for angle and shape.
 	virtual Vector<float> value (const Image & image, const PointAffine & point) = 0;  ///< Returns a vector of floats that describe the image patch near the interest point.
 	virtual Vector<float> value (const Image & image);  ///< Describe entire region that has non-zero alpha values.  Descriptor may treat all non-zero alpha values the same, or use them to weight the pixels.  This method is only available in Descriptors that don't require a specific point of reference.  IE: a spin image must have a central point, so it can't implement this method.
 	virtual Image patch (const Vector<float> & value) = 0;  ///< Return a graphical representation of the descriptor.  Preferrably an image patch that would stimulate this descriptor to return the given value.
@@ -138,15 +155,19 @@ namespace fl
   {
   public:
 	DescriptorCombo ();
+	DescriptorCombo (std::istream & stream);
 	virtual ~DescriptorCombo ();  ///< Delete all descriptors we are holding.
 
 	void add (Descriptor * descriptor);  ///< Append another descriptor to the list.  This object takes responsibility for the pointer.
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
 	Image patch (int index, const Vector<float> & value);  ///< Returns a visualization of one specific feature vector in the set.
 	virtual Comparison * comparison ();
 	virtual bool isMonochrome ();
 	virtual int dimension ();
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true);
 
 	std::vector<Descriptor *> descriptors;
 	int dimension_;
@@ -164,6 +185,7 @@ namespace fl
   {
   public:
 	DescriptorScale (float firstScale = 1, float lastScale = 25, int interQuanta = 40, float quantum = 2);  ///< quantum is most meaningful as a prime number; 2 means "doubling" or "octaves"
+	DescriptorScale (std::istream & stream);
 	void initialize (float firstScale, float lastScale, float stepSize);
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
@@ -182,6 +204,7 @@ namespace fl
   {
   public:
 	DescriptorOrientation (float supportRadial = 6.0f, int supportPixel = 32, float kernelSize = 2.5f);
+	DescriptorOrientation (std::istream & stream);
 	void initialize (float supportRadial, int supportPixel, float kernelSize);
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
@@ -204,6 +227,7 @@ namespace fl
   {
   public:
 	DescriptorOrientationHistogram (float supportRadial = 4.5f, int supportPixel = 16, float kernelSize = 2.5f, int bins = 36);
+	DescriptorOrientationHistogram (std::istream & stream);
 
 	void computeGradient (const Image & image);
 
@@ -243,6 +267,7 @@ namespace fl
   {
   public:
 	DescriptorContrast (float supportRadial = 6.0f, int supportPixel = 32);
+	DescriptorContrast (std::istream & stream);
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
@@ -279,6 +304,7 @@ namespace fl
   {
   public:
 	DescriptorFiltersTexton (int angles = 6, int scales = 4, float firstScale = -1, float scaleStep = -1);
+	DescriptorFiltersTexton (std::istream & stream) : DescriptorFilters (stream) {}
   };
 
   class DescriptorPatch : public Descriptor
@@ -370,6 +396,7 @@ namespace fl
   {
   public:
 	DescriptorSIFT (int width = 4, int angles = 8);
+	DescriptorSIFT (std::istream & stream);
 
 	void computeGradient (const Image & image);
 
@@ -402,6 +429,7 @@ namespace fl
   {
   public:
 	DescriptorColorHistogram2D (int width = 4, float supportRadial = 4.2f);
+	DescriptorColorHistogram2D (std::istream & stream);
 	void initialize ();
 
 	// The following are subroutines used by value(), and also available to client code if the programmer wishes to use a different criterion for selecting pixels to bin.
@@ -437,6 +465,7 @@ namespace fl
   {
   public:
 	DescriptorColorHistogram3D (int width = 4, int height = -1, float supportRadial = 4.2f);  ///< height == -1 means use value of width
+	DescriptorColorHistogram3D (std::istream & stream);
 	~DescriptorColorHistogram3D ();
 	void initialize ();
 
@@ -470,10 +499,11 @@ namespace fl
 	 The bank is replicated at several scale levels, and this descriptor
 	 chooses the appropriate scale level for each individual pixel.
    **/
-  class DescriptorTextonScale : Descriptor
+  class DescriptorTextonScale : public Descriptor
   {
   public:
 	DescriptorTextonScale (int angles = 4, float firstScale = 1.0f, float lastScale = 4.0f, int extraSteps = 3);
+	DescriptorTextonScale (std::istream & stream);
 	void initialize ();
 
 	void preprocess (const Image & image);
@@ -516,6 +546,7 @@ namespace fl
   {
   public:
 	DescriptorLBP (int P = 8, float R = 1.0f, float supportRadial = 4.2f, int supportPixel = 32);
+	DescriptorLBP (std::istream & stream);
 	void initialize ();
 
 	void preprocess (const Image & image);  ///< Prepare gray version of image.  Subroutine of value().
@@ -536,7 +567,8 @@ namespace fl
 
 	const Image * lastImage;  ///< Pointer to the currently cached input image.
 	void *        lastBuffer;  ///< Pointer to buffer of currently cached input image.  Allows finer granularity in detecting change.
-	ImageOf<float> grayImage;  ///< Cached graylevel version of the input image.
+	double        lastTime;  ///< Time when image was generated.  Provides for finer granularity of change detection.
+	ImageOf<unsigned char> categoryImage;  ///< Cached LBP categories for each pixel.  P is limited to 254.
 
 	/**
 	   A structure for storing bilinear interpolation parameters.
