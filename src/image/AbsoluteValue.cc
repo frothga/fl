@@ -42,5 +42,9 @@ AbsoluteValue::filter (const Image & image)
 
 	return result;
   }
-  // Ignore all other formats silently
+
+  // Ignore all other formats silently, since they (generally) don't have
+  // negative values.
+  // TODO: RGBAFloat may need attention.
+  return image;
 }
