@@ -180,9 +180,8 @@ DescriptorSpin::patch (const Vector<float> & value)
 Comparison *
 DescriptorSpin::comparison ()
 {
-  //return new NormalizedCorrelation (true, 5.0f);
-  //return new ChiSquared;
-  return new HistogramIntersection (1.14f);
+  //return new HistogramIntersection;
+  return new ChiSquared;
 }
 
 int
