@@ -92,11 +92,21 @@ Kohonen::run (const std::vector<Vector<float> > & data)
   }
 
   // Prepare a Gaussian kernel to use as our neighborhood function
-  ImageOf<float> lambda = Gaussian2D (sigma);  // TODO: this creates a circular dependency between libflNumeric and libflImage.  Should use a Matrix instead.  Just copy the code from image/Gaussian2D.cc
-  int hx = lambda.width / 2;
-  int hy = lambda.height / 2;
-  lambda *= 1.0 / lambda (hx, hy);  // Normalize so peak value is 1
-  int pad = width * (int) ceilf ((float) lambda.width / width);
+  float sigma2 = sigma * sigma;
+  int h = (int) rintf (4 * sigma);  // "half" = distance from middle until cell values become insignificant
+  int s = 2 * h + 1;  // "size" of kernel
+  Matrix<float> lambda (s, s);
+  for (int column = 0; column < s; column++)
+  {
+	for (int row = 0; row < s; row++)
+	{
+	  float x = column - h;
+	  float y = row - h;
+	  lambda(row,column) = expf (- (x * x + y * y) / (2 * sigma2));
+	}
+  }
+  lambda *= 1.0f / lambda(h,h);  // Normalize so peak value is 1
+  int pad = width * (int) ceilf ((float) s / width);
 
   vector<float> changes;
   while (! stop  &&  learningRate > 1e-6)
@@ -112,13 +122,13 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 	  int cy = cluster % width;
 
 	  // Update neighborhood
-	  for (int x = 0; x < lambda.width; x++)
+	  for (int x = 0; x < s; x++)
 	  {
-		for (int y = 0; y < lambda.height; y++)
+		for (int y = 0; y < s; y++)
 		{
-		  int dx = (cx + (x - hx) + pad) % width;
-		  int dy = (cy + (y - hy) + pad) % width;
-		  float change = map[dx * width + dy].update (data[i], learningRate * lambda (x, y));
+		  int dx = (cx + (x - h) + pad) % width;
+		  int dy = (cy + (y - h) + pad) % width;
+		  float change = map[dx * width + dy].update (data[i], learningRate * lambda(x,y));
 		  largestChange = max (change, largestChange);
 		}
 	  }
@@ -179,6 +189,18 @@ Kohonen::classify (const Vector<float> & point)
 	}
   }
 
+  return result;
+}
+
+Vector<float>
+Kohonen::distribution (const Vector<float> & point)
+{
+  Vector<float> result (map.size ());
+  for (int i = 0; i < map.size (); i++)
+  {
+	result[i] = map[i].distance (point);
+  }
+  result /= result.frob (1);
   return result;
 }
 
