@@ -85,6 +85,10 @@ ImageFileFormatPGM::read (std::istream & stream, Image & image) const
   stream.get ();
 
   // Read data
+  if (! stream.good ())
+  {
+	throw "Unable to finish reading image: stream bad.";
+  }
   if (*image.format == GrayChar)
   {
 	image.buffer.grow (image.width * image.height);
