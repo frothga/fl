@@ -51,6 +51,18 @@ DescriptorPatch::patch (const Vector<float> & value)
   return result;
 }
 
+Comparison *
+DescriptorPatch::comparison ()
+{
+  return new NormalizedCorrelation (true, 11.0f);
+}
+
+int
+DescriptorPatch::dimension ()
+{
+  return width * width;
+}
+
 void
 DescriptorPatch::read (std::istream & stream)
 {
