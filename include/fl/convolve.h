@@ -304,7 +304,7 @@ namespace fl
 	FilterHarrisEigen (double sigmaD = 1.0, double sigmaI = 1.4, const PixelFormat & format = GrayFloat) : FilterHarris (sigmaD, sigmaI, format) {}
 
 	virtual Image process ();
-	virtual double response (const int x, const int y) const;
+	virtual double response (int x, int y) const;
   };
 
   /**
