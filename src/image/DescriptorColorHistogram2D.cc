@@ -192,6 +192,24 @@ DescriptorColorHistogram2D::value (const Image & image, const PointAffine & poin
   return finish ();
 }
 
+Vector<float>
+DescriptorColorHistogram2D::value (const Image & image)
+{
+  // Gather color values into histogram
+  clear ();
+  for (int y = 0; y < image.height; y++)
+  {
+	for (int x = 0; x < image.width; x++)
+	{
+	  if (image.getAlpha (x, y))
+	  {
+		addToHistogram (image, x, y);
+	  }
+	}
+  }
+  return finish ();
+}
+
 Image
 DescriptorColorHistogram2D::patch (const Vector<float> & value)
 {

@@ -60,3 +60,8 @@ Descriptor::value (const Image & image, const PointInterest & point)
   return value (image, PointAffine (point));
 }
 
+Vector<float>
+Descriptor::value (const Image & image)
+{
+  throw "alpha selected regions not implemented";
+}
