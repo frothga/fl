@@ -1,38 +1,30 @@
 #include "cluster.h"
-#include "inline.h"
-#include "linear.h"
 
-#include <mtl/utils.h>
+#include <fl/lapacks.h>
+#include <fl/pi.h>
+
 #include <algorithm>
 
 using namespace std;
+using namespace fl;
 
 
 // class ClusterGauss ---------------------------------------------------------
 
-ClusterGauss::ClusterGauss (LaMatrix & center, float alpha)
-: covariance   (center.nrows (), center.nrows ()),
-  eigenvectors (center.nrows (), center.nrows ()),
-  eigenvalues  (center.nrows ()),
-  eigenverse   (center.nrows (), center.nrows ())
+ClusterGauss::ClusterGauss (Vector<float> & center, float alpha)
 {
   this->alpha = alpha;
-  this->center = LaMatrix (center.nrows (), 1);
-  copy (center, this->center);
-  set_diagonal (covariance, 1);
+  this->center.copyFrom (center);
+  covariance.resize (center.rows (), center.rows ());
+  covariance.identity ();
   prepareInverse ();
 }
 
-ClusterGauss::ClusterGauss (LaMatrix & center, LaMatrix & covariance, float alpha)
-: eigenvectors (center.nrows (), center.nrows ()),
-  eigenvalues  (center.nrows ()),
-  eigenverse   (center.nrows (), center.nrows ())
+ClusterGauss::ClusterGauss (Vector<float> & center, Matrix<float> & covariance, float alpha)
 {
   this->alpha = alpha;
-  this->center = LaMatrix (center.nrows (), 1);
-  copy (center, this->center);
-  this->covariance = LaMatrix (center.nrows (), center.nrows ());
-  copy (covariance, this->covariance);
+  this->center.copyFrom (center);
+  this->covariance.copyFrom (covariance);
   prepareInverse ();
 }
 
@@ -49,18 +41,22 @@ void
 ClusterGauss::prepareInverse ()
 {
   syev (covariance, eigenvalues, eigenvectors);
+  eigenverse.resize (eigenvectors.columns (), eigenvectors.rows ());
   float d = 1.0;
   int scale = 0;
-  for (int i = 0; i < eigenvectors.ncols (); i++)
+  for (int i = 0; i < eigenverse.rows (); i++)
   {
 	float s = sqrt (fabs (eigenvalues[i]));
 	if (s == 0)
 	{
-	  mtl::set (rows (eigenverse)[i], 0);
+	  for (int j = 0; j < eigenverse.columns (); j++)
+	  {
+		eigenverse (i, j) = 0;
+	  }
 	}
 	else
 	{
-	  for (int j = 0; j < eigenvectors.nrows (); j++)
+	  for (int j = 0; j < eigenverse.columns (); j++)
 	  {
 		eigenverse (i, j) = eigenvectors (j, i) / s;
 	  }
@@ -73,19 +69,18 @@ ClusterGauss::prepareInverse ()
   if (d < 0)
   {
 	cerr << "warning: there is a negative eigenvalue" << endl;
-	d = fabs (d);
+	d = fabsf (d);
   }
-  det = 0.5 * (log (d) + scale * log (2.0));
+  det = 0.5 * (logf (d) + scale * logf (2.0));
 }
 
 float
-ClusterGauss::probability (const LaMatrix & point, float * scale, float * minScale)
+ClusterGauss::probability (const Vector<float> & point, float * scale, float * minScale)
 {
-  LaMatrix b = point - center;
-  LaMatrix tm = eigenverse * b;
-  float d2 = sum_squares (tm[0]);  // d2 is the true distance squared.
+  Vector<float> tm = eigenverse * (point - center);
+  float d2 = tm.dot (tm);  // d2 is the true distance squared.
   d2 = min (d2, largestNormalFloat);
-  float distance = d2 / 2.0 - log (alpha) + det;  // "distance" takes into account the rest of the probability formula; suitable for scaling.
+  float distance = d2 / 2.0 - logf (alpha) + det;  // "distance" takes into account the rest of the probability formula; suitable for scaling.
   if (scale)
   {
 	if (minScale)
@@ -96,35 +91,18 @@ ClusterGauss::probability (const LaMatrix & point, float * scale, float * minSca
 	}
 	else
 	{
-	  return exp (*scale - distance);
+	  return expf (*scale - distance);
 	}
   }
-  return max (exp (-distance), smallestNormalFloat);
+  return max (expf (-distance), smallestNormalFloat);
 }
 
 void
 ClusterGauss::read (istream & stream)
 {
-  // Extract alpha
   stream.read ((char *) &alpha, sizeof (alpha));
-
-  // Extract center
-  int dimension;
-  if (! stream.read ((char *) &dimension, sizeof (dimension)))
-  {
-	throw "Stream is down.  Can't read dimension or finish constructing.";
-  }
-  center = LaMatrix (dimension, 1);
-  stream.read ((char *) center.data (), dimension * sizeof (float));
-
-  // Extract covariance
-  covariance = LaMatrix (dimension, dimension);
-  stream.read ((char *) covariance.data (), dimension * dimension * sizeof (float));
-
-  // Initialize everything else
-  eigenvectors = LaMatrix (center.nrows (), center.nrows ());
-  eigenvalues  = LaVector (center.nrows ());
-  eigenverse   = LaMatrix (center.nrows (), center.nrows ());
+  center.read (stream);
+  covariance.read (stream);
   prepareInverse ();
 }
 
@@ -132,10 +110,8 @@ void
 ClusterGauss::write (ostream & stream)
 {
   stream.write ((char *) &alpha, sizeof (alpha));
-  int dimension = center.nrows ();
-  stream.write ((char *) &dimension, sizeof (dimension));
-  stream.write ((char *) center.data (), dimension * sizeof (float));
-  stream.write ((char *) covariance.data (), dimension * dimension * sizeof (float));
+  center.write (stream, false);
+  covariance.write (stream, false);
 }
 
 /*
@@ -194,13 +170,13 @@ KMeans::KMeans (istream & stream, const string & clusterFileName)
 }
 
 void
-KMeans::run (const std::vector<LaMatrix> & data)
+KMeans::run (const std::vector<Vector<float> > & data)
 {
-  throw "Currently, only the parallel version of KMeans is capable of computing clusters.";
+  throw "Currently, only the parallel version of KMeans is implemented.";
 }
 
 void
-KMeans::estimate (const vector<LaMatrix> & data, LaMatrix & member, int jbegin, int jend)
+KMeans::estimate (const vector<Vector<float> > & data, Matrix<float> & member, int jbegin, int jend)
 {
   for (int j = jbegin; j < jend; j++)
   {
@@ -233,33 +209,26 @@ KMeans::estimate (const vector<LaMatrix> & data, LaMatrix & member, int jbegin, 
 		sum += value;
 	  }
 	}
-	// Since LaMatrix is column major, this accesses the jth column and scales it.
-	LaMatrix::OneD::iterator lmi, lmiEnd;  // read lmi as "LaMatrix iterator"
-	lmiEnd = member[j].end ();
-	for (lmi = member[j].begin (); lmi != lmiEnd; lmi++)
+	for (int i = 0; i < clusters.size (); i++)
 	{
-	  *lmi /= sum;
+	  member (i, j) /= sum;
 	}
   }
 }
 
 float
-KMeans::maximize (const vector<LaMatrix> & data, const LaMatrix & member, int i)
+KMeans::maximize (const vector<Vector<float> > & data, const Matrix<float> & member, int i)
 {
   // Calculute new cluster center
-  LaMatrix center (data[0].nrows (), 1);
+  Vector<float> center (data[0].rows ());
+  center.clear ();
   float sum = 0;
   for (int j = 0; j < data.size (); j++)
   {
-	add (scaled (data[j], member (i, j)), center);
+	center += data[j] * member (i, j);
 	sum += member (i, j);
   }
-  LaMatrix::OneD::iterator lmi, lmiEnd;
-  lmiEnd = center[0].end ();
-  for (lmi = center[0].begin (); lmi != lmiEnd; lmi++)
-  {
-	*lmi /= sum;
-  }
+  center /= sum;
 
   // Update alpha
   clusters[i].alpha = sum / data.size ();
@@ -270,32 +239,23 @@ KMeans::maximize (const vector<LaMatrix> & data, const LaMatrix & member, int i)
   }
 
   // Calculate new covariance matrix
-  LaMatrix & covariance = clusters[i].covariance;
-  mtl::set (covariance, 0);
+  Matrix<float> & covariance = clusters[i].covariance;
+  covariance.clear ();
   for (int j = 0; j < data.size (); j++)
   {
-	LaMatrix delta = data[j] - center;
-	add (scaled (delta * trans (delta), member (i, j)), covariance);
+	Vector<float> delta = data[j] - center;
+	covariance += delta * ~delta *= member (i, j);
   }
-  float covarianceTotal = 0;
-  for (int j = 0; j < covariance.ncols (); j++)
-  {
-	lmiEnd = covariance[j].end ();
-	for (lmi = covariance[j].begin (); lmi != lmiEnd; lmi++)
-	{
-	  *lmi /= sum;
-	  covarianceTotal += *lmi;
-	}
-  }
-  if (covarianceTotal == 0)
+  covariance /= sum;
+  if (covariance.norm (1) == 0)
   {
 	cerr << "covariance went to zero; setting to I * " << smallestNormalFloat << endl;
-	set_diagonal (covariance, smallestNormalFloat);
+	covariance.identity (smallestNormalFloat);
   }
 
   // Record changes to cluster.  While we are at it, detect if we have
   // converged.
-  float result = two_norm ((center - clusters[i].center)[0]);
+  float result = (center - clusters[i].center).norm (2);
   clusters[i].center = center;
   clusters[i].prepareInverse ();
 
@@ -303,7 +263,7 @@ KMeans::maximize (const vector<LaMatrix> & data, const LaMatrix & member, int i)
 }
 
 int
-KMeans::classify (const LaMatrix & point)
+KMeans::classify (const Vector<float> & point)
 {
   int result = -1;
   float highest = smallestNormalFloat;
@@ -320,7 +280,7 @@ KMeans::classify (const LaMatrix & point)
   return result;
 }
 
-LaMatrix
+Vector<float>
 KMeans::representative (int group)
 {
   return clusters[group].center;

@@ -1,9 +1,10 @@
 #include "cluster.h"
-#include "inline.h"
-#include "random.h"
-#include "socket.h"
 
-#include <mtl/utils.h>
+#include <fl/time.h>
+#include <fl/random.h>
+#include <fl/socket.h>
+#include <fl/lapacks.h>
+
 #include <algorithm>
 #include <pthread.h>
 #include <arpa/inet.h>
@@ -11,6 +12,8 @@
 #include <sys/stat.h>
 #include <fstream>
 
+
+using namespace fl;
 using namespace std;
 
 
@@ -27,7 +30,7 @@ KMeansParallel::KMeansParallel (istream & stream, const string & clusterFileName
 }
 
 void
-KMeansParallel::run (const std::vector<LaMatrix> & data)
+KMeansParallel::run (const std::vector<Vector<float> > & data)
 {
   this->data = &data;
 
@@ -39,66 +42,68 @@ KMeansParallel::run (const std::vector<LaMatrix> & data)
   pthread_create (&pid, NULL, listenThread, this);
 
   // Generate set of random clusters
-  int K = MIN (initialK, data.size () / 2);
+  int K = min (initialK, (int) data.size () / 2);
   if (clusters.size () < K)
   {
 	cerr << "Creating " << K - clusters.size () << " clusters" << endl;
 
 	// Locate center and covariance of entire data set
-	LaMatrix center (data[0].nrows (), 1);
+	Vector<float> center (data[0].rows ());
+	center.clear ();
 	for (int i = 0; i < data.size (); i++)
     {
-	  add (data[i], center);
+	  center += data[i];
 	  if (i % 1000 == 0)
 	  {
 		cerr << ".";
 	  }
 	}
 	cerr << endl;
-	scale (center, 1.0 / data.size ());
+	center /= data.size ();
 
-	LaMatrix covariance (data[0].nrows (), data[0].nrows ());
+	Matrix<float> covariance (data[0].rows (), data[0].rows ());
+	covariance.clear ();
 	for (int i = 0; i < data.size (); i++)
 	{
-	  LaMatrix delta = data[i] - center;
-	  add (delta * trans (delta), covariance);
+	  Vector<float> delta = data[i] - center;
+	  covariance += delta * ~delta;
 	  if (i % 1000 == 0)
 	  {
 		cerr << ".";
 	  }
 	}
 	cerr << endl;
-	scale (covariance, 1.0 / data.size ());
-cerr << "center: " << center;
+	covariance /= data.size ();
+cerr << "center: " << center << endl;
 
 	// Prepare matrix of basis vectors on which to project the cluster centers
-	LaMatrix eigenvectors (covariance.nrows (), covariance.ncols ());
-	LaVector eigenvalues (covariance.nrows ());
+	Matrix<float> eigenvectors;
+	Vector<float> eigenvalues;
 	syev (covariance, eigenvalues, eigenvectors);
 	float minev = largestNormalFloat;
 	float maxev = 0;
-	for (int i = 0; i < eigenvalues.size (); i++)
+	for (int i = 0; i < eigenvalues.rows (); i++)
 	{
-	  minev = min (minev, fabs (eigenvalues[i]));
-	  maxev = max (maxev, fabs (eigenvalues[i]));
+	  minev = min (minev, fabsf (eigenvalues[i]));
+	  maxev = max (maxev, fabsf (eigenvalues[i]));
 	}
-	cerr << "eigenvalue range = " << sqrt (minev) << " " << sqrt (maxev) << endl;
-	for (int i = 0; i < eigenvectors.ncols (); i++)
+	cerr << "eigenvalue range = " << sqrtf (minev) << " " << sqrtf (maxev) << endl;
+	for (int c = 0; c < eigenvectors.columns (); c++)
 	{
-	  scale (eigenvectors[i], sqrt (fabs (eigenvalues[i])));
+	  float scale = sqrt (fabs (eigenvalues[c]));
+	  eigenvectors.column (c) *= scale;
 	}
 
 	// Throw points into the space and create clusters around them
 	for (int i = clusters.size (); i < K; i++)
 	{
-	  LaMatrix point (center.nrows (), 1);
-	  for (int row = 0; row < point.nrows (); row++)
+	  Vector<float> point (center.rows ());
+	  for (int row = 0; row < point.rows (); row++)
 	  {
-		point (row, 0) = randGaussian ();
+		point[row] = randGaussian ();
 	  }
 
-	  point = eigenvectors * point;
-	  add (center, point);
+	  point = center + eigenvectors * point;
 
 	  ClusterGauss c (point, 1.0 / K);
 	  clusters.push_back (c);
@@ -149,7 +154,7 @@ cerr << "center: " << center;
 	}
 
 	// Estimation: Generate probability of membership for each datum in each cluster.
-	LaMatrix member (clusters.size (), data.size ());
+	Matrix<float> member (clusters.size (), data.size ());
 	pthread_mutex_lock (&stateLock);
 	this->member = member;
 	unitsPending = (int) ceil ((float) data.size () / workUnitSize);
@@ -205,7 +210,7 @@ cerr << "center: " << center;
 
 	// Analyze movement data to detect convergence
 	cerr << "change = " << largestChange << "\t";
-	largestChange /= maxSize * sqrt ((float) data[0].nrows ());
+	largestChange /= maxSize * sqrtf ((float) data[0].rows ());
 	cerr << largestChange << "\t";
 	// Calculate velocity
 	changes.push_back (largestChange);
@@ -218,7 +223,7 @@ cerr << "center: " << center;
 	  float sxy   = 0;
 	  for (int x = 0; x < changes.size (); x++)
 	  {
-		sxx   += pow (x - xbar, 2);
+		sxx   += powf (x - xbar, 2);
 		nybar += changes[x];
 		sxy   += x * changes[x];
 	  }
@@ -237,7 +242,7 @@ cerr << "center: " << center;
 		sxy   = 0;
 		for (int x = 0; x < velocities.size (); x++)
 		{
-		  sxx   += pow (x - xbar, 2);
+		  sxx   += powf (x - xbar, 2);
 		  nybar += velocities[x];
 		  sxy   += x * velocities[x];
 		}
@@ -270,39 +275,39 @@ cerr << "center: " << center;
 	  // maxSize.  If so, pick the worst offending cluster and  split
       // it into two along the dominant axis.
 	  float largestEigenvalue = 0;
-	  LaMatrix largestEigenvector (data[0].nrows (), 1);
+	  Vector<float> largestEigenvector (data[0].rows ());
 	  int largestCluster = 0;
 	  for (int i = 0; i < clusters.size (); i++)
 	  {
-		int last = clusters[i].eigenvalues.size () - 1;
-		float evf = fabs (clusters[i].eigenvalues[0]);
-		float evl = fabs (clusters[i].eigenvalues[last]);
+		int last = clusters[i].eigenvalues.rows () - 1;
+		float evf = fabsf (clusters[i].eigenvalues[0]);
+		float evl = fabsf (clusters[i].eigenvalues[last]);
 		if (evf > largestEigenvalue)
 		{
 		  largestEigenvalue = evf;
-		  copy (clusters[i].eigenvectors[0], largestEigenvector[0]);
+		  largestEigenvector = clusters[i].eigenvectors.column (0);
 		  largestCluster = i;
 		}
 		if (evl > largestEigenvalue)
 		{
 		  largestEigenvalue = evl;
-		  copy (clusters[i].eigenvectors[last], largestEigenvector[0]);
+		  largestEigenvector = clusters[i].eigenvectors.column (last);
 		  largestCluster = i;
 		}
 	  }
-	  largestEigenvalue = sqrt (largestEigenvalue);
+	  largestEigenvalue = sqrtf (largestEigenvalue);
 	  if (largestEigenvalue > maxSize  &&  clusters.size () < maxK)
 	  {
-		LaMatrix le (largestEigenvector.nrows (), 1);
-		copy (largestEigenvector, le);
-		scale (largestEigenvector,  largestEigenvalue / 2);  // largestEigenvector is already unit length
-		scale (le,                 -largestEigenvalue / 2);
-		add (clusters[largestCluster].center, largestEigenvector);
-		add (le, clusters[largestCluster].center);
+		Vector<float> le;
+		le.copyFrom (largestEigenvector);
+		largestEigenvector *= largestEigenvalue / 2;  // largestEigenvector is already unit length
+		le                 *= -largestEigenvalue / 2;
+		largestEigenvector += clusters[largestCluster].center;
+		clusters[largestCluster].center += le;
 		clusters[largestCluster].alpha /= 2;
 		ClusterGauss c (largestEigenvector, clusters[largestCluster].covariance, clusters[largestCluster].alpha);
 		clusters.push_back (c);
-		cerr << "  splitting: " << largestCluster << " " << largestEigenvalue << endl; // " "; print_vector (c.center[0]);
+		cerr << "  splitting: " << largestCluster << " " << largestEigenvalue << endl; // " "; print_vector (c.center);
 		converged = false;
 	  }
 
@@ -315,7 +320,7 @@ cerr << "center: " << center;
 	  {
 		for (int j = i + 1; j < clusters.size (); j++)
 		{
-		  float distance = two_norm ((clusters[i].center - clusters[j].center)[0]);
+		  float distance = (clusters[i].center - clusters[j].center).norm (2);
 		  if (distance < minSize  &&  distance < closestDistance)
 		  {
 			merge = i;
@@ -428,7 +433,7 @@ KMeansParallel::proxyThread (void * arg)
   strtok (peer, ".");
   cerr << peer << " starting proxyThread" << endl;
 
-  const vector<LaMatrix> & data = *kmeans->data;
+  const vector<Vector<float> > & data = *kmeans->data;
   SocketStream ss (connection, 4000);
 
   int lastIteration = -1;
@@ -525,10 +530,10 @@ cerr << peer << " put back " << unit << endl;
 		  pthread_mutex_unlock (&kmeans->stateLock);
 		  float minev = largestNormalFloat;
 		  float maxev = 0;
-		  for (int j = 0; j < kmeans->clusters[unit].eigenvalues.size (); j++)
+		  for (int j = 0; j < kmeans->clusters[unit].eigenvalues.rows (); j++)
 		  {
-			minev = min (minev, fabs (kmeans->clusters[unit].eigenvalues[j]));
-			maxev = max (maxev, fabs (kmeans->clusters[unit].eigenvalues[j]));
+			minev = min (minev, fabsf (kmeans->clusters[unit].eigenvalues[j]));
+			maxev = max (maxev, fabsf (kmeans->clusters[unit].eigenvalues[j]));
 		  }
 		  cerr << unit << " = " << kmeans->clusters[unit].alpha << " " << change << " " << sqrt (minev) << " " << sqrt (maxev) << endl;
 		}
@@ -631,7 +636,7 @@ cerr << "  checking NFS: " << stats.st_size << " " << ctime (&stats.st_mtime);
 		  exit (1);
 		}
 		read (target, true);
-		member = LaMatrix (clusters.size (), data->size ());
+		member.resize (clusters.size (), data->size ());
 		break;
 	  }
 	  case 2:  // Perform estimation for one block
@@ -668,7 +673,7 @@ cerr << "perform maximization" << endl;
 			exit (1);
 		  }
 		  read (target, true);
-		  member = LaMatrix (clusters.size (), data->size ());
+		  member.resize (clusters.size (), data->size ());
 		}
 		int unit;
 		ss.read ((char *) &unit, sizeof (unit));
