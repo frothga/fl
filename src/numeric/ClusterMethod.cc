@@ -1,4 +1,6 @@
 #include "fl/cluster.h"
+#include "fl/factory.h"
+
 
 using namespace fl;
 using namespace std;
@@ -6,27 +8,18 @@ using namespace std;
 
 // class ClusterMethod --------------------------------------------------------
 
-ClusterMethod *
-ClusterMethod::factory (std::istream & stream)
-{
-  string name;
-  getline (stream, name);
+Factory<ClusterMethod>::productMap Factory<ClusterMethod>::products;
 
-  if (name == typeid (KMeans).name ())
+void
+ClusterMethod::read (istream & stream)
+{
+}
+
+void
+ClusterMethod::write (ostream & stream, bool withName)
+{
+  if (withName)
   {
-	return new KMeans (stream);
-  }
-  else if (name == typeid (KMeansParallel).name ())
-  {
-	return new KMeansParallel (stream);
-  }
-  else if (name == typeid (Kohonen).name ())
-  {
-	return new Kohonen (stream);
-  }
-  else
-  {
-	cerr << "Unknown ClusterMethod: " << name << endl;
-	return NULL;
+	stream << typeid (*this).name () << endl;
   }
 }
