@@ -21,10 +21,10 @@ mod2pi (double a)
 inline float
 mod2pi (float a)
 {
-  a = fmodf (a, 2.0 * PI);
+  a = fmodf (a, (float) (2 * PI));
   if (a < 0)
   {
-	a += 2.0 * PI;
+	a += (float) (2 * PI);
   }
   return a;
 }
