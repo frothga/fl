@@ -2,11 +2,13 @@
 #define fl_matrix_h
 
 
-#include <fl/pointer.h>
+#include "fl/pointer.h"
 
 #include <math.h>
 #include <iostream>
 #include <sstream>
+#include <vector>
+#include <map>
 
 
 // The linear algebra package has the following goals:
@@ -49,6 +51,15 @@ namespace fl
   public:
 	virtual ~MatrixAbstract ();
 
+	// Assignment should be shallow copy when possible, but may be deep copy
+	// if convenient to the class.  Tip: never rely on shallow copy semantics.
+	// Ie: never expect a change in one matrix to be reflected in another.
+	// Also never rely on deep copy semantics unless it is guaranteed by a
+	// function.
+	// No assignment operator is defined at this level because it would have
+	// bad interactions with automatically generated assignment operators
+	// in derived classes.
+
 	// Structural functions
 	// These are the core functions in terms of which most other functions can
 	// be implemented.  To some degree, they abstract away the actual storage
@@ -61,9 +72,6 @@ namespace fl
 	virtual void clear ();  // Set all elements to zero.
 	virtual void resize (const int rows, const int columns = 1) = 0;  // Change number of rows and columns.  Does not preserve data.
 
-	// Assignment.  Not a core operation because it can't be inherited.
-	MatrixAbstract & operator = (const MatrixAbstract & that);  // Shallow copy, but may be deep copy if it is convenient to the class.  Tip: never rely on shallow copy semantics.  Ie: never expect a change in one matrix to be reflected in another.  Also never rely on deep copy semantics unless it is guaranteed by a function.
-
 	// Higher level functions
 	virtual T frob (T n) const;  // Frobenius norms: INFINITY=max, 1=sum, 2=standard Frobenius norm, n=(sum_elements (element^n))^(1/n)
 	virtual void normalize (const T scalar = 1.0);  // View matrix as vector and adjust so frob (2) == scalar.
@@ -72,6 +80,7 @@ namespace fl
 	virtual void identity (const T scalar = 1.0);  // Set main diagonal to scalar and everything else to zero.
 	virtual MatrixRegion<T> row (const int r) const;  // Returns a view row r.  The matrix is oriented "horizontal".
 	virtual MatrixRegion<T> column (const int c) const;  // Returns a view of column c.
+	virtual MatrixRegion<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const;  // Same as call to MatrixRegion<T> (*this, firstRow, firstColumn, lastRow, lastColumn)
 
 	// Basic operations
 
@@ -149,7 +158,24 @@ namespace fl
 	Matrix ();
 	Matrix (const int rows, const int columns = 1);
 	Matrix (const MatrixAbstract<T> & that);
+	template<class T2>
+	Matrix (const MatrixAbstract<T2> & that)
+	{
+	  int h = that.rows ();
+	  int w = that.columns ();
+	  resize (h, w);
+	  T * i = (T *) data;
+	  for (int c = 0; c < w; c++)
+	  {
+		for (int r = 0; r < h; r++)
+		{
+		  *i++ = (T) that (r, c);
+		}
+	  }
+	}
 	Matrix (std::istream & stream);
+	Matrix (T * that, const int rows, const int columns = 1);  // Attach to memory block pointed to by that
+	Matrix (Pointer & that, const int rows = -1, const int columns = 1);  // Share memory block with that.  rows == -1 or columns == -1 means infer number from size of memory.  At least one of {rows, columns} must be positive.
 	virtual ~Matrix ();
 
 	virtual T & operator () (const int row, const int column) const
@@ -165,11 +191,12 @@ namespace fl
 	virtual MatrixAbstract<T> * duplicate () const;
 	virtual void clear ();
 	virtual void resize (const int rows, const int columns = 1);
-	virtual void copyFrom (const MatrixAbstract<T> & that);  // Deep copy
 	virtual void copyFrom (const Matrix<T> & that);
 
+	virtual Matrix reshape (const int rows, const int columns = 1) const;
+
 	virtual T frob (T n) const;
-	virtual T dot (const Matrix & B);
+	virtual T dot (const Matrix & B) const;
 
 	virtual MatrixTranspose<T> operator ~ () const;
 	virtual Matrix operator * (const MatrixAbstract<T> & B) const;
@@ -206,22 +233,39 @@ namespace fl
 	Vector ();
 	Vector (const int rows);
 	Vector (const MatrixAbstract<T> & that);
+	template<class T2>
+	Vector (const MatrixAbstract<T2> & that)
+	{
+	  int h = that.rows ();
+	  int w = that.columns ();
+	  resize (h, w);
+	  T * i = (T *) data;
+	  for (int c = 0; c < w; c++)
+	  {
+		for (int r = 0; r < h; r++)
+		{
+		  *i++ = (T) that (r, c);
+		}
+	  }
+	}
 	Vector (const Matrix<T> & that);
 	Vector (std::istream & stream);
 	Vector (T * that, const int rows);  // Attach to memory block pointed to by that
+	Vector (Pointer & that, const int rows = -1);  // Share memory block with that.  rows == -1 means infer number from size of memory
 
-	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void resize (const int rows, const int columns = 1);
 	Vector & operator = (const MatrixAbstract<T> & that);
 	Vector & operator = (const Matrix<T> & that);
 
-	virtual Matrix<T> reshape (const int rows, const int columns) const;
+	virtual MatrixAbstract<T> * duplicate () const;
+	virtual void resize (const int rows, const int columns = 1);
   };
 
   // This Matrix is presumed to be Symmetric.  It could also be Hermitian
   // or Triangular, but these require more specialization.  The whole point
   // of having this class is to take advantage of symmetry to cut down on
   // memory accesses.
+  // For purpose of calls to LAPACK, this matrix stores the upper triangular
+  // portion.
   template<class T>
   class MatrixPacked : public MatrixAbstract<T>
   {
@@ -239,12 +283,46 @@ namespace fl
 	virtual void clear ();
 	virtual void resize (const int rows, const int columns = -1);
 	virtual void copyFrom (const MatrixAbstract<T> & that);
+	virtual void copyFrom (const MatrixPacked & that);
 
 	virtual MatrixPacked operator ~ () const;
 
 	// Data
 	Pointer data;
 	int rows_;  // columns = rows
+  };
+
+  // Stores only nonzero elements.  Assumes that every column has at least
+  // one non-zero entry, so stores a structure for every column.  This is
+  // a trade-off between time and space (as always).  If the matrix is
+  // extremely sparse (not all columns used), then a sparse structure for
+  // holding the column structures would be better.
+  // Note that the implementation is not currently thread safe.  It needs a
+  // mutex around accesses the refcount in SparseBlock.
+  template<class T>
+  class MatrixSparse : public MatrixAbstract<T>
+  {
+  public:
+	MatrixSparse ();
+	MatrixSparse (const int rows, const int columns);
+	MatrixSparse (const MatrixAbstract<T> & that);
+	MatrixSparse (std::istream & stream);
+	~MatrixSparse ();
+
+	void set (const int row, const int column, const T value);  // If value is non-zero, creates element if not already there.  If value is zero, removes element if it exists.
+	virtual T & operator () (const int row, const int column) const;
+	virtual int rows () const;
+	virtual int columns () const;
+	virtual MatrixAbstract<T> * duplicate () const;
+	virtual void clear ();
+	virtual void resize (const int rows, const int columns = 1);  // Changing number of rows has no effect at all.  Changing number of columns resizes column list.
+	virtual void copyFrom (const MatrixSparse & that);
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true) const;
+
+	int rows_;
+	fl::SmartPointer< std::vector< std::map<int, T> > > data;
   };
 
   // A square matrix that always returns the same value for a diagonal
@@ -339,8 +417,26 @@ namespace fl
   class MatrixRegion : public MatrixAbstract<T>
   {
   public:
-	MatrixRegion (const MatrixAbstract<T> & that, const int firstRow, const int firstColumn, const int lastRow, const int lastColumn);
+	MatrixRegion (const MatrixRegion & that);
+	MatrixRegion (const MatrixAbstract<T> & that, const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1);
 	virtual ~MatrixRegion ();
+
+	template<class T2>
+	MatrixRegion & operator = (const MatrixAbstract<T2> & that)
+	{
+	  int h = that.rows ();
+	  int w = that.columns ();
+	  resize (h, w);
+	  for (int c = 0; c < w; c++)
+	  {
+		for (int r = 0; r < h; r++)
+		{
+		  (*this)(r,c) = (T) that(r,c);
+		}
+	  }
+	  return *this;
+	}
+	MatrixRegion & operator = (const MatrixRegion & that);
 
 	virtual T & operator () (const int row, const int column) const
 	{
@@ -380,11 +476,26 @@ namespace fl
   {
   public:
 	Matrix2x2 ();
-	Matrix2x2 (const MatrixAbstract<T> & that);
+	template<class T2>
+	Matrix2x2 (const MatrixAbstract<T2> & that)
+	{
+	  // We assume that we wouldn't assign to an explicit Matrix2x2 unless
+	  // we knew that the source is in fact at least 2 by 2.
+	  data[0][0] = (T) that(0,0);
+	  data[0][1] = (T) that(1,0);
+	  data[1][0] = (T) that(0,1);
+	  data[1][1] = (T) that(1,1);
+	}
 	Matrix2x2 (std::istream & stream);
 
-	virtual T & operator () (const int row, const int column) const;
-    virtual T & operator [] (const int row) const;
+	virtual T & operator () (const int row, const int column) const
+	{
+	  return (T &) data[column][row];
+	}
+    virtual T & operator [] (const int row) const
+	{
+	  return ((T *) data)[row];
+	}
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate () const;
@@ -395,33 +506,9 @@ namespace fl
 	virtual Matrix2x2<T> operator ! () const;
 	virtual Matrix2x2<T> operator ~ () const;
 	virtual Matrix<T> operator * (const MatrixAbstract<T> & B) const;
-	virtual Matrix2x2<T> operator * (const Matrix2x2<T> & B) const
-	{
-	  Matrix2x2<T> result;
-	  result.data[0][0] = data[0][0] * B.data[0][0] + data[1][0] * B.data[0][1];
-	  result.data[0][1] = data[0][1] * B.data[0][0] + data[1][1] * B.data[0][1];
-	  result.data[1][0] = data[0][0] * B.data[1][0] + data[1][0] * B.data[1][1];
-	  result.data[1][1] = data[0][1] * B.data[1][0] + data[1][1] * B.data[1][1];
-	  return result;
-	}
-	virtual Matrix2x2<T> operator * (const T scalar) const
-	{
-	  Matrix2x2<T> result;
-	  result.data[0][0] = data[0][0] * scalar;
-	  result.data[0][1] = data[0][1] * scalar;
-	  result.data[1][0] = data[1][0] * scalar;
-	  result.data[1][1] = data[1][1] * scalar;
-	  return result;
-	}
-	virtual Matrix2x2<T> operator / (const T scalar) const
-	{
-	  Matrix2x2<T> result;
-	  result.data[0][0] = data[0][0] / scalar;
-	  result.data[0][1] = data[0][1] / scalar;
-	  result.data[1][0] = data[1][0] / scalar;
-	  result.data[1][1] = data[1][1] / scalar;
-	  return result;
-	}
+	virtual Matrix2x2<T> operator * (const Matrix2x2<T> & B) const;
+	virtual Matrix2x2<T> operator * (const T scalar) const;
+	virtual Matrix2x2<T> operator / (const T scalar) const;
 	virtual Matrix2x2<T> & operator *= (const Matrix2x2<T> & B);
 	virtual MatrixAbstract<T> & operator *= (const T scalar);
 
@@ -437,11 +524,29 @@ namespace fl
   {
   public:
 	Matrix3x3 ();
-	Matrix3x3 (const MatrixAbstract<T> & that);
+	template<class T2>
+	Matrix3x3 (const MatrixAbstract<T2> & that)
+	{
+	  data[0][0] = (T) that(0,0);
+	  data[0][1] = (T) that(1,0);
+	  data[0][2] = (T) that(2,0);
+	  data[1][0] = (T) that(0,1);
+	  data[1][1] = (T) that(1,1);
+	  data[1][2] = (T) that(2,1);
+	  data[2][0] = (T) that(0,2);
+	  data[2][1] = (T) that(1,2);
+	  data[2][2] = (T) that(2,2);
+	}
 	Matrix3x3 (std::istream & stream);
 
-	virtual T & operator () (const int row, const int column) const;
-    virtual T & operator [] (const int row) const;
+	virtual T & operator () (const int row, const int column) const
+	{
+	  return (T &) data[column][row];
+	}
+    virtual T & operator [] (const int row) const
+	{
+	  return ((T *) data)[row];
+	}
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate () const;
@@ -480,9 +585,9 @@ namespace fl
 	  std::string line;
 	  for (int c = 0; c < A.columns (); c++)
 	  {
-		// Let ostream absord the variability in the type T of the matrix.
-		// We may have to specialize this function for complex, since there
-		// probably isn't an inserter for it.
+		// Let ostream absorb the variability in the type T of the matrix.
+		// This may not work as expected for type char, because ostreams treat
+		// chars as characters, not numbers.
 		std::ostringstream formatted;
 		formatted.precision (A.displayPrecision);
 		formatted << A (r, c);
@@ -500,8 +605,6 @@ namespace fl
 	}
 	return stream;
   }
-
-  std::ostream & operator << (std::ostream & stream, const MatrixAbstract<char> & A);
 
 
   // Load matrix from human-readable stream.  Not idempotent with the insertion
@@ -544,27 +647,6 @@ namespace fl
 	  }
 	}
 	return A;
-  }
-
-  // Convert from one numeric type to another.  Operator <<= acts similar to =.
-  // The "const" on parameter A is a lie.  A will be changed.  However, putting
-  // the const there fools the compiler into letting us construct and fill
-  // matrices on the fly.
-  template<class T1, class T2>
-  inline MatrixAbstract<T1> &
-  operator <<= (const MatrixAbstract<T1> & A, const MatrixAbstract<T2> & B)
-  {
-	int rows = B.rows ();
-	int columns = B.columns ();
-	const_cast< MatrixAbstract<T1> & > (A).resize (rows, columns);
-	for (int c = 0; c < columns; c++)
-	{
-	  for (int r = 0; r < rows; r++)
-	  {
-		A(r,c) = B(r,c);
-	  }
-	}
-	return const_cast< MatrixAbstract<T1> & > (A);
   }
 
   template<class T>
