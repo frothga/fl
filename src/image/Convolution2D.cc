@@ -5,28 +5,28 @@ using namespace std;
 using namespace fl;
 
 
-// class Convolution2D --------------------------------------------------------
+// class ConvolutionDiscrete2D ------------------------------------------------
 
-Convolution2D::Convolution2D (const PixelFormat & format, const BorderMode mode)
+ConvolutionDiscrete2D::ConvolutionDiscrete2D (const PixelFormat & format, const BorderMode mode)
 : Image (format)
 {
   this->mode = mode;
 }
 
-Convolution2D::Convolution2D (const Image & image, const BorderMode mode)
+ConvolutionDiscrete2D::ConvolutionDiscrete2D (const Image & image, const BorderMode mode)
 : Image (image)
 {
   this->mode = mode;
 }
 
 Image
-Convolution2D::filter (const Image & image)
+ConvolutionDiscrete2D::filter (const Image & image)
 {
   if (*format != *image.format)
   {
 	if (format->precedence <= image.format->precedence)
 	{
-	  Convolution2D temp (*image.format, mode);
+	  ConvolutionDiscrete2D temp (*image.format, mode);
 	  (Image &) temp = (*this) * (*image.format);
 	  return image * temp;
 	}
@@ -92,7 +92,7 @@ Convolution2D::filter (const Image & image)
 	  }
 	  else
 	  {
-		throw "Convolution2D::filter: unimplemented format";
+		throw "ConvolutionDiscrete2D::filter: unimplemented format";
 	  }
 	}
     case UseZeros:
@@ -155,7 +155,7 @@ Convolution2D::filter (const Image & image)
 	  }
 	  else
 	  {
-		throw "Convolution2D::filter: unimplemented format";
+		throw "ConvolutionDiscrete2D::filter: unimplemented format";
 	  }
 	}
     case Boost:
@@ -224,7 +224,7 @@ Convolution2D::filter (const Image & image)
 	  }
 	  else
 	  {
-		throw "Convolution2D::filter: unimplemented format";
+		throw "ConvolutionDiscrete2D::filter: unimplemented format";
 	  }
 	}
     case Crop:
@@ -283,20 +283,20 @@ Convolution2D::filter (const Image & image)
 	  }
 	  else
 	  {
-		throw "Convolution2D::filter: unimplemented format";
+		throw "ConvolutionDiscrete2D::filter: unimplemented format";
 	  }
 	}
   }
 }
 
 double
-Convolution2D::response (const Image & image, const Point & p) const
+ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 {
   if (*format != *image.format)
   {
 	if (format->precedence <= image.format->precedence)
 	{
-	  Convolution2D temp (*image.format, mode);
+	  ConvolutionDiscrete2D temp (*image.format, mode);
 	  (Image &) temp = (*this) * (*image.format);
 	  return temp.response (image, p);
 	}
@@ -363,7 +363,7 @@ Convolution2D::response (const Image & image, const Point & p) const
 	}
 	else
 	{
-	  throw "Convolution2D::response: unimplemented format";
+	  throw "ConvolutionDiscrete2D::response: unimplemented format";
 	}
   }
   else
@@ -396,7 +396,7 @@ Convolution2D::response (const Image & image, const Point & p) const
 	}
 	else
 	{
-	  throw "Convolution2D::response: unimplemented format";
+	  throw "ConvolutionDiscrete2D::response: unimplemented format";
 	}
   }
 }

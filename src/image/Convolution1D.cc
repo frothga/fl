@@ -6,16 +6,16 @@ using namespace std;
 using namespace fl;
 
 
-// class Convolution1D --------------------------------------------------------
+// class ConvolutionDiscrete1D ------------------------------------------------
 
-Convolution1D::Convolution1D (const PixelFormat & format, const Direction direction, const BorderMode mode)
+ConvolutionDiscrete1D::ConvolutionDiscrete1D (const PixelFormat & format, const Direction direction, const BorderMode mode)
 : Image (format)
 {
   this->direction = direction;
   this->mode = mode;
 }
 
-Convolution1D::Convolution1D (const Image & image, const Direction direction, const BorderMode mode)
+ConvolutionDiscrete1D::ConvolutionDiscrete1D (const Image & image, const Direction direction, const BorderMode mode)
 : Image (image)
 {
   this->direction = direction;
@@ -23,7 +23,7 @@ Convolution1D::Convolution1D (const Image & image, const Direction direction, co
 }
 
 Image
-Convolution1D::filter (const Image & image)
+ConvolutionDiscrete1D::filter (const Image & image)
 {
   // This code is essentially the same as Convolution2D::filter ().  However, it
   // removes one layer of looping, which saves a little bit of overhead.
@@ -32,7 +32,7 @@ Convolution1D::filter (const Image & image)
   {
 	if (format->precedence <= image.format->precedence)
 	{
-	  Convolution1D temp (*image.format, direction, mode);
+	  ConvolutionDiscrete1D temp (*image.format, direction, mode);
 	  (Image &) temp = (*this) * (*image.format);
 	  return image * temp;
 	}
@@ -113,7 +113,7 @@ Convolution1D::filter (const Image & image)
 	  }
 	  else
 	  {
-		throw "Convolution1D::filter: unimplemented format";
+		throw "ConvolutionDiscrete1D::filter: unimplemented format";
 	  }
 
 	  break;
@@ -224,7 +224,7 @@ Convolution1D::filter (const Image & image)
 	  }
 	  else
 	  {
-		throw "Convolution1D::filter: unimplemented format";
+		throw "ConvolutionDiscrete1D::filter: unimplemented format";
 	  }
 
 	  break;
@@ -343,7 +343,7 @@ Convolution1D::filter (const Image & image)
 	  }
 	  else
 	  {
-		throw "Convolution1D::filter: unimplemented format";
+		throw "ConvolutionDiscrete1D::filter: unimplemented format";
 	  }
 
 	  break;
@@ -412,7 +412,7 @@ Convolution1D::filter (const Image & image)
 	  }
 	  else
 	  {
-		throw "Convolution1D::filter: unimplemented format";
+		throw "ConvolutionDiscrete1D::filter: unimplemented format";
 	  }
 
 	  break;
@@ -423,13 +423,13 @@ Convolution1D::filter (const Image & image)
 }
 
 double
-Convolution1D::response (const Image & image, const Point & p) const
+ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
 {
   if (*format != *image.format)
   {
 	if (format->precedence <= image.format->precedence)
 	{
-	  Convolution1D temp (*image.format, direction, mode);
+	  ConvolutionDiscrete1D temp (*image.format, direction, mode);
 	  (Image &) temp = (*this) * (*image.format);
 	  return temp.response (image, p);
 	}
@@ -505,7 +505,7 @@ Convolution1D::response (const Image & image, const Point & p) const
 	}
 	else
 	{
-	  throw "Convolution1D::response: unimplemented format";
+	  throw "ConvolutionDiscrete1D::response: unimplemented format";
 	}
   }
   else  // mode in {Crop, ZeroFill, UseZeros}
@@ -540,7 +540,7 @@ Convolution1D::response (const Image & image, const Point & p) const
 	}
 	else
 	{
-	  throw "Convolution1D::response: unimplemented format";
+	  throw "ConvolutionDiscrete1D::response: unimplemented format";
 	}
   }
 }

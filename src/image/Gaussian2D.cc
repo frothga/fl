@@ -11,7 +11,7 @@ using namespace fl;
 double Gaussian2D::cutoff = 4.0;
 
 Gaussian2D::Gaussian2D (double sigma, const PixelFormat & format, const BorderMode mode)
-: Convolution2D (format, mode)
+: ConvolutionDiscrete2D (format, mode)
 {
   double sigma2 = sigma * sigma;
 

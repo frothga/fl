@@ -9,7 +9,7 @@ using namespace fl;
 // class GaussianDerivativeFirst ----------------------------------------------
 
 GaussianDerivativeFirst::GaussianDerivativeFirst (int xy, double sigmaX, double sigmaY, double angle, const PixelFormat & format, const BorderMode mode)
-: Convolution2D (format, mode)
+: ConvolutionDiscrete2D (format, mode)
 {
   if (sigmaY < 0)
   {

@@ -9,7 +9,7 @@ using namespace fl;
 // class GaussianDerivative1D -------------------------------------------------
 
 GaussianDerivative1D::GaussianDerivative1D (double sigma, const PixelFormat & format, const Direction direction, const BorderMode mode)
-: Convolution1D (GrayDouble, direction, mode)
+: ConvolutionDiscrete1D (GrayDouble, direction, mode)
 {
   double sigma2 = sigma * sigma;
   double C = sqrt (2.0 * PI) * sigma;

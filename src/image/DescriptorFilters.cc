@@ -28,7 +28,7 @@ DescriptorFilters::prepareFilterMatrix ()
   // Determine size of patch
   patchWidth = 0;
   patchHeight = 0;
-  vector<Convolution2D>::iterator i;
+  vector<ConvolutionDiscrete2D>::iterator i;
   for (i = filters.begin (); i < filters.end (); i++)
   {
 	patchWidth = max (patchWidth, i->width);
@@ -92,7 +92,7 @@ DescriptorFilters::read (istream & stream)
 	stream.read ((char *) &height, sizeof (height));
 	Image image (width, height, GrayFloat);
 	stream.read ((char *) image.buffer, image.buffer.size ());
-	filters.push_back (Convolution2D (image));
+	filters.push_back (ConvolutionDiscrete2D (image));
   }
 }
 

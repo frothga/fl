@@ -9,7 +9,7 @@ using namespace fl;
 // class DifferenceOfGaussians ------------------------------------------------
 
 DifferenceOfGaussians::DifferenceOfGaussians (double sigmaPlus, double sigmaMinus, const PixelFormat & format, const BorderMode mode)
-: Convolution2D (format, mode)
+: ConvolutionDiscrete2D (format, mode)
 {
   Gaussian2D plus (sigmaPlus, GrayDouble);
   Gaussian2D minus (sigmaMinus, GrayDouble);

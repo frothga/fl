@@ -9,7 +9,7 @@ using namespace fl;
 // class GaussianDerivativeThird ----------------------------------------------
 
 GaussianDerivativeThird::GaussianDerivativeThird (int xy1, int xy2, int xy3, double sigmaX, double sigmaY, double angle, const PixelFormat & format, const BorderMode mode)
-: Convolution2D (format, mode)
+: ConvolutionDiscrete2D (format, mode)
 {
   // Count how many of each kind of derivative we have been given.
   int dxcount = 0;
