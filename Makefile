@@ -20,6 +20,7 @@ doc:
 clean:
 	for PACKAGE in $(PACKAGES); do $(MAKE) -C src/$$PACKAGE clean; done
 	rm -f *~ include/$(NS)/*~ $(NS).tgz changens.sed
+	rm -f *.ncb lib/*.lib
 	rm -rf html man
 
 depend:
