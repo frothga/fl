@@ -92,15 +92,21 @@ namespace fl
 
   /**
 	 Uses the stardard Euclidean distance between two points.
-	 Maps zero distance to probability 1 and infinite distance to
+	 Maps zero distance to 1 and infinite (or alternately, maximum) distance to
 	 probability zero.
   **/
   class MetricEuclidean : public Comparison
   {
   public:
-	MetricEuclidean () {}
+	MetricEuclidean (float upperBound = INFINITY);
 	MetricEuclidean (std::istream & stream);
+
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true);
+
+	float upperBound;  ///< The largest possible distance, if known.  Infinity if not known.  Determines whether to use linear function or hyperbolic squashing function to map distance to resulting value.
   };
 
   /**
