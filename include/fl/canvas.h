@@ -32,8 +32,8 @@ namespace fl
 	virtual void drawLine (float a, float b, float c, unsigned int color = 0xFFFFFF);  ///< Draws the set ax + by + c = 0
 	virtual void drawRay (const Point & p, float angle, unsigned int color = 0xFFFFFF);
 	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = 0xFFFFFF);
-	virtual void drawParallelogram (const Matrix<double> & S, float radius, unsigned int color = 0xFFFFFF);  ///< S projects a unit square centered at the origin into the image.  radius scales up the unit square.
-	virtual void drawParallelogram (const PointAffine & p, float radius, unsigned int color = 0xFFFFFF);  ///< Determines an S based on the shape and position of p, then calls drawParallelogram (S, ...).
+	virtual void drawParallelogram (const Matrix<double> & S, float radius = 1.0f, unsigned int color = 0xFFFFFF);  ///< S projects a unit square centered at the origin into the image.  radius scales up the unit square.
+	virtual void drawParallelogram (const PointAffine & p, float radius = 1.0f, unsigned int color = 0xFFFFFF);  ///< Determines an S based on the shape and position of p, then calls drawParallelogram (S, ...).
 	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = 0xFFFFFF);
 	virtual void drawCircle (const Point & center, float radius, unsigned int color = 0xFFFFFF, float startAngle = 0, float endAngle = 2 * PI);
 	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1, unsigned int color = 0xFFFFFF, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
