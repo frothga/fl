@@ -1,4 +1,5 @@
 #include "fl/image.h"
+#include "fl/pi.h"
 
 #include <math.h>
 #include <algorithm>
@@ -2447,42 +2448,17 @@ PixelFormatVYUYChar::setYUV (void * pixel, unsigned int yuv) const
 
 // class PixelFormatHLSFloat --------------------------------------------------
 
+const float root32 = sqrtf (3.0f) / 2.0f;
+const float onesixth = 1.0f / 6.0f;
+const float onethird = 1.0f / 3.0f;
+const float twothirds = 2.0f / 3.0f;
+
 PixelFormatHLSFloat::PixelFormatHLSFloat ()
 {
   depth      = 3 * sizeof (float);
   precedence = 5;  // on par with RGBAFloat
   monochrome = false;
   hasAlpha   = false;
-}
-
-inline float
-PixelFormatHLSFloat::HLSvalue (const float & n1, const float & n2, float h) const
-{
-  if (h > 1.0f)
-  {
-	h -= 1.0f;
-  }
-  if (h < 0)
-  {
-	h += 1.0f;
-  }
-
-  if (h < 1.0f / 6.0f)
-  {
-    return n1 + (n2 - n1) * h * 6.0f;
-  }
-  else if (h < 0.5f)
-  {
-    return n2;
-  }
-  else if (h < 2.0f / 3.0f)
-  {
-    return n1 + (n2 - n1) * (2.0f / 3.0f - h) * 6.0f;
-  }
-  else
-  {
-    return n1;
-  }
 }
 
 unsigned int
@@ -2501,23 +2477,42 @@ PixelFormatHLSFloat::getRGBA (void * pixel) const
   return a | r | g | b;
 }
 
+inline float
+PixelFormatHLSFloat::HLSvalue (const float & n1, const float & n2, float h) const
+{
+  if (h > 1.0f)
+  {
+	h -= 1.0f;
+  }
+  if (h < 0)
+  {
+	h += 1.0f;
+  }
+
+  if (h < onesixth)
+  {
+    return n1 + (n2 - n1) * h * 6.0f;
+  }
+  else if (h < 0.5f)
+  {
+    return n2;
+  }
+  else if (h < twothirds)
+  {
+    return n1 + (n2 - n1) * (twothirds - h) * 6.0f;
+  }
+  else
+  {
+    return n1;
+  }
+}
+
 void
 PixelFormatHLSFloat::getRGBA (void * pixel, float values[]) const
 {
   float h = ((float *) pixel)[0];
   float l = ((float *) pixel)[1];
   float s = ((float *) pixel)[2];
-
-  float m2;
-  if (l <= 0.5f)
-  {
-    m2 = l + l * s;
-  }
-  else
-  {
-    m2 = l + s - l * s;
-  }
-  float m1 = 2.0f * l - m2;
 
   if (s == 0)
   {
@@ -2527,9 +2522,27 @@ PixelFormatHLSFloat::getRGBA (void * pixel, float values[]) const
   }
   else
   {
-    values[0] = HLSvalue (m1, m2, h + 1.0f / 3.0f);
+	float m2;
+	if (l <= 0.5f)
+	{
+	  m2 = l + l * s;
+	}
+	else
+	{
+	  m2 = l + s - l * s;
+	}
+	float m1 = 2.0f * l - m2;
+
+	double barf;
+	h = modf (h, &barf);
+	if (h < 0)
+	{
+	  h += 1.0f;
+	}
+
+    values[0] = HLSvalue (m1, m2, h + onethird);
     values[1] = HLSvalue (m1, m2, h);
-    values[2] = HLSvalue (m1, m2, h - 1.0f / 3.0f);
+    values[2] = HLSvalue (m1, m2, h - onethird);
   }
 
   values[3] = 1.0f;
@@ -2580,26 +2593,9 @@ PixelFormatHLSFloat::setRGBA (void * pixel, float values[]) const
 	}
 
 	// Hue
-    float rc = (rgbmax - values[0]) / mmm;
-    float gc = (rgbmax - values[1]) / mmm;
-    float bc = (rgbmax - values[2]) / mmm;
-    if (values[0] == rgbmax)
-	{
-      h = bc - gc;
-	}
-    else if (values[2] == rgbmax)
-	{
-      h = 2.0f + rc - bc;
-	}
-    else
-	{
-      h = 4.0f + gc - rc;
-	}
-    h /= 6.0f;
-	if (h > 1.0f)
-	{
-	  h -= 1.0f;
-	}
+	float x =  -0.5f * values[0] -   0.5f * values[1] + values[2];
+	float y = root32 * values[0] - root32 * values[1];
+	h = atan2f (y, x) / (2 * PI) - onethird;
 	if (h < 0)
 	{
 	  h += 1.0f;
