@@ -1,4 +1,5 @@
 #include "fl/image.h"
+#include "fl/string.h"
 
 
 using namespace std;
