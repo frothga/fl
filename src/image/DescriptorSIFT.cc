@@ -231,7 +231,7 @@ DescriptorSIFT::patch (const Vector<float> & value)
 Comparison *
 DescriptorSIFT::comparison ()
 {
-  return new MetricEuclidean (6.0f, -0.75f);
+  return new MetricEuclidean;
 }
 
 int

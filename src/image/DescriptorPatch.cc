@@ -54,7 +54,7 @@ DescriptorPatch::patch (const Vector<float> & value)
 Comparison *
 DescriptorPatch::comparison ()
 {
-  return new NormalizedCorrelation (true, 11.0f);
+  return new NormalizedCorrelation;
 }
 
 int
