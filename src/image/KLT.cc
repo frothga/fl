@@ -57,7 +57,7 @@ KLT::KLT (int windowRadius, int searchRadius)
   {
 	levels = 1;
   }
-  else if (w <= 9)  // pyramidRatio^0 + pyramidRatio^1 = 1 + 8 = 9
+  else if (w <= 9)  // pyramidRatio^0 + pyramidRatio^1 = 1 + 8 = 9, when pyramidRatio is at its max value of 8.
   {
 	levels = 2;
 	pyramidRatio = (w + sqrtf (w * w - 4.0f * (w - 1.0f))) / 2.0f;  // larger solution to quadratic equation: 0 = pyramidRatio^levels - w * pyramidRatio + w - 1
@@ -65,6 +65,7 @@ KLT::KLT (int windowRadius, int searchRadius)
   else
   {
 	levels = 3;
+	// Solve the equation 0 = pyramidRatio^levels - w * pyramidRation + w - 1, where levels = 3.
 	Vector<complex<double> > coeffs (4);
 	coeffs[0] = w - 1;
 	coeffs[1] = -w;
@@ -75,14 +76,15 @@ KLT::KLT (int windowRadius, int searchRadius)
 	pyramidRatio = 1;
 	for (int i = 0; i < result.rows (); i++)
 	{
-	  if (fabs (imag (result[i])) < DBL_EPSILON)
+	  if (fabs (imag (result[i])) < DBL_EPSILON)  // Use only real roots
 	  {
 		pyramidRatio = max (pyramidRatio, (float) real (result[i]));
 	  }
 	}
   }
+  cerr << "KLT: levels=" << levels << " pyramidRatio=" << pyramidRatio << endl;
 
-  // Create convolution kernels
+  // Create blurring kernel
   preBlur = Gaussian1D (windowWidth * 0.1, Boost);
 
   // Create pyramids
@@ -215,29 +217,37 @@ KLT::track (const Point & point0, const int level, Point & point1)
   ImageOf<float> & image0 = pyramid0[level];
   ImageOf<float> & image1 = pyramid1[level];
 
-  const int border = windowRadius;
-  const float left = border;
-  const float right = image0.width - border - 1;
-  const float top = border;
-  const float bottom = image0.height - border - 1;
-  const int rowAdvance = image0.width - windowWidth;  // Two potential OBOBs: 1) should subtract (windowWidth - 1) rather than windowWidth, 2) should account for extra "x" advance at bottom of inner loop below.
+  int lastH = image0.width - 1;
+  int lastV = image0.height - 1;
 
-  if (point0.x < left  ||  point0.x >= right  ||  point0.y < top  ||  point0.y >= bottom)
+  if (point0.x < 0  ||  point0.x >= lastH  ||  point0.y < 0  ||  point0.y >= lastV)
   {
 	throw 4;
   }
 
+  const int xl = min ((int) floorf (point0.x),         windowRadius);
+  const int xh = min ((int) floorf (lastH - point0.x), windowRadius);
+  const int yl = min ((int) floorf (point0.y),         windowRadius);
+  const int yh = min ((int) floorf (lastV - point0.y), windowRadius);
+  lastH -= xh;
+  lastV -= yh;
+  const int width = xh + xl + 1;
+  const int height = yh + yl + 1;
+  const int pixels = width * height;
+
+  const int rowAdvance = image0.width - width;
+
   // Compute the constant window (from image0)
-  Vector<float> gradientX0 (windowWidth * windowWidth);
-  Vector<float> gradientY0 (windowWidth * windowWidth);
-  Vector<float> intensity0 (windowWidth * windowWidth);
+  Vector<float> gradientX0 (pixels);
+  Vector<float> gradientY0 (pixels);
+  Vector<float> intensity0 (pixels);
   //   Determine bilinear mixing constants
   int x = (int) point0.x;
   int y = (int) point0.y;
   float dx = point0.x - x;
   float dy = point0.y - y;
-  x -= windowRadius;
-  y -= windowRadius;
+  x -= xl;
+  y -= yl;
   float dx1 = 1.0f - dx;
   float dy1 = 1.0f - dy;
   //   Iterate over images using 12 pointers, 4 for each of 3 images
@@ -248,9 +258,9 @@ KLT::track (const Point & point0, const int level, Point & point1)
   float * gx0 = & gradientX0[0];
   float * gy0 = & gradientY0[0];
   float * i0 = & intensity0[0];
-  for (int y = 0; y < windowWidth; y++)
+  for (int y = 0; y < height; y++)
   {
-	for (int x = 0; x < windowWidth; x++)
+	for (int x = 0; x < width; x++)
 	{
 	  // Compute intensity difference and gradient values
 	  float a = *p00 + dx * (*p10 - *p00);
@@ -280,7 +290,7 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	  throw 3;
 	}
 
-	if (point1.x < left  ||  point1.x >= right  ||  point1.y < top  ||  point1.y >= bottom)
+	if (point1.x < xl  ||  point1.x >= lastH  ||  point1.y < yl  ||  point1.y >= lastV)
 	{
 	  throw 4;
 	}
@@ -297,8 +307,8 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	y = (int) point1.y;
 	dx = point1.x - x;
 	dy = point1.y - y;
-	x -= windowRadius;
-	y -= windowRadius;
+	x -= xl;
+	y -= yl;
 	//   Set up pointers
 	p00 = & image1(x,y);
 	p10 = p00 + 1;
@@ -307,9 +317,9 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	gx0 = & gradientX0[0];
 	gy0 = & gradientY0[0];
 	i0 = & intensity0[0];
-	for (int y = 0; y < windowWidth; y++)
+	for (int y = 0; y < height; y++)
 	{
-	  for (int x = 0; x < windowWidth; x++)
+	  for (int x = 0; x < width; x++)
 	  {
 		// Compute intensity difference and gradient values
 		float a = *p00 + dx * (*p10 - *p00);
@@ -354,5 +364,5 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	}
   }
 
-  return sqrtf (error / (windowWidth * windowWidth));
+  return sqrtf (error / pixels);
 }
