@@ -1,4 +1,4 @@
-#include "socket.h"
+#include "fl/socket.h"
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -7,7 +7,9 @@
 #include <iostream>
 #include <signal.h>
 
+
 using namespace std;
+using namespace fl;
 
 
 #define portNumber 60000
@@ -24,6 +26,9 @@ main (int argc, char * argv[])
 {
   signal (SIGIO, handler);
   signal (SIGPIPE, handler);
+
+  const int blockSize = 1000000;
+  int data[blockSize];
 
   if (argc < 2)
   {
@@ -91,8 +96,6 @@ main (int argc, char * argv[])
 
 	SocketStream ss (connection, 60);
 
-	int blockSize = 100000;
-	int data[blockSize];
 	int i = 0;
 	while (ss.good ())
 	{
@@ -185,9 +188,6 @@ main (int argc, char * argv[])
 
 	SocketStream ss (connection);
 
-	int blockSize = 100000;
-	int blockSize2 = blockSize / 2;
-	int data[blockSize];
 	int i = 0;
 	while (ss.good ())
 	{
