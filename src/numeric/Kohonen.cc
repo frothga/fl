@@ -217,14 +217,8 @@ Kohonen::representative (int group)
 }
 
 void
-Kohonen::read (istream & stream, bool withName)
+Kohonen::read (istream & stream)
 {
-  if (withName)
-  {
-	string temp;
-	getline (stream, temp);
-  }
-
   stream.read ((char *) &width,        sizeof (width));
   stream.read ((char *) &sigma,        sizeof (sigma));
   stream.read ((char *) &learningRate, sizeof (learningRate));
@@ -239,9 +233,9 @@ Kohonen::read (istream & stream, bool withName)
 }
 
 void
-Kohonen::write (ostream & stream)
+Kohonen::write (ostream & stream, bool withName)
 {
-  stream << typeid (*this).name () << endl;
+  ClusterMethod::write (stream, withName);
 
   stream.write ((char *) &width,        sizeof (width));
   stream.write ((char *) &sigma,        sizeof (sigma));
