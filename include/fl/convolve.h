@@ -146,7 +146,7 @@ namespace fl
   class Gaussian1D : public Convolution1D
   {
   public:
-	Gaussian1D (double sigma,
+	Gaussian1D (double sigma = 1.0,
 				const PixelFormat & format = GrayFloat,
 				const Direction direction = Horizontal,
 				const BorderMode mode = Crop);
@@ -157,10 +157,19 @@ namespace fl
   class GaussianDerivative1D : public Convolution1D
   {
   public:
-	GaussianDerivative1D (double sigma,
+	GaussianDerivative1D (double sigma = 1.0,
 						  const PixelFormat & format = GrayFloat,
 						  const Direction direction = Horizontal,
 						  const BorderMode mode = Crop);
+  };
+
+  class GaussianDerivativeSecond1D : public Convolution1D
+  {
+  public:
+	GaussianDerivativeSecond1D (double sigma = 1.0,
+								const PixelFormat & format = GrayFloat,
+								const Direction direction = Horizontal,
+								const BorderMode mode = Crop);
   };
 
 
@@ -171,7 +180,7 @@ namespace fl
   public:
 	FilterHarris (double sigmaD = 1.0, double sigmaI = 1.4, const PixelFormat & format = GrayFloat);
 
-	Image filter (const Image & image);  // Relies on preprocess, process, and response to do all the work.
+	virtual Image filter (const Image & image);  // Relies on preprocess, process, and response to do all the work.
 	virtual void preprocess (const Image & image);  // Extracts the autocorrelation matrix from the image.  Stores in xx, xy, and yy.
 	virtual Image process ();  // Collects responses into an Image.
 	virtual double response (const int x, const int y) const;  // For one pixel: sums autocorrelation matrix using G_I and then determines Harris response.  Position (x,y) is relative to border that is shifted by "offset" from original image border.
@@ -212,6 +221,33 @@ namespace fl
 	virtual double response (const int x, const int y) const;
   };
 
+  // Also similar to FilterHarris, but computes L_xx + L_yy instead.
+  class FilterHessian : public Filter
+  {
+  public:
+	FilterHessian (double sigmaD = 1.0, double sigmaI = 1.4, const PixelFormat & format = GrayFloat);
+
+	virtual Image filter (const Image & image);
+	virtual void preprocess (const Image & image);
+	virtual Image process ();
+	virtual double response (const int x, const int y) const;
+
+	double sigmaD;  // Derivation scale
+	double sigmaI;  // Integration scale
+	Gaussian2D                 G_I;
+	Gaussian1D                 G1_I;
+	Gaussian1D                 G1_D;
+	GaussianDerivativeSecond1D dG_D;
+	Image trace;  // Trace of Hessian image
+	int offset;
+	int offsetI;
+	int offsetD;
+
+  protected:
+	int offset1;
+	int offset2;
+  };
+
 
   // Misc -----------------------------------------------------------------------
 
@@ -220,11 +256,38 @@ namespace fl
   public:
 	NonMaxSuppress (int half = 1);
 
-	Image filter (const Image & image);
+	virtual Image filter (const Image & image);
 
 	int half;  // Number of pixels away from center to check for local maxima.
 	float maximum;  // Largest value found during last run of filter.
 	float average;  // Average value found during last run of filter.
+  };
+
+  // An information gathering filter.  Finds average of intensity values.
+  // Returns the image unaltered and stores the average in object's state.
+  class IntensityAverage : public Filter
+  {
+  public:
+	IntensityAverage (bool ignoreZeros = false);
+
+	virtual Image filter (const Image & image);
+
+	float average;  // The computed value
+	bool ignoreZeros;  // Don't include black pixels in count for determining average.
+  };
+
+  // An information gathering filter.  Finds standard deviation of intensity
+  // values based on a given average value.
+  class IntensityDeviation : public Filter
+  {
+  public:
+	IntensityDeviation (float average, bool ignoreZeros = false);
+
+	virtual Image filter (const Image & image);
+
+	float average;  // The given value
+	float deviation;  // The computed value
+	bool ignoreZeros;  // Don't include black pixels in count for determining deviation.
   };
 
   // Treating the image as a vector in high-dimensional space, normalize to given Euclidean length.
@@ -233,7 +296,7 @@ namespace fl
   public:
 	Normalize (double length = 1);
 
-	Image filter (const Image & image);
+	virtual Image filter (const Image & image);
 
 	double length;
   };
@@ -242,7 +305,7 @@ namespace fl
   class AbsoluteValue : public Filter
   {
   public:
-	Image filter (const Image & image);
+	virtual Image filter (const Image & image);
   };
 
   // If image format is floating point, then determine and apply an affine
@@ -253,7 +316,7 @@ namespace fl
   public:
 	Rescale (double a = 1.0, double b = 0);
 	Rescale (const Image & image);  // Determines a transformation that pulls the pixel values into the range [0,1].
-	Image filter (const Image & image);
+	virtual Image filter (const Image & image);
 
 	double a;
 	double b;
@@ -263,6 +326,7 @@ namespace fl
   {
   public:
 	Transform (const Matrix<double> & A, bool inverse = false);  // Prefer double format for better inversion (when needed).
+	Transform (const Matrix<double> & A, const double scale);  // Assumes A is inverse.  Divides first two columns by scale before using A.  Just a convenience method.
 	Transform (double angle);
 	Transform (double scaleX, double scaleY);
 	void initialize (const Matrix<double> & A, bool inverse = false);  // A should be at least 2x2
@@ -271,8 +335,12 @@ namespace fl
 
 	void setPeg (float centerX = -1, float centerY = -1, int width = -1, int height = -1);  // Set up viewport (of resulting image) so its center hits at a specified point in source image.  centerX == -1 means use center of original image.  centerY == -1 is similar.  width == -1 means use width of original image.  height == -1 is similar.
 	void setWindow (float centerX, float centerY, int width = -1, int height = -1);  // Set up viewport so its center hits a specified point in what would otherwise be the resulting image.
-	void prepareResult (const Image & image, Image & result, Vector<float> & cd);  // Subroutine of filter ().  Finalizes parameters that control fit between source and destination images.
+	void prepareResult (const Image & image, Image & result, Matrix3x3<float> & H);  // Subroutine of filter ().  Finalizes parameters that control fit between source and destination images.
 	Transform operator * (const Transform & that) const;
+
+	//Matrix3x3<float> A;  // Maps coordinates from input image to output image.
+	//Matrix3x3<float> IA;  // Inverse of A.  Maps coordinates from output image back to input image.
+	//bool inverse;  // Indicates whether the matrix given to the constructor was A or IA.
 
 	Matrix2x2<float> IA;  // Inverse of A.  Maps coordinates from output image back to input image.
 	float translateX;
@@ -290,6 +358,7 @@ namespace fl
   {
   public:
 	TransformGauss (const Matrix<double> & A, bool inverse = false) : Transform (A, inverse), G (GrayFloat) {needG = true;}
+	TransformGauss (const Matrix<double> & A, const double scale) : Transform (A, scale), G (GrayFloat) {needG = true;}
 	TransformGauss (double angle) : Transform (angle), G (GrayFloat) {needG = true;}
 	TransformGauss (double scaleX, double scaleY) : Transform (scaleX, scaleY), G (GrayFloat) {needG = true;}
 	TransformGauss (const Transform & that) : Transform (that), G (GrayFloat) {needG = true;}
@@ -310,7 +379,17 @@ namespace fl
   class Rotate180 : public Filter
   {
   public:
-	Image filter (const Image & image);
+	virtual Image filter (const Image & image);
+  };
+
+  class Rotate90 : public Filter
+  {
+  public:
+	Rotate90 (bool clockwise = false);  // clockwise in terms of image coordinate system, not in terms of displayed image on screen.  clockwise == true is same as rotation by -90 degrees in image coordinate system.
+
+	virtual Image filter (const Image & image);
+
+	bool clockwise;
   };
 
   class ClearAlpha : public Filter
@@ -318,7 +397,7 @@ namespace fl
   public:
 	ClearAlpha (unsigned int color = 0x0);
 
-	Image filter (const Image & image);
+	virtual Image filter (const Image & image);
 
 	unsigned int color;
   };
