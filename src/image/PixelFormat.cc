@@ -30,6 +30,7 @@ PixelFormatRGBABits   fl::ABGRChar (4, 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
 PixelFormatRGBAFloat  fl::RGBAFloat;
 PixelFormatYVYUChar   fl::YVYUChar;
 PixelFormatVYUYChar   fl::VYUYChar;
+PixelFormatHLSFloat   fl::HLSFloat;
 
 
 // Color->gray conversion factors
@@ -375,6 +376,25 @@ PixelFormat::getXYZ (void * pixel, float values[]) const
   values[3] = rgbValues[3];
 }
 
+/**
+   See PixelFormatYVYUChar::setRGBA() for more details on the conversion matrix.
+ **/
+unsigned int
+PixelFormat::getYUV  (void * pixel) const
+{
+  unsigned int rgba = getRGBA (pixel);
+
+  int r = (rgba & 0xFF0000) >> 16;
+  int g = (rgba &   0xFF00) >> 8;
+  int b =  rgba &     0xFF;
+
+  unsigned int y = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b,            0), 0xFFFFFF) & 0xFF0000;
+  unsigned int u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000, 0), 0xFFFFFF) & 0xFF0000;
+  unsigned int v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000, 0), 0xFFFFFF) & 0xFF0000;
+
+  return y | (u >> 8) | (v >> 16);
+}
+
 unsigned char
 PixelFormat::getGray (void * pixel) const
 {
@@ -420,6 +440,38 @@ PixelFormat::setXYZ (void * pixel, float values[]) const
   rgbValues[3] = values[3];
 
   setRGBA (pixel, rgbValues);
+}
+
+void
+PixelFormat::setYUV (void * pixel, unsigned int yuv) const
+{
+  // It is possible to pass a value where Y = 0 but U and V are not zero.
+  // Technically, this is an illegal value.  However, this code doesn't
+  // trap that case, so it can generate bogus RGB values when the pixel
+  // should be black.
+
+  int y =   yuv & 0xFF0000;
+  int u = ((yuv &   0xFF00) >> 8) - 128;
+  int v =  (yuv &     0xFF)       - 128;
+
+  // See PixelFormatYVYU::getRGB() for an explanation of this arithmetic.
+  unsigned int r = min (max (y               + 0x166F7 * v, 0), 0xFFFFFF);
+  unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v, 0), 0xFFFFFF);
+  unsigned int b = min (max (y + 0x1C560 * u,               0), 0xFFFFFF);
+
+  setRGBA (pixel, 0xFF000000 | (r & 0xFF0000) | ((g >> 8) & 0xFF00) | (b >> 16));
+}
+
+void
+PixelFormat::setGray (void * pixel, float * value) const
+{
+  float v = *value;
+  v = min (v, 1.0f);
+  v = max (v, 0.0f);
+  delinearize (v);
+  unsigned int iv = (unsigned int) (v * 255);
+  unsigned int rgba = 0xFF000000 | (iv << 16) | (iv << 8) | iv;
+  setRGBA (pixel, rgba);
 }
 
 
@@ -2054,6 +2106,23 @@ PixelFormatYVYUChar::getRGBA (void * pixel) const
   return 0xFF000000 | (r & 0xFF0000) | ((g >> 8) & 0xFF00) | (b >> 16);
 }
 
+unsigned int
+PixelFormatYVYUChar::getYUV (void * pixel) const
+{
+  unsigned int y;
+  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  {
+	((short *) pixel)--;  // Move backward in memory 16 bits.
+	y = (*((unsigned int *) pixel) & 0xFF000000) >> 8;
+  }
+  else  // on 32-bit word boundary
+  {
+	y = (*((unsigned int *) pixel) & 0xFF00) << 8;
+  }
+
+  return y | (((unsigned char *) pixel)[0] << 8) | ((unsigned char *) pixel)[2];
+}
+
 unsigned char
 PixelFormatYVYUChar::getGray (void * pixel) const
 {
@@ -2082,6 +2151,23 @@ PixelFormatYVYUChar::setRGBA (void * pixel, unsigned int rgba) const
   else  // on 32-bit word boundary
   {
 	*((unsigned int *) pixel) = (*((unsigned int *) pixel) & 0xFF000000) | v | (y >> 8) | u;
+  }
+}
+
+void
+PixelFormatYVYUChar::setYUV (void * pixel, unsigned int yuv) const
+{
+  unsigned int u = (yuv &   0xFF00) >> 8;
+  unsigned int v = (yuv &     0xFF) << 16;
+
+  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  {
+	((short *) pixel)--;  // Move backward in memory 16 bits.
+	*((unsigned int *) pixel) = ((yuv & 0xFF0000) << 8) | v | (*((unsigned int *) pixel) & 0xFF00) | u;
+  }
+  else  // on 32-bit word boundary
+  {
+	*((unsigned int *) pixel) = (*((unsigned int *) pixel) & 0xFF000000) | v | ((yuv & 0xFF0000) >> 8) | u;
   }
 }
 
@@ -2161,6 +2247,23 @@ PixelFormatVYUYChar::getRGBA (void * pixel) const
   return 0xFF000000 | (r & 0xFF0000) | ((g >> 8) & 0xFF00) | (b >> 16);
 }
 
+unsigned int
+PixelFormatVYUYChar::getYUV (void * pixel) const
+{
+  unsigned int y;
+  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  {
+	((short *) pixel)--;  // Move backward in memory 16 bits.
+	y = *((unsigned int *) pixel) & 0xFF0000;
+  }
+  else  // on 32-bit word boundary
+  {
+	y = (*((unsigned int *) pixel) & 0xFF) << 16;
+  }
+
+  return y | (((unsigned char *) pixel)[1] << 8) | ((unsigned char *) pixel)[3];
+}
+
 unsigned char
 PixelFormatVYUYChar::getGray (void * pixel) const
 {
@@ -2187,4 +2290,188 @@ PixelFormatVYUYChar::setRGBA (void * pixel, unsigned int rgba) const
   {
 	*((unsigned int *) pixel) = v | (*((unsigned int *) pixel) & 0xFF0000) | u | (y >> 16);
   }
+}
+
+void
+PixelFormatVYUYChar::setYUV (void * pixel, unsigned int yuv) const
+{
+  unsigned int u = (yuv &   0xFF00);
+  unsigned int v = (yuv &     0xFF) << 24;
+
+  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  {
+	((short *) pixel)--;  // Move backward in memory 16 bits.
+	*((unsigned int *) pixel) = v | (yuv & 0xFF0000) | u | (*((unsigned int *) pixel) & 0xFF);
+  }
+  else  // on 32-bit word boundary
+  {
+	*((unsigned int *) pixel) = v | (*((unsigned int *) pixel) & 0xFF0000) | u | ((yuv & 0xFF0000) >> 16);
+  }
+}
+
+
+// class PixelFormatHLSFloat --------------------------------------------------
+
+PixelFormatHLSFloat::PixelFormatHLSFloat ()
+{
+  depth      = 3 * sizeof (float);
+  precedence = 5;  // on par with RGBAFloat
+  monochrome = false;
+  hasAlpha   = false;
+}
+
+inline float
+PixelFormatHLSFloat::HLSvalue (const float & n1, const float & n2, float h) const
+{
+  if (h > 1.0f)
+  {
+	h -= 1.0f;
+  }
+  if (h < 0)
+  {
+	h += 1.0f;
+  }
+
+  if (h < 1.0f / 6.0f)
+  {
+    return n1 + (n2 - n1) * h * 6.0f;
+  }
+  else if (h < 0.5f)
+  {
+    return n2;
+  }
+  else if (h < 2.0f / 3.0f)
+  {
+    return n1 + (n2 - n1) * (2.0f / 3.0f - h) * 6.0f;
+  }
+  else
+  {
+    return n1;
+  }
+}
+
+unsigned int
+PixelFormatHLSFloat::getRGBA (void * pixel) const
+{
+  float rgbaValues[4];
+  getRGBA (pixel, rgbaValues);
+  delinearize (rgbaValues[0]);
+  delinearize (rgbaValues[1]);
+  delinearize (rgbaValues[2]);
+  // assume alpha is already linear
+  unsigned int r = ((unsigned int) (rgbaValues[0] * 255)) << 16;
+  unsigned int g = ((unsigned int) (rgbaValues[1] * 255)) <<  8;
+  unsigned int b = ((unsigned int) (rgbaValues[2] * 255));
+  unsigned int a = ((unsigned int) (rgbaValues[3] * 255)) << 24;
+  return a | r | g | b;
+}
+
+void
+PixelFormatHLSFloat::getRGBA (void * pixel, float values[]) const
+{
+  float h = ((float *) pixel)[0];
+  float l = ((float *) pixel)[1];
+  float s = ((float *) pixel)[2];
+
+  float m2;
+  if (l <= 0.5f)
+  {
+    m2 = l + l * s;
+  }
+  else
+  {
+    m2 = l + s - l * s;
+  }
+  float m1 = 2.0f * l - m2;
+
+  if (s == 0)
+  {
+    values[0] = l;
+    values[1] = l;
+    values[2] = l;
+  }
+  else
+  {
+    values[0] = HLSvalue (m1, m2, h + 1.0f / 3.0f);
+    values[1] = HLSvalue (m1, m2, h);
+    values[2] = HLSvalue (m1, m2, h - 1.0f / 3.0f);
+  }
+
+  values[3] = 1.0f;
+}
+
+void
+PixelFormatHLSFloat::setRGBA (void * pixel, unsigned int rgba) const
+{
+  float rgbaValues[3];  // Ignore alpha channel, because it is not processed or stored by any function of this format.
+  rgbaValues[0] = ((rgba &   0xFF0000) >> 16) / 255.0f;
+  rgbaValues[1] = ((rgba &     0xFF00) >>  8) / 255.0f;
+  rgbaValues[2] = ((rgba &       0xFF)      ) / 255.0f;
+  linearize (rgbaValues[0]);
+  linearize (rgbaValues[1]);
+  linearize (rgbaValues[2]);
+  setRGBA (pixel, rgbaValues);
+}
+
+void
+PixelFormatHLSFloat::setRGBA (void * pixel, float values[]) const
+{
+  // Lightness
+  float rgbmax = max (values[0], max (values[1], values[2]));
+  float rgbmin = min (values[0], min (values[1], values[2]));
+  float l = (rgbmax + rgbmin) / 2.0f;
+
+  // Hue and Saturation
+  float h;
+  float s;
+  if (rgbmax == rgbmin)
+  {
+	h = 0;
+    s = 0;
+  }
+  else
+  {
+	float mmm = rgbmax - rgbmin;  // "max minus min"
+	float mpm = rgbmax + rgbmin;  // "max plus min"
+
+	// Saturation
+	if (l <= 0.5f)
+	{
+      s = mmm / mpm;
+	}
+    else
+	{
+      s = mmm / (2.0f - mpm);
+	}
+
+	// Hue
+    float rc = (rgbmax - values[0]) / mmm;
+    float gc = (rgbmax - values[1]) / mmm;
+    float bc = (rgbmax - values[2]) / mmm;
+    if (values[0] == rgbmax)
+	{
+      h = bc - gc;
+	}
+    else if (values[2] == rgbmax)
+	{
+      h = 2.0f + rc - bc;
+	}
+    else
+	{
+      h = 4.0f + gc - rc;
+	}
+    h /= 6.0f;
+	if (h > 1.0f)
+	{
+	  h -= 1.0f;
+	}
+	if (h < 0)
+	{
+	  h += 1.0f;
+	}
+  }
+
+  ((float *) pixel)[0] = h;
+  ((float *) pixel)[1] = l;
+  ((float *) pixel)[2] = s;
 }
