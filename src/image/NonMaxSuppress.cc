@@ -26,6 +26,7 @@ NonMaxSuppress::NonMaxSuppress (int half, BorderMode mode)
 
   maximum = 0;
   average = 0;
+  count   = 0;
 }
 
 Image
@@ -33,7 +34,9 @@ NonMaxSuppress::filter (const Image & image)
 {
   maximum = 0;
   average = 0;
-  int count = 0;
+  count   = 0;
+
+  const int width = 2 * half;
 
   if (*image.format == GrayFloat)
   {
@@ -48,6 +51,10 @@ NonMaxSuppress::filter (const Image & image)
 		int vl = max (0,                y - half);
 		int vh = min (image.height - 1, y + half);
 		float me = that (x, y);
+		if (mode == ZeroFill  &&  (hh - hl < width  ||  vh - vl < width))
+		{
+		  me = 0;
+		}
 		for (int v = vl; me != 0  &&  v <= vh; v++)
 		{
 		  for (int h = hl; h <= hh; h++)
@@ -87,6 +94,10 @@ NonMaxSuppress::filter (const Image & image)
 		int vl = max (0,                y - half);
 		int vh = min (image.height - 1, y + half);
 		double me = that (x, y);
+		if (mode == ZeroFill  &&  (hh - hl < width  ||  vh - vl < width))
+		{
+		  me = 0;
+		}
 		for (int v = vl; me != 0  &&  v <= vh; v++)
 		{
 		  for (int h = hl; h <= hh; h++)
@@ -126,6 +137,10 @@ NonMaxSuppress::filter (const Image & image)
 		int vl = max (0,                y - half);
 		int vh = min (image.height - 1, y + half);
 		unsigned char me = that (x, y);
+		if (mode == ZeroFill  &&  (hh - hl < width  ||  vh - vl < width))
+		{
+		  me = 0;
+		}
 		int c = 0;
 		int cx = 0;
 		int cy = 0;
