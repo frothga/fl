@@ -245,8 +245,7 @@ DescriptorColorHistogram2D::patch (const Vector<float> & value)
 Comparison *
 DescriptorColorHistogram2D::comparison ()
 {
-  return new ChiSquared (50.0f);
-  //return new HistogramIntersection;
+  return new ChiSquared;
 }
 
 bool
