@@ -23,6 +23,11 @@ DescriptorLBP::DescriptorLBP (int P, float R, float supportRadial, int supportPi
   initialize ();
 }
 
+DescriptorLBP::DescriptorLBP (istream & stream)
+{
+  read (stream);
+}
+
 void
 DescriptorLBP::initialize ()
 {
@@ -157,7 +162,7 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
   }
 
   // Gather LBP values into histogram
-  Vector<float> result (P + 1);
+  Vector<float> result (P + 2);
   result.clear ();
   for (int y = sourceT; y <= sourceB; y++)
   {
