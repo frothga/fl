@@ -36,7 +36,7 @@ inRange (float angle, const float & startAngle, const float & endAngle)
 {
   while (angle < startAngle)
   {
-	angle += 2 * PI;
+	angle += (float) (2 * PI);
   }
   return angle <= endAngle;
 }
@@ -393,7 +393,7 @@ CanvasImage::drawEllipse (const Point & center, const Matrix2x2<double> & shape,
   endAngle   = mod2pi (endAngle);
   if (endAngle <= startAngle)
   {
-	endAngle += 2 * PI;
+	endAngle += (float) (2 * PI);
   }
 
   // Determine where to switch from tracking x-axis to tracking y-axis
