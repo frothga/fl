@@ -37,10 +37,7 @@ DescriptorPatch::value (const Image & image, const PointAffine & point)
   reduce.setPeg (point.x, point.y, width, width);
   ImageOf<float> patch = image * GrayFloat * reduce;
 
-  Vector<float> result;
-  result.data = patch.buffer;
-  result.rows_ = width * width;
-  result.columns_ = 1;
+  Vector<float> result (patch.buffer, width * width);
 
   return result;
 }
