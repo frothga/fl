@@ -37,16 +37,9 @@ namespace fl
 	void track (const Point & point0, const int level, Point & point1);  ///< Subroutine of track().
 
 	std::vector< ImageOf<float> > pyramid0;  ///< "previous" image.  First entry is full sized image, and each subsequent entry is downsampled by 2.
-	std::vector< ImageOf<float> > dx0;  ///< "previous" image.  x derivatives associated with each level in pyramid0
-	std::vector< ImageOf<float> > dy0;  ///< "previous" image.  y derivatives associated with each level in pyramid0
 	std::vector< ImageOf<float> > pyramid1;  ///< "current" image.  Same structure as pyramid0
-	std::vector< ImageOf<float> > dx1;  ///< "current" image.  Same structure as dx0
-	std::vector< ImageOf<float> > dy1;  ///< "current" image.  Same structure as dy0
-	std::vector<int> border;  ///< Number of invalid pixels in from edge of image at each level of pyramid.
 	Gaussian1D preBlur;  ///< For blurring full image at base of pyramid.  Purpose is to ensure smooth texture within search window.
 	Gaussian1D pyramidBlur;  ///< For downsampling image while building pyramid.
-	Gaussian1D G;  ///< For blurring while taking derivatives of an image
-	GaussianDerivative1D dG;  ///< For taking derivatives of an image
 	int pyramidRatio;  ///< Ratio between number of pixels in adjacent levels of pyramid.
 	int windowRadius;  ///< Number of pixels from center to edge of search window.
 	int windowWidth;  ///< Diameter of search window.
