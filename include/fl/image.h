@@ -22,39 +22,43 @@ namespace fl
   class Image
   {
   public:
-	Image ();  // Creates a new image of GrayChar, but with no buffer memory allocated.
-	Image (const PixelFormat & format);  // Same as above, but with given PixelFormat
-	Image (int width, int height);  // Allocates buffer of size width x height x GrayChar.depth bytes.
-	Image (int width, int height, const PixelFormat & format);  // Same as above, but with given PixelFormat
-	Image (const Image & that);  // Points our buffer to same location as "that" and copies all of its metadata.
-	Image (unsigned char * buffer, int width, int height, const PixelFormat & format);  // Binds to an external block of memory.
-	Image (const std::string & fileName);  // Create image initialized with contents of file.
+	Image ();  ///< Creates a new image of GrayChar, but with no buffer memory allocated.
+	Image (const PixelFormat & format);  ///< Same as above, but with given PixelFormat
+	Image (int width, int height);  ///< Allocates buffer of size width x height x GrayChar.depth bytes.
+	Image (int width, int height, const PixelFormat & format);  ///< Same as above, but with given PixelFormat
+	Image (const Image & that);  ///< Points our buffer to same location as "that" and copies all of its metadata.
+	Image (unsigned char * buffer, int width, int height, const PixelFormat & format);  ///< Binds to an external block of memory.
+	Image (const std::string & fileName);  ///< Create image initialized with contents of file.
 
-	void read (const std::string & fileName);  // Read image from fileName.  Format will be determined automatically.
+	void read (const std::string & fileName);  ///< Read image from fileName.  Format will be determined automatically.
 	void read (std::istream & stream);
-	void write (const std::string & fileName, const std::string & formatName = "pgm") const;  // Write image to fileName.
+	void write (const std::string & fileName, const std::string & formatName = "pgm") const;  ///< Write image to fileName.
 	void write (std::ostream & stream, const std::string & formatName = "pgm") const;
 
-	Image & operator <<= (const Image & that);  // Direct assignment by shallow copy.  Same semantics as "=".  By using a different operator than "=", we allow subclasses to inherit this function.
-	void copyFrom (const Image & that);  // Duplicates another Image.  Copy all raster info into private buffer, and copy all other metadata.
-	void copyFrom (unsigned char * buffer, int width, int height, const PixelFormat & format);  // Copy from a non-Image source.  Determine size of buffer in bytes as width x height x depth.
-	void attach (unsigned char * buffer, int width, int height, const PixelFormat & format);  // Binds to an external block of memory.
-	void detach ();  // Set the state of this image as if it has no buffer.  Releases (but only frees if appropriate) any memory.
+	Image & operator <<= (const Image & that);  ///< Direct assignment by shallow copy.  Same semantics as "=".  By using a different operator than "=", we allow subclasses to inherit this function.
+	void copyFrom (const Image & that);  ///< Duplicates another Image.  Copy all raster info into private buffer, and copy all other metadata.
+	void copyFrom (unsigned char * buffer, int width, int height, const PixelFormat & format);  ///< Copy from a non-Image source.  Determine size of buffer in bytes as width x height x depth.
+	void attach (unsigned char * buffer, int width, int height, const PixelFormat & format);  ///< Binds to an external block of memory.
+	void detach ();  ///< Set the state of this image as if it has no buffer.  Releases (but only frees if appropriate) any memory.
 
-	void resize (int width, int height);  // Changes image to new size.  Any pixels that are still visible are aligned correctly.  Any newly exposed pixels are set to black.
-	void bitblt (const Image & that, int toX = 0, int toY = 0, int fromX = 0, int fromY = 0, int width = -1, int height = -1);  // -1 for width or height means "maximum possible value"
-	void clear (unsigned int rgba = 0);  // Initialize buffer, if it exists, to given color.  In case rgba == 0, simply zeroes out memory, since this generally results in black in most pixel formats.
+	void resize (int width, int height);  ///< Changes image to new size.  Any pixels that are still visible are aligned correctly.  Any newly exposed pixels are set to black.
+	void bitblt (const Image & that, int toX = 0, int toY = 0, int fromX = 0, int fromY = 0, int width = -1, int height = -1);  ///< -1 for width or height means "maximum possible value"
+	void clear (unsigned int rgba = 0);  ///< Initialize buffer, if it exists, to given color.  In case rgba == 0, simply zeroes out memory, since this generally results in black in most pixel formats.
 
-	Image operator + (const Image & that);  // Creates an image that sums pixel values from this and that.
-	Image operator - (const Image & that);  // Creates an image whose pixels are the difference between this and that.
-	Image & operator *= (double factor);  // Scales each pixel by factor.  Ie: factor == 1 -> no change; factor == 2 -> bright spots are twice as bright, and dark spots (negative values relative to bias) are twice as dark.
-	Image & operator += (double value);  // Adds value to each pixel
+	Image operator + (const Image & that);  ///< Creates an image that sums pixel values from this and that.
+	Image operator - (const Image & that);  ///< Creates an image whose pixels are the difference between this and that.
+	Image & operator *= (double factor);  ///< Scales each pixel by factor.  Ie: factor == 1 -> no change; factor == 2 -> bright spots are twice as bright, and dark spots (negative values relative to bias) are twice as dark.
+	Image & operator += (double value);  ///< Adds value to each pixel
 
-	Pixel        operator () (int x, int y) const;  // Returns a Pixel object that wraps (x,y).
-	unsigned int getRGBA (int x, int y) const;  // The "RGB" functions are intended for abstract access to the buffer.  They perform conversion to whatever the buffer's format is.
+	Pixel        operator () (int x, int y) const;  ///< Returns a Pixel object that wraps (x,y).
+	unsigned int getRGBA (int x, int y) const;  ///< The "RGB" functions are intended for abstract access to the buffer.  They perform conversion to whatever the buffer's format is.
 	void         getRGBA (int x, int y, float values[]) const;
-	void         setRGBA (int x, int y, unsigned int rgba);  // The "rgb" format is always 24-bit RGB, 8 bits per field.  Blue is in the least significant byte, then green, then red.
+	unsigned int getYUV  (int x, int y) const;
+	void         getGray (int x, int y, float * value) const;
+	void         setRGBA (int x, int y, unsigned int rgba);  ///< The "rgb" format is always 24-bit RGB, 8 bits per field.  Blue is in the least significant byte, then green, then red.
 	void         setRGBA (int x, int y, float values[]);
+	void         setYUV  (int x, int y, unsigned int yuv);
+	void         setGray (int x, int y, float * value);
 
 	// Data
 	Pointer             buffer;
@@ -64,7 +68,9 @@ namespace fl
 	double              timestamp;  ///< Time when image was captured.  If part of a video, then time when image should be displayed.
   };
 
-  // A simple wrap around Image that makes it easier to access pixels directly.
+  /**
+	 A simple wrap around Image that makes it easier to access pixels directly.
+   **/
   template<class T>
   class ImageOf : public Image
   {
@@ -86,12 +92,14 @@ namespace fl
 
   // Filter -------------------------------------------------------------------
 
-  // Base class for reified functions that take as input an image and output
-  // another image.
+  /**
+	 Base class for reified functions that take as input an image and output
+	 another image.
+  **/
   class Filter
   {
   public:
-	virtual Image filter (const Image & image) = 0;  // This could be const, but it is useful to allow filters to collect statistics.  Note that such filters are not thread safe.
+	virtual Image filter (const Image & image) = 0;  ///< This could be const, but it is useful to allow filters to collect statistics.  Note that such filters are not thread safe.
   };
 
   inline Image
@@ -118,68 +126,70 @@ namespace fl
 
   // PixelFormat --------------------------------------------------------------
 
-  // A PixelFormat wraps access to an element of an Image.  A pixel itself is
-  // sort of the combination of a pointer to memory and a PixelFormat.
-  // A PixelFormat describes the entire collection of pixels in an image, and
-  // we use it to interpret each pixel in the image.
-  // PixelFormat extends Filter so it can be used directly to convert image
-  // format.  The "from*" methods implement an n^2 set of direct conversions
-  // between selected formats.  These conversions occur frequently when
-  // displaying images on an X windows system.
-  // For the present, all formats exept for XYZ make sRGB assumptions (see
-  // www.srgb.com).  In addition, all integer values are non-linear (with
-  // gamma = 2.2 as per sRGB spec), and all floating point values are linear.
-  // We can add parameters to the formats if we need to distinguish more color
-  // spaces.
-  // Naming convention: <color space><basic C type for one channel>
-  //   Color space names refer to sequence of channels (usually bytes) in
-  //   memory, rather than in machine words (eg: registers in the processor).
-  //   The leftmost letter in a name refers to the lowest numbered address.
-  //   The "Bits" formats also follow this convention with two exceptions:
-  //   1) The bitmasks are necessarily machine words.
-  //   2) The order of channels is actually arbitrary.
-  // TODO:
-  // * Finish thinking about the naming convention and then actually apply it.
-  // * Fix code to work on both endians (right now it is just little endian).
-  // * think about adding arbitrary information channels besides alpha
-  //   (eg: depth).  alpha gets special treatment because it has a specific,
-  //   well-defined effect on how pixels are combined.
-  // * add alpha blend methods (operator << and >>) to Pixel
+  /**
+	 A PixelFormat wraps access to an element of an Image.  A pixel itself is
+	 sort of the combination of a pointer to memory and a PixelFormat.
+	 A PixelFormat describes the entire collection of pixels in an image, and
+	 we use it to interpret each pixel in the image.
+	 PixelFormat extends Filter so it can be used directly to convert image
+	 format.  The "from*" methods implement an n^2 set of direct conversions
+	 between selected formats.  These conversions occur frequently when
+	 displaying images on an X windows system.
+	 For the present, all formats exept for XYZ make sRGB assumptions (see
+	 www.srgb.com).  In addition, all integer values are non-linear (with
+	 gamma = 2.2 as per sRGB spec), and all floating point values are linear.
+	 We can add parameters to the formats if we need to distinguish more color
+	 spaces.
+	 Naming convention: <color space><basic C type for one channel>
+       Color space names refer to sequence of channels (usually bytes) in
+       memory, rather than in machine words (eg: registers in the processor).
+       The leftmost letter in a name refers to the lowest numbered address.
+       The "Bits" formats also follow this convention with two exceptions:
+       1) The bitmasks are necessarily machine words.
+       2) The order of channels is actually arbitrary.
+	 TODO:
+	 * Finish thinking about the naming convention and then actually apply it.
+	 * Fix code to work on both endians (right now it is just little endian).
+	 * think about adding arbitrary information channels besides alpha
+       (eg: depth).  alpha gets special treatment because it has a specific,
+       well-defined effect on how pixels are combined.
+	 * add alpha blend methods (operator << and >>) to Pixel
+  **/
   class PixelFormat : public Filter
   {
   public:
-	virtual Image filter (const Image & image);  // Return an Image in this format
+	virtual Image filter (const Image & image);  ///< Return an Image in this format
 	void fromAny (const Image & image, Image & result) const;
 
-	virtual bool operator == (const PixelFormat & that) const;  // Checks if this and that describe the same actual format.
+	virtual bool operator == (const PixelFormat & that) const;  ///< Checks if this and that describe the same actual format.
 	bool operator != (const PixelFormat & that) const
 	{
 	  return ! operator == (that);
 	}
 
-	virtual unsigned int  getRGBA (void * pixel) const = 0;  // Return value is always assumed to be non-linear sRGB.  Same for other RGB methods below.
-	virtual void          getRGBA (void * pixel, float values[]) const;  // "values" must have at least four elements.  Each returned value is in [0,1].
+	virtual unsigned int  getRGBA (void * pixel) const = 0;  ///< Return value is always assumed to be non-linear sRGB.  Same for other RGB methods below.
+	virtual void          getRGBA (void * pixel, float values[]) const;  ///< "values" must have at least four elements.  Each returned value is in [0,1].
 	virtual void          getXYZ  (void * pixel, float values[]) const;
+	virtual unsigned int  getYUV  (void * pixel) const;
 	virtual unsigned char getGray (void * pixel) const;
 	virtual void          getGray (void * pixel, float * value) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const = 0;
-	virtual void          setRGBA (void * pixel, float values[]) const;  // Each value must be in [0,1].  Values outside this range will be clamped and modified directly in the array.
+	virtual void          setRGBA (void * pixel, float values[]) const;  ///< Each value must be in [0,1].  Values outside this range will be clamped and modified directly in the array.
 	virtual void          setXYZ  (void * pixel, float values[]) const;
+	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
+	virtual void          setGray (void * pixel, float * value) const;
 
-	int depth;  // Number of bytes in one pixel, including any padding
-	int precedence;  // Imposes a (partial?) order on formats according to information content.  Bigger numbers have more information.
+	int depth;  ///< Number of bytes in one pixel, including any padding
+	int precedence;  ///< Imposes a (partial?) order on formats according to information content.  Bigger numbers have more information.
 	// The following two flags could be implemented several different ways.
 	// One alternative would be to make a more complicated class hierarchy
 	// that implies the information.  Eg: have intermediate classes
 	// PixelFormatMonochrome and PixelFormatColor.  Another alternative is
 	// to put channel information into a bitmap and use masks to determine
 	// various states.
-	bool monochrome;  // Indicates that this format has no color components.
-	bool hasAlpha;  // Indicates that this format has a real alpha channel (as apposed to a default alpha value).
+	bool monochrome;  ///< Indicates that this format has no color components.
+	bool hasAlpha;  ///< Indicates that this format has a real alpha channel (as apposed to a default alpha value).
   };
-
-  // The naming convention for specific PixelFormats is
-  // PixelFormat<Color Model><Type of one color channel>
 
   class PixelFormatGrayChar : public PixelFormat
   {
@@ -261,7 +271,7 @@ namespace fl
 	virtual unsigned int getRGBA (void * pixel) const;
 	virtual void         setRGBA (void * pixel, unsigned int rgba) const;
 
-	static void shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift);  // Shifts are set to move bits from this format to the one indicated by the masks.
+	static void shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift);  ///< Shifts are set to move bits from this format to the one indicated by the masks.
   };
 
   class PixelFormatRGBABits : public PixelFormat
@@ -300,10 +310,12 @@ namespace fl
 	virtual void         setRGBA (void * pixel, float values[]) const;
   };
 
-  // Assumes that pixel pairs are 32-bit word aligned.  So, if the pixel
-  // address falls in the center of a 32-bit word it must refer to the "YV"
-  // portion of the pair.  Likewise, an address that falls on a 32-bit boundary
-  // refers to the "YU" portion.
+  /**
+	 Assumes that pixel pairs are 32-bit word aligned.  So, if the pixel
+	 address falls in the center of a 32-bit word it must refer to the "YV"
+	 portion of the pair.  Likewise, an address that falls on a 32-bit boundary
+	 refers to the "YU" portion.
+  **/
   class PixelFormatYVYUChar : public PixelFormat
   {
   public:
@@ -313,8 +325,10 @@ namespace fl
 	void fromVYUYChar (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual unsigned int  getYUV  (void * pixel) const;
 	virtual unsigned char getGray (void * pixel) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
+	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
   };
 
   // Same as YVYU, but with different ordering within the word
@@ -327,19 +341,35 @@ namespace fl
 	void fromYVYUChar (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual unsigned int  getYUV  (void * pixel) const;
 	virtual unsigned char getGray (void * pixel) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
+	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
+  };
+
+  class PixelFormatHLSFloat : public PixelFormat
+  {
+  public:
+	PixelFormatHLSFloat ();
+
+	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual void          getRGBA (void * pixel, float values[]) const;
+	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
+	virtual void          setRGBA (void * pixel, float values[]) const;
+
+	float HLSvalue (const float & n1, const float & n2, float h) const;  ///< Subroutine of getRGBA(floats).
   };
 
   extern PixelFormatGrayChar   GrayChar;
   extern PixelFormatGrayFloat  GrayFloat;
   extern PixelFormatGrayDouble GrayDouble;
   extern PixelFormatRGBAChar   RGBAChar;
-  extern PixelFormatRGBABits   BGRChar;  // Compact 3 byte format with red in LSB.  For talking to libjpeg and GL.
-  extern PixelFormatRGBABits   ABGRChar;  // Similar to BGRChar, but assumes an alpha channel comes first.  For talking to libtiff.
+  extern PixelFormatRGBABits   BGRChar;  ///< Compact 3 byte format with red in LSB.  For talking to libjpeg and GL.
+  extern PixelFormatRGBABits   ABGRChar;  ///< Similar to BGRChar, but assumes an alpha channel comes first.  For talking to libtiff.
   extern PixelFormatRGBAFloat  RGBAFloat;
   extern PixelFormatYVYUChar   YVYUChar;
   extern PixelFormatVYUYChar   VYUYChar;
+  extern PixelFormatHLSFloat   HLSFloat;
 
   // Naming convention for RGBBits (other than BGRChar):
   // R<red bits>G<green bits>B<blue bits>
@@ -348,18 +378,36 @@ namespace fl
 
   // Pixel --------------------------------------------------------------------
 
-  // Provides convenient access to the functions of PixelFormat for a specific
-  // datum.
-  // All linear operations between pixels take place in RGB space.  It would
-  // be better colorwise to do them in XYZ space, but most formats are closer
-  // to RGB than XYZ numerically (ie: require less conversion), so it is
-  // cheaper to do them in RGB.
-  // FIXME: Revise this class.  The job of Pixel should be to provide an
-  // abstract way to do numerical operations on pixels.  A good way to do
-  // this is to make Pixel a subclass of Vector<float>.  It would be variable
-  // length, so it could accomodate any number of channels.  It would also
-  // inherit all matrix operations.  Only alpha blending would impose any
-  // special structure.  Drop color accessors.
+  /**
+	 Provides convenient access to the functions of PixelFormat for a specific
+	 datum.
+	 All linear operations between pixels take place in RGB space.  It would
+	 be better colorwise to do them in XYZ space, but most formats are closer
+	 to RGB than XYZ numerically (ie: require less conversion), so it is
+	 cheaper to do them in RGB.
+
+	 There are two possible ways to think of this class:
+	 1) It provides a shorthand for applying the color access functions of
+	    PixelFormat to a particular (x,y) position in an image.  E.g.:
+		image(x,y).getRGBA () <=> image.format->getRGBA (image(x,y))
+		assuming the image(x,y) is defined to return a void * to the
+		correct address.
+	 1.1) It provides a way of treating the operation image(x,y) as a
+	    reference to the pixel without actually knowing its format.
+	 2) It provides an abstract way to do numerical operations on pixels,
+	    such as scaling, adding, and alpha-blending.
+	    As such, it should really be an extension of Vector<float>.
+	 The current implementation kind of munges these two ideas together,
+	 creating something that is rather inefficient for either purpose.
+	 Job 1 should be moved into class Image in the form of
+	 more color accessor functions.  This makes most sense from an efficiency
+	 standpoint.  It is not clear to me yet what to do about job 1.1 and job 2.
+	 Currently, the only code that makes serious use of Pixel uses it for
+	 both these jobs.  However, it does not do this efficiently.
+	 Pixel would do jobs 1.1 and 2 more efficiently if we relieve it of the
+	 burden of storing intermediate results.  We should instead store the
+	 intermediate results in Vector<float> as RGB values.
+  **/
   class Pixel
   {
   public:
@@ -375,16 +423,16 @@ namespace fl
 	void         setRGBA (float values[]) const;
 	void         setXYZ  (float values[]) const;
 
-	Pixel & operator = (const Pixel & that);  // Set self to have color contained in that.
-	Pixel & operator += (const Pixel & that);  // Set self to sum of respective color channels.
-	Pixel operator + (const Pixel & that) const;  // Add respective color channels.
-	Pixel operator * (const Pixel & that) const;  // Multiply respective color channels.
-	Pixel operator * (float scalar) const;  // Scale each channel.
-	Pixel operator / (float scalar) const;  // Scale each channel.
-	Pixel operator << (const Pixel & that);  // Alpha blend that into this.  The alpha value the governs the blending comes from that.
+	Pixel & operator = (const Pixel & that);  ///< Set self to have color contained in that.
+	Pixel & operator += (const Pixel & that);  ///< Set self to sum of respective color channels.
+	Pixel operator + (const Pixel & that) const;  ///< Add respective color channels.
+	Pixel operator * (const Pixel & that) const;  ///< Multiply respective color channels.
+	Pixel operator * (float scalar) const;  ///< Scale each channel.
+	Pixel operator / (float scalar) const;  ///< Scale each channel.
+	Pixel operator << (const Pixel & that);  ///< Alpha blend that into this.  The alpha value the governs the blending comes from that.
 
 	const PixelFormat * format;
-	void * pixel;  // always points to target data: either the union below or some point in an Image buffer
+	void * pixel;  ///< always points to target data: either the union below or some point in an Image buffer
 
 	// This union is rather gross, and it would be nice not carry the baggage
 	// around.  However, this is cheaper than allocating a small piece on the
@@ -406,12 +454,14 @@ namespace fl
 
   // File formats -------------------------------------------------------------
 
-  // Danger!  Not thread-safe.  Need a mutex around modifications and accesses
-  // to static variable "formats".  Add if there's ever a need to create
-  // and destroy formats on the fly with multiple threads trying to access
-  // the list.
-  // Translation of the above: it is very unlikely that in practice there
-  // will be a problem with the "unsafe" versin.  :)
+  /**
+	 Danger!  Not thread-safe.  Need a mutex around modifications and accesses
+	 to static variable "formats".  Add if there's ever a need to create
+	 and destroy formats on the fly with multiple threads trying to access
+	 the list.
+	 Translation of the above: it is very unlikely that in practice there
+	 will be a problem with the "unsafe" version.  :)
+  **/
   class ImageFileFormat
   {
   public:
@@ -422,13 +472,13 @@ namespace fl
 	virtual void read (std::istream & stream, Image & image) const = 0;
 	virtual void write (const std::string & fileName, const Image & image) const;
 	virtual void write (std::ostream & stream, const Image & image) const = 0;
-	virtual bool isIn (std::istream & stream) const = 0;  // Determines if this format is on the stream.  Always rewinds stream back to where it was when function was called.
-	virtual bool handles (const std::string & formatName) const = 0;  // Determines if this object handles the format with the given human readable name.
+	virtual bool isIn (std::istream & stream) const = 0;  ///< Determines if this format is on the stream.  Always rewinds stream back to where it was when function was called.
+	virtual bool handles (const std::string & formatName) const = 0;  ///< Determines if this object handles the format with the given human readable name.
 
-	static ImageFileFormat * find (const std::string & fileName);  // Determines what format the stream is in.
-	static ImageFileFormat * find (std::istream & stream);  // Ditto.  Always returns stream to original position.
-	static ImageFileFormat * findName (const std::string & formatName);  // Determines what format to use based on given name.
-	static void getMagic (std::istream & stream, std::string & magic);  // Attempts to read magic.size () worth of bytes from stream and return them in magic.  Always returns stream to original position.
+	static ImageFileFormat * find (const std::string & fileName);  ///< Determines what format the stream is in.
+	static ImageFileFormat * find (std::istream & stream);  ///< Ditto.  Always returns stream to original position.
+	static ImageFileFormat * findName (const std::string & formatName);  ///< Determines what format to use based on given name.
+	static void getMagic (std::istream & stream, std::string & magic);  ///< Attempts to read magic.size () worth of bytes from stream and return them in magic.  Always returns stream to original position.
 
 	static std::vector<ImageFileFormat *> formats;
   };
@@ -473,6 +523,16 @@ namespace fl
 	virtual bool handles (const std::string & formatName) const;
   };
 
+  class ImageFileFormatMatlab : public ImageFileFormat
+  {
+  public:
+	virtual void read (std::istream & stream, Image & image) const;
+	virtual void write (std::ostream & stream, const Image & image) const;
+	virtual bool isIn (std::istream & stream) const;
+	virtual bool handles (const std::string & formatName) const;
+	void parseType (int type, int & numericType) const;
+  };
+
 
   // Image inlines ------------------------------------------------------------
 
@@ -503,6 +563,30 @@ namespace fl
   Image::setRGBA (int x, int y, float values[])
   {
 	format->setRGBA (& ((char *) buffer)[(y * width + x) * format->depth], values);
+  }
+
+  inline unsigned int
+  Image::getYUV (int x, int y) const
+  {
+	return format->getYUV (& ((char *) buffer)[(y * width + x) * format->depth]);
+  }
+
+  inline void
+  Image::setYUV (int x, int y, unsigned int yuv)
+  {
+	format->setYUV (& ((char *) buffer)[(y * width + x) * format->depth], yuv);
+  }
+
+  inline void
+  Image::getGray (int x, int y, float * value) const
+  {
+	format->getGray (& ((char *) buffer)[(y * width + x) * format->depth], value);
+  }
+
+  inline void
+  Image::setGray (int x, int y, float * value)
+  {
+	format->setGray (& ((char *) buffer)[(y * width + x) * format->depth], value);
   }
 }
 
