@@ -46,12 +46,30 @@ SEARCH_O = \
 	LevenbergMarquardt.o \
 	LevenbergMarquardtSparseBK.o
 
-libflNumeric.a: $(MATRIX_DOUBLE_O) $(MATRIX_FLOAT_O) $(MATRIX_BOOL_O) $(MATRIX_INT_O) $(MATRIX_COMPLEX_DOUBLE_O) $(SEARCH_O)
+ROOTS_O = \
+	zroots.o
+
+CLUSTER_O = \
+	ClusterMethod.o \
+	KMeans.o \
+	KMeansParallel.o \
+	Kohonen.o
+
+NEURAL_O = \
+	NeuralNetwork.o \
+	NeuralNetworkBackprop.o \
+	NeuralNetworkVector.o
+
+REDUCE_O = \
+	DimensionalityReduction.o \
+	DimensionalityReductionPCA.o
+
+libflNumeric.a: $(MATRIX_DOUBLE_O) $(MATRIX_FLOAT_O) $(MATRIX_BOOL_O) $(MATRIX_INT_O) $(MATRIX_COMPLEX_DOUBLE_O) $(SEARCH_O) $(ROOTS_O) $(CLUSTER_O) $(NEURAL_O) $(REDUCE_O)
 	ar rcsv $(SOURCE_LIB)/$@ $^
 
 
 test: test.cc libflNumeric.a
-	g++ -o $@ $^ $(CPPFLAGS) $(CXXFLAGS) -L/home/rothgang/i386/lib -llapack -lblas -lminpack -lg2c ../base/random.o -lefence
+	g++ -o $@ $^ $(CPPFLAGS) $(CXXFLAGS) -L/home/rothgang/i386/lib -llapack -lblas -lg2c ../base/random.o
 
 #CXXFLAGS = -g -O3 -march=pentiumpro
 #test: test.cc MatrixDouble.o LevenbergMarquardt.o VectorDouble.o MatrixInt.o MatrixSparseInt.o SearchableNumeric.o VectorInt.o MatrixSparseDouble.o
@@ -59,7 +77,7 @@ test: test.cc libflNumeric.a
 
 
 clean:
-	rm -f *~ *.o core core.* Dependencies test $(SOURCE_LIB)/libflNumeric.a
+	rm -f *~ *.o core core.* test $(SOURCE_LIB)/libflNumeric.a
 
 depend:
 	rm -f Dependencies
