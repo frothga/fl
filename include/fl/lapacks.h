@@ -246,6 +246,59 @@ namespace fl
 	}
   }
 
+  /**
+	 Symmetric generalized eigenvalue problem.
+   **/
+  inline void
+  sygv (const Matrix<float> & A, Matrix<float> & B, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors)
+  {
+	int n = A.rows ();  // or A.columns (); they should be equal
+	eigenvalues.resize (n);
+	eigenvectors.copyFrom (A);
+
+	int lwork = -1;
+	float optimalSize = 0;
+	int info = 0;
+
+	// Space query
+	ssygv_ (1,
+			'V',
+			'U',
+			n,
+			& eigenvectors[0],
+			n,
+			& B[0],
+			n,
+			& eigenvalues[0],
+			& optimalSize,
+			lwork,
+			info);
+
+	lwork = (int) optimalSize;
+	float * work = (float *) malloc (lwork * sizeof (float));
+
+	// Actual computation, using optimal work space.
+	ssygv_ (1,
+			'V',
+			'U',
+			n,
+			& eigenvectors[0],
+			n,
+			& B[0],
+			n,
+			& eigenvalues[0],
+			work,
+			lwork,
+			info);
+
+	free (work);
+
+	if (info)
+	{
+	  throw info;
+	}
+  }
+
   // Solve least squares problem using SVD via QR
   inline int
   gelss (const MatrixAbstract<float> & A, Matrix<float> & x, const MatrixAbstract<float> & b, const float rcond, Matrix<float> & s)
