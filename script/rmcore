@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [[ $1 == -y ]]; then
+	find . -name "core.[0-9]*" -exec rm -v \{\} \;
+else
+	find . -name "core.[0-9]*" -exec rm -i \{\} \;
+fi

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for FILENAME in lib*; do
+  echo $FILENAME
+  nm --demangle $FILENAME | grep $1
+done

@@ -1,0 +1,47 @@
+# Namspace for package.  OLDNS is only used when changing namespace to
+# something else.
+NS = fl
+OLDNS = my
+
+# Directory structure where library will be installed.  Generally, you should
+# only need to modify INSTALL_DIR.
+INSTALL_DIR = $(HOME)/$(ARCH)/encap/$(NS)
+INSTALL_BIN = $(INSTALL_DIR)/bin
+INSTALL_LIB = $(INSTALL_DIR)/lib
+INSTALL_INC = $(INSTALL_DIR)/include
+
+# Directory structure for building library.  SOURCE_DIR is automatically
+# determined by the Makefile.
+SOURCE_BIN = $(SOURCE_DIR)/bin
+SOURCE_LIB = $(SOURCE_DIR)/lib
+SOURCE_INC = $(SOURCE_DIR)/include
+
+# X library
+X_DIR = /usr/X11R6
+X_INC = -I$(X_DIR)/include
+X_LIB = -L$(X_DIR)/lib -lXext -lX11 -lGL -lGLU
+
+# LAPACK library and dependencies
+FORTRAN_LIB = -lg2c
+LAPACK_DIR = $(HOME)/$(ARCH)
+LAPACK_LIB = -L$(LAPACK_DIR)/lib -llapack -lblas $(FORTRAN_LIB)
+
+# FFMPEG libaray
+MPEG_DIR = $(HOME)/$(ARCH)
+MPEG_INC = -I$(MPEG_DIR)/include
+MPEG_LIB = -L$(MPEG_DIR)/lib -lavformat -lavcodec -lz
+
+# Tiff library
+TIFF_DIR = /usr
+TIFF_INC = -I$(TIFF_DIR)/include
+TIFF_LIB = -L$(TIFF_DIR)/lib -ltiff
+
+# JPEG library
+JPEG_DIR = /usr
+JPEG_INC = -I$(JPEG_DIR)/include
+JPEG_LIB = -L$(JPEG_DIR)/lib -ljpeg
+
+# General C++ options
+CPPFLAGS = -I$(SOURCE_INC)
+CXXFLAGS = -g1 -O3 -march=pentium4 -mfpmath=sse
+#CXXFLAGS = -g -march=pentium4 -mfpmath=sse

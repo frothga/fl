@@ -1,0 +1,20 @@
+SOURCE_DIR := ../..
+-include $(SOURCE_DIR)/Config
+
+
+VPATH = $(SOURCE_LIB)
+
+libflNet.a: socket.o
+	ar rcsv $(SOURCE_LIB)/$@ $^
+
+clean:
+	rm -f *~ *.o core core.* Dependencies $(SOURCE_LIB)/libflNet.a
+
+depend:
+	rm -f Dependencies
+	for SOURCEFILE in `ls *.cc`; do \
+	  echo $$SOURCEFILE; \
+	  $(CXX) -MM $(CPPFLAGS) $$SOURCEFILE >> Dependencies; \
+	done
+
+-include Dependencies

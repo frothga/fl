@@ -1,0 +1,37 @@
+This directory contains a collection of tools I have developed over the years.
+Some are scripts or simple executables, and others are C++ headers and
+libraries.
+
+The arrangement of the materials is:
+
+bin
+	Command line executables.  These are built from src/util
+
+doc
+	Documentation?  In your dreams!
+
+include
+	All the include files for the libraries.  These are in a flat directory
+	structure.
+
+lib
+	The library files needed for linking.
+
+script
+	Shell scripts.
+
+src
+	Source code for everything.
+	util
+		These are compiled into command line executables rather than a library.
+	X
+		Classes that wrap X window structures.  Not intended to be a GUI
+		toolkit as much as a way to access basic X using C++.
+	linear
+		Linear algebra classes (vector, matrix) and a bridge to LAPACK.  Not
+		the most efficient matrix library, and doesn't inlcude every fancy
+		memory layout, but does have a clean programming interface.
+	image
+		Image processing.
+	net
+		Stream interface to TCP sockets, plus some basic server infrastructure.

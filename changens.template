@@ -1,0 +1,9 @@
+s/-loldns/-lns/g
+s/liboldns/libns/g
+s/#include "oldns\//#include "ns\//
+s/#include <oldns\//#include <ns\//
+s/#ifndef oldns_/#ifndef ns_/
+s/#define oldns_/#define ns_/
+s/namespace oldns/namespace ns/
+s/namespace "oldns"/namespace "ns"/g
+s/oldns::/ns::/g
