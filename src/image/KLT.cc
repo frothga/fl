@@ -1,12 +1,7 @@
-/*
-  Notes 5/4/04
-  * border coverage: Adapt shape of window so center can reach all the way
-    to the edge of the image.
-  * tracking of blobs (as opposed to corners): use second order Taylor terms
-*/
-
-
 #include "fl/track.h"
+#include "fl/zroots.h"
+
+#include <float.h>
 
 
 // For debugging
@@ -26,6 +21,16 @@ using namespace std;
    \param searchRadius The largest expected distance between the previous
    and current positions of a given point.  Determines number of levels
    in pyramid and degree of downsampling.
+   \todo Track blobs (as opposed to just corners):  The code currently
+   depends on a large determinant in the second moment matrix, which is
+   generally associated with Harris points.  Examine whether it is possible
+   to formulate a similar numerical search for blob-like structures.
+   For example, if the determinant of the second moment matrix is negligible,
+   then the first order terms of the Taylor expansion (see papers) is zero,
+   and we can use second order Taylor terms instead.  Unfortunately, this
+   would only work for blobs on the same scale as the search window.  We
+   may need to code an adaptive window size.  Furthermore, this may vary
+   depending on the level in the pyramid.
  **/
 KLT::KLT (int windowRadius, int searchRadius)
 {
@@ -44,29 +49,37 @@ KLT::KLT (int windowRadius, int searchRadius)
   //              = windowRadius * (pyramidRatio^levels - 1) / (pyramidRatio - 1)
   // Since there are two variables (pyramidRatio, levels) but one equation,
   // we use the the following heuristics:
-  // * Pick pyramidRatio to be a power of 2 that is no greater than 8.
-  // * Minimize the number of pyramid levels.
+  // * pyramidRatio in (1,8]
+  // * Minimize the number of pyramid levels; levels in {1,2,3}
   int levels;
   float w = (float) searchRadius / windowRadius;
-  if (w <= 1)
+  if (w <= 1)  // pyramidRatio^0 = 1
   {
-	pyramidRatio = 1;
 	levels = 1;
   }
-  else if (w <= 3)  // pyramidRatio + pyramidRatio^2 = 1 + 2 = 3
+  else if (w <= 9)  // pyramidRatio^0 + pyramidRatio^1 = 1 + 8 = 9
   {
-	pyramidRatio = 2;
 	levels = 2;
+	pyramidRatio = (w + sqrtf (w * w - 4.0f * (w - 1.0f))) / 2.0f;  // larger solution to quadratic equation: 0 = pyramidRatio^levels - w * pyramidRatio + w - 1
   }
-  else if (w <= 5)  // pyramidRatio + pyramidRatio^2 = 1 + 4 = 5
+  else
   {
-	pyramidRatio = 4;
-	levels = 2;
-  }
-  else  // pyramidRatio fixed at 8; calculate # of levels
-  {
-	pyramidRatio = 8;
-	levels = (int) ceil (log (7.0 * w + 1.0) / log (8.0));
+	levels = 3;
+	Vector<complex<double> > coeffs (4);
+	coeffs[0] = w - 1;
+	coeffs[1] = -w;
+	coeffs[2] = 0;
+	coeffs[3] = 1;
+	Vector<complex<double> > result;
+	zroots (coeffs, result);
+	pyramidRatio = 1;
+	for (int i = 0; i < result.rows (); i++)
+	{
+	  if (fabs (imag (result[i])) < DBL_EPSILON)
+	  {
+		pyramidRatio = max (pyramidRatio, (float) real (result[i]));
+	  }
+	}
   }
 
   // Create convolution kernels
@@ -86,10 +99,37 @@ KLT::nextImage (const Image & image)
   TransformGauss t (1.0 / pyramidRatio, 1.0 / pyramidRatio);
   for (int i = 1; i < pyramid0.size (); i++)
   {
-	ImageOf<float> & p = pyramid1[i];
+	ImageOf<float> & p = pyramid1[i];  // "picture"
+	ImageOf<float> & pp = pyramid1[i-1];  // "previous picture"
 	pyramid0[i] = p;
-	p = pyramid1[i-1] * t;
+
+	// It is important to place the top left corner of pp *exactly* at the
+	// top left corner of p so that coordinate conversions are meaningful
+	// across scale levels.  This means putting any leftover part of one
+	// pixel at the bottom and right edges.
+	int w = (int) ceilf (pp.width / pyramidRatio);
+	int h = (int) ceilf (pp.height / pyramidRatio);
+	float x = (w - 1) * 0.5 + 0.5 - 0.5 / pyramidRatio;
+	float y = (h - 1) * 0.5 + 0.5 - 0.5 / pyramidRatio;
+	t.setWindow (x, y, w, h);
+	p = pp * t;
   }
+
+/*
+SlideShow window;
+Image disp (GrayFloat);
+for (int i = 0; i < pyramid0.size (); i++)
+{
+  int y = disp.height;
+  int x = 0;
+  disp.bitblt (pyramid0[i], x, y);
+  x += pyramid0[i].width;
+  disp.bitblt (pyramid1[i], x, y);
+}
+window.show (disp);
+window.waitForClick ();
+*/
+
 }
 
 /**
