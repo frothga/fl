@@ -1,4 +1,5 @@
 #include "fl/video.h"
+#include "fl/math.h"
 
 
 // For debugging only
@@ -11,7 +12,7 @@ using namespace fl;
 
 // class VideoInFileFFMPEG ----------------------------------------------------
 
-VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName, const PixelFormat & hint)
+VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName, const fl::PixelFormat & hint)
 {
   fc = 0;
   cc = 0;
@@ -90,9 +91,9 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	  {
 		return;
 	  }
-	  cerr << "parser = " << stream->parser << " flags = " << packet.flags << endl;
-	  while (stream->parser  &&  packet.flags & PKT_FLAG_KEY == 0)
+	  while (packet.stream_index != stream->index  ||  (stream->parser  &&  ! packet.flags))  // Need to be more specific about flags.
 	  {
+		av_free_packet (&packet);
 		state = av_read_frame (fc, &packet);
 		if (state < 0)
 		{
@@ -187,9 +188,10 @@ VideoInFileFFMPEG::readNext (Image * image)
 	  }
 	  else
 	  {
+		state = 0;
+		if (packet.stream_index != stream->index) continue;
 		size = packet.size;
 		data = packet.data;
-		state = 0;
 	  }
 	}
 
@@ -726,7 +728,7 @@ VideoFileFormatFFMPEG::VideoFileFormatFFMPEG ()
 }
 
 VideoInFile *
-VideoFileFormatFFMPEG::openInput (const std::string & fileName, const PixelFormat & hint) const
+VideoFileFormatFFMPEG::openInput (const std::string & fileName, const fl::PixelFormat & hint) const
 {
   return new VideoInFileFFMPEG (fileName, hint);
 }
