@@ -54,7 +54,7 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 {
   if (stream)
   {
-	seekFrame ((int) ceil (timestamp * stream->r_frame_rate / DEFAULT_FRAME_RATE_BASE));
+	seekFrame ((int) ceil (timestamp * stream->r_frame_rate / stream->r_frame_rate_base));
   }
 }
 
@@ -270,7 +270,7 @@ VideoInFileFFMPEG::extractImage (Image & image)
   }
 
   // picture.display_picture_number does not provide reliable information
-  image.timestamp = (double) frame++ * DEFAULT_FRAME_RATE_BASE / stream->r_frame_rate;
+  image.timestamp = (double) frame++ * stream->r_frame_rate_base / stream->r_frame_rate;
   gotPicture = 0;
 }
 
@@ -299,6 +299,14 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
   if (! fc->oformat)
   {
 	state = -11;
+	return;
+  }
+
+  AVFormatParameters parms;
+  memset (&parms, 0, sizeof (parms));
+  state = av_set_parameters (fc, &parms);
+  if (state < 0)
+  {
 	return;
   }
 
@@ -341,9 +349,15 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
 
 VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
 {
+  // Some members are zeroed here, even though this object is being destructed
+  // and the members will never be touched again.  The rationale is that
+  // this code could eventually be moved into a close() method, with a
+  // corresponding open() method, so the the members may eventually be reused.
+
   if (! state  &&  fc)
   {
-	av_write_trailer (fc);
+	// is it necessary to write header before it is safe to call av_write_trailer?
+	av_write_trailer (fc);  // clears private data used by avformat
   }
 
   if (codec)
@@ -483,7 +497,7 @@ VideoOutFileFFMPEG::set (const std::string & name, double value)
   {
 	if (stream)
 	{
-	  stream->codec.frame_rate = (int) rint (value * DEFAULT_FRAME_RATE_BASE);
+	  stream->codec.frame_rate = (int) rint (value * stream->codec.frame_rate_base);
 	}
   }
 }
