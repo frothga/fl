@@ -87,6 +87,17 @@ ImageFileFormat::findName (const std::string & formatName)
   return NULL;
 }
 
+/**
+   \todo Currently there is no guarantee that the stream can actually
+   rewind to the position at the beginning of the magic string.
+   Some streams can go bad at this point because they don't support
+   seekg().  One possibility is to use sputbackc() to return magic
+   to the stream.  This could still fail if magic straddles the
+   boundary between buffer loads.  Another possibility is to have
+   ImageFileFormat::find() wrap the given stream in a special stream
+   that can always put back at least 16 or so characters regardless
+   of underlying state.
+ **/
 void
 ImageFileFormat::getMagic (std::istream & stream, std::string & magic)
 {
