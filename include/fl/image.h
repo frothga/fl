@@ -47,18 +47,23 @@ namespace fl
 
 	Image operator + (const Image & that);  ///< Creates an image that sums pixel values from this and that.
 	Image operator - (const Image & that);  ///< Creates an image whose pixels are the difference between this and that.
-	Image & operator *= (double factor);  ///< Scales each pixel by factor.  Ie: factor == 1 -> no change; factor == 2 -> bright spots are twice as bright, and dark spots (negative values relative to bias) are twice as dark.
+	Image operator * (double factor);  ///< Creates an image containing this images's pixels scaled by factor.  Ie: factor == 1 -> no change; factor == 2 -> bright spots are twice as bright, and dark spots (negative values relative to bias) are twice as dark.
+	Image & operator *= (double factor);  ///< Scales each pixel by factor.
 	Image & operator += (double value);  ///< Adds value to each pixel
 
-	Pixel        operator () (int x, int y) const;  ///< Returns a Pixel object that wraps (x,y).
-	unsigned int getRGBA (int x, int y) const;  ///< The "RGB" functions are intended for abstract access to the buffer.  They perform conversion to whatever the buffer's format is.
-	void         getRGBA (int x, int y, float values[]) const;
-	unsigned int getYUV  (int x, int y) const;
-	void         getGray (int x, int y, float * value) const;
-	void         setRGBA (int x, int y, unsigned int rgba);  ///< The "rgb" format is always 24-bit RGB, 8 bits per field.  Blue is in the least significant byte, then green, then red.
-	void         setRGBA (int x, int y, float values[]);
-	void         setYUV  (int x, int y, unsigned int yuv);
-	void         setGray (int x, int y, float * value);
+	Pixel         operator () (int x, int y) const;  ///< Returns a Pixel object that wraps (x,y).
+	unsigned int  getRGBA  (int x, int y) const;  ///< The "RGB" functions are intended for abstract access to the buffer.  They perform conversion to whatever the buffer's format is.
+	void          getRGBA  (int x, int y, float values[]) const;
+	unsigned int  getYUV   (int x, int y) const;
+	unsigned char getGray  (int x, int y) const;
+	void          getGray  (int x, int y, float * value) const;
+	unsigned char getAlpha (int x, int y) const;
+	void          setRGBA  (int x, int y, unsigned int rgba);  ///< The "rgb" format is always 24-bit RGB, 8 bits per field.  Blue is in the least significant byte, then green, then red.
+	void          setRGBA  (int x, int y, float values[]);
+	void          setYUV   (int x, int y, unsigned int yuv);
+	void          setGray  (int x, int y, unsigned char gray);
+	void          setGray  (int x, int y, float * value);
+	void          setAlpha (int x, int y, unsigned char alpha);
 
 	// Data
 	Pointer             buffer;
@@ -167,17 +172,20 @@ namespace fl
 	  return ! operator == (that);
 	}
 
-	virtual unsigned int  getRGBA (void * pixel) const = 0;  ///< Return value is always assumed to be non-linear sRGB.  Same for other RGB methods below.
-	virtual void          getRGBA (void * pixel, float values[]) const;  ///< "values" must have at least four elements.  Each returned value is in [0,1].
-	virtual void          getXYZ  (void * pixel, float values[]) const;
-	virtual unsigned int  getYUV  (void * pixel) const;
-	virtual unsigned char getGray (void * pixel) const;
-	virtual void          getGray (void * pixel, float * value) const;
-	virtual void          setRGBA (void * pixel, unsigned int rgba) const = 0;
-	virtual void          setRGBA (void * pixel, float values[]) const;  ///< Each value must be in [0,1].  Values outside this range will be clamped and modified directly in the array.
-	virtual void          setXYZ  (void * pixel, float values[]) const;
-	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
-	virtual void          setGray (void * pixel, float * value) const;
+	virtual unsigned int  getRGBA  (void * pixel) const = 0;  ///< Return value is always assumed to be non-linear sRGB.  Same for other RGB methods below.
+	virtual void          getRGBA  (void * pixel, float values[]) const;  ///< "values" must have at least four elements.  Each returned value is in [0,1].
+	virtual void          getXYZ   (void * pixel, float values[]) const;
+	virtual unsigned int  getYUV   (void * pixel) const;
+	virtual unsigned char getGray  (void * pixel) const;
+	virtual void          getGray  (void * pixel, float * gray) const;
+	virtual unsigned char getAlpha (void * pixel) const;  ///< Returns fully opaque by default.  PixelFormats that actually have an alpha channel must override this to return correct value.
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const = 0;
+	virtual void          setRGBA  (void * pixel, float values[]) const;  ///< Each value must be in [0,1].  Values outside this range will be clamped and modified directly in the array.
+	virtual void          setXYZ   (void * pixel, float values[]) const;
+	virtual void          setYUV   (void * pixel, unsigned int yuv) const;
+	virtual void          setGray  (void * pixel, unsigned char gray) const;
+	virtual void          setGray  (void * pixel, float * gray) const;
+	virtual void          setAlpha (void * pixel, unsigned char alpha) const;  ///< Ignored by default.  Formats that actually have an alpha channel must override this method.
 
 	int depth;  ///< Number of bytes in one pixel, including any padding
 	int precedence;  ///< Imposes a (partial?) order on formats according to information content.  Bigger numbers have more information.
@@ -197,18 +205,20 @@ namespace fl
 	PixelFormatGrayChar ();
 
 	virtual Image filter (const Image & image);
-	void fromGrayFloat (const Image & image, Image & result) const;
+	void fromGrayFloat  (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBAChar (const Image & image, Image & result) const;
-	void fromRGBABits (const Image & image, Image & result) const;
-	void fromAny (const Image & image, Image & result) const;
+	void fromRGBAChar   (const Image & image, Image & result) const;
+	void fromRGBABits   (const Image & image, Image & result) const;
+	void fromAny        (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getXYZ  (void * pixel, float values[]) const;
 	virtual unsigned char getGray (void * pixel) const;
-	virtual void          getGray (void * pixel, float * value) const;
+	virtual void          getGray (void * pixel, float * gray) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
 	virtual void          setXYZ  (void * pixel, float values[]) const;
+	virtual void          setGray (void * pixel, unsigned char gray) const;
+	virtual void          setGray (void * pixel, float * gray) const;
   };
 
   class PixelFormatGrayFloat : public PixelFormat
@@ -217,20 +227,22 @@ namespace fl
 	PixelFormatGrayFloat ();
 
 	virtual Image filter (const Image & image);
-	void fromGrayChar (const Image & image, Image & result) const;
+	void fromGrayChar   (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBAChar (const Image & image, Image & result) const;
-	void fromRGBABits (const Image & image, Image & result) const;
-	void fromAny (const Image & image, Image & result) const;
+	void fromRGBAChar   (const Image & image, Image & result) const;
+	void fromRGBABits   (const Image & image, Image & result) const;
+	void fromAny        (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getRGBA (void * pixel, float values[]) const;
 	virtual void          getXYZ  (void * pixel, float values[]) const;
 	virtual unsigned char getGray (void * pixel) const;
-	virtual void          getGray (void * pixel, float * value) const;
+	virtual void          getGray (void * pixel, float * gray) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
 	virtual void          setRGBA (void * pixel, float values[]) const;
 	virtual void          setXYZ  (void * pixel, float values[]) const;
+	virtual void          setGray (void * pixel, unsigned char gray) const;
+	virtual void          setGray (void * pixel, float * gray) const;
   };
 
   class PixelFormatGrayDouble : public PixelFormat
@@ -239,20 +251,22 @@ namespace fl
 	PixelFormatGrayDouble ();
 
 	virtual Image filter (const Image & image);
-	void fromGrayChar (const Image & image, Image & result) const;
+	void fromGrayChar  (const Image & image, Image & result) const;
 	void fromGrayFloat (const Image & image, Image & result) const;
-	void fromRGBAChar (const Image & image, Image & result) const;
-	void fromRGBABits (const Image & image, Image & result) const;
-	void fromAny (const Image & image, Image & result) const;
+	void fromRGBAChar  (const Image & image, Image & result) const;
+	void fromRGBABits  (const Image & image, Image & result) const;
+	void fromAny       (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getRGBA (void * pixel, float values[]) const;
 	virtual void          getXYZ  (void * pixel, float values[]) const;
 	virtual unsigned char getGray (void * pixel) const;
-	virtual void          getGray (void * pixel, float * value) const;
+	virtual void          getGray (void * pixel, float * gray) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
 	virtual void          setRGBA (void * pixel, float values[]) const;
 	virtual void          setXYZ  (void * pixel, float values[]) const;
+	virtual void          setGray (void * pixel, unsigned char gray) const;
+	virtual void          setGray (void * pixel, float * gray) const;
   };
 
   class PixelFormatRGBAChar : public PixelFormat
@@ -261,15 +275,17 @@ namespace fl
 	PixelFormatRGBAChar ();
 
 	virtual Image filter (const Image & image);
-	void fromGrayChar (const Image & image, Image & result) const;
-	void fromGrayFloat (const Image & image, Image & result) const;
+	void fromGrayChar   (const Image & image, Image & result) const;
+	void fromGrayFloat  (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBABits (const Image & image, Image & result) const;
+	void fromRGBABits   (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
-	virtual unsigned int getRGBA (void * pixel) const;
-	virtual void         setRGBA (void * pixel, unsigned int rgba) const;
+	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual unsigned char getAlpha (void * pixel) const;
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
+	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
 
 	static void shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift);  ///< Shifts are set to move bits from this format to the one indicated by the masks.
   };
@@ -280,16 +296,18 @@ namespace fl
 	PixelFormatRGBABits (int depth, unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask);
 
 	virtual Image filter (const Image & image);
-	void fromGrayChar (const Image & image, Image & result) const;
-	void fromGrayFloat (const Image & image, Image & result) const;
+	void fromGrayChar   (const Image & image, Image & result) const;
+	void fromGrayFloat  (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBAChar (const Image & image, Image & result) const;
-	void fromRGBABits (const Image & image, Image & result) const;
+	void fromRGBAChar   (const Image & image, Image & result) const;
+	void fromRGBABits   (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
-	virtual unsigned int getRGBA (void * pixel) const;
-	virtual void         setRGBA (void * pixel, unsigned int rgba) const;
+	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual unsigned char getAlpha (void * pixel) const;
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
+	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
 
 	void shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift) const;
 
@@ -304,10 +322,12 @@ namespace fl
   public:
 	PixelFormatRGBAFloat ();
 
-	virtual unsigned int getRGBA (void * pixel) const;
-	virtual void         getRGBA (void * pixel, float values[]) const;
-	virtual void         setRGBA (void * pixel, unsigned int rgba) const;
-	virtual void         setRGBA (void * pixel, float values[]) const;
+	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual void          getRGBA  (void * pixel, float values[]) const;
+	virtual unsigned char getAlpha (void * pixel) const;
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
+	virtual void          setRGBA  (void * pixel, float values[]) const;
+	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
   };
 
   /**
@@ -559,16 +579,34 @@ namespace fl
 	format->getRGBA (& ((char *) buffer)[(y * width + x) * format->depth], values);
   }
 
-  inline void
-  Image::setRGBA (int x, int y, float values[])
-  {
-	format->setRGBA (& ((char *) buffer)[(y * width + x) * format->depth], values);
-  }
-
   inline unsigned int
   Image::getYUV (int x, int y) const
   {
 	return format->getYUV (& ((char *) buffer)[(y * width + x) * format->depth]);
+  }
+
+  inline unsigned char
+  Image::getGray (int x, int y) const
+  {
+	return format->getGray (& ((char *) buffer)[(y * width + x) * format->depth]);
+  }
+
+  inline void
+  Image::getGray (int x, int y, float * value) const
+  {
+	format->getGray (& ((char *) buffer)[(y * width + x) * format->depth], value);
+  }
+
+  inline unsigned char
+  Image::getAlpha (int x, int y) const
+  {
+	return format->getAlpha (& ((char *) buffer)[(y * width + x) * format->depth]);
+  }
+
+  inline void
+  Image::setRGBA (int x, int y, float values[])
+  {
+	format->setRGBA (& ((char *) buffer)[(y * width + x) * format->depth], values);
   }
 
   inline void
@@ -578,15 +616,21 @@ namespace fl
   }
 
   inline void
-  Image::getGray (int x, int y, float * value) const
+  Image::setGray (int x, int y, unsigned char gray)
   {
-	format->getGray (& ((char *) buffer)[(y * width + x) * format->depth], value);
+	format->setGray (& ((char *) buffer)[(y * width + x) * format->depth], gray);
   }
 
   inline void
   Image::setGray (int x, int y, float * value)
   {
 	format->setGray (& ((char *) buffer)[(y * width + x) * format->depth], value);
+  }
+
+  inline void
+  Image::setAlpha (int x, int y, unsigned char alpha)
+  {
+	format->setAlpha (& ((char *) buffer)[(y * width + x) * format->depth], alpha);
   }
 }
 
