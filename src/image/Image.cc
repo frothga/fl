@@ -206,7 +206,7 @@ Image::resize (const int width, const int height)
 	  int count = width * needHeight * format->depth;
 	  memcpy (buffer.memory, temp.memory, count);
 	  assert (count >= 0  &&  count < buffer.size ());
-	  bzero ((char *) buffer + count, buffer.size () - count);
+	  memset ((char *) buffer + count, 0, buffer.size () - count);
 	}
 	this->height = height;
   }
