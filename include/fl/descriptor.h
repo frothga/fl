@@ -62,6 +62,7 @@ namespace fl
   class Descriptor
   {
   public:
+	Descriptor ();  ///< Initializes monochrome to true.  Color descriptors should change this in their own contructors.
 	virtual ~Descriptor ();
 
 	virtual Vector<float> value (const Image & image, const Point & point);  ///< Calls PointAffine version with default values for scale, angle and shape.
@@ -71,8 +72,10 @@ namespace fl
 	virtual Image patch (const Vector<float> & value) = 0;  ///< Return a graphical representation of the descriptor.  Preferrably an image patch that would stimulate this descriptor to return the given value.
 	virtual Comparison * comparison ();  ///< Return an instance of the recommended Comparison for feature vectors from this type of Descriptor.  Caller is responsible to destroy instance.
 
-	virtual void read (std::istream & stream) = 0;
-	virtual void write (std::ostream & stream, bool withName = true) = 0;
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true);
+
+	bool monochrome;  ///< Indicates that this descriptor works only on intensity values.  If false, this descriptor uses color channels in some way.
   };
 
   /**
