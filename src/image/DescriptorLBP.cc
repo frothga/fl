@@ -69,59 +69,69 @@ DescriptorLBP::initialize ()
 inline void
 DescriptorLBP::preprocess (const Image & image)
 {
-  if (lastImage == &image  &&  lastBuffer == (void *) image.buffer)
+  if (lastImage == &image  &&  lastBuffer == (void *) image.buffer  &&  lastTime == image.timestamp)
   {
 	return;
   }
   lastImage = &image;
   lastBuffer = (void *) image.buffer;
+  lastTime = image.timestamp;
 
-  grayImage = image * GrayFloat;
-}
+  ImageOf<float> grayImage = image * GrayFloat;
+  categoryImage.format = &GrayChar;
+  categoryImage.resize (image.width, image.height);
 
-inline void
-DescriptorLBP::add (const int x, const int y, Vector<float> & result)
-{
   vector<bool> bits (P);
-  int ones = 0;
 
-  float center = grayImage(x,y);
-  for (int i = 0; i < P; i++)
+  int sourceL = (int) ceilf (R);
+  int sourceR = (int) floorf (image.width - 1 - R);
+  int sourceT = sourceL;
+  int sourceB = (int) floorf (image.height - 1 - R);
+  for (int y = sourceT; y <= sourceB; y++)
   {
-	float p;
-	Interpolate & t = interpolates[i];
-	if (t.exact)
+	for (int x = sourceL; x <= sourceR; x++)
 	{
-	  p = grayImage(x + t.xl, y + t.yl);
-	}
-	else
-	{
-	  int xl = x + t.xl;
-	  int yl = y + t.yl;
-	  int xh = x + t.xh;
-	  int yh = y + t.yh;
-	  p = grayImage(xl,yl) * t.wll + grayImage(xh,yl) * t.whl + grayImage(xl,yh) * t.wlh + grayImage(xh,yh) * t.whh;
-	}
-	bool sign = p >= center;
-	bits[i] = sign;
-	if (sign) ones++;
-  }
+	  int ones = 0;
 
-  int transitions = bits.back () == bits.front () ? 0 : 1;
-  for (int i = 1; i < P; i++)
-  {
-	if (bits[i-1] != bits[i])
-	{
-	  transitions++;
+	  float center = grayImage(x,y);
+	  for (int i = 0; i < P; i++)
+	  {
+		float p;
+		Interpolate & t = interpolates[i];
+		if (t.exact)
+		{
+		  p = grayImage(x + t.xl, y + t.yl);
+		}
+		else
+		{
+		  int xl = x + t.xl;
+		  int yl = y + t.yl;
+		  int xh = x + t.xh;
+		  int yh = y + t.yh;
+		  p = grayImage(xl,yl) * t.wll + grayImage(xh,yl) * t.whl + grayImage(xl,yh) * t.wlh + grayImage(xh,yh) * t.whh;
+		}
+		bool sign = p >= center;
+		bits[i] = sign;
+		if (sign) ones++;
+	  }
+
+	  int transitions = bits.back () == bits.front () ? 0 : 1;
+	  for (int i = 1; i < P; i++)
+	  {
+		if (bits[i-1] != bits[i])
+		{
+		  transitions++;
+		}
+	  }
+
+	  if (transitions > 2)
+	  {
+		ones = P + 1;
+	  }
+
+	  categoryImage(x,y) = ones;
 	}
   }
-
-  if (transitions > 2)
-  {
-	ones = P + 1;
-  }
-
-  result[ones]++;
 }
 
 Vector<float>
@@ -168,7 +178,7 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
   {
 	for (int x = sourceL; x <= sourceR; x++)
 	{
-	  add (x, y, result);
+	  result[categoryImage(x,y)]++;
 	}
   }
   result /= result.frob (1);
@@ -184,7 +194,6 @@ DescriptorLBP::value (const Image & image)
   int sourceR = (int) floorf (image.width - 1 - R);
   int sourceT = sourceL;
   int sourceB = (int) floorf (image.height - 1 - R);
-  cerr << sourceL << " " << sourceR << " " << sourceT << " " << sourceB << endl;
   Vector<float> result (P + 2);
   result.clear ();
   for (int y = sourceT; y <= sourceB; y++)
@@ -193,7 +202,7 @@ DescriptorLBP::value (const Image & image)
 	{
 	  if (image.getAlpha (x, y))
 	  {
-		add (x, y, result);
+		result[categoryImage(x,y)]++;
 	  }
 	}
   }
