@@ -117,6 +117,24 @@ namespace fl
   }
 
   template<class T>
+  T
+  MatrixAbstract<T>::sumSquares () const
+  {
+	int h = rows ();
+	int w = columns ();
+	T result = 0;
+	for (int c = 0; c < w; c++)
+	{
+	  for (int r = 0; r < h; r++)
+	  {
+		T t = (*this) (r, c);
+		result += t * t;
+	  }
+	}
+	return result;
+  }
+
+  template<class T>
   void
   MatrixAbstract<T>::normalize (const T scalar)
   {
@@ -246,6 +264,23 @@ namespace fl
 		  element += (*this)(r,i) * B(i,c);
 		}
 		result(r,c) = element;
+	  }
+	}
+	return result;
+  }
+
+  template<class T>
+  Matrix<T>
+  MatrixAbstract<T>::elementMultiply (const MatrixAbstract<T> & B) const
+  {
+	int h = std::min (rows (), B.rows ());
+	int w = std::min (columns (), B.columns ());
+	Matrix<T> result (h, w);
+	for (int c = 0; c < w; c++)
+	{
+	  for (int r = 0; r < h; r++)
+	  {
+		result(r,c) = (*this)(r,c) * B(r,c);
 	  }
 	}
 	return result;
@@ -617,6 +652,20 @@ namespace fl
 	  }
 	  return (T) pow (result, 1.0 / n);
 	}
+  }
+
+  template<class T>
+  T
+  Matrix<T>::sumSquares () const
+  {
+	T * i = (T *) data;
+	T * end = i + rows_ * columns_;
+	T result = 0;
+	while (i < end)
+	{
+	  result += (*i) * (*i++);
+	}
+	return result;
   }
 
   template<class T>

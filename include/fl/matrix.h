@@ -77,6 +77,7 @@ namespace fl
 
 	// Higher level functions
 	virtual T frob (T n) const;  ///< Generalized Frobenius norm: (sum_elements (element^n))^(1/n).  Effectively: INFINITY is max, 1 is sum, 2 is standard Frobenius norm
+	virtual T sumSquares () const;  ///< Similar to frob(2), but without taking the square root.
 	virtual void normalize (const T scalar = 1.0);  ///< View matrix as vector and adjust so frob (2) == scalar.
 	virtual T dot (const MatrixAbstract & B) const;  ///< View both matrices as vectors and return dot product.  Ie: returns the sum of the products of corresponding elements.
 	virtual Matrix<T> cross (const MatrixAbstract & B) const;  ///< View both matrices as vectors and return cross product.  (Is there a better definition that covers 2D matrices?)
@@ -125,6 +126,7 @@ namespace fl
 
 	virtual Matrix<T> operator * (const MatrixAbstract & B) const;  ///< Multiply matrices: this * B
 	//virtual M<T> operator * (const T scalar) const;  ///< Multiply each element by scalar
+	virtual Matrix<T> elementMultiply (const MatrixAbstract & B) const;  ///< Elementwise multiplication.  This isn't a C operator, but certainly a basic operation.
 	//virtual Matrix<T> operator / (const MatrixAbstract & B) const;  ///< Elementwise division.  Could mean this * !B, but such expressions are done other ways in linear algebra.
 	//virtual M<T> operator / (const T scalar) const;  ///< Divide each element by scalar
 	virtual Matrix<T> operator + (const MatrixAbstract & B) const;  ///< Elementwise sum.
@@ -199,6 +201,7 @@ namespace fl
 	virtual Matrix reshape (const int rows, const int columns = 1) const;
 
 	virtual T frob (T n) const;
+	virtual T sumSquares () const;
 	virtual T dot (const Matrix & B) const;
 	virtual Matrix transposeSquare () const;  ///< Computes the upper triangular part of the symmetric matrix (~this * this).
 
