@@ -18,11 +18,10 @@ Transform::Transform (const Matrix<double> & A, const double scale)
 {
   Matrix<double> temp (3, 3);
   temp.identity ();
-  int r = min (3, A.rows ()) - 1;
-  int c = min (3, A.columns ()) - 1;
-  temp.region (0, 0, r, c) = A.region (0, 0, r, c);
-  temp.column (0) /= scale;
-  temp.column (1) /= scale;
+  int r = min (2, A.rows () - 1);
+  int c = min (2, A.columns () - 1);
+  temp.region (0, 0) = A.region (0, 0, r, c);
+  temp.region (0, 0, 1, 1) /= scale;
 
   initialize (temp, true);
 }
