@@ -212,7 +212,7 @@ namespace fl
 	  memory = malloc (size + 2 * sizeof (int));
 	  if (memory)
 	  {
-		(int *) memory += 2;
+		memory = & ((int *) memory)[2];
 		((int *) memory)[-1] = 1;
 		((int *) memory)[-2] = size;
 		metaData = -1;
