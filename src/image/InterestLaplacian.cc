@@ -4,7 +4,6 @@
 
 // Include for debugging
 #include "fl/time.h"
-//#include "fl/slideshow.h"
 
 
 using namespace std;
@@ -49,23 +48,6 @@ InterestLaplacian::InterestLaplacian (int maxPoints, float thresholdFactor, floa
   }
 }
 
-inline void
-InterestLaplacian::findScale (const Image & image, PointInterest & p)
-{
-  int s = (int) rint (logf (p.scale) / logf (stepSize)) - firstStep;
-  int l = max (0, s - extraSteps);
-  int h = min ((int) laplacians.size () - 1, s + extraSteps);
-  for (int i = l + 1; i < h; i++)
-  {
-	float response = fabsf (laplacians[i].response (image, p));
-	if (response > p.weight)
-	{
-	  p.weight = response;
-	  p.scale = laplacians[i].sigma;
-	}
-  }
-}
-
 void
 InterestLaplacian::run (const Image & image, std::multiset<PointInterest> & result)
 {
@@ -97,7 +79,7 @@ double startTime = getTimestamp ();
 
 	IntensityDeviation std (0, true);
 	filtered * std;
-	float threshold = std.deviation * thresholdFactor;
+	float threshold = max (0.0f, std.deviation * thresholdFactor);
 
 	for (int y = 0; y < filtered.height; y++)
 	{
