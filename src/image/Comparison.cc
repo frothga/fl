@@ -20,10 +20,9 @@ Comparison::preprocess (const Vector<float> & value) const
 
 // class NormalizedCorrelation ------------------------------------------------
 
-NormalizedCorrelation::NormalizedCorrelation (bool subtractMean, float gamma)
+NormalizedCorrelation::NormalizedCorrelation (bool subtractMean)
 {
   this->subtractMean = subtractMean;
-  this->gamma        = gamma;
 }
 
 Vector<float>
@@ -90,32 +89,20 @@ NormalizedCorrelation::value (const Vector<float> & value1, const Vector<float> 
 
   result = max (0.0f, result);  // Default mode is to consider everything below zero as zero probability.
 
-  return powf (result, gamma);
+  return result;
 }
 
 
 // class MetricEuclidean ------------------------------------------------------
 
-MetricEuclidean::MetricEuclidean (float scale, float offset)
-{
-  this->scale = scale;
-  this->offset = offset;
-}
-
 float
 MetricEuclidean::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
 {
-  //return 1.0f - tanhf ((value1 - value2).frob (2) * scale);
-  return 1.0f / coshf ((value1 - value2).frob (2) * scale + offset);
+  return 1.0f / coshf ((value1 - value2).frob (2));
 }
 
 
 // class HistogramIntersection ------------------------------------------------
-
-HistogramIntersection::HistogramIntersection (float gamma)
-{
-  this->gamma = gamma;
-}
 
 float
 HistogramIntersection::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
@@ -142,17 +129,11 @@ HistogramIntersection::value (const Vector<float> & value1, const Vector<float> 
 	}
   }
   result /= max (count1, count2);
-  result = powf (result, gamma);
   return result;
 }
 
 
 // class ChiSquared -----------------------------------------------------------
-
-ChiSquared::ChiSquared (float gamma)
-{
-  this->gamma = gamma;
-}
 
 float
 ChiSquared::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
@@ -168,6 +149,7 @@ ChiSquared::value (const Vector<float> & value1, const Vector<float> & value2, b
 	  result += d * d / sum;
 	}
   }
-  result = (m - result) / m;
-  return powf (result, gamma);
+  //result = (m - result) / m;
+  //return result;
+  return 1.0f / coshf (result * 100.0f / m);  // scale to make all lengths of feature vectors come out as if they have 100 elements.
 }
