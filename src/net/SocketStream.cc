@@ -139,38 +139,3 @@ SocketStreambuf::waitForOutput ()
 
   return p.revents & POLLOUT;
 }
-
-
-// class SocketStream ---------------------------------------------------------
-
-/*
-istream &
-SocketStream::read (char * data, int count)
-{
-  char * d = (char *) data;
-  while (count  &&  good ())
-  {
-	int chunk = readsome (d, count);
-	if (chunk > 0)
-	{
-	  count -= chunk;
-	  d += chunk;
-	}
-	else
-	{
-	  if (! buffer.waitForInput ())
-	  {
-		setstate (badbit);
-		break;
-	  }
-	  else
-	  {
-		buffer.underflow ();
-	  }
-	}
-  }
-  lastRead = d - (char *) data;
-
-  return *this;
-}
-*/
