@@ -195,6 +195,16 @@ PointAffine::PointAffine (std::istream & stream)
   read (stream);
 }
 
+PointAffine::PointAffine (const Matrix<double> & S)
+{
+  x = S(0,2);
+  y = S(1,2);
+  scale = sqrt (S(0,0) * S(1,1) - S(1,0) * S(0,1));
+  A = S;  // takes upper-left 2x2 region
+  A /= scale;
+  angle = 0;  // make not attempt to separate rotation from rest of transformation
+}
+
 Matrix<double>
 PointAffine::rectification () const
 {
@@ -214,6 +224,28 @@ PointAffine::rectification () const
   A(2,2) = 1;
 
   return R * A;
+}
+
+Matrix<double>
+PointAffine::projection () const
+{
+  Matrix<double> R (2, 2);
+  R(0,0) = cos (angle);
+  R(0,1) = -sin (angle);
+  R(1,0) = -R(0,1);
+  R(1,1) = R(0,0);
+
+  R *= scale;
+
+  Matrix<double> result (3, 3);
+  result.region (0, 0) = A * R;
+  result(0,2) = x;
+  result(1,2) = y;
+  result(2,0) = 0;
+  result(2,1) = 0;
+  result(2,2) = 1;
+
+  return result;
 }
 
 void
