@@ -16,7 +16,6 @@ VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName, const PixelF
   fc = 0;
   cc = 0;
   packet.size = 0;
-  lastPacket.size = 0;
   timestampMode = false;
 
   this->hint = &hint;
@@ -75,38 +74,12 @@ VideoInFileFFMPEG::readNext (Image * image)
 
   while (! gotPicture)
   {
-	while (size > 0)
-	{
-      int used = avcodec_decode_video (cc, &picture, &gotPicture, data, size);
-      if (used < 0)
-	  {
-		state = used;
-		return;
-	  }
-      size -= used;
-      data += used;
-
-      if (gotPicture)
-	  {
-		break;
-	  }
-	}
-
 	if (size <= 0)
 	{
-	  if (lastPacket.size)
+	  if (packet.size)
 	  {
-		av_free_packet (&lastPacket);
+		av_free_packet (&packet);  // sets packet.size to zero
 	  }
-	  lastPacket = packet;
-	  // Not sure if AVInputFormat::read_packet(), by way of av_read_packet(),
-	  // will simply treat packet as uninitialized, or if it will do some
-	  // special behavior if non-zero data is present.  It should treat it
-	  // as uninitialized, but there is no interface guarantee in avformat.h.
-	  // Therefore, do a minimal amount of zeroing...
-	  packet.size = 0;
-	  packet.data = 0;
-
 	  state = av_read_packet (fc, &packet);
 	  if (state < 0)
 	  {
@@ -119,6 +92,18 @@ VideoInFileFFMPEG::readNext (Image * image)
 		state = 0;
 	  }
 	}
+
+	while (size > 0  &&  ! gotPicture)
+	{
+      int used = avcodec_decode_video (cc, &picture, &gotPicture, data, size);
+      if (used < 0)
+	  {
+		state = used;
+		return;
+	  }
+      size -= used;
+      data += used;
+	}
   }
 
   if (gotPicture  &&  image)
@@ -127,6 +112,14 @@ VideoInFileFFMPEG::readNext (Image * image)
   }
 }
 
+/**
+   Registry of states:
+   0 = everything good
+   [-7,-1] = FFMPEG libavformat errors, see avformat.h
+   -10 = did not find a video stream
+   -11 = did not find a codec
+   -12 = VideoInFile is closed
+ **/
 bool
 VideoInFileFFMPEG::good () const
 {
@@ -202,13 +195,9 @@ VideoInFileFFMPEG::open (const string & fileName)
 void
 VideoInFileFFMPEG::close ()
 {
-  if (lastPacket.size)
-  {
-	av_free_packet (&lastPacket);  // sets size field to zero
-  }
   if (packet.size)
   {
-	av_free_packet (&packet);
+	av_free_packet (&packet);  // sets size field to zero
   }
   if (cc  &&  cc->codec)
   {
@@ -536,9 +525,9 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 		state = 0;
 	  }
 	}
-	delete videoBuffer;
+	delete [] videoBuffer;
   }
-  delete destBuffer;
+  delete [] destBuffer;
 }
 
 bool
