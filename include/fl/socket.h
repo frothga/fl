@@ -35,11 +35,8 @@ namespace fl
 	void init (int socket) {buffer.init (socket);}
 
 	int in_avail () {return buffer.in_avail ();}
-	//std::istream & read (char * data, int count);
-	//int gcount () {return lastRead;}
 
 	SocketStreambuf buffer;
-	//int lastRead;
   };
 }
 
