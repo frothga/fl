@@ -26,40 +26,77 @@ DescriptorLBP::DescriptorLBP (int P, float R, float supportRadial, int supportPi
 void
 DescriptorLBP::initialize ()
 {
+  lastImage = 0;
+
+  interpolates.resize (P);
+  for (int i = 0; i < P; i++)
+  {
+	Interpolate & t = interpolates[i];
+	float angle = i * 2 * PI / P;
+	float xf = R * cosf (angle);
+	float yf = R * sinf (angle);
+	t.xl = (int) floorf (xf);
+	t.yl = (int) floorf (yf);
+	xf -= t.xl;
+	yf -= t.yl;
+	if ((xf < 0.01f  ||  xf > 0.99f)  &&  (yf < 0.01f  ||  yf > 0.99f))
+	{
+	  t.exact = true;
+	  if (xf > 0.5f) t.xl++;
+	  if (yf > 0.5f) t.yl++;
+	}
+	else
+	{
+	  t.exact = false;
+	  t.xh = t.xl + 1;
+	  t.yh = t.yl + 1;
+	  float xf1 = 1.0f - xf;
+	  float yf1 = 1.0f - yf;
+	  t.wll = xf1 * yf1;
+	  t.wlh = xf1 * yf;
+	  t.whl = xf  * yf1;
+	  t.whh = xf  * yf;
+	}
+	//cerr << i << " " << t.exact << " " << t.xl << " " << t.yl << endl;
+  }
 }
 
 inline void
-DescriptorLBP::add (const Image & image, const int x, const int y, Vector<float> & result)
+DescriptorLBP::preprocess (const Image & image)
+{
+  if (lastImage == &image  &&  lastBuffer == (void *) image.buffer)
+  {
+	return;
+  }
+  lastImage = &image;
+  lastBuffer = (void *) image.buffer;
+
+  grayImage = image * GrayFloat;
+}
+
+inline void
+DescriptorLBP::add (const int x, const int y, Vector<float> & result)
 {
   vector<bool> bits (P);
   int ones = 0;
 
-  float center;
-  image.getGray (x, y, center);
+  float center = grayImage(x,y);
   for (int i = 0; i < P; i++)
   {
-	// This set of calculations to find {xf, xl, xh, yf, yl, yh} can be done
-	// once and stored.  Move to initialize() once this code is working well.
-	float angle = i * 2 * PI / P;
-	float xf = x + R * cosf (angle);
-	float yf = y + R * sinf (angle);
-	int xl = (int) floorf (xf);
-	int yl = (int) floorf (yf);
-	xf -= xl;
-	yf -= yl;
-	int xh = xl + 1;
-	int yh = yl + 1;
-
-	float pll;
-	float plh;
-	float phl;
-	float phh;
-	image.getGray (xl, yl, pll);
-	image.getGray (xl, yh, plh);
-	image.getGray (xh, yl, phl);
-	image.getGray (xh, yh, phh);
-	float xf1 = 1.0f - xf;
-	float p = (pll * xf1 + phl * xf) * (1.0f - yf) + (plh * xf1 + phh * xf) * yf;
+	float p;
+	Interpolate & t = interpolates[i];
+	if (t.exact)
+	{
+	  p = grayImage(x + t.xl, y + t.yl);
+	}
+	else
+	{
+	  int xl = x + t.xl;
+	  int yl = y + t.yl;
+	  int xh = x + t.xh;
+	  int yh = y + t.yh;
+	  p = grayImage(xl,yl) * t.wll + grayImage(xh,yl) * t.whl + grayImage(xl,yh) * t.wlh + grayImage(xh,yh) * t.whh;
+	}
 	bool sign = p >= center;
 	bits[i] = sign;
 	if (sign) ones++;
@@ -94,7 +131,6 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
   int sourceL;
   int sourceB;
   int sourceR;
-  Image patch;
   if (S(0,1) == 0  &&  S(1,0) == 0)  // Special case: indicates that point describes a rectangular region in the image, rather than a patch.
   {
 	double h = fabs (S(0,0) * supportRadial);
@@ -103,7 +139,7 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
 	sourceR = (int) rint (S(0,2) + h <? image.width - 1 - R);
 	sourceT = (int) rint (S(1,2) - v >? R);
 	sourceB = (int) rint (S(1,2) + v <? image.height - 1 - R);
-	patch = image;
+	preprocess (image);
   }
   else  // Shape change, so we must compute a transformed patch
   {
@@ -112,7 +148,7 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
 	Transform t (S, scale);
 	t.setWindow (0, 0, patchSize, patchSize);
 	Image patch = image * t;
-	patch *= GrayFloat;
+	preprocess (patch);
 
 	sourceT = (int) ceilf (R);
 	sourceL = sourceT;
@@ -127,7 +163,7 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
   {
 	for (int x = sourceL; x <= sourceR; x++)
 	{
-	  add (patch, x, y, result);
+	  add (x, y, result);
 	}
   }
   result /= result.frob (1);
@@ -137,7 +173,8 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
 Vector<float>
 DescriptorLBP::value (const Image & image)
 {
-double start = getTimestamp ();
+  double start = getTimestamp ();
+  preprocess (image);
   int sourceL = (int) ceilf (R);
   int sourceR = (int) floorf (image.width - 1 - R);
   int sourceT = sourceL;
@@ -151,7 +188,7 @@ double start = getTimestamp ();
 	{
 	  if (image.getAlpha (x, y))
 	  {
-		add (image, x, y, result);
+		add (x, y, result);
 	  }
 	}
   }
