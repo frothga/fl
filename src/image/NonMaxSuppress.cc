@@ -31,15 +31,15 @@ NonMaxSuppress::filter (const Image & image)
 	  for (int y = 0; y < result.height; y++)
 	  {
 		int h;
-		int hl = max (0, x - half);
-		int hh = min (image.width, x + half + 1);
+		int hl = max (0,               x - half);
+		int hh = min (image.width - 1, x + half);
 		int v;
-		int vl = max (0, y - half);
-		int vh = min (image.height, y + half + 1);
+		int vl = max (0,                y - half);
+		int vh = min (image.height - 1, y + half);
 		float me = that (x, y);
-		for (h = hl; me != 0  &&  h < hh; h++)
+		for (h = hl; me != 0  &&  h <= hh; h++)
 		{
-		  for (v = vl; v < vh; v++)
+		  for (v = vl; v <= vh; v++)
 		  {
 			if (that (h, v) >= me)  // Forces a group of equals to be supressed, but we assume this is a zero-probability case.  Alternative is center-of-gravity test as in GrayChar chase below.
 			{
@@ -72,15 +72,15 @@ NonMaxSuppress::filter (const Image & image)
 	  for (int y = 0; y < result.height; y++)
 	  {
 		int h;
-		int hl = max (0, x - half);
-		int hh = min (image.width, x + half + 1);
+		int hl = max (0,               x - half);
+		int hh = min (image.width - 1, x + half);
 		int v;
-		int vl = max (0, y - half);
-		int vh = min (image.height, y + half + 1);
+		int vl = max (0,                y - half);
+		int vh = min (image.height - 1, y + half);
 		double me = that (x, y);
-		for (h = hl; me != 0  &&  h < hh; h++)
+		for (h = hl; me != 0  &&  h <= hh; h++)
 		{
-		  for (v = vl; v < vh; v++)
+		  for (v = vl; v <= vh; v++)
 		  {
 			if (that (h, v) >= me)  // Forces a group of equals to be supressed, but we assume this is a zero-probability case.  Alternative is center-of-gravity test as in GrayChar chase below.
 			{
@@ -113,18 +113,18 @@ NonMaxSuppress::filter (const Image & image)
 	  for (int y = 0; y < result.height; y++)
 	  {
 		int h;
-		int hl = max (0, x - half);
-		int hh = min (image.width, x + half + 1);
+		int hl = max (0,               x - half);
+		int hh = min (image.width - 1, x + half);
 		int v;
-		int vl = max (0, y - half);
-		int vh = min (image.height, y + half + 1);
+		int vl = max (0,                y - half);
+		int vh = min (image.height - 1, y + half);
 		unsigned char me = that (x, y);
 		int c = 0;
 		int cx = 0;
 		int cy = 0;
-		for (h = hl; me  &&  h < hh; h++)
+		for (h = hl; me  &&  h <= hh; h++)
 		{
-		  for (v = vl; v < vh; v++)
+		  for (v = vl; v <= vh; v++)
 		  {
 			if (that (h, v) > me)
 			{
