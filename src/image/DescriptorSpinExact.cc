@@ -40,7 +40,7 @@ operator << (ostream & stream, const Polygon & p)
 {
   for (int i = 0; i < p.size (); i++)
   {
-	cerr << p[i];
+	stream << p[i];
   }
   return stream;
 }
