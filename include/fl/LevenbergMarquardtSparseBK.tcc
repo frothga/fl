@@ -798,8 +798,8 @@ namespace fl
   static T
   enorm (Vector<T> & x)
   {
-	const T rdwarf = 3.834e-20;  // rdwarf^2 must not underflow in float type T
-	const T rgiant = 1.304e19;  // rgiant^2 must not overflow in float type T
+	const T rdwarf = (T) 3.834e-20;  // rdwarf^2 must not underflow in float type T
+	const T rgiant = (T) 1.304e19;  // rgiant^2 must not overflow in float type T
 	const T agiant = rgiant / x.rows ();
 
 	T large = 0;
