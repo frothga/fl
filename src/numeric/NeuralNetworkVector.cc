@@ -163,6 +163,8 @@ NeuralNetworkVector::write (std::ostream & stream, bool withName) const
   Matrix<float> weights;
   if (hiddenLayers < 1)
   {
+	biases.resize (outputs.size ());
+	weights.resize (outputs.size (), inputs.size ());
 	for (int i = 0; i < outputs.size (); i++)
 	{
 	  vector<Synapse *> & synapses = outputs[i]->inputs;
@@ -178,6 +180,8 @@ NeuralNetworkVector::write (std::ostream & stream, bool withName) const
   else
   {
 	// Inputs to first hidden layer
+	biases.resize (hiddenSizes[0]);
+	weights.resize (hiddenSizes[0], inputs.size ());
 	for (int i = 0; i < hiddenSizes[0]; i++)
 	{
 	  vector<Synapse *> & synapses = hidden[i]->inputs;
@@ -194,6 +198,8 @@ NeuralNetworkVector::write (std::ostream & stream, bool withName) const
 	int h = hiddenSizes[0];
 	for (int i = 1; i < hiddenLayers; i++)
 	{
+	  biases.resize (hiddenSizes[i]);
+	  weights.resize (hiddenSizes[i], hiddenSizes[i-1]);
 	  for (int j = 0; j < hiddenSizes[i]; j++)
 	  {
 		vector<Synapse *> & synapses = hidden[h++]->inputs;
@@ -208,6 +214,8 @@ NeuralNetworkVector::write (std::ostream & stream, bool withName) const
 	}
 
 	// Hidden layer to output layer
+	biases.resize (outputs.size ());
+	weights.resize (outputs.size (), hiddenSizes.back ());
 	for (int i = 0; i < outputs.size (); i++)
 	{
 	  vector<Synapse *> & synapses = outputs[i]->inputs;
