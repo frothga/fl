@@ -60,23 +60,23 @@ namespace fl
 
   template<class T>
   T
-  MatrixAbstract<T>::frob (T n) const
+  MatrixAbstract<T>::frob (float n) const
   {
 	int h = rows ();
 	int w = columns ();
-	if (n == (T) INFINITY)
+	if (n == INFINITY)
 	{
 	  T result = (*this) (0, 0);
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  result = std::max ((*this) (r, c), result);
+		  result = std::max ((*this)(r, c), result);
 		}
 	  }
 	  return result;
 	}
-	else if (n == 1)
+	else if (n == 1.0f)
 	{
 	  T result = 0;
 	  for (int c = 0; c < w; c++)
@@ -88,7 +88,7 @@ namespace fl
 	  }
 	  return result;
 	}
-	else if (n == 2)
+	else if (n == 2.0f)
 	{
 	  T result = 0;
 	  for (int c = 0; c < w; c++)
@@ -108,10 +108,10 @@ namespace fl
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  result += (T) std::pow ((*this) (r, c), n);
+		  result += (T) std::pow ((*this) (r, c), (T) n);
 		}
 	  }
-	  return (T) std::pow (result, 1.0f / n);
+	  return (T) std::pow (result, (T) (1.0f / n));
 	}
   }
 
@@ -137,7 +137,7 @@ namespace fl
   void
   MatrixAbstract<T>::normalize (const T scalar)
   {
-	T length = frob ((T) 2);
+	T length = frob (2);
 	if (length != (T) 0)
 	{
 	  (*this) /= length;
@@ -610,12 +610,12 @@ namespace fl
   // numeric types may need more specialization.
   template<class T>
   T
-  Matrix<T>::frob (T n) const
+  Matrix<T>::frob (float n) const
   {
 	// Some of this code may have to be modified for complex numbers.
 	T * i = (T *) data;
 	T * end = i + rows_ * columns_;
-	if (n == (T) INFINITY)
+	if (n == INFINITY)
 	{
 	  T result = *i++;  // result is undefined for empty Matrix
 	  while (i < end)
@@ -624,7 +624,7 @@ namespace fl
 	  }
 	  return result;
 	}
-	else if (n == 1)
+	else if (n == 1.0f)
 	{
 	  T result = 0;
 	  while (i < end)
@@ -633,7 +633,7 @@ namespace fl
 	  }
 	  return result;
 	}
-	else if (n == 2)
+	else if (n == 2.0f)
 	{
 	  T result = 0;
 	  while (i < end)
@@ -647,9 +647,9 @@ namespace fl
 	  T result = 0;
 	  while (i < end)
 	  {
-		result += (T) std::pow (*i++, n);
+		result += (T) std::pow (*i++, (T) n);
 	  }
-	  return (T) std::pow (result, 1.0f / n);
+	  return (T) std::pow (result, (T) (1.0f / n));
 	}
   }
 
