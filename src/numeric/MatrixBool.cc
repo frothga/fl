@@ -1,4 +1,5 @@
 #include "fl/Matrix.tcc"
+#include "fl/MatrixBool.tcc"
 #include "fl/factory.h"
 
 
