@@ -329,6 +329,29 @@ namespace fl
 
   // Misc -----------------------------------------------------------------------
 
+  /**
+	 Similar to convolving with the kernel [1,0,-1], but written to run more
+	 efficiently than the general ConvolutionDiscrete1D.  Handles borders
+	 with a modified form of the kernel: [1,-1]*2.  In general, the entire
+	 result is effectively scaled by 2, since we avoid the extra
+	 division in the (much more repetitive) non-border case, and instead
+	 multiply by 2 in border case.
+   **/
+  class FiniteDifferenceX : public Filter
+  {
+  public:
+	virtual Image filter (const Image & image);	
+  };
+
+  /**
+	 Same as FiniteDifferenceX, but in the Y direction.
+   **/
+  class FiniteDifferenceY : public Filter
+  {
+  public:
+	virtual Image filter (const Image & image);	
+  };
+
   class NonMaxSuppress : public Filter
   {
   public:
@@ -487,6 +510,21 @@ namespace fl
 	float sigmaX;  ///< Scale of Gaussian in source pixels
 	float sigmaY;
 	bool needG;  ///< Flag for lazy generation of G
+  };
+
+  /**
+	 Scales an image up by an integer amount.  Basically, this is a stripped
+	 down version of Transform that avoids blurring the image.
+   **/
+  class Zoom : public Filter
+  {
+  public:
+	Zoom (int scaleX, int scaleY);
+
+	virtual Image filter (const Image & image);
+
+	int scaleX;
+	int scaleY;
   };
 
   class Rotate180 : public Filter
