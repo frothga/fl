@@ -46,7 +46,7 @@ ClusterCosine::update (const Vector<float> & point, float weight)
   oldCenter.copyFrom (center);
   center += point * weight;
   center.normalize ();
-  return (center - oldCenter).norm (2);
+  return (center - oldCenter).frob (2);
 }
 
 void
@@ -97,6 +97,7 @@ Kohonen::run (const std::vector<Vector<float> > & data)
   int hx = lambda.width / 2;
   int hy = lambda.height / 2;
   lambda *= 1.0 / lambda (hx, hy);  // Normalize so peak value is 1
+  int pad = width * (int) ceilf ((float) lambda.width / width);
 
   vector<float> changes;
   while (! stop  &&  learningRate > 1e-6)
@@ -116,8 +117,8 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 	  {
 		for (int y = 0; y < lambda.height; y++)
 		{
-		  int dx = (cx + (x - hx) + width) % width;
-		  int dy = (cy + (y - hy) + width) % width;
+		  int dx = (cx + (x - hx) + pad) % width;
+		  int dy = (cy + (y - hy) + pad) % width;
 		  float change = map[dx * width + dy].update (data[i], learningRate * lambda (x, y));
 		  largestChange = max (change, largestChange);
 		}
@@ -180,6 +181,12 @@ Kohonen::classify (const Vector<float> & point)
   }
 
   return result;
+}
+
+int
+Kohonen::classCount ()
+{
+  return map.size ();
 }
 
 Vector<float>
