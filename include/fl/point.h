@@ -7,6 +7,20 @@
 
 namespace fl
 {
+  /**
+	 A point in a pixel raster.
+
+	 Point uses float values for x and y, so we define the
+	 following convention for interpreting the fractional part of a pixel
+	 coordinate:  The image coordinate system starts in the upper left
+	 corner.  Positive x goes to the right, and positive y goes down.
+	 Integer pixel coordinates (eg: 0, 1.0, 2.0, etc.) refer to the
+	 center of the pixel.  IE: a pixel begins at -0.5 and ends at 0.5.
+	 This convention allows easy conversion between ints and floats
+	 that is also geometrically consistent and valid.  The only thing
+	 it makes more difficult is determining the edges and center of an
+	 image, usually one-time calculations.
+  **/
   class Point : public MatrixAbstract<float>
   {
   public:
@@ -35,24 +49,16 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<float> * duplicate () const;
-	virtual void resize (const int rows, const int columns = 1);  // We only have one size.  This will throw an exception if (rows * columns) != 2.
+	virtual void resize (const int rows, const int columns = 1);  ///< We only have one size.  This will throw an exception if (rows * columns) != 2.
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false);  // withName is ignored, and no class id is ever written for Points
+	virtual void write (std::ostream & stream, bool withName = false);  ///< withName is ignored, and no class id is ever written for Points
 
-	float distance (const Point & that) const;  // Euclidean distance between two points
-	float angle (const Point & that) const;  // Determine angle of vector (that - this)
+	float distance (const Point & that) const;  ///< Euclidean distance between two points
+	float distance () const;  ///< Euclidean distance from origin.
+	float angle (const Point & that) const;  ///< Determines angle of vector (that - this)
+	float angle () const;  ///< Determines angle of vector from origin to this point.
 
-	// Point uses float values for x and y, so we define the
-	// following convention for interpreting the fractional part of a pixel
-	// coordinate:  The image coordinate system starts in the upper left
-	// corner.  Positive x goes to the right, and positive y goes down.
-	// Integer pixel coordinates (eg: 0, 1.0, 2.0, etc.) refer to the
-	// center of the pixel.  IE: a pixel begins at -0.5 and ends at 0.5.
-	// This convention allows easy conversion between ints and floats
-	// that is also geometrically consistent and valid.  The only thing
-	// it makes more difficult is determining the edges and center of an
-	// image, usually one-time calculations.
 	float x;
 	float y;
   };
@@ -67,8 +73,8 @@ namespace fl
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = false);
 
-	float weight;  // strength of response of interest operator
-	float scale;  // "characteristic scale" of image around interest point
+	float weight;  ///< strength of response of interest operator
+	float scale;  ///< "characteristic scale" of image around interest point
 
 	enum DetectorType
 	{
@@ -95,11 +101,13 @@ namespace fl
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = false);
 
-	// The matrix A is the 2x2 transformation from a rectified patch back to
-	// the original image.  It is the same as the "U" matrix in Krystian
-	// Mikolajczyk's paper "An affine invariant interest point detector".
+	/**
+	   The matrix A is the 2x2 transformation from a rectified patch back to
+	   the original image.  It is the same as the "U" matrix in Krystian
+	   Mikolajczyk's paper "An affine invariant interest point detector".
+	**/
 	Matrix2x2<double> A;
-	float angle;  // characteristic angle; generally the direction of the gradient
+	float angle;  ///< characteristic angle; generally the direction of the gradient
   };
 
 
