@@ -385,44 +385,6 @@ namespace fl
   }
 
   template<class T>
-  MatrixAbstract<T> *
-  MatrixAbstract<T>::factory (std::istream & stream)
-  {
-	throw "factory method not implemented";
-	// The problem with this factory is that it forces every type mentioned
-	// to actually exist and be linked.  A better approach is for each class
-	// to have a static member that will construct a new instance of that
-	// class from a stream.  Then, the pairing between "name" and the static
-	// function can be registered in a global list that is used by this
-	// method.  The remaining question is whether there is an automatic way
-	// to build the list perforce of linking rather than having the programmer
-	// specify it.
-
-	/*
-	std::string name;
-	getline (stream, name);
-
-	if (name == typeid (Matrix<T>).name ())
-	{
-	  return new Matrix<T> (stream);
-	}
-	else if (name == typeid (Vector<T>).name ())
-	{
-	  return new Vector<T> (stream);
-	}
-	else if (name == typeid (MatrixPacked<T>).name ())
-	{
-	  return new MatrixPacked<T> (stream);
-	}
-	else
-	{
-	  std::cerr << "Unknown Matrix: " << name << std::endl;
-	  throw "Unknown matrix";
-	}
-	*/
-  }
-
-  template<class T>
   void
   MatrixAbstract<T>::read (std::istream & stream)
   {
