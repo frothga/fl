@@ -47,7 +47,7 @@ fl::Display::initialize (const string & name)
 
   pthread_mutexattr_t attrCallback;
   pthread_mutexattr_init (&attrCallback);
-  pthread_mutexattr_settype (&attrCallback, PTHREAD_MUTEX_RECURSIVE_NP);
+  pthread_mutexattr_settype (&attrCallback, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init (&mutexCallback, &attrCallback);
   pthread_mutexattr_destroy (&attrCallback);
 
