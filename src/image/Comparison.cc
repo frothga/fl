@@ -133,6 +133,7 @@ NormalizedCorrelation::value (const Vector<float> & value1, const Vector<float> 
 void
 NormalizedCorrelation::read (istream & stream)
 {
+  Comparison::read (stream);
   stream.read ((char *) &subtractMean, sizeof (subtractMean));
 }
 
@@ -146,6 +147,19 @@ NormalizedCorrelation::write (ostream & stream, bool withName)
 
 // class MetricEuclidean ------------------------------------------------------
 
+/**
+   Select between alternate squashing methods.  There are two possible methods
+   for converting a Euclidean distance [0,inf) to [0,1].  One is a hyperbolic
+   squashing function that maps a distance of 0 to a value of 1 and a distance
+   of inf to a value of 0.  The other method, usable when the Euclidean
+   distance is known to have an upper bound, is to map the distance to the
+   output value with a linear transformation.
+ **/
+MetricEuclidean::MetricEuclidean (float upperBound)
+{
+  this->upperBound = upperBound;
+}
+
 MetricEuclidean::MetricEuclidean (istream & stream)
 {
   read (stream);
@@ -154,7 +168,28 @@ MetricEuclidean::MetricEuclidean (istream & stream)
 float
 MetricEuclidean::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
 {
-  return 1.0f / coshf ((value1 - value2).frob (2));
+  if (isinf (upperBound))
+  {
+	return 1.0f / coshf ((value1 - value2).frob (2));
+  }
+  else
+  {
+	return 1.0f - (value1 - value2).frob (2) / upperBound;
+  }
+}
+
+void
+MetricEuclidean::read (istream & stream)
+{
+  Comparison::read (stream);
+  stream.read ((char *) &upperBound, sizeof (upperBound));
+}
+
+void
+MetricEuclidean::write (ostream & stream, bool withName)
+{
+  Comparison::write (stream, withName);
+  stream.write ((char *) &upperBound, sizeof (upperBound));
 }
 
 
