@@ -53,7 +53,8 @@ CLUSTER_O = \
 	ClusterMethod.o \
 	KMeans.o \
 	KMeansParallel.o \
-	Kohonen.o
+	Kohonen.o \
+	Agglomerate.o
 
 NEURAL_O = \
 	NeuralNetwork.o \
@@ -62,7 +63,8 @@ NEURAL_O = \
 
 REDUCE_O = \
 	DimensionalityReduction.o \
-	DimensionalityReductionPCA.o
+	PCA.o \
+	MDA.o
 
 libflNumeric.a: $(MATRIX_DOUBLE_O) $(MATRIX_FLOAT_O) $(MATRIX_BOOL_O) $(MATRIX_INT_O) $(MATRIX_COMPLEX_DOUBLE_O) $(SEARCH_O) $(ROOTS_O) $(CLUSTER_O) $(NEURAL_O) $(REDUCE_O)
 	ar rcsv $(SOURCE_LIB)/$@ $^
