@@ -60,13 +60,16 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	if (! seekLinear  &&  (cc->frame_number > targetFrame  ||  cc->frame_number < targetFrame - 12))  // 12 is arbitrary, but based on the typical size of a GOP in mpeg
 	{
 	  // Use seek to position at or before the frame
-	  int64_t targetDTS = (int64_t) rint (timestamp * AV_TIME_BASE);
-	  targetDTS -= (int64_t) (expectedSkew * AV_TIME_BASE * cc->frame_rate_base / cc->frame_rate);
+	  int64_t targetDTS = (int64_t) rint
+	  (
+	    (timestamp - (double) expectedSkew * cc->frame_rate_base / cc->frame_rate)
+		* stream->time_base.den / stream->time_base.num  // this is counterintuitive, but time_base is apparently defined as the amount to *divide* seconds by to get stream units
+	  );
 	  if (fc->start_time != AV_NOPTS_VALUE)
 	  {
-		targetDTS += fc->start_time;
+		targetDTS += av_rescale (fc->start_time, stream->time_base.den, stream->time_base.num * AV_TIME_BASE);
 	  }
-	  state = av_seek_frame (fc, stream->index, targetDTS);
+	  state = av_seek_frame (fc, stream->index, targetDTS, cc->frame_number > targetFrame ? AVSEEK_FLAG_BACKWARD : 0);
 	  if (state < 0)
 	  {
 		return;
@@ -78,10 +81,23 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	  {
 		av_free_packet (&packet);
 	  }
-	  state = av_read_packet (fc, &packet);
+
+	  // Read the next key frame.  It is possible for a seek to find something
+	  // other than a key frame.  For example, if an mpeg has timestamps on
+	  // packets other than I frames.
+	  state = av_read_frame (fc, &packet);  // packet.pts and dts are in AV_TIME_BASE units
 	  if (state < 0)
 	  {
 		return;
+	  }
+	  cerr << "parser = " << stream->parser << " flags = " << packet.flags << endl;
+	  while (stream->parser  &&  packet.flags & PKT_FLAG_KEY == 0)
+	  {
+		state = av_read_frame (fc, &packet);
+		if (state < 0)
+		{
+		  return;
+		}
 	  }
 	  state = 0;
 	  size = packet.size;
@@ -95,7 +111,7 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 		cc->frame_number = targetFrame + 1;  // to force reopen, since we don't know where we are in the video now
 		continue;
 	  }
-	  int64_t PTS = av_rescale (packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
+	  int64_t PTS = packet.dts;
 	  if (fc->start_time != AV_NOPTS_VALUE)
 	  {
 		PTS -= fc->start_time;
@@ -104,7 +120,7 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	  double skew = 0;
 	  if (packet.pts != AV_NOPTS_VALUE)
 	  {
-		PTS = av_rescale (packet.pts - packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
+		PTS = packet.pts - packet.dts;
 		skew = ((double) PTS / AV_TIME_BASE) * cc->frame_rate / cc->frame_rate_base;
 	  }
 	  cc->frame_number = (int) rint (decodeFrame + skew);  // rint() because PTS should be exactly on some frame's timestamp, and we want to compensate for numerical error.
@@ -164,7 +180,7 @@ VideoInFileFFMPEG::readNext (Image * image)
 	  {
 		av_free_packet (&packet);  // sets packet.size to zero
 	  }
-	  state = av_read_packet (fc, &packet);
+	  state = av_read_frame (fc, &packet);
 	  if (state < 0)
 	  {
 		break;
