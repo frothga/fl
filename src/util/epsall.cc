@@ -14,7 +14,7 @@ main (int argc, char * argv[])
 	base = base.substr (0, j);
 
 	char line[1024];
-	sprintf (line, "jpeg2ps %s > %s.eps", argv[i], base.c_str ());
+	sprintf (line, "jpeg2ps -r 300 %s > %s.eps", argv[i], base.c_str ());
 	cerr << line << endl;
 	system (line);
   }
