@@ -2,6 +2,7 @@
 #include "fl/canvas.h"
 #include "fl/pi.h"
 #include "fl/lapackd.h"
+#include "fl/color.h"
 
 
 using namespace fl;
@@ -21,6 +22,12 @@ DescriptorSIFT::DescriptorSIFT (int width, int angles)
   maxValue = 0.2f;
 
   lastImage = 0;
+}
+
+DescriptorSIFT::DescriptorSIFT (istream & stream)
+{
+  lastImage = 0;
+  read (stream);
 }
 
 void
@@ -217,15 +224,54 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
   return result;
 }
 
+inline void
+DescriptorSIFT::patch (Canvas * canvas, const Vector<float> & value, int size)
+{
+  float * length = & value[0];
+  Point center;
+  Point tip;
+  for (int x = 0; x < width; x++)
+  {
+	center.x = (x + 0.5f) * size;
+	for (int y = 0; y < width; y++)
+	{
+	  center.y = (y + 0.5f) * size;
+	  for (int a = 0; a < angles; a++)
+	  {
+		double angle = a * 2 * PI / angles;
+		double radius = (size / 2.0) * (*length++ / maxValue);
+		tip.x = center.x + cos (angle) * radius;
+		tip.y = center.y + sin (angle) * radius;
+		canvas->drawSegment (center, tip, black);
+	  }
+	}
+  }
+}
+
 Image
 DescriptorSIFT::patch (const Vector<float> & value)
 {
-  CanvasImage result;
-
-  // TODO: actually implement this method!
-
-  result.clear ();
+  const int size = 16;  // size of one cell
+  CanvasImage result (width * size, width * size, GrayChar);
+  result.clear (white);
+  patch (&result, value, size);
   return result;
+}
+
+void
+DescriptorSIFT::patch (const string & fileName, const Vector<float> & value)
+{
+  const int size = 32;  // size of one cell
+  int edge = width * size;
+  CanvasPS result (fileName, edge, edge);
+  patch (&result, value, size);
+
+  result.setLineWidth (0);  // hairline
+  for (int i = 0; i <= width; i++)
+  {
+	result.drawSegment (Point (i * size, 0), Point (i * size, edge), black);
+	result.drawSegment (Point (0, i * size), Point (edge, i * size), black);
+  }
 }
 
 Comparison *
