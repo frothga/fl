@@ -347,7 +347,7 @@ namespace fl
 		break;
 	  default:
 		jobvt = 'S';
-		U.resize (minmn, n);
+		VT.resize (minmn, n);
 	}
 
     int lwork = -1;
