@@ -19,7 +19,7 @@ namespace fl
   inline float
   randfb ()
   {
-	return 2.0 * rand () / RAND_MAX - 1.0;
+	return 2.0f * rand () / RAND_MAX - 1.0f;
   }
 
   // Random number with a Gaussian distribution, mean of zero, and standard
