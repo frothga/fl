@@ -43,7 +43,7 @@ namespace fl
 
 	void resize (int width, int height);  // Changes image to new size.  Any pixels that are still visible are aligned correctly.  Any newly exposed pixels are set to black.
 	void bitblt (const Image & that, int toX = 0, int toY = 0, int fromX = 0, int fromY = 0, int width = -1, int height = -1);  // -1 for width or height means "maximum possible value"
-	void clear ();  // Initialize buffer, if it exists, to zero.  This generally results in black pixels.
+	void clear (unsigned int rgba = 0);  // Initialize buffer, if it exists, to given color.  In case rgba == 0, simply zeroes out memory, since this generally results in black in most pixel formats.
 
 	Image operator + (const Image & that);  // Creates an image that sums pixel values from this and that.
 	Image operator - (const Image & that);  // Creates an image whose pixels are the difference between this and that.
@@ -59,7 +59,7 @@ namespace fl
 	const PixelFormat * format;
 	int                 width;
 	int                 height;
-	float               timestamp;  // Time when image was captured.
+	double              timestamp;  // Time when image was captured.
   };
 
   // A simple wrap around Image that makes it easier to access pixels directly.
@@ -143,12 +143,7 @@ namespace fl
   {
   public:
 	virtual Image filter (const Image & image);  // Return an Image in this format
-	virtual void fromGrayChar (const Image & image, Image & result) const;
-	virtual void fromGrayFloat (const Image & image, Image & result) const;
-	virtual void fromGrayDouble (const Image & image, Image & result) const;
-	virtual void fromRGBAChar (const Image & image, Image & result) const;
-	virtual void fromRGBABits (const Image & image, Image & result) const;
-	virtual void fromAny (const Image & image, Image & result) const;
+	void fromAny (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;  // Checks if this and that describe the same actual format.
 	bool operator != (const PixelFormat & that) const
@@ -157,7 +152,7 @@ namespace fl
 	}
 
 	virtual unsigned int  getRGBA (void * pixel) const = 0;  // Return value is always assumed to be non-linear sRGB.  Same for other RGB methods below.
-	virtual void          getRGBA (void * pixel, float values[]) const;  // "values" must have at least three elements.  Each returned value is in [0,1].
+	virtual void          getRGBA (void * pixel, float values[]) const;  // "values" must have at least four elements.  Each returned value is in [0,1].
 	virtual void          getXYZ  (void * pixel, float values[]) const;
 	virtual unsigned char getGray (void * pixel) const;
 	virtual void          getGray (void * pixel, float * value) const;
@@ -185,11 +180,12 @@ namespace fl
   public:
 	PixelFormatGrayChar ();
 
-	virtual void fromGrayFloat (const Image & image, Image & result) const;
-	virtual void fromGrayDouble (const Image & image, Image & result) const;
-	virtual void fromRGBAChar (const Image & image, Image & result) const;
-	virtual void fromRGBABits (const Image & image, Image & result) const;
-	virtual void fromAny (const Image & image, Image & result) const;
+	virtual Image filter (const Image & image);
+	void fromGrayFloat (const Image & image, Image & result) const;
+	void fromGrayDouble (const Image & image, Image & result) const;
+	void fromRGBAChar (const Image & image, Image & result) const;
+	void fromRGBABits (const Image & image, Image & result) const;
+	void fromAny (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getXYZ  (void * pixel, float values[]) const;
@@ -204,11 +200,12 @@ namespace fl
   public:
 	PixelFormatGrayFloat ();
 
-	virtual void fromGrayChar (const Image & image, Image & result) const;
-	virtual void fromGrayDouble (const Image & image, Image & result) const;
-	virtual void fromRGBAChar (const Image & image, Image & result) const;
-	virtual void fromRGBABits (const Image & image, Image & result) const;
-	virtual void fromAny (const Image & image, Image & result) const;
+	virtual Image filter (const Image & image);
+	void fromGrayChar (const Image & image, Image & result) const;
+	void fromGrayDouble (const Image & image, Image & result) const;
+	void fromRGBAChar (const Image & image, Image & result) const;
+	void fromRGBABits (const Image & image, Image & result) const;
+	void fromAny (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getRGBA (void * pixel, float values[]) const;
@@ -225,11 +222,12 @@ namespace fl
   public:
 	PixelFormatGrayDouble ();
 
-	virtual void fromGrayChar (const Image & image, Image & result) const;
-	virtual void fromGrayFloat (const Image & image, Image & result) const;
-	virtual void fromRGBAChar (const Image & image, Image & result) const;
-	virtual void fromRGBABits (const Image & image, Image & result) const;
-	virtual void fromAny (const Image & image, Image & result) const;
+	virtual Image filter (const Image & image);
+	void fromGrayChar (const Image & image, Image & result) const;
+	void fromGrayFloat (const Image & image, Image & result) const;
+	void fromRGBAChar (const Image & image, Image & result) const;
+	void fromRGBABits (const Image & image, Image & result) const;
+	void fromAny (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getRGBA (void * pixel, float values[]) const;
@@ -246,10 +244,11 @@ namespace fl
   public:
 	PixelFormatRGBAChar ();
 
-	virtual void fromGrayChar (const Image & image, Image & result) const;
-	virtual void fromGrayFloat (const Image & image, Image & result) const;
-	virtual void fromGrayDouble (const Image & image, Image & result) const;
-	virtual void fromRGBABits (const Image & image, Image & result) const;
+	virtual Image filter (const Image & image);
+	void fromGrayChar (const Image & image, Image & result) const;
+	void fromGrayFloat (const Image & image, Image & result) const;
+	void fromGrayDouble (const Image & image, Image & result) const;
+	void fromRGBABits (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
@@ -264,11 +263,12 @@ namespace fl
   public:
 	PixelFormatRGBABits (int depth, unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask);
 
-	virtual void fromGrayChar (const Image & image, Image & result) const;
-	virtual void fromGrayFloat (const Image & image, Image & result) const;
-	virtual void fromGrayDouble (const Image & image, Image & result) const;
-	virtual void fromRGBAChar (const Image & image, Image & result) const;
-	virtual void fromRGBABits (const Image & image, Image & result) const;
+	virtual Image filter (const Image & image);
+	void fromGrayChar (const Image & image, Image & result) const;
+	void fromGrayFloat (const Image & image, Image & result) const;
+	void fromGrayDouble (const Image & image, Image & result) const;
+	void fromRGBAChar (const Image & image, Image & result) const;
+	void fromRGBABits (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
@@ -303,6 +303,9 @@ namespace fl
   public:
 	PixelFormatYVYUChar ();
 
+	virtual Image filter (const Image & image);
+	void fromVYUYChar (const Image & image, Image & result) const;
+
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual unsigned char getGray (void * pixel) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
@@ -313,6 +316,9 @@ namespace fl
   {
   public:
 	PixelFormatVYUYChar ();
+
+	virtual Image filter (const Image & image);
+	void fromYVYUChar (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual unsigned char getGray (void * pixel) const;
@@ -488,12 +494,6 @@ namespace fl
 	height    = that.height;
 	timestamp = that.timestamp;
 	return *this;
-  }
-
-  inline void
-  Image::clear ()
-  {
-	buffer.clear ();
   }
 
   inline Pixel
