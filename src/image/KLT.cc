@@ -165,107 +165,16 @@ window.waitForClick ();
 */
 }
 
-static float
-interpolate (float x, float y, ImageOf<float> & image)
+inline float
+interpolate (float bx, float by, int x, int y, ImageOf<float> & image)
 {
-  int xt = (int) x;  /* coordinates of top-left corner */
-  int yt = (int) y;
-  float ax = x - xt;
-  float ay = y - yt;
-  float *ptr = & image(xt,yt);
-
-  return ( (1-ax) * (1-ay) * *ptr +
-           ax   * (1-ay) * *(ptr+1) +
-           (1-ax) *   ay   * *(ptr+(image.width)) +
-           ax   *   ay   * *(ptr+(image.width)+1) );
-}
-
-static void
-computeIntensityDifference (ImageOf<float> & image1, ImageOf<float> & image2,
-							float x1, float y1,
-							float x2, float y2,
-							int width, int height,
-							float * imgdiff)
-{
-  register int hw = width/2, hh = height/2;
-  float g1, g2;
-  register int i, j;
-
-  for (j = -hh ; j <= hh ; j++)
-  {
-    for (i = -hw ; i <= hw ; i++)
-	{
-      g1 = interpolate (x1+i, y1+j, image1);
-      g2 = interpolate (x2+i, y2+j, image2);
-      *imgdiff++ = g1 - g2;
-    }
-  }
-}
-
-static void
-computeGradientSum (ImageOf<float> gradx1, ImageOf<float> & grady1,
-					ImageOf<float> gradx2, ImageOf<float> & grady2,
-					float x1, float y1,
-					float x2, float y2,
-					int width, int height,
-					float * gradx,
-					float * grady)
-{
-  register int hw = width/2, hh = height/2;
-  float g1, g2;
-  register int i, j;
-
-  for (j = -hh ; j <= hh ; j++)
-  {
-    for (i = -hw ; i <= hw ; i++)
-	{
-      g1 = interpolate(x1+i, y1+j, gradx1);
-      g2 = interpolate(x2+i, y2+j, gradx2);
-      *gradx++ = g1 + g2;
-      g1 = interpolate(x1+i, y1+j, grady1);
-      g2 = interpolate(x2+i, y2+j, grady2);
-      *grady++ = g1 + g2;
-    }
-  }
-}
-
-static void
-compute2by2GradientMatrix (float * gradx, float * grady,
-						   int width, int height,
-						   float & gxx, float & gxy, float & gyy)
-{
-  register float gx, gy;
-  register int i;
-
-  gxx = 0;
-  gxy = 0;
-  gyy = 0;
-  for (i = 0; i < width * height; i++)
-  {
-    gx = *gradx++;
-    gy = *grady++;
-    gxx += gx * gx;
-    gxy += gx * gy;
-    gyy += gy * gy;
-  }
-}
-
-static void
-compute2by1ErrorVector (float * imgdiff, float * gradx, float * grady,
-						int width, int height,
-						float & ex, float & ey)
-{
-  register float diff;
-  register int i;
-
-  ex = 0;
-  ey = 0;
-  for (i = 0; i < width * height; i++)
-  {
-    diff = *imgdiff++;
-    ex += diff * (*gradx++);
-    ey += diff * (*grady++);
-  }
+  float * p00 = & image(x,y);
+  float * p10 = p00 + 1;
+  float * p01 = p00 + image.width;
+  float * p11 = p01 + 1;
+  float a = *p00 + bx * (*p10 - *p00);
+  float b = *p01 + bx * (*p11 - *p01);
+  return a + by * (b - a);
 }
 
 void
@@ -278,95 +187,78 @@ KLT::track (const Point & point0, const int level, Point & point1)
   ImageOf<float> & dx1    = this->dx1[level];
   ImageOf<float> & dy1    = this->dy1[level];
 
-  int width = windowWidth;
-  int height = width;
-  int hw = windowRadius;
-  int hh = hw;
-  int nc = image0.width;
-  int nr = image0.height;
+  const int border = windowRadius; // + dG.width / 2;
+  const float left = border;
+  const float right = image0.width - border - 1;
+  const float top = border;
+  const float bottom = image0.height - border - 1;
 
-  float * imgdiff = (float *) malloc (width * height * sizeof (float));
-  float * gradx = (float *) malloc (width * height * sizeof (float));
-  float * grady = (float *) malloc (width * height * sizeof (float));
-
-  float gxx, gxy, gyy, ex, ey, dx, dy;
-  const float one_plus_eps = 1.000001f;
+  if (point0.x < left  ||  point0.x >= right  ||  point0.y < top  ||  point0.y >= bottom)
+  {
+	throw 1;
+  }
 
   // Iteratively update the window position
-  int iteration = 0;
-  do
+  int count = 0;
+  while (count++ < maxIterations)
   {
-    if (point0.x-hw < 0.0f  ||  point0.x+hw > nc-one_plus_eps  ||
-        point1.x-hw < 0.0f  ||  point1.x+hw > nc-one_plus_eps  ||
-        point0.y-hh < 0.0f  ||  point0.y+hh > nr-one_plus_eps  ||
-        point1.y-hh < 0.0f  ||  point1.y+hh > nr-one_plus_eps)
+	if (point1.x < left  ||  point1.x >= right  ||  point1.y < top  ||  point1.y >= bottom)
 	{
 	  throw 1;
-    }
+	}
 
     // Compute gradient and difference windows
-    computeIntensityDifference (image0, image1,
-								point0.x, point0.y, point1.x, point1.y,
-								width, height, imgdiff);
+	float gxx = 0;
+	float gxy = 0;
+	float gyy = 0;
+	float ex = 0;
+	float ey = 0;
 
-    computeGradientSum (dx0, dy0, dx1, dy1,
-						point0.x, point0.y, point1.x, point1.y,
-						width, height,
-						gradx, grady);
-		
+	float bx0 = point0.x - floorf (point0.x);
+	float bx1 = point1.x - floorf (point1.x);
+	float by0 = point0.y - floorf (point0.y);
+	float by1 = point1.y - floorf (point1.y);
 
-    // Use these windows to construct matrices
-    compute2by2GradientMatrix (gradx, grady,
-							   width, height,
-                               gxx, gxy, gyy);
-    compute2by1ErrorVector (imgdiff, gradx, grady,
-							width, height,
-                            ex, ey);
+	for (int j = -windowRadius; j <= windowRadius; j++)
+	{
+	  for (int i = -windowRadius; i <= windowRadius; i++)
+	  {
+		float g0 = interpolate (bx0, by0, (int) point0.x+i, (int) point0.y+j, image0);
+		float g1 = interpolate (bx1, by1, (int) point1.x+i, (int) point1.y+j, image1);
+		float diff = g0 - g1;
+		g0 = interpolate (bx0, by0, (int) point0.x+i, (int) point0.y+j, dx0);
+		g1 = interpolate (bx1, by1, (int) point1.x+i, (int) point1.y+j, dx1);
+		float gx = g0 + g1;
+		g0 = interpolate (bx0, by0, (int) point0.x+i, (int) point0.y+j, dy0);
+		g1 = interpolate (bx1, by1, (int) point1.x+i, (int) point1.y+j, dy1);
+		float gy = g0 + g1;
+
+		gxx += gx * gx;
+		gxy += gx * gy;
+		gyy += gy * gy;
+		ex += diff * gx;
+		ey += diff * gy;
+	  }
+	}
 				
     // Using matrices, solve equation for new displacement
 	float det = gxx * gyy - gxy * gxy;
-	if (det < minDeterminant) throw 2;
-	dx = (gyy * ex - gxy * ey) / det;
-	dy = (gxx * ey - gxy * ex) / det;
-
+	if (det < minDeterminant)
+	{
+	  throw 2;
+	}
+	float dx = (gyy * ex - gxy * ey) / det;
+	float dy = (gxx * ey - gxy * ex) / det;
     point1.x += dx;
     point1.y += dy;
-    iteration++;
-  }
-  while ((fabs (dx) >= minDisplacement  ||  fabs (dy) >= minDisplacement)  &&  iteration < maxIterations);
 
-  // Free memory
-  free (imgdiff);
-  free (gradx);
-  free (grady);
+	if (sqrtf (dx * dx + dy * dy) < minDisplacement)
+	{
+	  break;
+	}
+  }
 }
 
-void
-KLT::track (Point & point)
-{
-  Point loc = point;
-
-  // Transform location to coarsest resolution
-  for (int r = pyramid0.size () - 1; r >= 0; r--)
-  {
-	loc /= pyramidRatio;
-  }
-  Point locout = loc;
-
-  // Beginning with coarsest resolution, do...
-  for (int r = pyramid0.size () - 1; r >= 0; r--)
-  {
-	// Track feature at current resolution
-	loc *= pyramidRatio;
-	locout *= pyramidRatio;
-	track (loc, r, locout);
-  }
-
-  point = locout;
-}
-
-
-/*
 void
 KLT::track (Point & point)
 {
@@ -391,6 +283,7 @@ KLT::track (Point & point)
   point = point1;
 }
 
+/*
 void
 KLT::track (const Point & point0, const int level, Point & point1)
 {
