@@ -626,7 +626,7 @@ Image::operator *= (double factor)
   }
   else
   {
-	throw "Image::operator *: unimplemented format";
+	throw "Image::operator *= : unimplemented format";
   }
 
   return *this;
@@ -666,7 +666,7 @@ Image::operator += (double value)
   }
   else
   {
-	throw "Image::operator *: unimplemented format";
+	throw "Image::operator += : unimplemented format";
   }
 
   return *this;
