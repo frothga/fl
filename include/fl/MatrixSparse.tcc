@@ -141,6 +141,120 @@ namespace fl
   }
 
   template<class T>
+  T
+  MatrixSparse<T>::frob (T n) const
+  {
+	int w = data->size ();
+
+	if (n == (T) INFINITY)
+	{
+	  T result = (T) -INFINITY;
+	  for (int c = 0; c < w; c++)
+	  {
+		std::map<int,T> & C = (*data)[c];
+		typename std::map<int,T>::iterator i = C.begin ();
+		while (i != C.end ())
+		{
+		  result = std::max (i->second, result);
+		  i++;
+		}
+	  }
+	  return result;
+	}
+	else if (n == 1)
+	{
+	  T result = 0;
+	  for (int c = 0; c < w; c++)
+	  {
+		std::map<int,T> & C = (*data)[c];
+		typename std::map<int,T>::iterator i = C.begin ();
+		while (i != C.end ())
+		{
+		  result += i->second;
+		  i++;
+		}
+	  }
+	  return result;
+	}
+	else if (n == 2)
+	{
+	  T result = 0;
+	  for (int c = 0; c < w; c++)
+	  {
+		std::map<int,T> & C = (*data)[c];
+		typename std::map<int,T>::iterator i = C.begin ();
+		while (i != C.end ())
+		{
+		  result += i->second * i->second;
+		  i++;
+		}
+	  }
+	  return (T) sqrt (result);
+	}
+	else
+	{
+	  T result = 0;
+	  for (int c = 0; c < w; c++)
+	  {
+		std::map<int,T> & C = (*data)[c];
+		typename std::map<int,T>::iterator i = C.begin ();
+		while (i != C.end ())
+		{
+		  result += (T) pow (i->second, n);
+		  i++;
+		}
+	  }
+	  return (T) pow (result, 1.0 / n);
+	}
+  }
+
+  template<class T>
+  MatrixSparse<T>
+  MatrixSparse<T>::operator - (const MatrixSparse<T> & B) const
+  {
+	int n = data->size ();
+	MatrixSparse result (1, n);
+
+	for (int c = 0; c < n; c++)
+	{
+	  std::map<int,T> & CR = (*result.data)[c];
+	  std::map<int,T> & CA = (*data)[c];
+	  std::map<int,T> & CB = (*B.data)[c];
+	  typename std::map<int,T>::iterator ir = CR.begin ();
+	  typename std::map<int,T>::iterator ia = CA.begin ();
+	  typename std::map<int,T>::iterator ib = CB.begin ();
+	  while (ia != CA.end ()  &&  ib != CB.end ())
+	  {
+		if (ia->first == ib->first)
+		{
+		  T t = ia->second - ib->second;
+		  if (t != 0)
+		  {
+			ir = CR.insert (ir, std::make_pair (ia->first, t));
+			result.rows_ = std::max (result.rows_, ia->first + 1);
+		  }
+		  ia++;
+		  ib++;
+		}
+		else if (ia->first > ib->first)
+		{
+		  ir = CR.insert (ir, std::make_pair (ib->first, - ib->second));
+		  result.rows_ = std::max (result.rows_, ib->first + 1);
+		  ib++;
+		}
+		else  // ia->first < ib->first
+		{
+		  ir = CR.insert (ir, std::make_pair (ia->first, ia->second));
+		  result.rows_ = std::max (result.rows_, ia->first + 1);
+		  ia++;
+		}
+	  }
+	}
+
+	return result;
+  }
+
+  template<class T>
   void
   MatrixSparse<T>::read (std::istream & stream)
   {
