@@ -54,3 +54,6 @@ CXXFLAGS += -O3  # full optimization
 CXXFLAGS += -march=pentium4 -mfpmath=sse  # P4 architecture
 #CXXFLAGS += -g1   # minimal debug symbols
 CXXFLAGS += -g   # full debug symbols
+
+# Misc configuration
+#EXESUF = .exe  # for cygwin
