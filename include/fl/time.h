@@ -1,21 +1,32 @@
-#ifndef time_h
-#define time_h
+#ifndef fl_time_h
+#define fl_time_h
 
 
 #include <ostream>
 
-#include <sys/time.h>
-#include <unistd.h>
-
+#ifdef WIN32
+  #include <time.h>
+  #include <sys/timeb.h>
+  #include <sys/types.h>
+#else
+  #include <sys/time.h>
+  #include <unistd.h>
+#endif
 
 namespace fl
 {
   inline double
   getTimestamp ()
   {
-	struct timeval t;
-	gettimeofday (&t, NULL);
-	return t.tv_sec + (double) t.tv_usec / 1e6;
+	#ifdef WIN32
+	  struct __timeb64 t;
+	  _ftime64 (&t);
+	  return t.time + (double) t.millitm / 1e3;
+	#else
+	  struct timeval t;
+	  gettimeofday (&t, NULL);
+	  return t.tv_sec + (double) t.tv_usec / 1e6;
+	#endif
   }
 
   /**
