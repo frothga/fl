@@ -39,6 +39,7 @@ CONVOLVE_O = \
 	FilterHarris.o \
 	FilterHarrisEigen.o \
 	FilterHessian.o \
+	FiniteDifference.o \
 	NonMaxSuppress.o \
 	IntensityAverage.o \
 	IntensityDeviation.o \
@@ -50,24 +51,28 @@ CONVOLVE_O = \
 	Rotate180.o \
 	Transform.o \
 	TransformGauss.o \
+	Zoom.o \
 	ClearAlpha.o
 
 DESCRIPTOR_O = \
+	Comparison.o \
 	Descriptor.o \
+	DescriptorCombo.o \
 	DescriptorScale.o \
 	DescriptorOrientation.o \
 	DescriptorOrientationHistogram.o \
+	DescriptorContrast.o \
 	DescriptorFilters.o \
 	DescriptorFiltersTexton.o \
 	DescriptorPatch.o \
 	DescriptorSchmidScale.o \
 	DescriptorSchmid.o \
 	DescriptorSpin.o \
-	DescriptorSpinSimple.o \
-	DescriptorSpinExact.o \
 	DescriptorSIFT.o \
 	DescriptorColorHistogram2D.o \
-	DescriptorColorHistogram3D.o
+	DescriptorColorHistogram3D.o \
+	DescriptorTextonScale.o \
+	DescriptorLBP.o
 
 INTEREST_O = \
 	Interest.o \
@@ -79,13 +84,11 @@ INTEREST_O = \
 
 VIDEO_O = \
 	Video.o \
-	VideoFileFormatFFMPEG.o
+	VideoFileFormatFFMPEG.o \
+	KLT.o
 
 libflImage.a: $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(CANVAS_O) $(CONVOLVE_O) $(DESCRIPTOR_O) $(INTEREST_O) $(VIDEO_O)
 	ar rcsv $(SOURCE_LIB)/$@ $^
-
-DescriptorSpin.o:
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $*.cc -ffloat-store
 
 
 test: test.o $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(INTEREST_O) $(CONVOLVE_O) $(VIDEO_O) $(CANVAS_O) $(DESCRIPTOR_O)
