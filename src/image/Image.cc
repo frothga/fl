@@ -36,8 +36,8 @@ Image::Image (int width, int height)
 {
   timestamp = getTimestamp ();
   this->format = &GrayChar;
-  this->width  = width;
-  this->height = height;
+  this->width  = max (0, width);  // Note that if a negative width or height was specified, the Pointer class would handle it correctly when constructing the buffer.
+  this->height = max (0, height);
 }
 
 Image::Image (int width, int height, const PixelFormat & format)
@@ -45,8 +45,8 @@ Image::Image (int width, int height, const PixelFormat & format)
 {
   timestamp = getTimestamp ();
   this->format = &format;
-  this->width  = width;
-  this->height = height;
+  this->width  = max (0, width);
+  this->height = max (0, height);
 }
 
 Image::Image (const Image & that)
@@ -63,8 +63,8 @@ Image::Image (unsigned char * buffer, int width, int height, const PixelFormat &
 {
   timestamp = getTimestamp ();
   this->format = &format;
-  this->width  = width;
-  this->height = height;
+  this->width  = max (0, width);
+  this->height = max (0, height);
 }
 
 Image::Image (const std::string & fileName)
@@ -152,8 +152,8 @@ Image::copyFrom (unsigned char * buffer, int width, int height, const PixelForma
 	timestamp = getTimestamp ();  // Actually, we don't know the timestamp on a bare buffer, but this guess is as good as any.
 
 	this->format = &format;
-	this->width  = width;
-	this->height = height;
+	this->width  = max (0, width);
+	this->height = max (0, height);
 
 	this->buffer.copyFrom (buffer, width * height * format.depth);
   }
@@ -165,8 +165,8 @@ Image::attach (unsigned char * buffer, int width, int height, const PixelFormat 
   this->buffer.attach (buffer, width * height * format.depth);
   timestamp = getTimestamp ();
   this->format = &format;
-  this->width  = width;
-  this->height = height;
+  this->width  = max (0, width);
+  this->height = max (0, height);
 }
 
 void
@@ -187,8 +187,8 @@ Image::resize (const int width, const int height)
 {
   if (width <= 0  ||  height <= 0)
   {
-	this->width = width;
-	this->height = height;
+	this->width  = 0;
+	this->height = 0;
 	buffer.detach ();
 	return;
   }
