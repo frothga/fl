@@ -3,7 +3,8 @@
 
 
 #include <vector>
-#include <ios>
+#include <ostream>
+#include <math.h>
 
 
 namespace fl
