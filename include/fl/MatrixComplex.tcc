@@ -3,31 +3,30 @@
 
 
 #include "fl/matrix.h"
-#include "fl/complex.h"
 
 
 namespace fl
 {
-  complex double
-  MatrixAbstract<complex double>::frob (complex double n) const
+  std::complex<double>
+  MatrixAbstract<std::complex<double> >::frob (std::complex<double> n) const
   {
 	throw "complex frobenius norm unimplemented";
   }
 
-  complex double
-  Matrix<complex double>::frob (complex double n) const
+  std::complex<double>
+  Matrix<std::complex<double> >::frob (std::complex<double> n) const
   {
 	throw "complex frobenius norm unimplemented";
   }
 
-  complex float
-  MatrixAbstract<complex float>::frob (complex float n) const
+  std::complex<float>
+  MatrixAbstract<std::complex<float> >::frob (std::complex<float> n) const
   {
 	throw "complex frobenius norm unimplemented";
   }
 
-  complex float
-  Matrix<complex float>::frob (complex float n) const
+  std::complex<float>
+  Matrix<std::complex<float> >::frob (std::complex<float> n) const
   {
 	throw "complex frobenius norm unimplemented";
   }

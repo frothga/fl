@@ -4,7 +4,6 @@
 
 #include "fl/matrix.h"
 #include "fl/lapackprotos.h"
-#include "fl/complex.h"
 
 #include <algorithm>
 #include <float.h>
@@ -198,7 +197,7 @@ namespace fl
   }
 
   inline void
-  geev (const MatrixAbstract<float> & A, Matrix<complex float> & eigenvalues, Matrix<float> & eigenvectors)
+  geev (const MatrixAbstract<float> & A, Matrix<std::complex<float> > & eigenvalues, Matrix<float> & eigenvectors)
   {
 	char jobvl = 'N';
 	char jobvr = 'V';
@@ -242,7 +241,7 @@ namespace fl
 
 	for (int i = 0; i < n; i++)
 	{
-	  eigenvalues[i] = wr[i] + wi[i] * I;
+	  eigenvalues[i] = std::complex<float> (wr[i], wi[i]);
 	}
   }
 

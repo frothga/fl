@@ -3,13 +3,13 @@
 
 
 #include "fl/pointer.h"
-#include "fl/complex.h"
 
 #include <math.h>
 #include <iostream>
 #include <sstream>
 #include <vector>
 #include <map>
+#include <complex>
 
 
 // The linear algebra package has the following goals:
@@ -695,7 +695,7 @@ namespace fl
   }
 
   inline void
-  geev (const Matrix2x2<double> & A, Matrix<complex double> & eigenvalues)
+  geev (const Matrix2x2<double> & A, Matrix<std::complex<double> > & eigenvalues)
   {
 	eigenvalues.resize (2, 1);
 
@@ -710,13 +710,15 @@ namespace fl
 	}
 	if (imaginary)
 	{
-	  eigenvalues(0,0) = (-b + b4c * I) / 2.0;
-	  eigenvalues(1,0) = (-b - b4c * I) / 2.0;
+	  b /= -2.0;
+	  b4c /= 2.0;
+	  eigenvalues(0,0) = std::complex<double> (b, b4c);
+	  eigenvalues(1,0) = std::complex<double> (b, -b4c);
 	}
 	else
 	{
-	  eigenvalues(0,0) = (complex double) ((-b - b4c) / 2.0);
-	  eigenvalues(1,0) = (complex double) ((-b + b4c) / 2.0);
+	  eigenvalues(0,0) = (-b - b4c) / 2.0;
+	  eigenvalues(1,0) = (-b + b4c) / 2.0;
 	}
   }
 }
