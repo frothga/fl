@@ -1,7 +1,7 @@
 #include "fl/image.h"
 #include "fl/pi.h"
+#include "fl/math.h"
 
-#include <math.h>
 #include <algorithm>
 
 
@@ -9,7 +9,15 @@
 //#include <iostream>
 
 
-#include <sys/param.h>
+#ifdef _MSC_VER
+  // MSVC compiles to little endian 99.9999% of the time for practical purposes.  Don't
+  // know what the exceptions are, but imagine there could be some.
+  #define __LITTLE_ENDIAN 1234
+  #define __BYTE_ORDER __LITTLE_ENDIAN
+#else
+  #include <sys/param.h>
+#endif
+
 #if __BYTE_ORDER != __LITTLE_ENDIAN
 #warning This code assumes the system is little endian.
 #warning To fix: need to write big-endian versions of
@@ -2219,7 +2227,7 @@ PixelFormatYVYUChar::getRGBA (void * pixel) const
   int y;
   if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
   {
-	((short *) pixel)--;  // Move backward in memory 16 bits.
+	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	y = (*((unsigned int *) pixel) & 0xFF000000) >> 8;
   }
   else  // on 32-bit word boundary
@@ -2248,7 +2256,7 @@ PixelFormatYVYUChar::getYUV (void * pixel) const
   unsigned int y;
   if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
   {
-	((short *) pixel)--;  // Move backward in memory 16 bits.
+	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	y = (*((unsigned int *) pixel) & 0xFF000000) >> 8;
   }
   else  // on 32-bit word boundary
@@ -2281,7 +2289,7 @@ PixelFormatYVYUChar::setRGBA (void * pixel, unsigned int rgba) const
 
   if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
   {
-	((short *) pixel)--;  // Move backward in memory 16 bits.
+	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	*((unsigned int *) pixel) = (y << 8) | v | (*((unsigned int *) pixel) & 0xFF00) | u;
   }
   else  // on 32-bit word boundary
@@ -2298,7 +2306,7 @@ PixelFormatYVYUChar::setYUV (void * pixel, unsigned int yuv) const
 
   if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
   {
-	((short *) pixel)--;  // Move backward in memory 16 bits.
+	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	*((unsigned int *) pixel) = ((yuv & 0xFF0000) << 8) | v | (*((unsigned int *) pixel) & 0xFF00) | u;
   }
   else  // on 32-bit word boundary
@@ -2366,7 +2374,7 @@ PixelFormatVYUYChar::getRGBA (void * pixel) const
   int y;
   if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
   {
-	((short *) pixel)--;  // Move backward in memory 16 bits.
+	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	y = *((unsigned int *) pixel) & 0xFF0000;
   }
   else  // on 32-bit word boundary
@@ -2389,7 +2397,7 @@ PixelFormatVYUYChar::getYUV (void * pixel) const
   unsigned int y;
   if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
   {
-	((short *) pixel)--;  // Move backward in memory 16 bits.
+	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	y = *((unsigned int *) pixel) & 0xFF0000;
   }
   else  // on 32-bit word boundary
@@ -2419,7 +2427,7 @@ PixelFormatVYUYChar::setRGBA (void * pixel, unsigned int rgba) const
 
   if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
   {
-	((short *) pixel)--;  // Move backward in memory 16 bits.
+	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	*((unsigned int *) pixel) = v | y | u | (*((unsigned int *) pixel) & 0xFF);
   }
   else  // on 32-bit word boundary
@@ -2436,7 +2444,7 @@ PixelFormatVYUYChar::setYUV (void * pixel, unsigned int yuv) const
 
   if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
   {
-	((short *) pixel)--;  // Move backward in memory 16 bits.
+	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	*((unsigned int *) pixel) = v | (yuv & 0xFF0000) | u | (*((unsigned int *) pixel) & 0xFF);
   }
   else  // on 32-bit word boundary
