@@ -9,7 +9,7 @@
 //#include <iostream>
 
 
-#include <endian.h>
+#include <sys/param.h>
 #if __BYTE_ORDER != __LITTLE_ENDIAN
 #warning This code assumes the system is little endian.
 #warning To fix: need to write big-endian versions of
