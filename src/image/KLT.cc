@@ -34,6 +34,7 @@ KLT::KLT (int windowRadius, int searchRadius)
   minDeterminant = 2e-12;
   minDisplacement = 0.1;
   maxIterations = 10;
+  maxError = 0.06;
 
   // Determine size of pyramid.  The goal is to have searchRadius (in the
   // full-sized image) fit within a region covered by the Minkowski sum
@@ -91,6 +92,20 @@ KLT::nextImage (const Image & image)
   }
 }
 
+/**
+   \throw int Indicates the following kinds of failures:
+   <UL>
+   <LI>2 -- Determinant of second moment matrix is too small, so can't
+   solve tracking equation.
+   <LI>3 -- Did not converge within maxIterations.  Not
+   necessarily fatal, since it could be a cyclical fixed point near the
+   correct answer (but not near enough to be under maxDisplacement).
+   <LI>4 -- Point has move out of bounds.
+   <LI>5 -- RMS error of pixels in window exceeds maxError, suggesting that
+   we may no longer be looking at the same spot on the object.
+   </UL>
+   In all cases, the best estimate of the point's location is returned.
+ **/
 void
 KLT::track (Point & point)
 {
@@ -101,6 +116,8 @@ KLT::track (Point & point)
   point0 -= offset;
   Point point1 = point0;
 
+  float error = 0;
+  bool overiterated = false;
   for (int level = pyramid0.size () - 1; level >= 0; level--)
   {
 	point0 += offset;
@@ -109,13 +126,50 @@ KLT::track (Point & point)
 	point1 *= pyramidRatio;
 	point0 -= offset;
 	point1 -= offset;
-	track (point0, level, point1);
+	try
+	{
+	  error = track (point0, level, point1);
+	}
+	catch (int code)
+	{
+	  if (code == 3)
+	  {
+		overiterated = true;
+	  }
+	  else  // All other codes are fatal and call for immediate termination.
+	  {
+		// To fulfill the guarantee that we return the best estimate of
+		// location, we must move the point into the scale of the original
+		// image.
+		point0 += offset;
+		point1 += offset;
+		point0 *= powf (pyramidRatio, level);
+		point1 *= powf (pyramidRatio, level);
+		point0 -= offset;
+		point1 -= offset;
+		throw code;
+	  }
+	}
   }
 
   point = point1;
+
+  // The more serious exceptions should be listed here first.
+  // Not sure whether overiterated > undercorrelated or vice-versa.
+  if (overiterated)
+  {
+	throw 3;
+  }
+  if (error > maxError)
+  {
+	throw 5;
+  }
 }
 
-void
+/**
+   \return RMS error of pixel intensity within window.
+ **/
+float
 KLT::track (const Point & point0, const int level, Point & point1)
 {
   ImageOf<float> & image0 = pyramid0[level];
@@ -130,7 +184,7 @@ KLT::track (const Point & point0, const int level, Point & point1)
 
   if (point0.x < left  ||  point0.x >= right  ||  point0.y < top  ||  point0.y >= bottom)
   {
-	throw 1;
+	throw 4;
   }
 
   // Compute the constant window (from image0)
@@ -177,12 +231,18 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	p11 += rowAdvance;
   }
 
+  float error;
   int count = 0;
-  while (count++ < maxIterations)
+  while (true)
   {
+	if (count++ >= maxIterations)
+	{
+	  throw 3;
+	}
+
 	if (point1.x < left  ||  point1.x >= right  ||  point1.y < top  ||  point1.y >= bottom)
 	{
-	  throw 1;
+	  throw 4;
 	}
 
 	// Compute second moment matrix and error vector
@@ -191,6 +251,7 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	float gyy = 0;
 	float ex = 0;
 	float ey = 0;
+	error = 0;
 	//   Determine bilinear mixing constants for image1
 	x = (int) point1.x;
 	y = (int) point1.y;
@@ -222,6 +283,7 @@ KLT::track (const Point & point0, const int level, Point & point1)
 		gyy += gy * gy;
 		ex += diff * gx;
 		ey += diff * gy;
+		error += diff * diff;
 		// Advance to next x position
 		p00++;
 		p10++;
@@ -251,4 +313,6 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	  break;
 	}
   }
+
+  return sqrtf (error / (windowWidth * windowWidth));
 }
