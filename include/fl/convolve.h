@@ -4,25 +4,28 @@
 
 #include "fl/image.h"
 #include "fl/matrix.h"
-//#include "fl/search.h"
 #include "fl/point.h"
 
+#include <ostream>
 
-// Coordinate system convention: For efficiency's sake, we follow the standard
-// coordinate system for pixel rasters.  The origin is in the upper left.
-// Positive x axis goes toward the right, and positive y axis goes downward.
-// If you like to imagine that you are looking down at the plane where the
-// pixels live, and that the positive z-axis comes out of the plane towards
-// you, then this forms a "left-handed" coordinate system, which is universally
-// condemned by purists.  However, it is better to imagine that the positive
-// z-axis is heading away from you, in which case this is a proper right-handed
-// system.  It is even better to realize that there is no z-axis whatsoever and
-// accept the coordinate system in its own terms.
 
-// All float-valued pixel coordinates follow the convention for
-// Point (integral numbers refer to center of pixel).  Integer-valued
-// pixel coordinates refer to either the entire pixel or to its center,
-// depending on context.
+/**
+   Coordinate system convention: For efficiency's sake, we follow the standard
+   coordinate system for pixel rasters.  The origin is in the upper left.
+   Positive x axis goes toward the right, and positive y axis goes downward.
+   If you like to imagine that you are looking down at the plane where the
+   pixels live, and that the positive z-axis comes out of the plane towards
+   you, then this forms a "left-handed" coordinate system, which is universally
+   condemned by purists.  However, it is better to imagine that the positive
+   z-axis is heading away from you, in which case this is a proper right-handed
+   system.  It is even better to realize that there is no z-axis whatsoever and
+   accept the coordinate system in its own terms.
+
+   All float-valued pixel coordinates follow the convention for
+   Point (integral numbers refer to center of pixel).  Integer-valued
+   pixel coordinates refer to either the entire pixel or to its center,
+   depending on context.
+**/
 
 
 namespace fl
@@ -225,23 +228,14 @@ namespace fl
   class FilterHessian : public Filter
   {
   public:
-	FilterHessian (double sigmaD = 1.0, double sigmaI = 1.4, const PixelFormat & format = GrayFloat);
+	FilterHessian (double sigma = 1.0, const PixelFormat & format = GrayFloat);
 
 	virtual Image filter (const Image & image);
-	virtual void preprocess (const Image & image);
-	virtual Image process ();
-	virtual double response (const int x, const int y) const;
 
-	double sigmaD;  // Derivation scale
-	double sigmaI;  // Integration scale
-	Gaussian2D                 G_I;
-	Gaussian1D                 G1_I;
-	Gaussian1D                 G1_D;
-	GaussianDerivativeSecond1D dG_D;
-	Image trace;  // Trace of Hessian image
-	int offset;
-	int offsetI;
-	int offsetD;
+	double sigma;  ///< scale
+	Gaussian1D                 G;
+	GaussianDerivativeSecond1D dG;
+	int offset;  ///< number of pixels removed from border
 
   protected:
 	int offset1;
@@ -254,17 +248,22 @@ namespace fl
   class NonMaxSuppress : public Filter
   {
   public:
-	NonMaxSuppress (int half = 1);
+	NonMaxSuppress (int half = 1, BorderMode mode = UseZeros);  ///< Only recognizes UseZeros and ZeroFill.  Other modes are mapped to closest equivalent.
 
 	virtual Image filter (const Image & image);
 
-	int half;  // Number of pixels away from center to check for local maxima.
-	float maximum;  // Largest value found during last run of filter.
-	float average;  // Average value found during last run of filter.
+	int half;  ///< Number of pixels away from center to check for local maxima.
+	BorderMode mode;
+	float maximum;  ///< Largest value found during last run of filter.
+	float minimum;  ///< Smallest value found during last run of filter.
+	float average;  ///< Average value found during last run of filter.
+	int count;  ///< Number of pixels that passed last run of filter.
   };
 
-  // An information gathering filter.  Finds average of intensity values.
-  // Returns the image unaltered and stores the average in object's state.
+  /**
+	 An information gathering filter.  Finds average of intensity values.
+	 Returns the image unaltered and stores the average in object's state.
+  **/
   class IntensityAverage : public Filter
   {
   public:
@@ -272,12 +271,17 @@ namespace fl
 
 	virtual Image filter (const Image & image);
 
-	float average;  // The computed value
-	bool ignoreZeros;  // Don't include black pixels in count for determining average.
+	float average;  ///< Average intensity value.
+	float minimum;  ///< Smallest intensity value.
+	float maximum;  ///< Largest intensity value.
+	int count;      ///< Number of pixels included in average.
+	bool ignoreZeros;  ///< Don't include black pixels in count.
   };
 
-  // An information gathering filter.  Finds standard deviation of intensity
-  // values based on a given average value.
+  /**
+	 An information gathering filter.  Finds standard deviation of intensity
+	 values based on a given average value.
+  **/
   class IntensityDeviation : public Filter
   {
   public:
@@ -285,9 +289,28 @@ namespace fl
 
 	virtual Image filter (const Image & image);
 
-	float average;  // The given value
-	float deviation;  // The computed value
-	bool ignoreZeros;  // Don't include black pixels in count for determining deviation.
+	float average;  ///< The given value
+	float deviation;  ///< The computed value
+	bool ignoreZeros;  ///< Don't include black pixels in count for determining deviation.
+  };
+
+  /**
+	 An information gathering filter.  Finds standard deviation of intensity
+	 values based on a given average value.
+  **/
+  class IntensityHistogram : public Filter
+  {
+  public:
+	IntensityHistogram (const std::vector<float> & ranges);
+	IntensityHistogram (float minimum, float maximum, int bins);
+
+	virtual Image filter (const Image & image);
+
+	int total () const;  ///< Add up all the counts.
+	void dump (std::ostream & stream, bool center = false, bool percent = false) const;  ///< For each bin, print: {start of range | center of range} {count | percent of total}
+
+	std::vector<float> ranges;  ///< The interval for bin n is [ranges[n], ranges[n+1]).  However, the last bin is a fully closed interval.  Bins are numbered from zero.  ranges has one more entry than counts.
+	std::vector<int>   counts;  ///< The counts for each of the bins.
   };
 
   // Treating the image as a vector in high-dimensional space, normalize to given Euclidean length.
