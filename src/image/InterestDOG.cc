@@ -21,8 +21,8 @@ InterestDOG::InterestDOG (float firstScale, float lastScale, int extraSteps)
 
   crop = (int) rint (Gaussian2D::cutoff);
   storePyramid = false;
-  thresholdEdge = 0.06;
-  thresholdPeak = 0.04 / steps;
+  thresholdEdge = 0.06f;
+  thresholdPeak = 0.04f / steps;
 }
 
 inline bool

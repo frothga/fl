@@ -132,7 +132,7 @@ DescriptorSchmidScale::patch (const Vector<float> & value)
   int patience = dimension / levels;
   int gotBetter = 0;
   int gotWorse = 0;
-  float lastDistance = 1e30;
+  float lastDistance = 1e30f;
   while (temperature > freezing)
   {
 	// Generate a guess

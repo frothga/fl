@@ -70,7 +70,7 @@ DescriptorSchmid::findScale (float sigma)
   // Just a linear search.  Could be a binary search, but for a list this small
   // it doesn't make much difference
   DescriptorSchmidScale * result = NULL;
-  float smallestDistance = 1e30;
+  float smallestDistance = 1e30f;
   for (int i = 0; i < descriptors.size (); i++)
   {
 	float distance = fabs (descriptors[i]->sigma - sigma);

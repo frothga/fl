@@ -94,7 +94,7 @@ InterestHessian::run (const Image & image, std::multiset<PointInterest> & result
   result.clear ();
 
   AbsoluteValue abs;
-  float lastThreshold = 0.2;  // some reasonable default, in case no good threshold is found before we need this variable.
+  float lastThreshold = 0.2f;  // some reasonable default, in case no good threshold is found before we need this variable.
 
   for (int i = 0; i < filters.size (); i++)
   {

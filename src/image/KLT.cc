@@ -5,7 +5,7 @@
 
 
 // For debugging
-#include "fl/slideshow.h"
+//#include "fl/slideshow.h"
 
 
 using namespace fl;
@@ -36,10 +36,10 @@ KLT::KLT (int windowRadius, int searchRadius)
 {
   this->windowRadius = windowRadius;
   windowWidth = 2 * windowRadius + 1;
-  minDeterminant = 2e-12;
-  minDisplacement = 0.1;
+  minDeterminant = 2e-12f;
+  minDisplacement = 0.1f;
   maxIterations = 10;
-  maxError = 0.06;
+  maxError = 0.06f;
 
   // Determine size of pyramid.  The goal is to have searchRadius (in the
   // full-sized image) fit within a region covered by the Minkowski sum
