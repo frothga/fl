@@ -45,7 +45,7 @@ GaussianDerivativeThird::GaussianDerivativeThird (int xy1, int xy2, int xy3, dou
   }
 
   const double C = 1.0 / (2.0 * PI * sigmaX * sigmaY);
-  int half = (int) (Gaussian2D::cutoff * (sigmaX >? sigmaY));
+  int half = (int) (Gaussian2D::cutoff * max (sigmaX, sigmaY));
   int size = 2 * half + 1;
 
   ImageOf<double> temp (size, size, GrayDouble);

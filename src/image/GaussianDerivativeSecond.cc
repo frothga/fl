@@ -17,7 +17,7 @@ GaussianDerivativeSecond::GaussianDerivativeSecond (int xy1, int xy2, double sig
   }
 
   const double C = 2 * PI * sigmaX * sigmaY;
-  int half = (int) (Gaussian2D::cutoff * (sigmaX >? sigmaY));
+  int half = (int) (Gaussian2D::cutoff * max (sigmaX, sigmaY));
   int size = 2 * half + 1;
 
   ImageOf<double> temp (size, size, GrayDouble);

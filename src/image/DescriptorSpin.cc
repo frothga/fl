@@ -52,10 +52,10 @@ DescriptorSpin::value (const Image & image, const PointAffine & point)
   Point pbl = S * bl;
   Point pbr = S * br;
 
-  int sourceL = (int) rint (ptl.x <? ptr.x <? pbl.x <? pbr.x >? 0);
-  int sourceR = (int) rint (ptl.x >? ptr.x >? pbl.x >? pbr.x <? image.width - 1);
-  int sourceT = (int) rint (ptl.y <? ptr.y <? pbl.y <? pbr.y >? 0);
-  int sourceB = (int) rint (ptl.y >? ptr.y >? pbl.y >? pbr.y <? image.height - 1);
+  int sourceL = (int) rint (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0f));
+  int sourceR = (int) rint (min (max (ptl.x, ptr.x, pbl.x, pbr.x), image.width - 1.0f));
+  int sourceT = (int) rint (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0f));
+  int sourceB = (int) rint (min (max (ptl.y, ptr.y, pbl.y, pbr.y), image.height - 1.0f));
 
   R.region (0, 0, 1, 2) *= binsRadial / supportRadial;  // Now R maps directly to radial bin values
 

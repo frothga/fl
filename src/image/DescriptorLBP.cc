@@ -150,10 +150,10 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
   {
 	double h = fabs (S(0,0) * supportRadial);
 	double v = fabs (S(1,1) * supportRadial);
-	sourceL = (int) rint (S(0,2) - h >? R);
-	sourceR = (int) rint (S(0,2) + h <? image.width - 1 - R);
-	sourceT = (int) rint (S(1,2) - v >? R);
-	sourceB = (int) rint (S(1,2) + v <? image.height - 1 - R);
+	sourceL = (int) rint (max (S(0,2) - h, (double) R));
+	sourceR = (int) rint (min (S(0,2) + h, (double) image.width - 1 - R));
+	sourceT = (int) rint (max (S(1,2) - v, (double) R));
+	sourceB = (int) rint (min (S(1,2) + v, (double) image.height - 1 - R));
 	preprocess (image);
   }
   else  // Shape change, so we must compute a transformed patch

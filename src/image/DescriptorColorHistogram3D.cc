@@ -232,10 +232,10 @@ DescriptorColorHistogram3D::value (const Image & image, const PointAffine & poin
   Point pbl = S * bl;
   Point pbr = S * br;
 
-  sourceL = (int) floorf (ptl.x <? ptr.x <? pbl.x <? pbr.x >? 0);
-  sourceR = (int) ceilf  (ptl.x >? ptr.x >? pbl.x >? pbr.x <? image.width - 1);
-  sourceT = (int) floorf (ptl.y <? ptr.y <? pbl.y <? pbr.y >? 0);
-  sourceB = (int) ceilf  (ptl.y >? ptr.y >? pbl.y >? pbr.y <? image.height - 1);
+  sourceL = (int) floorf (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0f));
+  sourceR = (int) ceilf  (min (max (ptl.x, ptr.x, pbl.x, pbr.x), image.width - 1.0f));
+  sourceT = (int) floorf (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0f));
+  sourceB = (int) ceilf  (min (max (ptl.y, ptr.y, pbl.y, pbr.y), image.height - 1.0f));
 
   // Gather color values into histogram
   clear ();

@@ -28,8 +28,8 @@ TransformGauss::prepareG ()
   sigmaY = sqrt (S(1,1));  // ditto for y-axis
   Gshw = (int) ceil (sigmaX * 3);  // Desired size of kernel in source pixels
   Gshh = (int) ceil (sigmaY * 3);
-  GstepX = (int) ceil (stepsPerZ / sigmaX) >? 1;  // (steps / source-pixel) = (steps / Z) / (source-pixels / Z)
-  GstepY = (int) ceil (stepsPerZ / sigmaY) >? 1;
+  GstepX = max ((int) ceil (stepsPerZ / sigmaX), 1);  // (steps / source-pixel) = (steps / Z) / (source-pixels / Z)
+  GstepY = max ((int) ceil (stepsPerZ / sigmaY), 1);
   G.resize ((2 * Gshw + 1) * GstepX,
 			(2 * Gshh + 1) * GstepY);
   S = !S;
@@ -90,8 +90,8 @@ TransformGauss::filter (const Image & image)
 		  int beginY = ry - Gshh;
 		  int endX   = rx + Gshw;
 		  int endY   = ry + Gshh;
-		  endX = endX <? (image.width - 1);
-		  endY = endY <? (image.height - 1);
+		  endX = min (endX, (image.width - 1));
+		  endY = min (endY, (image.height - 1));
 		  float weight = 0;
 		  float sum = 0;
 		  int Gx      = (int) ((0.499999 + rx - x) * GstepX);  // 0.499999 rather than 0.5 to ensure we get [0, GstepX) rather than [0, GstepX].
@@ -146,8 +146,8 @@ TransformGauss::filter (const Image & image)
 		  int beginY = ry - Gshh;
 		  int endX   = rx + Gshw;
 		  int endY   = ry + Gshh;
-		  endX = endX <? (image.width - 1);
-		  endY = endY <? (image.height - 1);
+		  endX = min (endX, (image.width - 1));
+		  endY = min (endY, (image.height - 1));
 		  double weight = 0;
 		  double sum = 0;
 		  int Gx      = (int) ((0.499999 + rx - x) * GstepX);  // 0.499999 rather than 0.5 to ensure we get [0, GstepX) rather than [0, GstepX].
@@ -205,8 +205,8 @@ TransformGauss::filter (const Image & image)
 		  int beginY = ry - Gshh;
 		  int endX   = rx + Gshw;
 		  int endY   = ry + Gshh;
-		  endX = endX <? (image.width - 1);
-		  endY = endY <? (image.height - 1);
+		  endX = min (endX, (image.width - 1));
+		  endY = min (endY, (image.height - 1));
 		  float weight = 0;
 		  float sum[] = {0, 0, 0, 0};
 		  int Gx      = (int) ((0.499999 + rx - x) * GstepX);  // 0.499999 rather than 0.5 to ensure we get [0, GstepX) rather than [0, GstepX].

@@ -25,7 +25,7 @@ FilterHarris::FilterHarris (double sigmaD, double sigmaI, const PixelFormat & fo
   dG_D *= sigmaD;  // Boost to make results comparable across scale.
 
   offsetI = G1_I.width / 2;
-  offsetD = (G1_D.width >? dG_D.width) / 2;
+  offsetD = max (G1_D.width, dG_D.width) / 2;
   offset = offsetI + offsetD;
 
   offset1 = 0;
@@ -64,7 +64,7 @@ FilterHarris::preprocess (const Image & image)
   dG_D.direction = Vertical;
   Image dy = image * G1_D * dG_D;
 
-  xx.resize (dx.width <? dy.width, dx.height <? dy.height);
+  xx.resize (min (dx.width, dy.width), min (dx.height, dy.height));
   xy.resize (xx.width, xx.height);
   yy.resize (xx.width, xx.height);
 
