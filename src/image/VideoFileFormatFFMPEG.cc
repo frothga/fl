@@ -16,6 +16,8 @@ VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName, const PixelF
   fc = 0;
   cc = 0;
   packet.size = 0;
+  lastPacket.size = 0;
+  timestampMode = false;
 
   this->hint = &hint;
   this->fileName = fileName;
@@ -31,20 +33,19 @@ VideoInFileFFMPEG::~VideoInFileFFMPEG ()
 void
 VideoInFileFFMPEG::seekFrame (int frame)
 {
-  if (frame < this->frame)
+  if (cc  &&  frame < cc->frame_number)
   {
 	close ();
 	open (fileName);
   }
 
-  while (this->frame < frame)
+  while (cc  &&  cc->frame_number < frame)
   {
 	readNext (NULL);
 	if (! gotPicture)
 	{
 	  return;
 	}
-	this->frame++;
 	gotPicture = 0;
   }
 }
@@ -93,10 +94,18 @@ VideoInFileFFMPEG::readNext (Image * image)
 
 	if (size <= 0)
 	{
-	  if (packet.size)
+	  if (lastPacket.size)
 	  {
-		av_free_packet (&packet);
+		av_free_packet (&lastPacket);
 	  }
+	  lastPacket = packet;
+	  // Not sure if AVInputFormat::read_packet(), by way of av_read_packet(),
+	  // will simply treat packet as uninitialized, or if it will do some
+	  // special behavior if non-zero data is present.  It should treat it
+	  // as uninitialized, but there is no interface guarantee in avformat.h.
+	  // Therefore, do a minimal amount of zeroing...
+	  packet.size = 0;
+	  packet.data = 0;
 
 	  state = av_read_packet (fc, &packet);
 	  if (state < 0)
@@ -125,11 +134,16 @@ VideoInFileFFMPEG::good () const
 }
 
 void
+VideoInFileFFMPEG::setTimestampMode (bool frames)
+{
+  timestampMode = frames;
+}
+
+void
 VideoInFileFFMPEG::open (const string & fileName)
 {
   size = 0;
   memset (&picture, 0, sizeof (picture));
-  frame = 0;
   gotPicture = 0;
 
   state = av_open_input_file (&fc, fileName.c_str (), NULL, 0, NULL);
@@ -188,10 +202,13 @@ VideoInFileFFMPEG::open (const string & fileName)
 void
 VideoInFileFFMPEG::close ()
 {
+  if (lastPacket.size)
+  {
+	av_free_packet (&lastPacket);  // sets size field to zero
+  }
   if (packet.size)
   {
 	av_free_packet (&packet);
-	packet.size = 0;
   }
   if (cc  &&  cc->codec)
   {
@@ -207,16 +224,7 @@ VideoInFileFFMPEG::close ()
   state = -12;
 }
 
-// This is really the job of PixelFormat, so create one for YUV.
-// Also consider enabling Image to handle planar storage.
-inline unsigned int
-yuv2rgb (const float Y, const float U, const float V)
-{
-  unsigned int r = (unsigned int) (max (min (1.0f, (Y                + 1.40200f * V)), 0.0f) * 255);
-  unsigned int g = (unsigned int) (max (min (1.0f, (Y - 0.34414f * U - 0.71414f * V)), 0.0f) * 255);
-  unsigned int b = (unsigned int) (max (min (1.0f, (Y + 1.77200f * U               )), 0.0f) * 255);
-  return (r << 16) | (g << 8) | b;
-}
+PixelFormatRGBABits RGB24 (3, 0xFF0000, 0xFF00, 0xFF, 0x0);
 
 void
 VideoInFileFFMPEG::extractImage (Image & image)
@@ -260,17 +268,66 @@ VideoInFileFFMPEG::extractImage (Image & image)
 	  }
 	}
   }
+  else if (cc->pix_fmt == PIX_FMT_YUV411P)
+  {
+	if (hint->monochrome  ||  cc->flags & CODEC_FLAG_GRAY)
+	{
+	  image.format = &GrayChar;
+	  image.resize (cc->width, cc->height);
+	  for (int y = 0; y < cc->height; y++)
+	  {
+		memcpy (((unsigned char *) image.buffer) + y * cc->width, picture.data[0] + y * picture.linesize[0], cc->width);
+	  }
+	}
+	else
+	{
+	  image.format = &YVYUChar;
+	  image.resize (cc->width, cc->height);
+	  ImageOf<unsigned int> that (image);
+	  that.width /= 2;
+
+	  for (int y = 0; y < cc->height; y++)
+	  {
+		for (int x = 0; x < cc->width; x += 4)
+		{
+		  int hx = x / 2;
+		  int fx = x / 4;
+
+		  unsigned int U = picture.data[1][y * picture.linesize[1] + fx];
+		  unsigned int V = picture.data[2][y * picture.linesize[2] + fx] << 16;
+
+		  unsigned int Y0 = picture.data[0][y * picture.linesize[0] + x];
+		  unsigned int Y1 = picture.data[0][y * picture.linesize[0] + x+1];
+		  unsigned int Y2 = picture.data[0][y * picture.linesize[0] + x+2];
+		  unsigned int Y3 = picture.data[0][y * picture.linesize[0] + x+3];
+
+		  that (hx,   y) = (Y1 << 24) | V | (Y0 << 8) | U;
+		  that (hx+1, y) = (Y3 << 24) | V | (Y2 << 8) | U;
+		}
+	  }
+	}
+  }
   else if (cc->pix_fmt == PIX_FMT_YUV422)
   {
 	image.attach (picture.data[0], cc->width, cc->height, YVYUChar);
+  }
+  else if (cc->pix_fmt == PIX_FMT_BGR24)
+  {
+	image.attach (picture.data[0], cc->width, cc->height, RGB24);
   }
   else
   {
 	throw "Unknown pixel format";
   }
 
-  // picture.display_picture_number does not provide reliable information
-  image.timestamp = (double) frame++ * stream->r_frame_rate_base / stream->r_frame_rate;
+  if (timestampMode)
+  {
+	image.timestamp = cc->frame_number - 1;
+  }
+  else
+  {
+	image.timestamp = (double) (cc->frame_number - 1) * stream->r_frame_rate_base / stream->r_frame_rate;
+  }
   gotPicture = 0;
 }
 
@@ -498,6 +555,13 @@ VideoOutFileFFMPEG::set (const std::string & name, double value)
 	if (stream)
 	{
 	  stream->codec.frame_rate = (int) rint (value * stream->codec.frame_rate_base);
+	}
+  }
+  else if (name == "bitrate")
+  {
+	if (stream)
+	{
+	  stream->codec.bit_rate = (int) rint (value);
 	}
   }
 }
