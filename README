@@ -7,12 +7,11 @@ The arrangement of the materials is:
 bin
 	Command line executables.  These are built from src/util
 
-doc
-	Documentation?  In your dreams!
+html, man
+	Doxygen generated documentation.
 
 include
-	All the include files for the libraries.  These are in a flat directory
-	structure.
+	All the include files for the libraries.
 
 lib
 	The library files needed for linking.
@@ -22,12 +21,14 @@ script
 
 src
 	Source code for everything.
+	base
+		Simple utility classes not catagorized elsewhere.
 	util
 		These are compiled into command line executables rather than a library.
 	X
 		Classes that wrap X window structures.  Not intended to be a GUI
 		toolkit as much as a way to access basic X using C++.
-	linear
+	numeric
 		Linear algebra classes (vector, matrix) and a bridge to LAPACK.  Not
 		the most efficient matrix library, and doesn't inlcude every fancy
 		memory layout, but does have a clean programming interface.
