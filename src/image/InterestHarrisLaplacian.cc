@@ -60,19 +60,25 @@ InterestHarrisLaplacian::InterestHarrisLaplacian (int maxPoints, float threshold
 inline void
 InterestHarrisLaplacian::findScale (const Image & image, PointInterest & p)
 {
-  float harrisWeight = p.weight;
-  p.weight = 0;
-
   int s = (int) rint (logf (p.scale) / logf (stepSize)) - firstStep;
   int l = max (0, s - extraSteps);
   int h = min ((int) laplacians.size () - 1, s + extraSteps);
-  for (int i = l + 1; i < h; i++)
+
+  vector<float> r (h - l + 1);
+  for (int i = l; i <= h; i++)
   {
-	float response = fabsf (laplacians[i].response (image, p));
-	if (response > p.weight)
+	r[i - l] = fabsf (laplacians[i].response (image, p));
+  }
+
+  float harrisWeight = p.weight;
+  p.weight = 0;
+  p.scale = 0;
+  for (int i = 1; i < r.size () - 1; i++)
+  {
+	if (r[i] > r[i-1]  &&  r[i] > r[i+1]  &&  r[i] > p.weight)
 	{
-	  p.weight = response;
-	  p.scale = laplacians[i].sigma;
+	  p.weight = r[i];
+	  p.scale = laplacians[i + l].sigma;
 	}
   }
 
@@ -108,25 +114,43 @@ double startTime = getTimestamp ();
 	}
 	NonMaxSuppress nms (nmsSize);
 	filtered *= nms;
-	float threshold = nms.average * thresholdFactor;
+
+	IntensityDeviation std (0, true);
+	filtered * std;
+	float threshold = std.deviation * thresholdFactor;
 
 	for (int y = 0; y < filtered.height; y++)
 	{
 	  for (int x = 0; x < filtered.width; x++)
 	  {
 		float pixel = filtered (x, y);
-		if (pixel > threshold)
+		if (pixel > threshold  &&  (result.size () < maxPoints  ||  pixel > result.begin ()->weight))
 		{
 		  PointInterest p;
 		  p.x = x + offset;
 		  p.y = y + offset;
 
-		  float r0 = fabsf (laplacians[ i      * extraSteps].response (work, p));  // one step down
-		  float r1 = fabsf (laplacians[(i + 1) * extraSteps].response (work, p));  // Current scale
-		  float r2 = fabsf (laplacians[(i + 2) * extraSteps].response (work, p));  // one step up
-		  if (r1 > r0  &&  r1 > r2)
+		  int l = i * extraSteps;
+		  int h = l + 2 * extraSteps;
+		  vector<float> r (h - l + 1);
+		  for (int j = l; j <= h; j++)
 		  {
-			p.scale = filters[i].sigmaI;
+			r[j - l] = fabsf (laplacians[j].response (work, p));
+		  }
+
+		  p.weight = 0;
+		  p.scale = 0;
+		  for (int j = 1; j < r.size () - 1; j++)
+		  {
+			if (r[j] > r[j-1]  &&  r[j] > r[j+1]  &&  r[j] > p.weight)
+			{
+			  p.weight = r[j];
+			  p.scale = laplacians[j + l].sigma;
+			}
+		  }
+
+		  if (p.scale > 0)
+		  {
 			p.weight = pixel;
 			p.detector = PointInterest::Harris;
 			result.insert (p);
@@ -140,13 +164,4 @@ double startTime = getTimestamp ();
 	}
 cerr << " " << getTimestamp () - startTime << endl;
   }
-
-double startTime = getTimestamp ();
-cerr << "refine scales ";
-  multiset<PointInterest>::iterator it;
-  for (it = result.begin (); it != result.end (); it++)
-  {
-	findScale (work, const_cast<PointInterest &> (*it));
-  }
-cerr << getTimestamp () - startTime << endl;
 }

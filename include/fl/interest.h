@@ -25,7 +25,7 @@ namespace fl
   class InterestHarris : public InterestOperator
   {
   public:
-	InterestHarris (int neighborhood = 5, int maxPoints = 300, float thresholdFactor = 0.02);
+	InterestHarris (int neighborhood = 5, int maxPoints = 5000, float thresholdFactor = 0.02);
 
 	virtual void run (const Image & image, std::multiset<PointInterest> & result);
 
@@ -38,36 +38,38 @@ namespace fl
   class InterestHarrisLaplacian : public InterestOperator
   {
   public:
-	InterestHarrisLaplacian (int maxPoints = 300, float thresholdFactor = 0.02, int neighborhood = 1, int firstStep = 0, int lastStep = 7, float stepSize = -1);
+	InterestHarrisLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);
 
 	virtual void run (const Image & image, std::multiset<PointInterest> & result);
 
 	void findScale (const Image & image, PointInterest & p);
 
-	NonMaxSuppress nms;
-	std::vector<FilterHarrisEigen> filters;
+	std::vector<FilterHarris> filters;  // FilterHarris clearly outperforms FilterHarrisEigen in tests.
 	std::vector<Laplacian> laplacians;
-	int neighborhood;
 	int maxPoints;
 	float thresholdFactor;
-	float halfStep;
+	float neighborhood;
+	int firstStep;
+	int extraSteps;
+	float stepSize;
   };
 
   class InterestLaplacian : public InterestOperator
   {
   public:
-	InterestLaplacian (int maxPoints = 300, float thresholdFactor = 0.02, int neighborhood = 1, int firstStep = 0, int lastStep = 7, float stepSize = -1, int extraSteps = 20);
+	InterestLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);  // neighborhood >= 0 means fixed size (min = 1 pixel); neighborhood < 0 means multiple of scale.
 
 	virtual void run (const Image & image, std::multiset<PointInterest> & result);
 
 	void findScale (const Image & image, PointInterest & p);
 
-	NonMaxSuppress nms;
 	std::vector<Laplacian> laplacians;
-	int neighborhood;
 	int maxPoints;
 	float thresholdFactor;
+	float neighborhood;
+	int firstStep;
 	int extraSteps;
+	float stepSize;
   };
 }
 
