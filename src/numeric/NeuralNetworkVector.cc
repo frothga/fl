@@ -76,10 +76,12 @@ NeuralNetworkVector::read (std::istream & stream)
   constructNetwork (inputSize, outputSize, hiddenSizes);
 
   // Now read all the weights
-  if (hiddenSizes.size () < 1)
+  Vector<float> biases;
+  Matrix<float> weights;
+  if (hiddenLayers < 1)
   {
-	Vector<float> biases (stream);
-	Matrix<float> weights (stream);
+	biases.read (stream);
+	weights.read (stream);
 	for (int i = 0; i < outputs.size (); i++)
 	{
 	  vector<Synapse *> & synapses = outputs[i]->inputs;
@@ -92,9 +94,6 @@ NeuralNetworkVector::read (std::istream & stream)
   }
   else
   {
-	Vector<float> biases;
-	Matrix<float> weights;
-
 	// Inputs to first hidden layer
 	biases.read (stream);
 	weights.read (stream);
@@ -110,29 +109,31 @@ NeuralNetworkVector::read (std::istream & stream)
 
 	// Hidden layer to hidden layer
 	int h = hiddenSizes[0];
-	for (int i = 1; i < hiddenSizes.size (); i++)
+	for (int i = 1; i < hiddenLayers; i++)
 	{
 	  biases.read (stream);
 	  weights.read (stream);
 	  for (int j = 0; j < hiddenSizes[i]; j++)
 	  {
-		vector<Synapse *> & synapses = hidden[h+j]->inputs;
+		vector<Synapse *> & synapses = hidden[h++]->inputs;
 		synapses[0]->weight = biases[j];
 		for (int k = 1; k < synapses.size (); k++)
 		{
 		  synapses[k]->weight = weights(j,k-1);
 		}
 	  }
-	  h += hiddenSizes[i];
 	}
 
 	// Hidden layer to output layer
-	int h = hidden.size () - sizes.back ();
-	for (; h < hidden.size (); h++)
+	biases.read (stream);
+	weights.read (stream);
+	for (int i = 0; i < outputs.size (); i++)
 	{
-	  for (int j = 0; j < outputs.size (); j++)
+	  vector<Synapse *> & synapses = outputs[i]->inputs;
+	  synapses[0]->weight = biases[i];
+	  for (int j = 1; j < synapses.size (); j++)
 	  {
-		new SynapseBackprop (hidden[h], outputs[j]);
+		synapses[j]->weight = weights(i,j-1);
 	  }
 	}
   }
@@ -147,35 +148,78 @@ NeuralNetworkVector::write (std::ostream & stream, bool withName) const
 
   int inputSize = inputs.size ();
   int outputSize = outputs.size ();
-  int hiddenSize = hidden.size ();
   stream.write ((char *) & inputSize,  sizeof (inputSize));
   stream.write ((char *) & outputSize, sizeof (outputSize));
-  stream.write ((char *) & hiddenSize, sizeof (hiddenSize));
+
+  int hiddenLayers = hiddenSizes.size ();
+  stream.write ((char *) & hiddenLayers, sizeof (hiddenLayers));
+  for (int i = 0; i < hiddenLayers; i++)
+  {
+	stream.write ((char *) & hiddenSizes[i], sizeof (hiddenSizes[i]));
+  }
 
   // Write all the weights
-  Matrix<float> inputHiddenWeights (hiddenSize, inputSize);
-  Matrix<float> hiddenOutputWeights (outputSize, hiddenSize);
-
-  for (int i = 0; i < inputSize; i++)
+  Vector<float> biases;
+  Matrix<float> weights;
+  if (hiddenLayers < 1)
   {
-	vector<Synapse *> & synapses = inputs[i]->outputs;
-	for (int j = 0; j < hiddenSize; j++)
+	for (int i = 0; i < outputs.size (); i++)
 	{
-	  inputHiddenWeights(j,i) = synapses[j]->weight;
+	  vector<Synapse *> & synapses = outputs[i]->inputs;
+	  biases[i] = synapses[0]->weight;
+	  for (int j = 1; j < synapses.size (); j++)
+	  {
+		weights(i,j-1) = synapses[j]->weight;
+	  }
 	}
+	biases.write (stream);
+	weights.write (stream);
   }
-
-  for (int i = 0; i < hiddenSize; i++)
+  else
   {
-	vector<Synapse *> & synapses = hidden[i]->outputs;
-	for (int j = 0; j < outputSize; j++)
+	// Inputs to first hidden layer
+	for (int i = 0; i < hiddenSizes[0]; i++)
 	{
-	  hiddenOutputWeights(j,i) = synapses[j]->weight;
+	  vector<Synapse *> & synapses = hidden[i]->inputs;
+	  biases[i] = synapses[0]->weight;
+	  for (int j = 1; j < synapses.size (); j++)
+	  {
+		weights(i,j-1) = synapses[j]->weight;
+	  }
 	}
-  }
+	biases.write (stream);
+	weights.write (stream);
 
-  inputHiddenWeights.write (stream);
-  hiddenOutputWeights.write (stream);
+	// Hidden layer to hidden layer
+	int h = hiddenSizes[0];
+	for (int i = 1; i < hiddenLayers; i++)
+	{
+	  for (int j = 0; j < hiddenSizes[i]; j++)
+	  {
+		vector<Synapse *> & synapses = hidden[h++]->inputs;
+		biases[j] = synapses[0]->weight;
+		for (int k = 1; k < synapses.size (); k++)
+		{
+		  weights(j,k-1) = synapses[k]->weight;
+		}
+	  }
+	  biases.write (stream);
+	  weights.write (stream);
+	}
+
+	// Hidden layer to output layer
+	for (int i = 0; i < outputs.size (); i++)
+	{
+	  vector<Synapse *> & synapses = outputs[i]->inputs;
+	  biases[i] = synapses[0]->weight;
+	  for (int j = 1; j < synapses.size (); j++)
+	  {
+		weights(i,j-1) = synapses[j]->weight;
+	  }
+	}
+	biases.write (stream);
+	weights.write (stream);
+  }
 }
 
 
