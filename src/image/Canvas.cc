@@ -113,6 +113,15 @@ Canvas::drawEllipse (const Point & center, const Matrix2x2<double> & shape, floa
 }
 
 void
+Canvas::drawEllipse (const Matrix<double> & S, float radius, unsigned int color)
+{
+  Point center (S(0,2), S(1,2));
+  Matrix2x2<double> shape = S.region (0, 0, 1, 1);
+  shape = shape * ~shape;
+  drawEllipse (center, shape, radius, color);
+}
+
+void
 Canvas::drawImage (const Image & image, Point & p, float width, float height)
 {
   throw "drawImage not implemented for this type of Canvas";
