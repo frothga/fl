@@ -36,6 +36,7 @@ namespace fl
 	void seekTime (double timestamp);  ///< Position stream so that next frame will have the smallest timestamp >= the given timestamp.
 	VideoIn & operator >> (Image & image);  ///< Extract next image frame.  image may end up attached to a buffer used internally by the video device or library, so it may be freed unexpectedly.  However, this clss guarantees that the memory will not be freed before the next call to a method of this class.
 	bool good () const;  ///< True as long as it is possible to read another frame from the stream.
+	void setTimestampMode (bool frames = false);  ///< Changes image.timestamp from presentation time to frame number.
 
 	VideoInFile * file;
   };
@@ -68,6 +69,7 @@ namespace fl
 	virtual void seekTime (double timestamp) = 0;  ///< Position stream so that next frame will have the smallest timestamp >= the given timestamp.
 	virtual void readNext (Image & image) = 0;  ///< Reads the next frame and stores it in image.  image may end up attached to a buffer used internally by the video device or library, so it may be freed unexpectedly.  However, this clss guarantees that the memory will not be freed before the next call to a method of this class.
 	virtual bool good () const = 0;  ///< True if another frame can be read
+	virtual void setTimestampMode (bool frames = false) = 0;  ///< Changes image.timestamp from presentation time to frame number.
   };
 
   class VideoOutFile
@@ -114,6 +116,7 @@ namespace fl
 	virtual void seekTime (double timestamp);
 	virtual void readNext (Image & image);
 	virtual bool good () const;
+	virtual void setTimestampMode (bool frames = false);
 
 	// private ...
 	void open (const std::string & fileName);
@@ -132,7 +135,7 @@ namespace fl
 	unsigned char * data;
 	int gotPicture;  ///< indicates that picture contains a full image
 	int state;  ///< state == 0 means good; anything else means we can't read more frames
-	int frame;  ///< number of next frame to be extracted
+	bool timestampMode;  ///< Indicates that image.timestamp should be frame number rather than presentation time.
 
 	const PixelFormat * hint;
 	std::string fileName;
