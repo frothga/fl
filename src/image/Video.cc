@@ -7,7 +7,7 @@ using namespace fl;
 
 // class VideoIn ----------------------------------------------------------------
 
-VideoIn::VideoIn (const string & fileName, const PixelFormat & hint)
+VideoIn::VideoIn (const string & fileName, const fl::PixelFormat & hint)
 {
   file = 0;
   VideoFileFormat * format = VideoFileFormat::find (fileName);
