@@ -7,21 +7,21 @@ FL_LIB = -L$(SOURCE_LIB) -lflBase -lflImage -lflNumeric -lflX
 
 VPATH = $(SOURCE_BIN)
 
-PROGRAMS := $(patsubst %.cc,%,$(wildcard *.cc))
+PROGRAMS := $(patsubst %.cc,%$(EXESUF),$(wildcard *.cc))
 
 default: all
 all: $(PROGRAMS)
 
-%: %.cc
+%$(EXESUF): %.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $(SOURCE_BIN)/$@
 
-crypt: crypt.cc
+crypt$(EXESUF): crypt.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $(SOURCE_BIN)/$@ -lcrypt
 
-invert: invert.cc
+invert$(EXESUF): invert.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $(SOURCE_BIN)/$@ $(LAPACK_LIB)
 
-vread: vread.cc
+vread$(EXESUF): vread.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $(SOURCE_BIN)/$@ $(FL_LIB) $(MPEG_LIB) $(MPEG_INC) $(X_LIB) $(JPEG_LIB)
 
 
