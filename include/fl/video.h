@@ -35,7 +35,7 @@ namespace fl
 	void seekFrame (int frame);  ///< Position stream just before the given frame.  Numbers are zero based.  (Maybe they should be one-based.  Research the convention.)
 	void seekTime (double timestamp);  ///< Position stream so that next frame will have the smallest timestamp >= the given timestamp.
 	VideoIn & operator >> (Image & image);  ///< Extract next image frame.  image may end up attached to a buffer used internally by the video device or library, so it may be freed unexpectedly.  However, this clss guarantees that the memory will not be freed before the next call to a method of this class.
-	bool good () const;  ///< True as long as it is possible to read another frame from the stream.
+	bool good () const;  ///< Indicates that the stream is open and the last read (if any) succeeded.
 	void setTimestampMode (bool frames = false);  ///< Changes image.timestamp from presentation time to frame number.
 
 	VideoInFile * file;
@@ -68,7 +68,7 @@ namespace fl
 	virtual void seekFrame (int frame) = 0;  ///< Position stream just before the given frame.  Numbers follow same convention as Video class.
 	virtual void seekTime (double timestamp) = 0;  ///< Position stream so that next frame will have the smallest timestamp >= the given timestamp.
 	virtual void readNext (Image & image) = 0;  ///< Reads the next frame and stores it in image.  image may end up attached to a buffer used internally by the video device or library, so it may be freed unexpectedly.  However, this clss guarantees that the memory will not be freed before the next call to a method of this class.
-	virtual bool good () const = 0;  ///< True if another frame can be read
+	virtual bool good () const = 0;  ///< Indicates that the stream is open and the last read (if any) succeeded.
 	virtual void setTimestampMode (bool frames = false) = 0;  ///< Changes image.timestamp from presentation time to frame number.
   };
 
@@ -129,8 +129,7 @@ namespace fl
 	AVStream * stream;
 	AVCodec * codec;	
 	AVFrame picture;
-	AVPacket packet;
-	AVPacket lastPacket;  ///< Form a 2-packet ring buffer {packet, lastPacket}.  Ensures that if nextImage() attaches image to packet, the memory won't be freed before next read.
+	AVPacket packet;  ///< Ensure that if nextImage() attaches image to packet, the memory won't be freed before next read.
 	int size;
 	unsigned char * data;
 	int gotPicture;  ///< indicates that picture contains a full image
