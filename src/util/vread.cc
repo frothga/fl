@@ -206,13 +206,15 @@ main (int argc, char * argv[])
   try
   {
 	Parameters parms (argc, argv);
-	int frame = parms.getInt ("frame", 0);
+	int frame  = parms.getInt ("frame", 0);
+	bool pause = parms.getInt ("pause", 0);
 
 	if (parms.fileNames.size () < 1)
 	{
 	  cerr << "Usage: " << argv[0] << " {video filename} [parameters]" << endl;
 	  cerr << "parameters:" << endl;
-	  cerr << "  frame={frame number}" << endl;
+	  cerr << "  frame={frame number} (default = 0)" << endl;
+	  cerr << "  pause={1 to freeze first frame, 0 otherwise} (default = 0)" << endl;
 	}
 
 	new ImageFileFormatPGM;
@@ -224,7 +226,14 @@ main (int argc, char * argv[])
 	{
 	  window.vin.seekFrame (frame);
 	}
-	window.play ();
+	if (pause)
+	{
+	  window.showFrame ();
+	}
+	else
+	{
+	  window.play ();
+	}
 	window.waitForClick ();  // really "wait for close", since we override SlideShow's usage
   }
   catch (const char * error)
