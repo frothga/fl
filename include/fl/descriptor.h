@@ -237,7 +237,7 @@ namespace fl
 
 	void computeGradient (const Image & image);
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (const Image & image, const PointAffine & point);  ///< Returns one or more angle hypotheses, listed in order of descending strength.  That is, the strongest angle hypothesis will be in row 0.
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
