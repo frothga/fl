@@ -57,37 +57,6 @@ InterestHarrisLaplacian::InterestHarrisLaplacian (int maxPoints, float threshold
   }
 }
 
-inline void
-InterestHarrisLaplacian::findScale (const Image & image, PointInterest & p)
-{
-  int s = (int) rint (logf (p.scale) / logf (stepSize)) - firstStep;
-  int l = max (0, s - extraSteps);
-  int h = min ((int) laplacians.size () - 1, s + extraSteps);
-
-  vector<float> r (h - l + 1);
-  for (int i = l; i <= h; i++)
-  {
-	r[i - l] = fabsf (laplacians[i].response (image, p));
-  }
-
-  float harrisWeight = p.weight;
-  p.weight = 0;
-  p.scale = 0;
-  for (int i = 1; i < r.size () - 1; i++)
-  {
-	if (r[i] > r[i-1]  &&  r[i] > r[i+1]  &&  r[i] > p.weight)
-	{
-	  p.weight = r[i];
-	  p.scale = laplacians[i + l].sigma;
-	}
-  }
-
-  // p.weight could either be max Laplacian response or max Harris response
-  // but probably Harris response is more meaningful since this is a Harris
-  // detector.  :)
-  p.weight = harrisWeight;
-}
-
 void
 InterestHarrisLaplacian::run (const Image & image, std::multiset<PointInterest> & result)
 {
