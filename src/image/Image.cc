@@ -592,6 +592,50 @@ Image::operator - (const Image & that)
   return result;
 }
 
+Image
+Image::operator * (double factor)
+{
+  Image result (width, height, *format);
+
+  if (*format == GrayFloat)
+  {
+	float * fromPixel = (float *) buffer;
+	float * toPixel   = (float *) result.buffer;
+	float * end       = fromPixel + width * height;
+	while (fromPixel < end)
+	{
+	  *toPixel++ = *fromPixel++ * factor;
+	}
+  }
+  else if (*format == GrayDouble)
+  {
+	double * fromPixel = (double *) buffer;
+	double * toPixel   = (double *) result.buffer;
+	double * end       = fromPixel + width * height;
+	while (fromPixel < end)
+	{
+	  *toPixel++ = *fromPixel++ * factor;
+	}
+  }
+  else if (*format == GrayChar)
+  {
+	int ifactor = (int) (factor * (1 << 16));
+	unsigned char * fromPixel = (unsigned char *) buffer;
+	unsigned char * toPixel   = (unsigned char *) result.buffer;
+	unsigned char * end       = fromPixel + width * height;
+	while (fromPixel < end)
+	{
+	  *toPixel++ = (*fromPixel * ifactor) >> 16;
+	}
+  }
+  else
+  {
+	throw "Image::operator * : unimplemented format";
+  }
+
+  return result;
+}
+
 Image &
 Image::operator *= (double factor)
 {
