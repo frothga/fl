@@ -96,7 +96,7 @@ test: test.o $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(INTEREST_O) $(CONVOLVE_O) $(VID
 
 
 clean:
-	rm -f *~ *.o core core.* test $(SOURCE_LIB)/libflImage.a
+	rm -f *~ *.o core core.* test Dependencies $(SOURCE_LIB)/libflImage.a
 
 depend:
 	rm -f Dependencies

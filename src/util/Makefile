@@ -26,7 +26,7 @@ vread: vread.cc
 
 
 clean:
-	rm -f *~ *.o core core.* $(patsubst %,$(SOURCE_BIN)/%,$(PROGRAMS))
+	rm -f *~ *.o core core.* Dependencies $(patsubst %,$(SOURCE_BIN)/%,$(PROGRAMS))
 
 depend:
 	rm -f Dependencies

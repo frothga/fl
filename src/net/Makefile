@@ -13,7 +13,7 @@ test: test.o socket.o
 
 
 clean:
-	rm -f *~ *.o core core.* $(SOURCE_LIB)/libflNet.a
+	rm -f *~ *.o core core.* test Dependencies $(SOURCE_LIB)/libflNet.a
 
 depend:
 	rm -f Dependencies

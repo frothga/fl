@@ -17,7 +17,7 @@ test: test.o X.o glx.o GLShow.o SlideShow.o
 
 
 clean:
-	rm -f *~ *.o core core.* test $(SOURCE_LIB)/libflX.a
+	rm -f *~ *.o core core.* test Dependencies $(SOURCE_LIB)/libflX.a
 
 depend:
 	rm -f Dependencies
