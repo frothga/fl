@@ -195,6 +195,27 @@ PointAffine::PointAffine (std::istream & stream)
   read (stream);
 }
 
+Matrix<double>
+PointAffine::rectification () const
+{
+  Matrix<double> R (3, 3);
+  R.identity ();
+  R(0,0) = cos (- angle);
+  R(0,1) = -sin (- angle);
+  R(1,0) = -R(0,1);
+  R(1,1) = R(0,0);
+
+  Matrix<double> A (3, 3);
+  MatrixRegion<double> M (A, 0, 0, 1, 1);
+  M = ! this->A / scale;
+  A.region (0, 2, 1, 2) = ((M * (*this)) *= -1);
+  A(2,0) = 0;
+  A(2,1) = 0;
+  A(2,2) = 1;
+
+  return R * A;
+}
+
 void
 PointAffine::read (std::istream & stream)
 {
