@@ -8,7 +8,6 @@ using namespace fl;
 using namespace std;
 
 
-
 // class DescriptorColorHistogram3D -------------------------------------------
 
 DescriptorColorHistogram3D::DescriptorColorHistogram3D (int width, int height, float supportRadial)
@@ -46,8 +45,6 @@ DescriptorColorHistogram3D::~DescriptorColorHistogram3D ()
 void
 DescriptorColorHistogram3D::initialize ()
 {
-  monochrome = false;
-
   histogram = new float[width * width * height];
   valid     = new bool [width * width * height];
 
@@ -184,7 +181,7 @@ DescriptorColorHistogram3D::finish ()
 	  }
 	}
   }
-  result.normalize ();
+  result /= result.frob (1);  // normalize to a probability distribution
 
   return result;
 }
@@ -301,8 +298,8 @@ DescriptorColorHistogram3D::patch (const Vector<float> & value)
 		  yuv.y = (unsigned char) (255    * value[i++] / maximum);
 		  if (yuv.y > 0)
 		  {
-			yuv.u = (unsigned char) (255.0f * u / width);
-			yuv.v = (unsigned char) (255.0f * v / width);
+			yuv.u = (unsigned char) (255.0f * (u + 0.5f) / width);
+			yuv.v = (unsigned char) (255.0f * (v + 0.5f) / width);
 			result.setYUV (u, (height - y - 1) * width + v, yuv.all);
 		  }
 		}
@@ -311,6 +308,24 @@ DescriptorColorHistogram3D::patch (const Vector<float> & value)
   }
 
   return result;
+}
+
+Comparison *
+DescriptorColorHistogram3D::comparison ()
+{
+  return new ChiSquared;
+}
+
+bool
+DescriptorColorHistogram3D::isMonochrome ()
+{
+  return false;
+}
+
+int
+DescriptorColorHistogram3D::dimension ()
+{
+  return validCount;
 }
 
 void
