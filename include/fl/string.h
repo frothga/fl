@@ -50,5 +50,18 @@ namespace fl
   }
 }
 
+#ifdef _MSC_VER
+
+namespace std
+{
+  inline int
+  strcasecmp (const char * a, const char * b)
+  {
+	return _stricmp (a, b);
+  }
+}
+
+#endif
+
 
 #endif
