@@ -257,3 +257,44 @@ Parameters::getStringList (const string & name, vector<string> & result, const v
 	result.push_back (piece);
   }
 }
+
+void
+Parameters::getIntList (const string & name, vector<int> & result, const vector<int> * defaultValue) const
+{
+  string value = getChar (name);
+
+  result.clear ();
+  if (value.size () == 0)
+  {
+	if (defaultValue)
+	{
+	  result = *defaultValue;
+	}
+	return;
+  }
+
+  while (value.size ())
+  {
+	string piece;
+	split (value, ",", piece, value);
+	result.push_back (atoi (piece.c_str ()));
+  }
+}
+
+ostream &
+fl::operator << (ostream & out, const Parameters & parms)
+{
+  out << "name-value pairs:" << endl;
+  for (int i = 0; i < parms.names.size (); i++)
+  {
+	out << "  " << parms.names[i] << " = " << parms.values[i] << endl;
+  }
+
+  out << "fileNames:" << endl;
+  for (int i = 0; i < parms.fileNames.size (); i++)
+  {
+	out << "  " << parms.fileNames[i] << endl;
+  }
+
+  return out;
+}
