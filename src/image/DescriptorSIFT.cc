@@ -278,7 +278,7 @@ DescriptorSIFT::patch (const string & fileName, const Vector<float> & value)
 Comparison *
 DescriptorSIFT::comparison ()
 {
-  return new MetricEuclidean;
+  return new MetricEuclidean (2.0f);
 }
 
 void
