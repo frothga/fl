@@ -94,25 +94,43 @@ double startTime = getTimestamp ();
 	}
 	NonMaxSuppress nms (nmsSize);
 	filtered *= nms;
-	float threshold = nms.average * thresholdFactor;
+
+	IntensityDeviation std (0, true);
+	filtered * std;
+	float threshold = std.deviation * thresholdFactor;
 
 	for (int y = 0; y < filtered.height; y++)
 	{
 	  for (int x = 0; x < filtered.width; x++)
 	  {
 		float pixel = filtered (x, y);
-		if (pixel > threshold)
+		if (pixel > threshold  &&  (result.size () < maxPoints  ||  pixel > result.begin ()->weight))
 		{
 		  PointInterest p;
 		  p.x = x + offset;
 		  p.y = y + offset;
 
-		  float r0 = fabsf (laplacians[i - extraSteps].response (work, p));
-		  float r2 = fabsf (laplacians[i + extraSteps].response (work, p));
-		  if (pixel > r0  &&  pixel > r2  &&  r0 > 0  &&  r2 > 0)
+		  int l = i - extraSteps;
+		  int h = i + extraSteps;
+		  vector<float> r (h - l + 1);
+		  for (int j = l; j <= h; j++)
 		  {
-			p.scale = laplacians[i].sigma;
-			p.weight = pixel;
+			r[j - l] = fabsf (laplacians[j].response (work, p));
+		  }
+
+		  p.weight = 0;
+		  p.scale = 0;
+		  for (int j = 1; j < r.size () - 1; j++)
+		  {
+			if (r[j] > r[j-1]  &&  r[j] > r[j+1]  &&  r[j] > p.weight)
+			{
+			  p.weight = r[j];
+			  p.scale = laplacians[j + l].sigma;
+			}
+		  }
+
+		  if (p.scale > 0)
+		  {
 			p.detector = PointInterest::Laplacian;
 			result.insert (p);
 			if (result.size () > maxPoints)
@@ -125,13 +143,4 @@ double startTime = getTimestamp ();
 	}
 cerr << " " << getTimestamp () - startTime << endl;
   }
-
-double startTime = getTimestamp ();
-cerr << "refine scales ";
-  multiset<PointInterest>::iterator it;
-  for (it = result.begin (); it != result.end (); it++)
-  {
-	findScale (work, const_cast<PointInterest &> (*it));
-  }
-cerr << getTimestamp () - startTime << endl;
 }
