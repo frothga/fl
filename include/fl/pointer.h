@@ -73,36 +73,42 @@ namespace fl
 	  memory = that;
 	  metaData = size;
 	}
-	void copyFrom (const Pointer & that)
+	void copyFrom (const Pointer & that)  // decouple from memory held by that.  "that" could also be this.
 	{
-	  if (that.memory != memory)
+	  if (that.memory)
 	  {
-		if (! that.memory)
+		Pointer temp (that);  // force refcount up on memory block
+		if (that.memory == memory)  // the enemy is us...
 		{
 		  detach ();
 		}
-		else
+		int size = temp.size ();
+		if (size < 0)
 		{
-		  int size = that.size ();
-		  if (size < 0)
-		  {
-			throw "Don't know size of block to copy";
-		  }
-		  grow (size);
-		  memcpy (memory, that.memory, size);
+		  throw "Don't know size of block to copy";
 		}
+		grow (size);
+		memcpy (memory, temp.memory, size);
+	  }
+	  else
+	  {
+		detach ();
 	  }
 	}
 	void copyFrom (const void * that, int size)
 	{
-	  if (size <= 0)
+	  if (size > 0)
 	  {
-		detach ();
-	  }
-	  else if (that != memory)
-	  {
+		if (that == memory)
+		{
+		  detach ();
+		}
 		grow (size);
 		memcpy (memory, that, size);
+	  }
+	  else
+	  {
+		detach ();
 	  }
 	}
 
@@ -280,17 +286,16 @@ namespace fl
 
 	void copyFrom (const SmartPointer & that)
 	{
-	  if (that.memory != memory)
+	  if (that.memory)
 	  {
-		if (! that.memory)
-		{
-		  detach ();
-		}
-		else
-		{
-		  initialize ();
-		  memory->object = that.memory->object;  // May or may not be a deep copy
-		}
+		SmartPointer temp (that);
+		detach ();
+		initialize ();
+		memory->object = temp.memory->object;  // May or may not be a deep copy
+	  }
+	  else
+	  {
+		detach ();
 	  }
 	}
 
