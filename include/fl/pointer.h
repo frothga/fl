@@ -9,15 +9,17 @@
 
 namespace fl
 {
-  // Keeps track of a block of memory, which can be shared by multiple objects
-  // and multiple threads.  The block can either be managed by Pointer, or
-  // it can belong to any other part of the system.  Only managed blocks get
-  // reference counting, automatic deletion, and reallocation.
-  // This class is intended to be thread-safe, but in its current state it is
-  // not.  Need to implement a semaphore
-  // of some sort for the reference count.  IE: use an atomic operation such
-  // as XADD that includes an exchange.  Want to avoid using pthreads so we
-  // don't have to link another library.
+  /**
+	 Keeps track of a block of memory, which can be shared by multiple objects
+	 and multiple threads.  The block can either be managed by Pointer, or
+	 it can belong to any other part of the system.  Only managed blocks get
+	 reference counting, automatic deletion, and reallocation.
+	 This class is intended to be thread-safe, but in its current state it is
+	 not.  Need to implement a semaphore
+	 of some sort for the reference count.  IE: use an atomic operation such
+	 as XADD that includes an exchange.  Want to avoid using pthreads so we
+	 don't have to link another library.
+  **/
   class Pointer
   {
   public:
@@ -73,7 +75,7 @@ namespace fl
 	  memory = that;
 	  metaData = size;
 	}
-	void copyFrom (const Pointer & that)  // decouple from memory held by that.  "that" could also be this.
+	void copyFrom (const Pointer & that)  ///< decouple from memory held by that.  "that" could also be this.
 	{
 	  if (that.memory)
 	  {
@@ -190,12 +192,14 @@ namespace fl
 	}
 
   protected:
+	/**
+	   This method is protected because it assumes that we aren't responsible
+	   for our memory.  We must guarantee that we don't own memory when this
+	   method is called.  This is true just after a call to detach, as well
+	   as a few other situations.
+	**/
 	void attach (const Pointer & that)
 	{
-	  // This method is protected because it assumes that we aren't responsible
-	  // for our memory.  We must guarantee that we don't own memory when this
-	  // method is called.  This is true just after a call to detach, as well
-	  // as a few other situations.
 	  memory = that.memory;
 	  metaData = that.metaData;
 	  if (metaData < 0)
@@ -221,15 +225,17 @@ namespace fl
 	}
 
   public:
-	void * memory;  // Pointer to block in heap.  Must cast as needed.
-	// metaData < 0 indicates memory is a special pointer we constructed.
-	// There is meta data associated with the pointer, and all "smart" pointer
-	// functions are available.  This is the only time that we can (and must)
-	// delete memory.
-	// metaData == 0 indicates either memory == 0 or we don't know how big the
-	// block is.
-	// metaData > 0 indicates the actual size of the block, and that we don't
-	// own it.
+	void * memory;  ///< Pointer to block in heap.  Must cast as needed.
+	/**
+	   metaData < 0 indicates memory is a special pointer we constructed.
+	   There is meta data associated with the pointer, and all "smart" pointer
+	   functions are available.  This is the only time that we can (and must)
+	   delete memory.
+	   metaData == 0 indicates either memory == 0 or we don't know how big the
+	   block is.
+	   metaData > 0 indicates the actual size of the block, and that we don't
+	   own it.
+	**/
 	int metaData;
   };
 
@@ -242,10 +248,12 @@ namespace fl
   }
 
 
-  // SmartPointer is like Pointer, except that it works with a known structure,
-  // and therefore a fixed amount of memory.  In order to use this template,
-  // the wrapped class must have a default constructor (ie: one that takes no
-  // arguments).
+  /**
+	 SmartPointer is like Pointer, except that it works with a known structure,
+	 and therefore a fixed amount of memory.  In order to use this template,
+	 the wrapped class must have a default constructor (ie: one that takes no
+	 arguments).
+  **/
   template<class T>
   class SmartPointer
   {
@@ -338,7 +346,9 @@ namespace fl
 	SmartBlock * memory;
 
   protected:
-	// attach assumes that memory == 0, so we must protect it.
+	/**
+	   attach assumes that memory == 0, so we must protect it.
+	 **/
 	void attach (SmartBlock * that)
 	{
 	  memory = that;
