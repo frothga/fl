@@ -5,12 +5,10 @@
 #include "fl/convolve.h"
 #include "fl/matrix.h"
 #include "fl/point.h"
+#include "fl/canvas.h"
 
 #include <iostream>
 #include <vector>
-
-// for debugging
-#include "fl/slideshow.h"
 
 
 namespace fl
@@ -18,8 +16,15 @@ namespace fl
   // Comparison ---------------------------------------------------------------
 
   /**
-	 Takes two feature vectors and returns the probability that they match.
-	 Probability values are in [0,1].
+	 Takes two feature vectors and returns a value in [0,1].  This could be
+	 interpreted as a probability, but there is no guarantee that for any
+	 given data it actually predicts the likelihood of a correct match.
+	 What is guaranteed is the 1 means perfect match, and 0 means no
+	 chance whatsoever of a match.
+
+	 The application should remap [0,1] to an actual probability if that is
+	 what it requires.  At some point, it may make sense to add a Function
+	 object that we run on behalf of the application to reshape the result.
   **/
   class Comparison
   {
@@ -44,6 +49,8 @@ namespace fl
 
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+	virtual float value (int index, const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;  ///< Compares one specific feature vector from the set.
+	Vector<float> extract (int index, const Vector<float> & value) const;  ///< Returns one specific feature vector from the set.
 
 	std::vector<Comparison *> comparisons;
 	std::vector<int> dimensions;
@@ -63,12 +70,11 @@ namespace fl
   class NormalizedCorrelation : public Comparison
   {
   public:
-	NormalizedCorrelation (bool subtractMean = true, float gamma = 1.0f);
+	NormalizedCorrelation (bool subtractMean = true);
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
 
 	bool subtractMean;  ///< Indicates that during normalization, subtract the mean of the elements in the vector.
-	float gamma;  ///< Exponent of gamma function that maps correlations to probabilities.  Semantics are slightly different than gamma value in graphics.  Here we have y = x^gamma, rather than y = x^(1/gamma).
   };
 
   /**
@@ -79,11 +85,7 @@ namespace fl
   class MetricEuclidean : public Comparison
   {
   public:
-	MetricEuclidean (float scale = 1.0f, float offset = 0.0f);
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
-
-	float scale;  ///< Factor by which to multiply the Euclidean distance before squashing into a probability value.
-	float offset;  ///< Term to add to Euclidean distance before squashing into a probability value.
   };
 
   /**
@@ -94,11 +96,7 @@ namespace fl
   class HistogramIntersection : public Comparison
   {
   public:
-	HistogramIntersection (float gamma = 1.0f);
-
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
-
-	float gamma;  ///< Map intersection value i to probability p as: p = i^gamma.
   };
 
   /**
@@ -108,11 +106,7 @@ namespace fl
   class ChiSquared : public Comparison
   {
   public:
-	ChiSquared (float gamma = 1.0f);
-
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
-
-	float gamma;  ///< Exponent of gamma function that maps chi^2 to probability.  See NormalizedCorrelation::gamma.
   };
 
 
@@ -149,6 +143,7 @@ namespace fl
 	void add (Descriptor * descriptor);  ///< Append another descriptor to the list.  This object takes responsibility for the pointer.
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
+	Image patch (int index, const Vector<float> & value);  ///< Returns a visualization of one specific feature vector in the set.
 	virtual Comparison * comparison ();
 	virtual bool isMonochrome ();
 	virtual int dimension ();
@@ -258,8 +253,6 @@ namespace fl
 
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel.
 	float supportRadial;  ///< Number of sigmas away from center to include in patch (where 1 sigma = size of characteristic scale).
-
-	SlideShow * window;  ///< Temporary for debugging.
   };
 
   class DescriptorFilters : public Descriptor
@@ -382,6 +375,8 @@ namespace fl
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
+	void patch (const std::string & fileName, const Vector<float> & value);  ///< Write a visualization of the descriptor to a postscript file.
+	void patch (Canvas * canvas, const Vector<float> & value, int size);  ///< Subroutine used by other patch() methods.
 	virtual Comparison * comparison ();  ///< Return a MetricEuclidean, rather than the default (NormalizedCorrelation).
 	virtual int dimension ();
 	virtual void read (std::istream & stream);
@@ -502,6 +497,63 @@ namespace fl
 	int bankSize;  ///< Number of filters at a given scale level.
 	float scaleRatio;  ///< Ratio between two adjacent scale levels.
 	std::vector<ConvolutionDiscrete2D> filters;
+  };
+
+  /**
+	 "Local Binary Patterns": histogram counts of various patterns the appear
+	 in the binarized itensity along a circle around a point.  The idea is
+	 to take a circle at a certain radius from the center point, and binarize
+	 the intensity at regular intervals along the circle with reference to
+	 the intensity of the center point.  Characterize the resulting string
+	 of 0s and 1s according to two measures: 1) how many lo-hi or hi-lo
+	 transitions there are.  2) How many 1s there are.  If there are no more
+	 than 2 transitions, then the LBP value for the point is the count of
+	 1s.  If there are more than 2 transitions, then the LBP value is
+	 "miscellaneous".  Finally, histogram the LBP values over the specified
+	 region.
+  **/
+  class DescriptorLBP : public Descriptor
+  {
+  public:
+	DescriptorLBP (int P = 8, float R = 1.0f, float supportRadial = 4.2f, int supportPixel = 32);
+	void initialize ();
+
+	void preprocess (const Image & image);  ///< Prepare gray version of image.  Subroutine of value().
+	void add (const int x, const int y, Vector<float> & result);  ///< Does the actual LBP calculation for one pixel.  Subroutine of value().
+
+	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (const Image & image);
+	virtual Image patch (const Vector<float> & value);
+	virtual Comparison * comparison ();
+	virtual int dimension ();
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true);
+
+	int P;  ///< Number of evenly spaced sample points around center.
+	float R;  ///< Radius of circle of sample points.
+	float supportRadial;  ///< Multiple of characteristic scale to use when drawing off a normalized patch.
+	int supportPixel;  ///< Radius of patch to draw off if point specifies a shape change.
+
+	const Image * lastImage;  ///< Pointer to the currently cached input image.
+	void *        lastBuffer;  ///< Pointer to buffer of currently cached input image.  Allows finer granularity in detecting change.
+	ImageOf<float> grayImage;  ///< Cached graylevel version of the input image.
+
+	/**
+	   A structure for storing bilinear interpolation parameters.
+	 **/
+	struct Interpolate
+	{
+	  int xl;
+	  int yl;
+	  int xh;
+	  int yh;
+	  float wll;
+	  float wlh;
+	  float whl;
+	  float whh;
+	  bool exact;  ///< If true, then use pixel value at (xl,yl) and ignore all other data in this record.
+	};
+	std::vector<Interpolate> interpolates;  ///< Cached data for doing bilinear interpolation of pixel values along circle.
   };
 }
 
