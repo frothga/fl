@@ -143,7 +143,7 @@ ConvolutionRecursive1D::response (const Image & image, const Point & p) const
 
   // TODO: copy the convolution code from above and adapt to break at pixel.
 
-  //return result;
+  throw "ConvolutionRecursive1D::response not implemented yet";
 }
 
 void
