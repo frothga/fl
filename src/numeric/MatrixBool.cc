@@ -1,4 +1,5 @@
 #include "fl/Matrix.tcc"
+#include "fl/factory.h"
 
 
 using namespace fl;
@@ -10,3 +11,5 @@ template class MatrixAbstract<bool>;
 template class Matrix<bool>;
 template class MatrixTranspose<bool>;
 template class MatrixRegion<bool>;
+
+Factory<MatrixAbstract<bool> >::productMap Factory<MatrixAbstract<bool> >::products;
