@@ -8,8 +8,8 @@ using namespace fl;
 
 // class GaussianDerivativeThird ----------------------------------------------
 
-GaussianDerivativeThird::GaussianDerivativeThird (int xy1, int xy2, int xy3, double sigmaX, double sigmaY, double angle, const PixelFormat & format, const BorderMode mode)
-: ConvolutionDiscrete2D (format, mode)
+GaussianDerivativeThird::GaussianDerivativeThird (int xy1, int xy2, int xy3, double sigmaX, double sigmaY, double angle, const BorderMode mode, const PixelFormat & format)
+: ConvolutionDiscrete2D (mode, format)
 {
   // Count how many of each kind of derivative we have been given.
   int dxcount = 0;
@@ -44,7 +44,7 @@ GaussianDerivativeThird::GaussianDerivativeThird (int xy1, int xy2, int xy3, dou
 	sigmaY = sigmaX;
   }
 
-  const double C = 2 * PI * sigmaX * sigmaY;
+  const double C = 1.0 / (2.0 * PI * sigmaX * sigmaY);
   int half = (int) (Gaussian2D::cutoff * (sigmaX >? sigmaY));
   int size = 2 * half + 1;
 
@@ -69,7 +69,7 @@ GaussianDerivativeThird::GaussianDerivativeThird (int xy1, int xy2, int xy3, dou
 	  double x = u * c - v * s;
 	  double y = u * s + v * c;
 
-	  double value = (1 / C) * exp (-0.5 * (x * x / sigmaX2 + y * y / sigmaY2));
+	  double value = C * exp (-0.5 * (x * x / sigmaX2 + y * y / sigmaY2));
 	  if (dxcount == 2)  // Gxxy = Gxyx = Gyxx
 	  {
 		value *= (x * x / sigmaX4 - 1 / sigmaX2) * (- y / sigmaY2);
@@ -91,4 +91,5 @@ GaussianDerivativeThird::GaussianDerivativeThird (int xy1, int xy2, int xy3, dou
   }
 
   *this <<= temp * format;
+  normalFloats ();
 }

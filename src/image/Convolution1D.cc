@@ -8,14 +8,14 @@ using namespace fl;
 
 // class ConvolutionDiscrete1D ------------------------------------------------
 
-ConvolutionDiscrete1D::ConvolutionDiscrete1D (const PixelFormat & format, const Direction direction, const BorderMode mode)
+ConvolutionDiscrete1D::ConvolutionDiscrete1D (const BorderMode mode, const PixelFormat & format, const Direction direction)
 : Image (format)
 {
   this->direction = direction;
   this->mode = mode;
 }
 
-ConvolutionDiscrete1D::ConvolutionDiscrete1D (const Image & image, const Direction direction, const BorderMode mode)
+ConvolutionDiscrete1D::ConvolutionDiscrete1D (const Image & image, const BorderMode mode, const Direction direction)
 : Image (image)
 {
   this->direction = direction;
@@ -32,7 +32,7 @@ ConvolutionDiscrete1D::filter (const Image & image)
   {
 	if (format->precedence <= image.format->precedence)
 	{
-	  ConvolutionDiscrete1D temp (*image.format, direction, mode);
+	  ConvolutionDiscrete1D temp (mode, *image.format, direction);
 	  (Image &) temp = (*this) * (*image.format);
 	  return image * temp;
 	}
@@ -429,7 +429,7 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
   {
 	if (format->precedence <= image.format->precedence)
 	{
-	  ConvolutionDiscrete1D temp (*image.format, direction, mode);
+	  ConvolutionDiscrete1D temp (mode, *image.format, direction);
 	  (Image &) temp = (*this) * (*image.format);
 	  return temp.response (image, p);
 	}
@@ -541,6 +541,37 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
 	else
 	{
 	  throw "ConvolutionDiscrete1D::response: unimplemented format";
+	}
+  }
+}
+
+void
+ConvolutionDiscrete1D::normalFloats ()
+{
+  if (*format == GrayFloat)
+  {
+	float * a   = (float *) buffer;
+	float * end = a + width;
+	while (a < end)
+	{
+	  if (fpclassify (*a) == FP_SUBNORMAL)
+	  {
+		*a = 0;
+	  }
+	  a++;
+	}
+  }
+  else if (*format == GrayDouble)
+  {
+	double * a   = (double *) buffer;
+	double * end = a + width;
+	while (a < end)
+	{
+	  if (fpclassify (*a) == FP_SUBNORMAL)
+	  {
+		*a = 0;
+	  }
+	  a++;
 	}
   }
 }

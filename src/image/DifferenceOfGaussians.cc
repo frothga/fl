@@ -8,11 +8,11 @@ using namespace fl;
 
 // class DifferenceOfGaussians ------------------------------------------------
 
-DifferenceOfGaussians::DifferenceOfGaussians (double sigmaPlus, double sigmaMinus, const PixelFormat & format, const BorderMode mode)
+DifferenceOfGaussians::DifferenceOfGaussians (double sigmaPlus, double sigmaMinus, const BorderMode mode, const PixelFormat & format)
 : ConvolutionDiscrete2D (format, mode)
 {
-  Gaussian2D plus (sigmaPlus, GrayDouble);
-  Gaussian2D minus (sigmaMinus, GrayDouble);
+  Gaussian2D plus (sigmaPlus, mode, GrayDouble);
+  Gaussian2D minus (sigmaMinus, mode, GrayDouble);
   Image temp = plus - minus;
 
   if (format == GrayChar)
@@ -45,5 +45,6 @@ DifferenceOfGaussians::DifferenceOfGaussians (double sigmaPlus, double sigmaMinu
   else
   {
 	*this <<= temp * format;
+	normalFloats ();
   }
 }

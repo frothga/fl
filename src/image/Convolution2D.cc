@@ -7,7 +7,7 @@ using namespace fl;
 
 // class ConvolutionDiscrete2D ------------------------------------------------
 
-ConvolutionDiscrete2D::ConvolutionDiscrete2D (const PixelFormat & format, const BorderMode mode)
+ConvolutionDiscrete2D::ConvolutionDiscrete2D (const BorderMode mode, const PixelFormat & format)
 : Image (format)
 {
   this->mode = mode;
@@ -397,6 +397,37 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 	else
 	{
 	  throw "ConvolutionDiscrete2D::response: unimplemented format";
+	}
+  }
+}
+
+void
+ConvolutionDiscrete2D::normalFloats ()
+{
+  if (*format == GrayFloat)
+  {
+	float * a   = (float *) buffer;
+	float * end = a + width * height;
+	while (a < end)
+	{
+	  if (fpclassify (*a) == FP_SUBNORMAL)
+	  {
+		*a = 0;
+	  }
+	  a++;
+	}
+  }
+  else if (*format == GrayDouble)
+  {
+	double * a   = (double *) buffer;
+	double * end = a + width * height;
+	while (a < end)
+	{
+	  if (fpclassify (*a) == FP_SUBNORMAL)
+	  {
+		*a = 0;
+	  }
+	  a++;
 	}
   }
 }

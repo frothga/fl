@@ -8,11 +8,11 @@ using namespace fl;
 
 // class GaussianDerivative1D -------------------------------------------------
 
-GaussianDerivative1D::GaussianDerivative1D (double sigma, const PixelFormat & format, const Direction direction, const BorderMode mode)
-: ConvolutionDiscrete1D (GrayDouble, direction, mode)
+GaussianDerivative1D::GaussianDerivative1D (double sigma, const BorderMode mode, const PixelFormat & format, const Direction direction)
+: ConvolutionDiscrete1D (mode, GrayDouble, direction)
 {
   double sigma2 = sigma * sigma;
-  double C = sqrt (2.0 * PI) * sigma;
+  double C = 1.0 / (sqrt (2.0 * PI) * sigma);
 
   int h = (int) rint (Gaussian2D::cutoff * sigma);
   width = 2 * h + 1;
@@ -23,10 +23,11 @@ GaussianDerivative1D::GaussianDerivative1D (double sigma, const PixelFormat & fo
   for (int i = 1; i <= h; i++)
   {
 	double x = i;
-	double value = (1 / C) * exp (- x * x / (2 * sigma2)) * (- x / sigma2);
+	double value = C * exp (- x * x / (2 * sigma2)) * (- x / sigma2);
 	((double *) buffer)[h + i] = value;
 	((double *) buffer)[h - i] = -value;
   }
 
   *this *= format;
+  normalFloats ();
 }

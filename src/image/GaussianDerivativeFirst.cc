@@ -8,15 +8,15 @@ using namespace fl;
 
 // class GaussianDerivativeFirst ----------------------------------------------
 
-GaussianDerivativeFirst::GaussianDerivativeFirst (int xy, double sigmaX, double sigmaY, double angle, const PixelFormat & format, const BorderMode mode)
-: ConvolutionDiscrete2D (format, mode)
+GaussianDerivativeFirst::GaussianDerivativeFirst (int xy, double sigmaX, double sigmaY, double angle, const BorderMode mode, const PixelFormat & format)
+: ConvolutionDiscrete2D (mode, format)
 {
   if (sigmaY < 0)
   {
 	sigmaY = sigmaX;
   }
 
-  const double C = 2 * PI * sigmaX * sigmaY;
+  const double C = 1.0 / (2 * PI * sigmaX * sigmaY);
   int half = (int) rint (Gaussian2D::cutoff * (sigmaX >? sigmaY));
   int size = 2 * half + 1;
 
@@ -37,7 +37,7 @@ GaussianDerivativeFirst::GaussianDerivativeFirst (int xy, double sigmaX, double 
 	  double x = u * c - v * s;
 	  double y = u * s + v * c;
 
-	  double value = (1 / C) * exp (-0.5 * (x * x / sigmaX2 + y * y / sigmaY2));
+	  double value = C * exp (-0.5 * (x * x / sigmaX2 + y * y / sigmaY2));
 	  if (xy)  // Gy
 	  {
 		value *= - y / sigmaY2;
@@ -51,4 +51,5 @@ GaussianDerivativeFirst::GaussianDerivativeFirst (int xy, double sigmaX, double 
   }
 
   *this <<= temp * format;
+  normalFloats ();
 }

@@ -8,8 +8,8 @@ using namespace fl;
 
 // class Gaussian1D -----------------------------------------------------------
 
-Gaussian1D::Gaussian1D (double sigma, const PixelFormat & format, const Direction direction, const BorderMode mode)
-: ConvolutionDiscrete1D (GrayDouble, direction, mode)
+Gaussian1D::Gaussian1D (double sigma, const BorderMode mode, const PixelFormat & format, const Direction direction)
+: ConvolutionDiscrete1D (mode, GrayDouble, direction)
 {
   double sigma2 = sigma * sigma;
   double C = 1.0 / (sqrt (2.0 * PI) * sigma);
@@ -29,4 +29,5 @@ Gaussian1D::Gaussian1D (double sigma, const PixelFormat & format, const Directio
   }
 
   *this *= format;
+  normalFloats ();
 }

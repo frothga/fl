@@ -8,8 +8,8 @@ using namespace fl;
 
 // class GaussianDerivativeSecond ---------------------------------------------
 
-GaussianDerivativeSecond::GaussianDerivativeSecond (int xy1, int xy2, double sigmaX, double sigmaY, double angle, const PixelFormat & format, const BorderMode mode)
-: ConvolutionDiscrete2D (format, mode)
+GaussianDerivativeSecond::GaussianDerivativeSecond (int xy1, int xy2, double sigmaX, double sigmaY, double angle, const BorderMode mode, const PixelFormat & format)
+: ConvolutionDiscrete2D (mode, format)
 {
   if (sigmaY < 0)
   {
@@ -59,4 +59,5 @@ GaussianDerivativeSecond::GaussianDerivativeSecond (int xy1, int xy2, double sig
   // When (if) adding code for GrayChar, be sure to keep size at least 3 * sigma.
 
   *this <<= temp * format;
+  normalFloats ();
 }

@@ -61,20 +61,22 @@ namespace fl
   class ConvolutionDiscrete2D : public Convolution, public Image
   {
   public:
-	ConvolutionDiscrete2D (const PixelFormat & format = GrayFloat,
-						   const BorderMode mode = Crop);
+	ConvolutionDiscrete2D (const BorderMode mode = Crop,
+						   const PixelFormat & format = GrayFloat);
 	ConvolutionDiscrete2D (const Image & image, const BorderMode mode = Crop);
 
 	virtual Image filter (const Image & image);
 	virtual double response (const Image & image, const Point & p) const;  ///< Strength of response of filter to image at input pixel (x, y).  Crop mode is treated as if ZeroFill mode, ie: no shift between input and output coordinate system.
+
+	void normalFloats ();  ///< Zero out any sub-normal floats in kernel, because they cause numerical exceptions that really drag down performance.
   };
 
   class Gaussian2D : public ConvolutionDiscrete2D
   {
   public:
 	Gaussian2D (double sigma = 1.0,
-				const PixelFormat & format = GrayFloat,
-				const BorderMode mode = Crop);
+				const BorderMode mode = Crop,
+				const PixelFormat & format = GrayFloat);
 
 	static double cutoff;  ///< Minimum number of standard deviations to include in a Gaussian kernel
   };
@@ -84,8 +86,8 @@ namespace fl
   public:
 	DifferenceOfGaussians (double sigmaPlus,
 						   double sigmaMinus,
-						   const PixelFormat & format = GrayFloat,
-						   const BorderMode mode = Crop);
+						   const BorderMode mode = Crop,
+						   const PixelFormat & format = GrayFloat);
   };
 
   class GaussianDerivativeFirst : public ConvolutionDiscrete2D
@@ -95,8 +97,8 @@ namespace fl
 							 double sigmaX = 1.0,
 							 double sigmaY = -1.0,
 							 double angle = 0,
-							 const PixelFormat & format = GrayFloat,
-							 const BorderMode mode = Crop);
+							 const BorderMode mode = Crop,
+							 const PixelFormat & format = GrayFloat);
   };
 
   class GaussianDerivativeSecond : public ConvolutionDiscrete2D
@@ -107,8 +109,8 @@ namespace fl
 							  double sigmaX = 1.0,
 							  double sigmaY = -1.0,
 							  double angle = 0,
-							  const PixelFormat & format = GrayFloat,
-							  const BorderMode mode = Crop);
+							  const BorderMode mode = Crop,
+							  const PixelFormat & format = GrayFloat);
   };
 
   class GaussianDerivativeThird : public ConvolutionDiscrete2D
@@ -120,16 +122,16 @@ namespace fl
 							 double sigmaX = 1.0,
 							 double sigmaY = -1.0,
 							 double angle = 0,
-							 const PixelFormat & format = GrayFloat,
-							 const BorderMode mode = Crop);
+							 const BorderMode mode = Crop,
+							 const PixelFormat & format = GrayFloat);
   };
 
   class Laplacian : public ConvolutionDiscrete2D
   {
   public:
 	Laplacian (double sigma = 1.0,
-			   const PixelFormat & format = GrayFloat,
-			   const BorderMode mode = Crop);
+			   const BorderMode mode = Crop,
+			   const PixelFormat & format = GrayFloat);
 
 	double sigma;
   };
@@ -152,42 +154,44 @@ namespace fl
   class ConvolutionDiscrete1D : public Convolution1D, public Image
   {
   public:
-	ConvolutionDiscrete1D (const PixelFormat & format = GrayFloat,
-						   const Direction direction = Horizontal,
-						   const BorderMode mode = Crop);
+	ConvolutionDiscrete1D (const BorderMode mode = Crop,
+						   const PixelFormat & format = GrayFloat,
+						   const Direction direction = Horizontal);
 	ConvolutionDiscrete1D (const Image & image,
-						   const Direction direction = Horizontal,
-						   const BorderMode mode = Crop);
+						   const BorderMode mode = Crop,
+						   const Direction direction = Horizontal);
 
 	virtual Image filter (const Image & image);
 	virtual double response (const Image & image, const Point & p) const;  ///< Strength of response of filter to image at pixel (x, y).
+
+	void normalFloats ();  ///< Zero out any sub-normal floats in kernel, because they cause numerical exceptions that really drag down performance.
   };
 
   class Gaussian1D : public ConvolutionDiscrete1D
   {
   public:
 	Gaussian1D (double sigma = 1.0,
+				const BorderMode mode = Crop,
 				const PixelFormat & format = GrayFloat,
-				const Direction direction = Horizontal,
-				const BorderMode mode = Crop);
+				const Direction direction = Horizontal);
   };
 
   class GaussianDerivative1D : public ConvolutionDiscrete1D
   {
   public:
 	GaussianDerivative1D (double sigma = 1.0,
+						  const BorderMode mode = Crop,
 						  const PixelFormat & format = GrayFloat,
-						  const Direction direction = Horizontal,
-						  const BorderMode mode = Crop);
+						  const Direction direction = Horizontal);
   };
 
   class GaussianDerivativeSecond1D : public ConvolutionDiscrete1D
   {
   public:
 	GaussianDerivativeSecond1D (double sigma = 1.0,
+								const BorderMode mode = Crop,
 								const PixelFormat & format = GrayFloat,
-								const Direction direction = Horizontal,
-								const BorderMode mode = Crop);
+								const Direction direction = Horizontal);
   };
 
   /**
