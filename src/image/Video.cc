@@ -68,6 +68,15 @@ VideoIn::setTimestampMode (bool frames)
   }
 }
 
+void
+VideoIn::get (const string & name, double & value)
+{
+  if (file)
+  {
+	file->get (name, value);
+  }
+}
+
 
 // class VideoOut -------------------------------------------------------------
 

@@ -203,6 +203,21 @@ VideoInFileFFMPEG::setTimestampMode (bool frames)
 }
 
 void
+VideoInFileFFMPEG::get (const std::string & name, double & value)
+{
+  if (stream)
+  {
+	if (name == "duration")
+	{
+	  if (fc->duration != AV_NOPTS_VALUE)
+	  {
+		value = (double) fc->duration / AV_TIME_BASE;
+	  }
+	}
+  }
+}
+
+void
 VideoInFileFFMPEG::open (const string & fileName)
 {
   size = 0;
