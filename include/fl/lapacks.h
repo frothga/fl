@@ -23,7 +23,7 @@ namespace fl
 	char uplo = 'U';
 
 	int lwork = n * n;
-	lwork = lwork >? 10;  // Special case for n == 1 and n == 2;
+	lwork = std::max (lwork, 10);  // Special case for n == 1 and n == 2;
 	float * work = (float *) malloc (lwork * sizeof (float));
 	int info = 0;
 
@@ -91,7 +91,7 @@ namespace fl
 	char uplo = 'U';
 
 	int lwork = n * n;
-	lwork = lwork >? 10;  // Special case for n == 1 and n == 2;
+	lwork = std::max (lwork, 10);  // Special case for n == 1 and n == 2;
 	float * work = (float *) malloc (lwork * sizeof (float));
 	int info = 0;
 
@@ -121,7 +121,7 @@ namespace fl
 	char jobvr = 'V';
 
 	int lda = A.rows ();
-	int n = lda <? A.columns ();
+	int n = std::min (lda, A.columns ());
 	Matrix<float> tempA;
 	tempA.copyFrom (A);
 
@@ -203,7 +203,7 @@ namespace fl
 	char jobvr = 'V';
 
 	int lda = A.rows ();
-	int n = lda <? A.columns ();
+	int n = std::min (lda, A.columns ());
 	Matrix<float> tempA;
 	tempA.copyFrom (A);
 
@@ -323,7 +323,7 @@ namespace fl
     s.resize (std::min (m, n), 1);
 
 	int rank;
-    int ldwork = 5 * (ldb >? nrhs);
+	int ldwork = 5 * std::max (ldb, nrhs);
     float * work = (float *) malloc (ldwork * sizeof (float));
 	int info = 0;
 
