@@ -19,6 +19,7 @@ ConvolutionRecursive1D::filter (const Image & image)
   int w = image.width;
   int h = image.height;
 
+  ImageOf<double> i (image);
   ImageOf<double> p (w, h, GrayDouble);  // "plus"
   ImageOf<double> m (w, h, GrayDouble);  // "minus"
 
@@ -33,50 +34,44 @@ ConvolutionRecursive1D::filter (const Image & image)
   {
 	for (int y = 0; y < h; y++)
 	{
-	  p(0,y) = zp * image(0,y);
-	  p(1,y) =   n00p * image(1,y) + n11p * image(0,y)
-		       + n22p * image(0,y) + n33p * image(0,y)
+	  p(0,y) = zp * i(0,y);
+	  p(1,y) =   n00p * i(1,y) + n11p * i(0,y)
+		       + n22p * i(0,y) + n33p * i(0,y)
 		       - dp * p(0,y);
-	  p(2,y) =   n00p * image(2,y) + n11p * image(1,y)
-		       + n22p * image(0,y) + n33p * image(0,y)
+	  p(2,y) =   n00p * i(2,y) + n11p * i(1,y)
+		       + n22p * i(0,y) + n33p * i(0,y)
 		       - d11p * p(1,y) - d22p * p(0,y)
 		       - d33p * p(0,y) - d44p * p(0,y);
-	  // The following calc could be rolled into the loop below...
-	  p(3,y) =   n00p * image(3,y) + n11p * image(2,y)
-		       + n22p * image(1,y) + n33p * image(0,y)
+	  p(3,y) =   n00p * i(3,y) + n11p * i(2,y)
+		       + n22p * i(1,y) + n33p * i(0,y)
 		       - d11p * p(2,y) - d22p * p(1,y)
 		       - d33p * p(0,y) - d44p * p(0,y);
 
 	  for (int x = 4; x < w; x++)
 	  {
-		p(x,y) =   n00p * image(x,  y) + n11p * image(x-1,y)
-		         + n22p * image(x-2,y) + n33p * image(x-3,y)
+		p(x,y) =   n00p * i(x,  y) + n11p * i(x-1,y)
+		         + n22p * i(x-2,y) + n33p * i(x-3,y)
 		         - d11p * p(x-1,y) - d22p * p(x-2,y)
 		         - d33p * p(x-3,y) - d44p * p(x-4,y);
 	  }
 
-
-	  // STOPPED HERE --------------------------------------------------
-
-
-	  m(x,h-1) = zm * image(x,h-1);
-	  m(x,h-2) = nm * image(x,h-1) - dm * m(x,h-1);
-	  m(x,h-3) =   n11m * image(x,h-2) + n22m * image(x,h-1)
-		         + n33m * image(x,h-1) + n44m * image(x,h-1)
-		         - d11m * m(x,h-2) - d22m * m(x,h-1)
-		         - d33m * m(x,h-1) - d44m * m(x,h-1);
-	  // This could also be rolled into the loop below...
-	  m(x,h-4) =   n11m * image(x,h-3) + n22m * image(x,h-2)
-		         + n33m * image(x,h-1) + n44m * image(x,h-1)
-		         - d11m * m(x,h-3) - d22m * m(x,h-2)
-		         - d33m * m(x,h-1) - d44m * m(x,h-1);
+	  m(w-1,y) = zm * i(w-1,y);
+	  m(w-2,y) = nm * i(w-1,y) - dm * m(w-1,y);
+	  m(w-3,y) =   n11m * i(w-2,y) + n22m * i(w-1,y)
+		         + n33m * i(w-1,y) + n44m * i(w-1,y)
+		         - d11m * m(w-2,y) - d22m * m(w-1,y)
+		         - d33m * m(w-1,y) - d44m * m(w-1,y);
+	  m(w-4,y) =   n11m * i(w-3,y) + n22m * i(w-2,y)
+		         + n33m * i(w-1,y) + n44m * i(w-1,y)
+		         - d11m * m(w-3,y) - d22m * m(w-2,y)
+		         - d33m * m(w-1,y) - d44m * m(w-1,y);
 
 	  for (int x = w-5; x >= 0; x--)
 	  {
-		m(x,y) =   n11m * image(x,y+1) + n22m * image(x,y+2)
-		         + n33m * image(x,y+3) + n44m * image(x,y+4)
-		         - d11m * m(x,y+1) - d22m * m(x,y+2)
-		         - d33m * m(x,y+3) - d44m * m(x,y+4);
+		m(x,y) =   n11m * i(x+1,y) + n22m * i(x+2,y)
+		         + n33m * i(x+3,y) + n44m * i(x+4,y)
+		         - d11m * m(x+1,y) - d22m * m(x+2,y)
+		         - d33m * m(x+3,y) - d44m * m(x+4,y);
 	  }
 	}
   }
@@ -84,45 +79,43 @@ ConvolutionRecursive1D::filter (const Image & image)
   {
 	for (int x = 0; x < w; x++)
 	{
-	  p(x,0) = zp * image(x,0);
-	  p(x,1) =   n00p * image(x,1) + n11p * image(x,0)
-		       + n22p * image(x,0) + n33p * image(x,0)
+	  p(x,0) = zp * i(x,0);
+	  p(x,1) =   n00p * i(x,1) + n11p * i(x,0)
+		       + n22p * i(x,0) + n33p * i(x,0)
 		       - dp * p(x,0);
-	  p(x,2) =   n00p * image(x,2) + n11p * image(x,1)
-		       + n22p * image(x,0) + n33p * image(x,0)
+	  p(x,2) =   n00p * i(x,2) + n11p * i(x,1)
+		       + n22p * i(x,0) + n33p * i(x,0)
 		       - d11p * p(x,1) - d22p * p(x,0)
 		       - d33p * p(x,0) - d44p * p(x,0);
-	  // The following calc could be rolled into the loop below...
-	  p(x,3) =   n00p * image(x,3) + n11p * image(x,2)
-		       + n22p * image(x,1) + n33p * image(x,0)
+	  p(x,3) =   n00p * i(x,3) + n11p * i(x,2)
+		       + n22p * i(x,1) + n33p * i(x,0)
 		       - d11p * p(x,2) - d22p * p(x,1)
 		       - d33p * p(x,0) - d44p * p(x,0);
 
 	  for (int y = 4; y < h; y++)
 	  {
-		p(x,y) =   n00p * image(x,y)   + n11p * image(x,y-1)
-		         + n22p * image(x,y-2) + n33p * image(x,y-3)
+		p(x,y) =   n00p * i(x,y)   + n11p * i(x,y-1)
+		         + n22p * i(x,y-2) + n33p * i(x,y-3)
 		         - d11p * p(x,y-1) - d22p * p(x,y-2)
 		         - d33p * p(x,y-3) - d44p * p(x,y-4);
 	  }
 
 
-	  m(x,h-1) = zm * image(x,h-1);
-	  m(x,h-2) = nm * image(x,h-1) - dm * m(x,h-1);
-	  m(x,h-3) =   n11m * image(x,h-2) + n22m * image(x,h-1)
-		         + n33m * image(x,h-1) + n44m * image(x,h-1)
+	  m(x,h-1) = zm * i(x,h-1);
+	  m(x,h-2) = nm * i(x,h-1) - dm * m(x,h-1);
+	  m(x,h-3) =   n11m * i(x,h-2) + n22m * i(x,h-1)
+		         + n33m * i(x,h-1) + n44m * i(x,h-1)
 		         - d11m * m(x,h-2) - d22m * m(x,h-1)
 		         - d33m * m(x,h-1) - d44m * m(x,h-1);
-	  // This could also be rolled into the loop below...
-	  m(x,h-4) =   n11m * image(x,h-3) + n22m * image(x,h-2)
-		         + n33m * image(x,h-1) + n44m * image(x,h-1)
+	  m(x,h-4) =   n11m * i(x,h-3) + n22m * i(x,h-2)
+		         + n33m * i(x,h-1) + n44m * i(x,h-1)
 		         - d11m * m(x,h-3) - d22m * m(x,h-2)
 		         - d33m * m(x,h-1) - d44m * m(x,h-1);
 
 	  for (int y = h-5; y >= 0; y--)
 	  {
-		m(x,y) =   n11m * image(x,y+1) + n22m * image(x,y+2)
-		         + n33m * image(x,y+3) + n44m * image(x,y+4)
+		m(x,y) =   n11m * i(x,y+1) + n22m * i(x,y+2)
+		         + n33m * i(x,y+3) + n44m * i(x,y+4)
 		         - d11m * m(x,y+1) - d22m * m(x,y+2)
 		         - d33m * m(x,y+3) - d44m * m(x,y+4);
 	  }
@@ -143,8 +136,14 @@ ConvolutionRecursive1D::response (const Image & image, const Point & p) const
 	return response (image * GrayDouble, p);
   }
 
+  // The value at a given point can't be calculated independently of all the
+  // pixels above or to the left (depending on direction of filter).
+  // Therefore, we must run the recursive filter along the row/column and
+  // break at the requested pixel.
 
-  return result;
+  // TODO: copy the convolution code from above and adapt to break at pixel.
+
+  //return result;
 }
 
 void
@@ -176,7 +175,7 @@ ConvolutionRecursive1D::set_nii_and_dii (double sigma, double a0, double a1, dou
 
 // class GaussianRecursive1D --------------------------------------------------
 
-GaussianRecursive1D (double sigma, const Direction direction)
+GaussianRecursive1D::GaussianRecursive1D (double sigma, const Direction direction)
 {
   double a0 =  1.68;
   double a1 =  3.735;
@@ -205,7 +204,7 @@ GaussianRecursive1D (double sigma, const Direction direction)
 
 // class GaussianDerivativeRecursive1D ----------------------------------------
 
-GaussianDerivativeRecursive1D (double sigma, const Direction direction)
+GaussianDerivativeRecursive1D::GaussianDerivativeRecursive1D (double sigma, const Direction direction)
 {
   double a0 = -0.6472;
   double a1 = -4.531;
@@ -234,7 +233,7 @@ GaussianDerivativeRecursive1D (double sigma, const Direction direction)
 
 // class GaussianDerivativeSecondRecursive1D ----------------------------------
 
-GaussianDerivativeSecondRecursive1D (double sigma, const Direction direction)
+GaussianDerivativeSecondRecursive1D::GaussianDerivativeSecondRecursive1D (double sigma, const Direction direction)
 {
   double a0 = -1.331;
   double a1 =  3.661;
