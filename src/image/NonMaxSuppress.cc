@@ -24,7 +24,8 @@ NonMaxSuppress::NonMaxSuppress (int half, BorderMode mode)
   }
   this->mode = mode;
 
-  maximum = 0;
+  maximum = -INFINITY;
+  minimum = INFINITY;
   average = 0;
   count   = 0;
 }
@@ -32,7 +33,8 @@ NonMaxSuppress::NonMaxSuppress (int half, BorderMode mode)
 Image
 NonMaxSuppress::filter (const Image & image)
 {
-  maximum = 0;
+  maximum = -INFINITY;
+  minimum = INFINITY;
   average = 0;
   count   = 0;
 
@@ -73,6 +75,7 @@ NonMaxSuppress::filter (const Image & image)
 		if (me != 0)
 		{
 		  maximum = max (maximum, me);
+		  minimum = min (minimum, me);
 		  average += me;
 		  count++;
 		}
@@ -116,6 +119,7 @@ NonMaxSuppress::filter (const Image & image)
 		if (me != 0)
 		{
 		  maximum = max (maximum, (float) me);
+		  minimum = min (minimum, (float) me);
 		  average += me;
 		  count++;
 		}
@@ -204,6 +208,7 @@ NonMaxSuppress::filter (const Image & image)
 		if (me)
 		{
 		  maximum = max (maximum, (float) me);
+		  minimum = min (minimum, (float) me);
 		  average += me;
 		  count++;
 		}
