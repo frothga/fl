@@ -329,10 +329,11 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
   codec = 0;
   needHeader = true;
 
-  fc = (AVFormatContext *) av_mallocz (sizeof (AVFormatContext));
+  fc = av_alloc_format_context ();
   if (! fc)
   {
 	state = -10;
+	return;
   }
 
   const char * formatAddress = formatName.size () ? formatName.c_str () : 0;
@@ -348,47 +349,41 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
 	return;
   }
 
-  AVFormatParameters parms;
-  memset (&parms, 0, sizeof (parms));
-  state = av_set_parameters (fc, &parms);
-  if (state < 0)
-  {
-	return;
-  }
+  strcpy (fc->filename, fileName.c_str ());
 
-  stream = (AVStream *) av_mallocz (sizeof (AVStream));
+  stream = av_new_stream (fc, 0);
   if (! stream)
   {
 	state = -10;
 	return;
   }
-  fc->nb_streams = 1;
-  fc->streams[0] = stream;
 
-  avcodec_get_context_defaults (& stream->codec);
-  stream->codec.codec_id = fc->oformat->video_codec;
-  /*
-  if (fc->oformat->flags & AVFMT_RGB24)
+  // Add code here to search for named codec as well
+  codec = avcodec_find_encoder (fc->oformat->video_codec);
+  if (! codec)
   {
-	stream->codec.pix_fmt = PIX_FMT_RGB24;
+	state = -12;
+	return;
   }
-  */
+
+  // Set codec parameters.
+  AVCodecContext & cc = stream->codec;
+  cc.codec_type = codec->type;
+  cc.codec_id   = (CodecID) codec->id;
+  cc.gop_size     = 12; // default = 50; industry standard is 12
+  cc.max_b_frames = 2;  // default = 0; when nonzero, FFMPEG crashes if no motion
+
+  state = av_set_parameters (fc, 0);
+  if (state < 0)
+  {
+	return;
+  }
 
   state = url_fopen (& fc->pb, fileName.c_str (), URL_WRONLY);
   if (state < 0)
   {
 	return;
   }
-
-  // Add code here to search for named codec as well
-  codec = avcodec_find_encoder (stream->codec.codec_id);
-  if (! codec)
-  {
-	state = -12;
-  }
-
-  // Initialize other trivia in fc
-  strcpy (fc->filename, fileName.c_str ());
 
   state = 0;
 }
@@ -400,23 +395,21 @@ VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
   // this code could eventually be moved into a close() method, with a
   // corresponding open() method, so the the members may eventually be reused.
 
-  if (! state  &&  fc)
-  {
-	// is it necessary to write header before it is safe to call av_write_trailer?
-	av_write_trailer (fc);  // clears private data used by avformat
-  }
-
   if (codec)
   {
 	if (! needHeader)
 	{
 	  avcodec_close (& stream->codec);
-	  needHeader = true;
 	}
 	codec = 0;
   }
 
-  url_fclose (& fc->pb);
+  if (! state  &&  fc  &&  ! needHeader)
+  {
+	av_write_trailer (fc);  // Clears private data used by avformat.  Private data is not allocated until av_write_header(), so this is balanced.
+  }
+
+  needHeader = true;
 
   if (stream)
   {
@@ -428,6 +421,8 @@ VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
 	av_free (stream);
 	stream = 0;
   }
+
+  url_fclose (& fc->pb);
 
   if (fc)
   {
@@ -519,7 +514,17 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	}
 	else
 	{
-	  state = av_write_frame (fc, 0, videoBuffer, size);
+	  AVPacket packet;
+	  av_init_packet (&packet);
+	  packet.pts = stream->codec.coded_frame->pts;
+	  if (stream->codec.coded_frame->key_frame)
+	  {
+		packet.flags |= PKT_FLAG_KEY;
+	  }
+	  packet.stream_index = 0;
+	  packet.data = videoBuffer;
+	  packet.size = size;
+	  state = av_write_frame (fc, &packet);
 	  if (state >= 0)
 	  {
 		state = 0;
@@ -539,18 +544,23 @@ VideoOutFileFFMPEG::good () const
 void
 VideoOutFileFFMPEG::set (const std::string & name, double value)
 {
-  if (name == "framerate")
+  if (stream)
   {
-	if (stream)
+	if (name == "framerate")
 	{
 	  stream->codec.frame_rate = (int) rint (value * stream->codec.frame_rate_base);
 	}
-  }
-  else if (name == "bitrate")
-  {
-	if (stream)
+	else if (name == "bitrate")
 	{
 	  stream->codec.bit_rate = (int) rint (value);
+	}
+	else if (name == "gop")
+	{
+	  stream->codec.gop_size = (int) rint (value);
+	}
+	else if (name == "bframes")
+	{
+	  stream->codec.max_b_frames = (int) rint (value);
 	}
   }
 }
