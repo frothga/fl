@@ -335,11 +335,14 @@ cerr << "center: " << center << endl;
 		cerr << "  merging: " << merge << " " << remove << " " << closestDistance << endl;
 		converged = false;
 		// Cluster "merge" claims all of cluster "remove"s points.
-		for (int j = 0; j < data.size (); j++)
+		if (remove < member.rows ())  // Test is necessary because "remove" could be newly created cluster (see above) with no row in member yet.
 		{
-		  member (merge, j) += member (remove, j);
+		  for (int j = 0; j < data.size (); j++)
+		  {
+			member (merge, j) += member (remove, j);
+		  }
+		  maximize (data, member, merge);
 		}
-		maximize (data, member, merge);
 		clusters.erase (clusters.begin () + remove);
 	  }
 	}
