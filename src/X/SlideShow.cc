@@ -57,7 +57,7 @@ SlideShow::~SlideShow ()
   unmap ();
   if (ximage)
   {
-	ximage->data = new char;  // Will be freed immediately by XDestroyImage.
+	ximage->data = (char *) malloc (1);  // Will be freed immediately by XDestroyImage.
 	XDestroyImage (ximage);
   }
   pthread_mutex_destroy (&mutexImage);
@@ -208,7 +208,7 @@ SlideShow::show (const Image & image, int centerX, int centerY)
   pthread_mutex_lock (&mutexImage);
   if (ximage)
   {
-	ximage->data = new char;  // Will be freed immediately by XDestroyImage.
+	ximage->data = (char *) malloc (1);  // Will be freed immediately by XDestroyImage.
 	XDestroyImage (ximage);
 	ximage = NULL;
   }
