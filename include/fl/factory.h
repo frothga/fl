@@ -22,12 +22,11 @@ namespace fl
 	  typename productMap::iterator entry = products.find (name);
 	  if (entry == products.end ())
 	  {
-		throw "Unknown class name in stream";
+		std::string error = "Unknown class name in stream: ";
+		error += name;
+		throw error.c_str ();
 	  }
-	  else
-	  {
-		return (*entry->second) (stream);
-	  }
+	  return (*entry->second) (stream);
 	}
 
 	static productMap products;
