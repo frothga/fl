@@ -2,6 +2,12 @@
 #define fl_color_h
 
 
+// Note: These #defines conflict with the X header files, and probably others
+// as well.  Maybe a better strategy would be to make all the color constants
+// into global variables, or to make them ALLCAPS, as is traditional for
+// preprocessor contants.
+
+
 #define white     0xFFFFFFFF
 #define gray100   0xFFFFFFFF
 #define gray50    0xFF808080
