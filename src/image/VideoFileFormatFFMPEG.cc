@@ -371,7 +371,7 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
   cc.codec_type = codec->type;
   cc.codec_id   = (CodecID) codec->id;
   cc.gop_size     = 12; // default = 50; industry standard is 12
-  cc.max_b_frames = 2;  // default = 0; when nonzero, FFMPEG crashes if no motion
+  //cc.max_b_frames = 2;  // default = 0; when nonzero, FFMPEG crashes sometimes
 
   state = av_set_parameters (fc, 0);
   if (state < 0)
