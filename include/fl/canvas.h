@@ -36,7 +36,8 @@ namespace fl
 	virtual void drawParallelogram (const PointAffine & p, float radius = 1.0f, unsigned int color = 0xFFFFFF);  ///< Determines an S based on the shape and position of p, then calls drawParallelogram (S, ...).
 	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = 0xFFFFFF);
 	virtual void drawCircle (const Point & center, float radius, unsigned int color = 0xFFFFFF, float startAngle = 0, float endAngle = 2 * PI);
-	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1, unsigned int color = 0xFFFFFF, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
+	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1.0f, unsigned int color = 0xFFFFFF, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
+	virtual void drawEllipse (const Matrix<double> & S, float radius = 1.0f, unsigned int color = 0xFFFFFF);  ///< S projects a unit circle centered at the origin into the image.  radius scales up the unit circle.  This is a convenience function for marking affine-adapted patches.
 	virtual void drawText (const std::string & text, const Point & point, float size = 10, float angle = 0, unsigned int color = 0xFFFFFF);
 	virtual void drawImage (const Image & image, Point & p, float width = -1, float height = -1);  ///< width or height == -1 means size is same number of units as pixels in image
 
