@@ -3,8 +3,8 @@
 
 
 #include "fl/pointer.h"
+#include "fl/math.h"
 
-#include <math.h>
 #include <iostream>
 #include <sstream>
 #include <vector>
