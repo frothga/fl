@@ -57,6 +57,42 @@ Canvas::drawPolygon (const std::vector<Point> & points, unsigned int color)
 }
 
 void
+Canvas::drawParallelogram (const Matrix<double> & S, float radius, unsigned int color)
+{
+  Point tl (-radius,  radius);
+  Point tr ( radius,  radius);
+  Point bl (-radius, -radius);
+  Point br ( radius, -radius);
+
+  tl = S * tl;
+  tr = S * tr;
+  bl = S * bl;
+  br = S * br;
+
+  drawSegment (tl, tr, color);
+  drawSegment (tr, br, color);
+  drawSegment (br, bl, color);
+  drawSegment (bl, tl, color);
+}
+
+void
+Canvas::drawParallelogram (const PointAffine & p, float radius, unsigned int color)
+{
+  Matrix2x2<double> R;
+  R(0,0) = cos (p.angle);
+  R(0,1) = -sin (p.angle);
+  R(1,0) = -R(0,1);
+  R(1,1) = R(0,0);
+
+  Matrix<double> S (3, 3);
+  S.identity ();
+  S.region (0, 0, 1, 1) = p.A * R * p.scale;
+  S.region (0, 2, 1, 2) = p;
+
+  drawParallelogram (S, radius, color);
+}
+
+void
 Canvas::drawCircle (const Point & center, float radius, unsigned int color, float startAngle, float endAngle)
 {
   Matrix2x2<double> A;
