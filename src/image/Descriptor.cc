@@ -7,6 +7,11 @@ using namespace fl;
 
 // class Descriptor -----------------------------------------------------------
 
+Descriptor::Descriptor ()
+{
+  monochrome = true;
+}
+
 Descriptor::~Descriptor ()
 {
 }
@@ -33,4 +38,18 @@ Comparison *
 Descriptor::comparison ()
 {
   return new NormalizedCorrelation;
+}
+
+void
+Descriptor::read (istream & stream)
+{
+}
+
+void
+Descriptor::write (ostream & stream, bool withName)
+{
+  if (withName)
+  {
+	stream << typeid (*this).name () << endl;
+  }
 }
