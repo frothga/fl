@@ -4,23 +4,69 @@
 
 #include <cmath>
 
+#ifdef _MSC_VER
+  #include <float.h>
+#endif
+
 
 namespace std
 {
-  inline int sqrt (int a)
+  inline int
+  sqrt (int a)
   {
 	return (int) floorf (sqrtf ((float) a));
   }
 
-  inline int pow (int a, int b)
+  inline float
+  pow (int a, float b)
+  {
+	return powf ((float) a, b);
+  }
+
+#ifndef _MSC_VER
+
+  inline int
+  pow (int a, int b)
   {
 	return (int) floor (pow ((double) a, b));
   }
 
-  inline float pow (int a, float b)
+#else
+
+  inline float
+  rint (float a)
   {
-	return powf ((float) a, b);
+	return floorf (a + 0.5f);
   }
+
+  inline double
+  rint (double a)
+  {
+	return floor (a + 0.5);
+  }
+
+#endif
+
+  /**
+	 Four-way max.  Used mainly for finding limits of a set of four points in the plane.
+   **/
+  template<class T>
+  inline T
+  max (T a, T b, T c, T d)
+  {
+	return max (a, max (b, max (c, d)));
+  }
+
+  /**
+	 Four-way min.  Used mainly for finding limits of a set of four points in the plane.
+   **/
+  template<class T>
+  inline T
+  min (T a, T b, T c, T d)
+  {
+	return min (a, min (b, min (c, d)));
+  }
+
 }
 
 
@@ -53,9 +99,30 @@ issubnormal (float a)
 inline bool
 issubnormal (double a)
 {
-  return    ((*(unsigned long long *) &a) & 0x7FF0000000000000ll) == 0
-	     && ((*(unsigned long long *) &a) &    0xFFFFFFFFFFFFFll) != 0;
+  #ifdef _MSC_VER
+	int c = _fpclass (a);
+	return c == _FPCLASS_ND  ||  c == _FPCLASS_PD;
+  #else
+	return    ((*(unsigned long long *) &a) & 0x7FF0000000000000ll) == 0
+	       && ((*(unsigned long long *) &a) &    0xFFFFFFFFFFFFFll) != 0;
+  #endif
 }
 
+#ifdef _MSC_VER
+
+inline int
+isnan (double a)
+{
+  return _isnan (a);
+}
+
+inline int
+isinf (double a)
+{
+  int c = _fpclass (a);
+  return c == _FPCLASS_PINF  ||  c == _FPCLASS_NINF;
+}
+
+#endif
 
 #endif
