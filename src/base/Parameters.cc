@@ -114,24 +114,24 @@ Parameters::write (std::ostream & stream) const
 int
 Parameters::find (const std::string & name) const
 {
-  string temp = name;
-  lowercase (temp);
-  int tempSize = temp.size ();
+  string query = name;
+  lowercase (query);
+  int queryLength = query.size ();
   int longestPrefix = 0;
   int bestIndex = -1;
   for (int i = 0; i < names.size (); i++)
   {
 	int length = names[i].size ();
-	if (length == tempSize)
+	if (length == queryLength)
 	{
-	  if (names[i] == temp)
+	  if (names[i] == query)
 	  {
 		return i;
 	  }
 	}
-	else if (length < tempSize)
+	else if (length < queryLength)
 	{
-	  if (names[i] == temp.substr (0, length))
+	  if (names[i] == query.substr (0, length))
 	  {
 		if (length >= longestPrefix)  // ">=" allows latter entries to override earlier ones
 		{
@@ -140,13 +140,13 @@ Parameters::find (const std::string & name) const
 		}
 	  }
 	}
-	else  // length > tempSize
+	else  // length > queryLength
 	{
-	  if (names[i].substr (0, tempSize) == temp)
+	  if (names[i].substr (0, queryLength) == query)
 	  {
 		// There's no good way to choose among several names with prefixes
 		// equal to the search string.  Therefore, don't even try.
-		longestPrefix = tempSize;
+		longestPrefix = queryLength;
 		bestIndex = i;
 	  }
 	}
@@ -236,20 +236,10 @@ Parameters::getFloat (const std::string & name, float defaultValue) const
 }
 
 void
-Parameters::getStringList (const string & name, vector<string> & result, const vector<string> * defaultValue) const
+Parameters::getStringList (const string & name, vector<string> & result, const char * defaultValue) const
 {
-  string value = getChar (name);
-
+  string value = getChar (name, defaultValue);
   result.clear ();
-  if (value.size () == 0)
-  {
-	if (defaultValue)
-	{
-	  result = *defaultValue;
-	}
-	return;
-  }
-
   while (value.size ())
   {
 	string piece;
@@ -259,20 +249,10 @@ Parameters::getStringList (const string & name, vector<string> & result, const v
 }
 
 void
-Parameters::getIntList (const string & name, vector<int> & result, const vector<int> * defaultValue) const
+Parameters::getIntList (const string & name, vector<int> & result, const char * defaultValue) const
 {
-  string value = getChar (name);
-
+  string value = getChar (name, defaultValue);
   result.clear ();
-  if (value.size () == 0)
-  {
-	if (defaultValue)
-	{
-	  result = *defaultValue;
-	}
-	return;
-  }
-
   while (value.size ())
   {
 	string piece;
