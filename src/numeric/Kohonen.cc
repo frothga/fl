@@ -1,8 +1,7 @@
-#include "cluster.h"
-
-#include <fl/random.h>
-#include <fl/convolve.h>
-#include <fl/time.h>
+#include "fl/cluster.h"
+#include "fl/random.h"
+#include "fl/convolve.h"
+#include "fl/time.h"
 
 
 using namespace std;
@@ -93,7 +92,7 @@ Kohonen::run (const std::vector<Vector<float> > & data)
   }
 
   // Prepare a Gaussian kernel to use as our neighborhood function
-  ImageOf<float> lambda = Gaussian2D (sigma);
+  ImageOf<float> lambda = Gaussian2D (sigma);  // TODO: this creates a circular dependency between libflNumeric and libflImage.  Should use a Matrix instead.  Just copy the code from image/Gaussian2D.cc
   int hx = lambda.width / 2;
   int hy = lambda.height / 2;
   lambda *= 1.0 / lambda (hx, hy);  // Normalize so peak value is 1

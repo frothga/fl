@@ -1,5 +1,6 @@
-#include "cluster.h"
+#include "fl/cluster.h"
 
+using namespace fl;
 using namespace std;
 
 

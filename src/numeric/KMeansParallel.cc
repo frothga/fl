@@ -1,9 +1,8 @@
-#include "cluster.h"
-
-#include <fl/time.h>
-#include <fl/random.h>
-#include <fl/socket.h>
-#include <fl/lapacks.h>
+#include "fl/cluster.h"
+#include "fl/time.h"
+#include "fl/random.h"
+#include "fl/socket.h"
+#include "fl/lapacks.h"
 
 #include <algorithm>
 #include <pthread.h>
