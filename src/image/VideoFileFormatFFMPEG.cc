@@ -36,7 +36,6 @@ VideoInFileFFMPEG::seekFrame (int frame)
   {
 	return;
   }
-  cerr << "frame = " << frame << endl;
   seekTime ((double) frame * stream->r_frame_rate_base / stream->r_frame_rate);
 }
 
@@ -53,65 +52,79 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	return;
   }
 
-  int64_t targetDTS = (int64_t) rint (timestamp * AV_TIME_BASE);
-  cerr << "timestamp = " << timestamp << endl;
-  cerr << "targetDTS = " << targetDTS;
-  if (fc->start_time != AV_NOPTS_VALUE)
-  {
-	targetDTS += fc->start_time;
-	cerr << " + " << fc->start_time << " = " << targetDTS;
-  }
-  cerr << endl;
-  state = av_seek_frame (fc, stream->index, targetDTS);
-  if (state < 0)
-  {
-	return;
-  }
-
-  // Flush the codec's state, and also clear our own packet state.
-  avcodec_flush_buffers (cc);
-  if (packet.size)
-  {
-	av_free_packet (&packet);
-  }
-  state = av_read_packet (fc, &packet);
-  if (state < 0)
-  {
-	return;
-  }
-  state = 0;
-  size = packet.size;
-  data = packet.data;
-  gotPicture = false;
-  cerr << "queued packet.pts=" << packet.pts << " dts=" << packet.dts << " skew=" << packet.pts - packet.dts << endl;
-
-  // Read forward until finding the exact frame requested.
   int targetFrame = (int) floor (timestamp * stream->r_frame_rate / stream->r_frame_rate_base + 1e-6);  // floor() because any timestamp should equate to the frame visible at that time.
-  int64_t PTS = av_rescale (packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
-  if (fc->start_time != AV_NOPTS_VALUE)
+  while (cc->frame_number != targetFrame)
   {
-	PTS -= fc->start_time;
-  }
-  double actualFrame = ((double) PTS / AV_TIME_BASE) * stream->r_frame_rate / stream->r_frame_rate_base;
-  double skew = 0;
-  if (packet.pts != AV_NOPTS_VALUE)
-  {
-	PTS = av_rescale (packet.pts - packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
-	skew = ((double) PTS / AV_TIME_BASE) * cc->frame_rate / cc->frame_rate_base;
-  }
-  cc->frame_number = (int) rint (actualFrame + skew);  // rint() because PTS should be exactly on some frame's timestamp, and we want to compensate for numerical error.
-  cerr.precision (20);
-  cerr << "targetFrame = " << targetFrame << endl;
-  cerr << "PTS = " << PTS << endl;
-  cerr << "frame_number = " << cc->frame_number << " " << actualFrame << " " << skew << endl;
-  while (cc->frame_number < targetFrame)
-  {
-	readNext (0);
-	if (! gotPicture)
+	if (cc->frame_number > targetFrame  ||  cc->frame_number < targetFrame - 12)  // 12 is arbitrary, but based on the typical size of a GOP in mpeg
 	{
-	  return;
+	  // Use seek to position at or before the frame
+	  int64_t targetDTS = (int64_t) rint (timestamp * AV_TIME_BASE);
+	  targetDTS -= (int64_t) (expectedSkew * AV_TIME_BASE * cc->frame_rate_base / cc->frame_rate);
+	  if (fc->start_time != AV_NOPTS_VALUE)
+	  {
+		targetDTS += fc->start_time;
+	  }
+	  state = av_seek_frame (fc, stream->index, targetDTS);
+	  if (state < 0)
+	  {
+		return;
+	  }
+
+	  // Flush the codec's state, and also clear our own packet state.
+	  avcodec_flush_buffers (cc);
+	  if (packet.size)
+	  {
+		av_free_packet (&packet);
+	  }
+	  state = av_read_packet (fc, &packet);
+	  if (state < 0)
+	  {
+		return;
+	  }
+	  state = 0;
+	  size = packet.size;
+	  data = packet.data;
+	  gotPicture = false;
+
+	  // Determine what frame the seek actually obtained.
+	  int64_t PTS = av_rescale (packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
+	  if (fc->start_time != AV_NOPTS_VALUE)
+	  {
+		PTS -= fc->start_time;
+	  }
+	  double decodeFrame = ((double) PTS / AV_TIME_BASE) * stream->r_frame_rate / stream->r_frame_rate_base;
+	  double skew = 0;
+	  if (packet.pts != AV_NOPTS_VALUE)
+	  {
+		PTS = av_rescale (packet.pts - packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
+		skew = ((double) PTS / AV_TIME_BASE) * cc->frame_rate / cc->frame_rate_base;
+	  }
+	  cc->frame_number = (int) rint (decodeFrame + skew);  // rint() because PTS should be exactly on some frame's timestamp, and we want to compensate for numerical error.
+	  //cerr << "frame_number = " << cc->frame_number << " " << decodeFrame << " " << skew << endl;
+	  if (cc->frame_number > targetFrame)
+	  {
+		// Oops!  We overshot.  Need to expect more skew.
+		if (expectedSkew < cc->frame_number - targetFrame)
+		{
+		  expectedSkew = max (skew, (double) cc->frame_number - targetFrame);
+		}
+		else
+		{
+		  expectedSkew++;
+		}
+	  }
 	}
-	gotPicture = 0;
+
+	// Read forward until finding the exact frame requested.
+	while (cc->frame_number < targetFrame)
+	{
+	  readNext (0);
+	  if (! gotPicture)
+	  {
+		return;
+	  }
+	  gotPicture = 0;
+	}
   }
 }
 
@@ -148,16 +161,6 @@ VideoInFileFFMPEG::readNext (Image * image)
 		data = packet.data;
 		state = 0;
 	  }
-if (packet.pts != AV_NOPTS_VALUE  ||  packet.dts != AV_NOPTS_VALUE)
-{
-  int64_t DTS = av_rescale (packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
-  if (fc->start_time != AV_NOPTS_VALUE)
-  {
-	DTS -= fc->start_time;
-  }
-  int frame_number = (int) rint (((double) DTS / AV_TIME_BASE) * stream->r_frame_rate / stream->r_frame_rate_base);
-  cerr << "read packet: pts=" << packet.pts << " dts=" << packet.dts << " skew=" << packet.pts - packet.dts << " frame=" << frame_number << endl;
-}
 	}
 
 	while (size > 0  &&  ! gotPicture)
@@ -173,7 +176,6 @@ if (packet.pts != AV_NOPTS_VALUE  ||  packet.dts != AV_NOPTS_VALUE)
 	}
   }
 
-if (gotPicture) cerr << "Got picture: type=" << picture.pict_type << endl;
   if (gotPicture  &&  image)
   {
 	extractImage (*image);
@@ -256,11 +258,14 @@ VideoInFileFFMPEG::open (const string & fileName)
   {
 	return;
   }
-
   state = 0;
 
-  stream->r_frame_rate = 24000;  cerr << "Warning: hacking frame rate to 24000" << endl;
-  cc->debug = FF_DEBUG_PICT_INFO;  cerr << "Setting debug mode" << endl;
+  expectedSkew = 0;
+  if (codec->id == CODEC_ID_MPEG2VIDEO)
+  {
+	cerr << "Warning: hacking frame rate to 24000/1001.  Should verify telecine first." << endl;
+	stream->r_frame_rate = 24000;
+  }
 }
 
 void
