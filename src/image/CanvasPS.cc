@@ -128,8 +128,8 @@ CanvasPS::drawPolygon (const std::vector<Point> & points, unsigned int color)
 void
 CanvasPS::drawCircle (const Point & center, float radius, unsigned int color, float startAngle, float endAngle)
 {
-  startAngle *= 180 / PI;
-  endAngle   *= 180 / PI;
+  startAngle *= (float) (180 / PI);
+  endAngle   *= (float) (180 / PI);
 
   psf << "np" << endl;
   psf << center.x << " " << center.y << " " << radius << " " << startAngle << " " << endAngle << " arc" << endl;
@@ -159,8 +159,8 @@ CanvasPS::drawEllipse (const Point & center, const Matrix2x2<double> & shape, fl
   }
   float angle = atan2 (rot(1,0), rot(0,0));
 
-  startAngle *= 180 / PI;
-  endAngle   *= 180 / PI;
+  startAngle *= (float) (180 / PI);
+  endAngle   *= (float) (180 / PI);
 
   psf << "np" << endl;
   psf << "cm" << endl;
@@ -190,7 +190,7 @@ CanvasPS::setTranslation (float x, float y)
 void
 CanvasPS::setScale (float x, float y)
 {
-  scale = x >? y;
+  scale = max (x, y);
 
   psf << x << " " << y << " sc" << endl;
   psf << lineWidth / scale << " slw" << endl;
