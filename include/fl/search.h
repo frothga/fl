@@ -33,13 +33,14 @@ namespace fl
 	 Regarding the name: "Numeric" as opposed to "Analytic", which would be
 	 computed directly.  To make an analytic searchable, derive from this
 	 class and override appropriate functions.
+	 The programmer must implement at least the dimension() and value()
+	 functions to instantiate a subclass.
   **/
   class SearchableNumeric : public Searchable
   {
   public:
 	SearchableNumeric (double perturbation = -1);
 
-	virtual void value (const Vector<double> & point, Vector<double> & result) = 0;
 	virtual void gradient (const Vector<double> & point, Vector<double> & result, const int index = 0);
 	virtual void jacobian (const Vector<double> & point, Matrix<double> & result, const Vector<double> * currentValue = NULL);
 	virtual void jacobian (const Vector<double> & point, MatrixSparse<double> & result, const Vector<double> * currentValue = NULL);
