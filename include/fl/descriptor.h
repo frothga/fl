@@ -1,5 +1,5 @@
-#ifndef descriptor_h
-#define descriptor_h
+#ifndef fl_descriptor_h
+#define fl_descriptor_h
 
 
 #include "fl/convolve.h"
@@ -12,26 +12,68 @@
 
 namespace fl
 {
-  // Generic Descriptor interface ---------------------------------------------
+  // Comparison ---------------------------------------------------------------
+
+  /**
+	 Takes two feature vectors and returns a number in [-inf,inf] that
+	 describes their relationship to each other.  The more alike two
+	 vectors are, the more positive the value.  Exactly what value (a, a)
+	 is depends on the class.
+
+	 This is not the same concept as a metric.  Must be
+	 symmetric (ie: value (a, b) == value (b, a)), but does not necessarily
+	 satisfy positivity or triangle inequality.  If the comparison is a
+	 distance, it should return negative values so that the
+	 closer two vectors are, the more postive the value.
+  **/
+  class Comparison
+  {
+  public:
+	virtual ~Comparison ();  ///< Establishes that destructor is virtual, but doesn't do anything else.
+
+	virtual Vector<float> preprocess (const Vector<float> & value) const;
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const = 0;
+  };
+
+  /**
+	 Gives the correlation value, in range [-1,1], after normalizing each
+	 vector.
+  **/
+  class NormalizedCorrelation : public Comparison
+  {
+  public:
+	virtual Vector<float> preprocess (const Vector<float> & value) const;
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+  };
+
+  /**
+	 Returns the stardard Euclidean distance between two points.  Does no
+	 pre-processing.
+  **/
+  class MetricEuclidean : public Comparison
+  {
+  public:
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+  };
+
+
+  // Descriptor ---------------------------------------------------------------
 
   class Descriptor
   {
   public:
-	static Descriptor * factory (std::istream & stream);  // Construct a new Descriptor from the stream.  The exact class depends on the data in the stream.
-
 	virtual ~Descriptor ();
 
-	virtual Vector<float> value (const Image & image, const Point & point);  // Calls PointAffine version with default values for scale, angle and shape.
-	virtual Vector<float> value (const Image & image, const PointInterest & point);  // Calls PointAffine version with default values for angle and shape.
-	virtual Vector<float> value (const Image & image, const PointAffine & point) = 0;  // Returns a vector of floats that describe the image patch near the interest point.
-	virtual Image patch (const Vector<float> & value) = 0;  // Return a graphical representation of the descriptor.  Preferrably an image patch that would stimulate this descriptor to return the given value.
+	virtual Vector<float> value (const Image & image, const Point & point);  ///< Calls PointAffine version with default values for scale, angle and shape.
+	virtual Vector<float> value (const Image & image, const PointInterest & point);  ///< Calls PointAffine version with default values for angle and shape.
+	virtual Vector<float> value (const Image & image, const PointAffine & point) = 0;  ///< Returns a vector of floats that describe the image patch near the interest point.
+	virtual Vector<float> value (const Image & image);  ///< Describe entire region that has non-zero alpha values.  Descriptor may treat all non-zero alpha values the same, or use them to weight the pixels.  This method is only available in Descriptors that don't require a specific point of reference.  IE: a spin image must have a central point, so it can't implement this method.
+	virtual Image patch (const Vector<float> & value) = 0;  ///< Return a graphical representation of the descriptor.  Preferrably an image patch that would stimulate this descriptor to return the given value.
+	virtual Comparison * comparison ();  ///< Return an instance of the recommended Comparison for feature vectors from this type of Descriptor.  Caller is responsible to destroy instance.
 
 	virtual void read (std::istream & stream) = 0;
 	virtual void write (std::ostream & stream, bool withName = true) = 0;
   };
-
-
-  // Specific Descriptors -----------------------------------------------------
 
   /**
 	 Finds characteristic scale of point.
@@ -39,7 +81,7 @@ namespace fl
   class DescriptorScale : public Descriptor
   {
   public:
-	DescriptorScale (float firstScale = 1, float lastScale = 25, int interQuanta = 40, float quantum = 2);  // quantum is most meaningful as a prime number; 2 means "doubling" or "octaves"
+	DescriptorScale (float firstScale = 1, float lastScale = 25, int interQuanta = 40, float quantum = 2);  ///< quantum is most meaningful as a prime number; 2 means "doubling" or "octaves"
 	void initialize (float firstScale, float lastScale, float stepSize);
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
@@ -197,14 +239,14 @@ namespace fl
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	// Subroutines for value ()
-	virtual void rangeMinMax (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float & minIntensity, float & quantum);  // Finds intensity range based on simple min and max pixel values
-	virtual void rangeMeanDeviation (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float & minIntensity, float & quantum);  // Finds intensity range using mean and standard deviation of pixel values
-	virtual void doBinning (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float minIntensity, float quantum, float binRadius, Vector<float> & result);  // Perform the actually binning process
+	virtual void rangeMinMax (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float & minIntensity, float & quantum);  ///< Finds intensity range based on simple min and max pixel values
+	virtual void rangeMeanDeviation (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float & minIntensity, float & quantum);  ///< Finds intensity range using mean and standard deviation of pixel values
+	virtual void doBinning (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float minIntensity, float quantum, float binRadius, Vector<float> & result);  ///< Perform the actually binning process
 
 	int   binsRadial;
 	int   binsIntensity;
 	float supportRadial;
-	float supportIntensity;  // Number of standard deviations away from avarge intensity.
+	float supportIntensity;  ///< Number of standard deviations away from avarge intensity.
   };
 
   class DescriptorSpinSimple : public DescriptorSpin
@@ -237,6 +279,7 @@ namespace fl
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
+	virtual Comparison * comparison ();  ///< Return a MetricEuclidean, rather than the default (NormalizedCorrelation).
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
@@ -268,6 +311,7 @@ namespace fl
 	Vector<float> finish ();  ///< Extract feature vector from the histogram.  Only returns values for bins that map to a valid RGB color.  See member "valid" below.
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
@@ -300,6 +344,7 @@ namespace fl
 	Vector<float> finish ();  ///< Extract feature vector from the histogram.  Only returns values for bins that map to a valid RGB color.  See member "valid" below.
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
@@ -312,6 +357,39 @@ namespace fl
 	int validCount;  ///< Total number of true entries in valid.  Effectively the dimension of the vector recturned by value().
 
 	float * histogram;  ///< Working histogram.  Forces this Descriptor object to be single threaded.
+  };
+
+  /**
+	 Gathers statistics on responses to a filter bank in an image region.
+	 The bank is replicated at several scale levels, and this descriptor
+	 chooses the appropriate scale level for each individual pixel.
+   **/
+  class DescriptorTextonScale : Descriptor
+  {
+  public:
+	DescriptorTextonScale (int angles = 4, float firstScale = 1.0f, float lastScale = 4.0f, int extraSteps = 3);
+	void initialize ();
+
+	void preprocess (const Image & image);
+
+	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (const Image & image);
+	virtual Image patch (const Vector<float> & value);
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true);
+
+	const Image * lastImage;  ///< Pointer to the currently cached input image.
+	std::vector< ImageOf<float> > responses;  ///< Responses to each filter in the bank over the entire input image.
+
+	int angles;  ///< Number of discrete orientations in the filter bank.
+	float firstScale;  ///< Delimits lower end of scale space.
+	float lastScale;  ///< Delimits upper end of scale space.
+	int steps;  ///< Number of discrete scale levels in one octave.
+	float supportRadial;  ///< Multiple of scale to use when selecting image region specified by PointAffine.
+
+	int bankSize;  ///< Number of filters at a given scale level.
+	float scaleRatio;  ///< Ratio between two adjacent scale levels.
+	std::vector<ConvolutionDiscrete2D> filters;
   };
 }
 
