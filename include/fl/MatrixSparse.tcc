@@ -11,23 +11,20 @@ namespace fl
   MatrixSparse<T>::MatrixSparse ()
   {
 	rows_ = 0;
-	data = new SparseBlock;
-	data->refcount = 1;
+	data.initialize ();
   }
 
   template<class T>
   MatrixSparse<T>::MatrixSparse (const int rows, const int columns)
   {
-	data = new SparseBlock;
-	data->refcount = 1;
+	data.initialize ();
 	resize (rows, columns);
   }
 
   template<class T>
   MatrixSparse<T>::MatrixSparse (const MatrixAbstract<T> & that)
   {
-	data = new SparseBlock;
-	data->refcount = 1;
+	data.initialize ();
 	int m = that.rows ();
 	int n = that.columns ();
 	resize (m, n);
@@ -41,35 +38,15 @@ namespace fl
   }
 
   template<class T>
-  MatrixSparse<T>::MatrixSparse (const MatrixSparse<T> & that)
-  {
-	rows_ = that.rows_;
-	data = that.data;
-	data->refcount++;
-  }
-
-  template<class T>
   MatrixSparse<T>::MatrixSparse (std::istream & stream)
   {
+	data.initialize ();
+	read (stream);
   }
 
   template<class T>
   MatrixSparse<T>::~MatrixSparse ()
   {
-	data->refcount--;
-	if (data->refcount <= 0)
-	{
-	  delete data;
-	}
-  }
-
-  template<class T>
-  MatrixSparse<T> &
-  MatrixSparse<T>::operator = (const MatrixSparse & that)
-  {
-	rows_ = that.rows_;
-	data = that.data;
-	data->refcount++;
   }
 
   template<class T>
@@ -78,9 +55,9 @@ namespace fl
   {
 	if (value == (T) 0)
 	{
-	  if (column < data->columns.size ())
+	  if (column < data->size ())
 	  {
-		data->columns[column].erase (row);
+		(*data)[column].erase (row);
 	  }
 	}
 	else
@@ -89,11 +66,11 @@ namespace fl
 	  {
 		rows_ = row + 1;
 	  }
-	  if (column >= data->columns.size ())
+	  if (column >= data->size ())
 	  {
-		data->columns.resize (column + 1);
+		data->resize (column + 1);
 	  }
-	  data->columns[column][row] = value;
+	  (*data)[column][row] = value;
 	}
   }
 
@@ -101,9 +78,9 @@ namespace fl
   T &
   MatrixSparse<T>::operator () (const int row, const int column) const
   {
-	if (column < data->columns.size ())
+	if (column < data->size ())
 	{
-	  std::map<int, T> & c = data->columns[column];
+	  std::map<int, T> & c = (*data)[column];
 	  typename std::map<int, T>::iterator i = c.find (row);
 	  if (i != c.end ())
 	  {
@@ -126,7 +103,7 @@ namespace fl
   int
   MatrixSparse<T>::columns () const
   {
-	return data->columns.size ();
+	return data->size ();
   }
 
   template<class T>
@@ -140,7 +117,11 @@ namespace fl
   void
   MatrixSparse<T>::clear ()
   {
-	data->columns.clear ();
+	typename std::vector< std::map<int,T> >::iterator i = data->begin ();
+	while (i < data->end ())
+	{
+	  (i++)->clear ();
+	}
   }
 
   template<class T>
@@ -148,27 +129,15 @@ namespace fl
   MatrixSparse<T>::resize (const int rows, const int columns)
   {
 	rows_ = rows;
-	data->columns.resize (columns);
+	data->resize (columns);
   }
 
   template<class T>
   void
   MatrixSparse<T>::copyFrom (const MatrixSparse & that)
   {
-	// Prepare fresh data block
-	if (data->refcount != 1)
-	{
-	  data->refcount--;
-	  if (data->refcount <= 0)
-	  {
-		delete data;
-	  }
-	  data = new SparseBlock;
-	  data->refcount = 1;
-	}
-
 	rows_ = that.rows_;
-	data->columns = that.data->columns;  // performs deep copy of STL vector and map objects
+	data.copyFrom (that.data);  // performs deep copy of STL vector and map objects
   }
 
   template<class T>
@@ -177,11 +146,15 @@ namespace fl
   {
 	int n;
 	stream.read ((char *) &n, sizeof (n));
-	data->columns.resize (n);
+	if (! stream.good ())
+	{
+	  throw "MatrixSparse: can't finish reading because stream is bad";
+	}
+	data->resize (n);
 
 	for (int i = 0; i < n; i++)
 	{
-	  std::map<int,T> & C = data->columns[i];
+	  std::map<int,T> & C = (*data)[i];
 
 	  int m;
 	  stream.read ((char *) &m, sizeof (m));
@@ -194,6 +167,7 @@ namespace fl
 		stream.read ((char *) &first, sizeof (first));
 		stream.read ((char *) &second, sizeof (second));
 		insertionPoint = C.insert (insertionPoint, std::make_pair (first, second));
+		rows_ = std::max (rows_, first + 1);
 	  }
 	}
   }
@@ -204,11 +178,11 @@ namespace fl
   {
 	MatrixAbstract<T>::write (stream, withName);
 
-	const int n = data->columns.size ();
+	const int n = data->size ();
 	stream.write ((char *) &n, sizeof (n));
 	for (int i = 0; i < n; i++)
 	{
-	  std::map<int,T> & C = data->columns[i];
+	  std::map<int,T> & C = (*data)[i];
 
 	  const int m = C.size ();
 	  stream.write ((char *) &m, sizeof (m));
@@ -218,6 +192,7 @@ namespace fl
 	  {
 		stream.write ((char *) & j->first, sizeof (j->first));
 		stream.write ((char *) & j->second, sizeof (j->second));
+		j++;
 	  }
 	}
   }
