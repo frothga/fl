@@ -540,7 +540,7 @@ namespace fl
 	Matrix<double> U;
 	Matrix<double> S;
 	Matrix<double> VT;
-	gesvd (A, U, S, VT);
+	gesvd (A, U, S, VT, 'N', 'N');
 
 	if (threshold < 0)
 	{
