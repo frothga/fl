@@ -93,6 +93,12 @@ Canvas::drawParallelogram (const PointAffine & p, float radius, unsigned int col
 }
 
 void
+Canvas::drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill)
+{
+  throw "drawFilledRectangle not implemented for this type of Canvas";
+}
+
+void
 Canvas::drawCircle (const Point & center, float radius, unsigned int color, float startAngle, float endAngle)
 {
   Matrix2x2<double> A;

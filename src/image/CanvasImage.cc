@@ -295,6 +295,32 @@ CanvasImage::drawPolygon (const std::vector<Point> & points, unsigned int color)
 }
 
 void
+CanvasImage::drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill)
+{
+  int x0 = (int) rint (corner0.x);
+  int x1 = (int) rint (corner1.x);
+  int y0 = (int) rint (corner0.y);
+  int y1 = (int) rint (corner1.y);
+
+  if (x0 > x1)
+  {
+	swap (x0, x1);
+  }
+  if (y0 > y1)
+  {
+	swap (y0, y1);
+  }
+
+  for (int y = y0; y <= y1; y++)
+  {
+	for (int x = x0; x <= x1; x++)
+	{
+	  setRGBA (x, y, colorFill);
+	}
+  }
+}
+
+void
 CanvasImage::drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
 {
   // Adjust for scaling and translation
