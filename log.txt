@@ -1,0 +1,79 @@
+1/22/05
+
+* Transferred cvs repository for fl from UIUC to home computer.  From now on, if changes are to be made public, just post the tar file to the UIUC web site.
+
+* Priorities:
+	- improve image cache mechanism: store multiple types and scales.  Create new object to manage caching, and add interface to take it instead of image.  Make static cache shared by all image processors.  Make it TLS if possible.  Sources that currently do caching:
+		DescriptorCombo.cc
+		DescriptorLBP.cc
+		DescriptorOrientationHistogram.cc
+		DescriptorSIFT.cc
+		DescriptorTextonScale.cc
+	- remove redundancies from SIFT code.
+	- experiment with sse compatible code in ConvolutionDiscrete1D.  Idea is to multiply entire image by each element of kernel individually and add to a sum image, with appropriate offsets and bounds.  Limit amount of image processed in a single chunk to a size that can all fit in cache.  If sse instruction exists that can do this whole op, then it could be much faster.  May be faster even in c code.
+	- modify SIFT and orientation histogram to work directly in the image when processing affine patches.  Requires figuring out how to transform gradient angles through skew or non-uniform scaling.
+	- get net to compile under msvc
+	- get pthreads under msvc
+	- deepen template specialization for bool, to get rid of warnings in msvc
+
+* Modifications to MSVC project in fl:
+	- rename from msvc.* to fl.*
+	- Change file types of *.cc files so that they are recognized as C++ sources.  Moved project settings from individual files up to project level for easier management.
+
+* More theory on how to separate FL work from Sandia work:  *Maybe* work on fl could remain free if:
+	- it is done on my own time and with non-Sandia resources (such as my home computer or UIUC account), and
+	- it is only implementations of published algorithms or bug fixes.
+It not clear that this hope is actually the case.  Must verify.  Also, may need to declare conflict of interest.  Must talk to John Feddema about this.
+If by some chance I invent a new descriptor or point detector while at Sandia, this would belong to Sandia.  Probably would even belong to them if I came up with it in the middle of the night at home.  Check on this as well.
+
+
+All entries below this point are retrospective.  That is, they are recorded on 1/22/05 rather than the dates shown, but are a true record of my thoughts or actions at the time.  Some of these are based on a reasonable reconstruction from date stamps on computer files.
+
+
+1/19/05
+
+* Learned, while at work, that you can get MS Visual Studio to properly recognize a .cc file as a C++ source simply by setting file type in its properties list.  This makes managing the fl project settings for C++ files simpler.  Visual Studio should recognize these files anyway, but it doesn't for some bizarre reason.  Also learned that it is necessary to build all libraries with the same C runtime settings in order to link them cleanly.  To solve a linkage problem at work, I went ahead and made changes to the msvc project for fl.  Intend to make similar changes at home at post them.  This is a minor work-around for MSVC peculiarities.
+
+
+1/9/05
+
+* Finished compilation fixes for MSVC .NET 2003 version.  (Changes done only with own resources.)  Posted to UIUC but not checked in to CVS yet.  Waiting for changes to age a little first, to make sure they are correct/best.
+
+
+12/16/04
+
+* Did a cleaner round of Cygwin fixes after finally getting home computer working again.  Did changes on own computer and outside of Sandia hours.  Posted changes to UIUC.
+
+
+12/7/04
+
+* Due to lack of access to home computer, redid Cygwin fixes at Sandia.  John Feddema gave reluctant permission to post such changes, but asked that any new development for Sandia not be published.
+
+* Decided from now on not to do any maintainance on fl at Sandia.
+
+* Theory of how to separate fl work from Sandia work: In my previous work at UI, I separated the library from applications:
+	application -- Programs targeted at specific problems.
+	library -- Tools that can be combined and used in arbitrary ways by any number of applications.
+If code is problem specific, it should not be in the library.  FL is a library for image processing.  It contains convolutions, point detectors, and descriptors, along with a host of other basic image processing tools.  FL only contains published algorithms, and not even all of those.
+Most of my work at UI was at the application level.  Only when it became apparent that a routine had broad applicability to multiple problems did it get promoted to the library.
+My plan is to place all code I develop for Sandia in applications outside of FL.  I believe that Sandia's interest is in novel solutions, and such software will encode specific approaches to specific problems.
+
+* FL is my software engineering "playground".  My goal is to retain it for my own use in perpetuity.  The best way to protect that interest is for it to be freely available to anyone.
+
+
+9/20/04
+
+* Finished compilation fixes for Cygwin in order to build FL on my home computer.  Didn't post these at the time.
+
+
+2004, particularly after CVPR '04
+
+* Had discussions with Lana and Akash about need to add Matas regions (aka MSERs) to our arsenal of detectors.  Seem to recollect that Lana said she had received a copy of code from Matas (perhaps indirectly).
+
+
+7/8/03
+
+* Checked in the following items in the "ideas" directory of fl:
+	- emd.c and emd.h -- sources for an implementation of "Earth Mover's Distance" downloaded from the web
+	- kenton.zip -- Kenton's work to adapt fl to build under MSVC
+	- jpeg2eps.sh -- A shell script for converting jpeg to eps.  Planned to incorporated it into ImageFileFormatEPS.
