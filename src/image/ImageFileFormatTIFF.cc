@@ -19,41 +19,99 @@ ImageFileFormatTIFF::read (const std::string & fileName, Image & image) const
 	throw "Unable to open file.";
   }
 
+  bool ok = true;
+
   uint32 w, h;
-  TIFFGetField (tif, TIFFTAG_IMAGEWIDTH, &w);
-  TIFFGetField (tif, TIFFTAG_IMAGELENGTH, &h);
+  ok &= TIFFGetField (tif, TIFFTAG_IMAGEWIDTH, &w);
+  ok &= TIFFGetField (tif, TIFFTAG_IMAGELENGTH, &h);
 
-  //image.format = &ABGRChar;  // for the more general TIFFReadRGBAImage
-  image.format = &RGBAChar;
-  image.resize (w, h);  // using malloc rather than _TIFFmalloc
+  uint16 samplesPerPixel;
+  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &samplesPerPixel);
+  uint16 bitsPerSample;
+  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_BITSPERSAMPLE, &bitsPerSample);
+  uint16 format;
+  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &format);
 
-  // Hack just for reading Steve's tiffs.  A more general routine would check
-  // samples-per-pixel and bits-per-sample and adjust accordingly.
-  int size = TIFFScanlineSize (tif);
-  size /= 2;
-  unsigned short * buffer = new unsigned short[size];
-  for (int y = 0; y < h; y++)
+  uint16 photometric;
+  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PHOTOMETRIC, &photometric);
+  uint16 orientation;
+  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_ORIENTATION, &orientation);
+  uint16 planarConfig;
+  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PLANARCONFIG, &planarConfig);
+
+  /*
+  cerr << "ok = " << ok << endl;
+  cerr << "w, h = " << w << " " << h << endl;
+  cerr << "samples, bits, format = "  << samplesPerPixel << " " << bitsPerSample << " " << format << endl;
+  cerr << "photometric = " << photometric << endl;
+  cerr << "orientation = " << orientation << endl;
+  cerr << "planar = " << planarConfig << endl;
+  */
+
+  if (! ok)
   {
-	TIFFReadScanline (tif, buffer, y);
-	for (int x = 0; x < w; x++)
-	{
-	  unsigned int r = buffer[x * 4 + 0] >> 8;
-	  unsigned int g = buffer[x * 4 + 1] >> 8;
-	  unsigned int b = buffer[x * 4 + 2] >> 8;
-	  unsigned int a = buffer[x * 4 + 3] >> 8;
-	  image.setRGBA (x, y, (a << 24) | (r << 16) | (g << 8) | b);
-	}
+	throw "Unable to get needed tag values.";
   }
-  delete buffer;
+
+
+  // Hack just for reading Steve's tiffs and Spidy tiffs.  Assumes an alpha
+  // channel and RGB values.
+  if (bitsPerSample == 8)
+  {
+	image.format = &ABGRChar;
+	image.resize (w, h);
+	ImageOf<unsigned int> wrap = image;
+
+	int size = TIFFScanlineSize (tif) / 4;
+	unsigned int * buffer = new unsigned int[size];
+	for (int y = 0; y < h; y++)
+	{
+	  TIFFReadScanline (tif, buffer, y);
+	  for (int x = 0; x < w; x++)
+	  {
+		wrap(x,y) = buffer[x];
+	  }
+	}
+	delete buffer;
+  }
+  else if (bitsPerSample == 16)
+  {
+	image.format = &RGBAChar;
+	image.resize (w, h);
+
+	int size = TIFFScanlineSize (tif);
+	size /= 2;
+	unsigned short * buffer = new unsigned short[size];
+	for (int y = 0; y < h; y++)
+	{
+	  TIFFReadScanline (tif, buffer, y);
+	  for (int x = 0; x < w; x++)
+	  {
+		unsigned int r = buffer[x * 4 + 0] >> 8;
+		unsigned int g = buffer[x * 4 + 1] >> 8;
+		unsigned int b = buffer[x * 4 + 2] >> 8;
+		unsigned int a = buffer[x * 4 + 3] >> 8;
+		image.setRGBA (x, y, (a << 24) | (r << 16) | (g << 8) | b);
+	  }
+	}
+	delete buffer;
+  }
+  else
+  {
+	throw "Unimplemented bitsPerSample.";
+  }
 
 
   // Reader code that works, but loses alpha
   /*
+  image.format = &ABGRChar;
+  image.resize (w, h);
   if (! TIFFReadRGBAImage (tif, w, h, image.buffer, 0))
   {
 	throw "TIFFReadRGBAImage failed.";
   }
   */
+
 
   TIFFClose(tif);
 
@@ -63,7 +121,7 @@ ImageFileFormatTIFF::read (const std::string & fileName, Image & image) const
   {
 	for (int x = 0; x < image.width; x++)
 	{
-	  if (((bogus (x, y) >> 24) & 0xFF) != 0x0)
+	  if (((bogus (x, y) >> 24) & 0xFF) != 0xff)
 	  {
 		cerr << x << " " << y << " " << hex << bogus (x, y) << dec << endl;
 	  }
@@ -106,6 +164,7 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
   TIFFSetField (tif, TIFFTAG_IMAGEWIDTH, image.width);
   TIFFSetField (tif, TIFFTAG_IMAGELENGTH, image.height);
   TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
+  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
   TIFFSetField (tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
   TIFFSetField (tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 
