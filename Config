@@ -9,12 +9,16 @@ INSTALL_DIR = $(HOME)/$(ARCH)/encap/$(NS)
 INSTALL_BIN = $(INSTALL_DIR)/bin
 INSTALL_LIB = $(INSTALL_DIR)/lib
 INSTALL_INC = $(INSTALL_DIR)/include
+INSTALL_HTML = $(INSTALL_DIR)/html
+INSTALL_MAN = $(INSTALL_DIR)/man
 
 # Directory structure for building library.  SOURCE_DIR is automatically
 # determined by the Makefile.
 SOURCE_BIN = $(SOURCE_DIR)/bin
 SOURCE_LIB = $(SOURCE_DIR)/lib
 SOURCE_INC = $(SOURCE_DIR)/include
+SOURCE_HTML = $(SOURCE_DIR)/html
+SOURCE_MAN = $(SOURCE_DIR)/man
 
 # X library
 X_DIR = /usr/X11R6
@@ -43,5 +47,10 @@ JPEG_LIB = -L$(JPEG_DIR)/lib -ljpeg
 
 # General C++ options
 CPPFLAGS = -I$(SOURCE_INC)
-CXXFLAGS = -g1 -O3 -march=pentium4 -mfpmath=sse
-#CXXFLAGS = -g -march=pentium4 -mfpmath=sse
+
+# CXXFLAGS is broken up to make it easier to switch on/off certain features.
+CXXFLAGS += -O3  # full optimization
+#CXXFLAGS += -march=pentium  # P3 architecture
+CXXFLAGS += -march=pentium4 -mfpmath=sse  # P4 architecture
+#CXXFLAGS += -g1   # minimal debug symbols
+CXXFLAGS += -g   # full debug symbols
