@@ -7,8 +7,13 @@ VPATH = $(SOURCE_LIB)
 libflNet.a: socket.o
 	ar rcsv $(SOURCE_LIB)/$@ $^
 
+
+test: test.o socket.o
+	g++ -o $@ $^
+
+
 clean:
-	rm -f *~ *.o core core.* Dependencies $(SOURCE_LIB)/libflNet.a
+	rm -f *~ *.o core core.* $(SOURCE_LIB)/libflNet.a
 
 depend:
 	rm -f Dependencies
