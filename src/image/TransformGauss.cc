@@ -4,6 +4,10 @@
 #include <float.h>
 
 
+// For debugging
+//#include "fl/slideshow.h"
+
+
 using namespace std;
 using namespace fl;
 
@@ -13,22 +17,30 @@ using namespace fl;
 void
 TransformGauss::prepareG ()
 {
-  // Calculate size and shape of Gaussian
-  const float sigma2 = 0.25;  // radius of support squared; ie: 0.5 * 0.5, since we want half a pixel in all directions
-  Matrix2x2<float> S = IA * ~IA * sigma2;
-  sigmaX = sqrt (S (0, 0));
-  sigmaY = sqrt (S (1, 1));
-  float C = 2.0 * PI * sigmaX * sigmaY;
-  Gshw = (int) ceil (sigmaX * 3);
-  Gshh = (int) ceil (sigmaY * 3);
-  S = !S;
+  const float sigma = 0.5;    // radius of support; 0.5 since we want half a pixel in all directions
+  const float sigma2 = sigma * sigma;
+  const float stepsPerZ = 6;  // Number of substeps per standard deviation
+  const float C = 1.0 / (2.0 * PI * sigma2);
 
-  // Generate discretized Gaussian
-  const float stepsPerZ = 6;
-  GstepX = (int) ceil (stepsPerZ / sigmaX) >? 1;  // (steps / pixel) = (steps / Z) / (pixels / Z)
+  // Calculate size and shape of Gaussian
+  Matrix2x2<float> S = IA * ~IA * sigma2;
+  sigmaX = sqrt (S(0,0));  // Distance of one standard deviation ("Z") from origin along x-axis in source image
+  sigmaY = sqrt (S(1,1));  // ditto for y-axis
+  Gshw = (int) ceil (sigmaX * 3);  // Desired size of kernel in source pixels
+  Gshh = (int) ceil (sigmaY * 3);
+  GstepX = (int) ceil (stepsPerZ / sigmaX) >? 1;  // (steps / source-pixel) = (steps / Z) / (source-pixels / Z)
   GstepY = (int) ceil (stepsPerZ / sigmaY) >? 1;
   G.resize ((2 * Gshw + 1) * GstepX,
 			(2 * Gshh + 1) * GstepY);
+  S = !S;
+  float sigmaM = max (sigmaX, sigmaY);
+  if (sigmaM < sigma)  // try to match support of kernel in destination image when zooming up
+  {
+	float adjust = sigmaM / 0.5;
+	S *= adjust * adjust;
+  }
+
+  // Compute Gaussian kernel
   int hw = G.width / 2;
   int hh = G.height / 2;
   for (int y = 0; y < G.height; y++)
@@ -37,14 +49,9 @@ TransformGauss::prepareG ()
 	{
 	  float dx = (float) (x - hw) / GstepX;
 	  float dy = (float) (y - hh) / GstepY;
-	  float tx = S (0, 0) * dx + S (0, 1) * dy;
-	  float ty = S (1, 0) * dx + S (1, 1) * dy;
-	  float value = (1 / C) * exp (-0.5 * (dx * tx + dy * ty));
-	  if (value < FLT_MIN  &&  dx >= -0.5  &&  dx < 0.5  &&  dy >= -0.5  &&  dy < 0.5)
-	  {
-		value = FLT_MIN;
-	  }
-	  G (x, y) = value;
+	  float tx = S(0,0) * dx + S(0,1) * dy;
+	  float ty = S(1,0) * dx + S(1,1) * dy;
+	  G (x, y) = C * expf (-0.5 * (dx * tx + dy * ty));
 	}
   }
 
@@ -81,8 +88,8 @@ TransformGauss::filter (const Image & image)
 		  int ry = (int) rint (y);
 		  int beginX = rx - Gshw;
 		  int beginY = ry - Gshh;
-		  int endX = beginX + 2 * Gshw;
-		  int endY = beginY + 2 * Gshh;
+		  int endX   = rx + Gshw;
+		  int endY   = ry + Gshh;
 		  endX = endX <? (image.width - 1);
 		  endY = endY <? (image.height - 1);
 		  float weight = 0;
@@ -137,8 +144,8 @@ TransformGauss::filter (const Image & image)
 		  int ry = (int) rint (y);
 		  int beginX = rx - Gshw;
 		  int beginY = ry - Gshh;
-		  int endX = beginX + 2 * Gshw;
-		  int endY = beginY + 2 * Gshh;
+		  int endX   = rx + Gshw;
+		  int endY   = ry + Gshh;
 		  endX = endX <? (image.width - 1);
 		  endY = endY <? (image.height - 1);
 		  double weight = 0;
@@ -196,12 +203,12 @@ TransformGauss::filter (const Image & image)
 		  int ry = (int) rint (y);
 		  int beginX = rx - Gshw;
 		  int beginY = ry - Gshh;
-		  int endX = beginX + 2 * Gshw;
-		  int endY = beginY + 2 * Gshh;
+		  int endX   = rx + Gshw;
+		  int endY   = ry + Gshh;
 		  endX = endX <? (image.width - 1);
 		  endY = endY <? (image.height - 1);
 		  float weight = 0;
-		  Pixel sum (0);
+		  float sum[] = {0, 0, 0, 0};
 		  int Gx      = (int) ((0.499999 + rx - x) * GstepX);  // 0.499999 rather than 0.5 to ensure we get [0, GstepX) rather than [0, GstepX].
 		  int offsetY = (int) ((0.499999 + ry - y) * GstepY);
 		  if (beginX < 0)
@@ -221,12 +228,21 @@ TransformGauss::filter (const Image & image)
 			{
 			  float w = G (Gx, Gy);
 			  weight += w;
-			  sum += image (fromX, fromY) * w;
+			  float pixel[4];
+			  image.getRGBA (fromX, fromY, pixel);
+			  sum[0] += pixel[0] * w;
+			  sum[1] += pixel[1] * w;
+			  sum[2] += pixel[2] * w;
+			  sum[3] += pixel[3] * w;
 			  Gy += GstepY;
 			}
 			Gx += GstepX;
 		  }
-		  result (toX, toY) = sum / weight;
+		  sum[0] /= weight;
+		  sum[1] /= weight;
+		  sum[2] /= weight;
+		  sum[3] /= weight;
+		  result.setRGBA (toX, toY, sum);
 		}
 	  }
 	}
