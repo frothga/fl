@@ -532,6 +532,15 @@ namespace fl
   }
 
   template<class T>
+  void
+  Matrix<T>::detach ()
+  {
+	rows_ = 0;
+	columns_ = 0;
+	data.detach ();
+  }
+
+  template<class T>
   int
   Matrix<T>::rows () const
   {
@@ -659,6 +668,29 @@ namespace fl
 	while (i < end)
 	{
 	  result += (*i++) * (*j++);
+	}
+	return result;
+  }
+
+  template<class T>
+  Matrix<T>
+  Matrix<T>::transposeSquare () const
+  {
+	Matrix result (columns_, columns_);
+	for (int i = 0; i < columns_; i++)
+	{
+	  for (int j = i; j < columns_; j++)
+	  {
+		T * ki = & (*this)(0,i);
+		T * kj = & (*this)(0,j);
+		T * end = ki + rows_;
+		register T sum = (T) 0;
+		while (ki < end)
+		{
+		  sum += (*ki++) * (*kj++);
+		}
+		result(i,j) = sum;
+	  }
 	}
 	return result;
   }
