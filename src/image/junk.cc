@@ -26,10 +26,11 @@ main (int argc, char * argv[])
 
   try
   {
-	//SlideShow window;
+	SlideShow window;
 
 
 	// Test KLT
+	/*
 	new ImageFileFormatPGM;
 	Image image0 ("/home/rothgang/software/klt/img0.pgm");
 	Image image1 ("/home/rothgang/software/klt/img1.pgm");
@@ -51,15 +52,19 @@ main (int argc, char * argv[])
 	  tracker.track (p0);
 	  cerr  << ": (" << p0 << ") - (" << p1 << ") = " << p0.distance (p1) << endl;
 	}
-
+	*/
 
 
 	// Convert squashed comparison values
 	/*
-	int m = DescriptorColorHistogram2D (10).dimension ();
-	cerr << acosh (1 / parmFloat (1, 1)) << endl;
-	//cerr << acosh (1 / parmFloat (1, 1)) * m / 100 << endl;
-	//cerr << 1 / cosh (parmFloat (1, 1) * 100 / m) << endl;
+	int m = DescriptorColorHistogram2D (10).dimension;
+	double result = acosh (1 / parmFloat (1, 1)) * m / 100;
+	cerr << result << endl;
+	cerr << 1 / cosh (result * 100 / m) << endl;
+	cerr << 1 - result / 2 << endl;
+	//cerr << acosh (1 / parmFloat (1, 1)) << endl;
+	//cerr << 1 - acosh (1 / parmFloat (1, 1)) / parmFloat (2, 2) << endl;
+	//cerr << 1 / cosh (parmFloat (1, 0)) << endl;
 	*/
 
 
@@ -135,6 +140,67 @@ main (int argc, char * argv[])
 	}
 	window.show (image);
 	window.waitForClick ();
+	*/
+
+
+	// Test white balance on YUV firewire camera images
+	/*
+	new VideoFileFormatFFMPEG;
+	VideoIn vin (parmChar (1, "test.avi"));
+	float r = 1;
+	float g = 1;
+	float b = 1;
+	bool first = true;
+	while (true)
+	{
+	  Image image;
+	  vin >> image;
+	  if (! vin.good ()) break;
+	  cerr << image.timestamp << " " << image.width << " " << image.height << endl;
+	  image *= RGBAFloat;
+	  float rgba[4];
+	  if (first)
+	  {
+		first = false;
+		float avgRGBA[4] = {0, 0, 0, 0};
+		for (int y = 0; y < 480; y++)
+		{
+		  for (int x = 500; x < 640; x++)
+		  {
+			image(x,y).getRGBA (rgba);
+			avgRGBA[0] += rgba[0];
+			avgRGBA[1] += rgba[1];
+			avgRGBA[2] += rgba[2];
+		  }
+		}
+		float count = 240 * 240;
+		r = avgRGBA[1] / avgRGBA[0];
+		b = avgRGBA[1] / avgRGBA[2];
+		cerr << avgRGBA[0] << " " << avgRGBA[1] << " " << avgRGBA[2] << endl;
+		cerr << "r=" << r << " b=" << b << endl;
+		float avg = (r + b) / 2;
+		r /= avg;
+		g /= avg;
+		b /= avg;
+		cerr << "r=" << r << " g=" << g << " b=" << b << endl;
+		r = 1.124971875;
+		g = 0.5;  //0.84375;
+		b = 1;
+	  }
+	  for (int y = 0; y < image.height; y++)
+	  {
+		for (int x = 0; x < image.width; x++)
+		{
+		  image(x,y).getRGBA (rgba);
+		  rgba[0] *= r;
+		  rgba[1] *= g;
+		  rgba[2] *= b;
+		  image(x,y).setRGBA (rgba);
+		}
+	  }
+	  window.show (image);
+	  window.waitForClick ();
+	}
 	*/
 
 
@@ -501,23 +567,23 @@ main (int argc, char * argv[])
 	*/
 
 
-	// Test assignment of Point from Matrix
+	// Test Point
 	/*
-	Matrix<float> M (3, 3);
-	M.identity ();
-	Point c;
-	c = M.column (0);
-	cerr << M.column (0) << endl;
-	cerr << c.x << " " << c.y << endl;
-	c = M.column (1);
-	cerr << M.column (1) << endl;
-	cerr << c.x << " " << c.y << endl;
-	c = M.column (2);
-	cerr << M.column (2) << endl;	
-	cerr << c.x << " " << c.y << endl;
-	cerr << M.column (2)[0] << endl;
-	cerr << M.column (2)[1] << endl;
-	cerr << M.column (2)[2] << endl;
+	PointAffine p;
+	p.x = 100;
+	p.y = 100;
+	p.scale = 3;
+	p.angle = 2;
+	p.A.identity ();
+	p.A(0,0) = 2;
+	cerr << "p = " << p << endl;
+	cerr << "p.rectification = " << endl << p.rectification () << endl;
+	cerr << "! p.rectification = " << endl << ! p.rectification () << endl;
+	cerr << "p.projection = " << endl << p.projection () << endl;
+	PointAffine p2 (p.projection ());
+	cerr << "p2: " << p2 << " " << p2.angle << " " << p2.scale << endl << p2.A << endl;
+	cerr << "p2.rectification = " << endl << p2.rectification () << endl;
+	cerr << "p2.projection = " << endl << p2.projection () << endl;
 	*/
 
 
@@ -525,7 +591,7 @@ main (int argc, char * argv[])
 	/*
 	new ImageFileFormatPGM;
 	new ImageFileFormatJPEG;
-	InterestDOG l;
+	InterestHarrisLaplacian l;
 	Image i;
 	i.read (parmChar (1, "test.jpg"));
 	CanvasImage ci = i;
@@ -587,7 +653,6 @@ main (int argc, char * argv[])
 
 
 	// Test DOG + SIFT
-	/*
 	new ImageFileFormatPGM;
 	new ImageFileFormatJPEG;
 	InterestDOG l;
@@ -660,7 +725,7 @@ main (int argc, char * argv[])
 	  for (int i = 0; i < 6; i++) cerr << "  " << value.region (i * 20, 0, (i+1) * 20 - 1) << endl;
 	  cerr << "  " << value.region (120, 0) << endl;
 	}
-	*/
+
 
 
 	// Test DescriptorLBP
@@ -684,6 +749,28 @@ main (int argc, char * argv[])
 	p.scale = 20;
 	Vector<float> value = lbp.value (image);
 	cerr << value << endl;
+	*/
+
+
+	// Test ChiSquared comparison
+	/*
+	new ImageFileFormatPGM;
+	Image image (parmChar (1, "test.ppm"));
+	DescriptorColorHistogram2D descriptor (parmInt (2, 10), 4);
+	Comparison * comparison = descriptor.comparison ();
+	PointAffine p;
+	p.x = 100;
+	p.y = 100;
+	p.scale = 5;
+	Vector<float> d1 = descriptor.value (image, p);
+	p.x = 400;
+	Vector<float> d2 = descriptor.value (image, p);
+	TransformGauss zoom (10, 10);
+	Image disp = descriptor.patch (d1) * zoom;
+	disp.bitblt (descriptor.patch (d2) * zoom, disp.width + 10);
+	cerr << comparison->value (d1, d2) << endl;
+	window.show (disp);
+	window.waitForClick ();
 	*/
 
 
