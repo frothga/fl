@@ -29,7 +29,7 @@ PixelFormatRGBABits   fl::BGRChar (3, 0xFF, 0xFF00, 0xFF0000, 0x0);
 PixelFormatRGBABits   fl::ABGRChar (4, 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
 PixelFormatRGBAFloat  fl::RGBAFloat;
 PixelFormatYVYUChar   fl::YVYUChar;
-PixelFormatYVYUChar   fl::VYUYChar;
+PixelFormatVYUYChar   fl::VYUYChar;
 
 
 // Color->gray conversion factors
@@ -317,62 +317,9 @@ PixelFormat::filter (const Image & image)
   result.height    = image.height;
   result.timestamp = image.timestamp;
 
-  if (typeid (* image.format) == typeid (PixelFormatGrayChar))
-  {
-	this->fromGrayChar (image, result);
-  }
-  else if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
-  {
-	this->fromGrayFloat (image, result);
-  }
-  else if (typeid (* image.format) == typeid (PixelFormatGrayDouble))
-  {
-	this->fromGrayDouble (image, result);
-  }
-  else if (typeid (* image.format) == typeid (PixelFormatRGBAChar))
-  {
-	this->fromRGBAChar (image, result);
-  }
-  else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
-  {
-	this->fromRGBABits (image, result);
-  }
-  else
-  {
-	this->fromAny (image, result);
-  }
+  fromAny (image, result);
 
   return result;
-}
-
-void
-PixelFormat::fromGrayChar (const Image & image, Image & result) const
-{
-  fromAny (image, result);
-}
-
-void
-PixelFormat::fromGrayFloat (const Image & image, Image & result) const
-{
-  fromAny (image, result);
-}
-
-void
-PixelFormat::fromGrayDouble (const Image & image, Image & result) const
-{
-  fromAny (image, result);
-}
-
-void
-PixelFormat::fromRGBAChar (const Image & image, Image & result) const
-{
-  fromAny (image, result);
-}
-
-void
-PixelFormat::fromRGBABits (const Image & image, Image & result) const
-{
-  fromAny (image, result);
 }
 
 void
@@ -484,6 +431,45 @@ PixelFormatGrayChar::PixelFormatGrayChar ()
   precedence = 0;  // Below everything
   monochrome = true;
   hasAlpha   = false;
+}
+
+Image
+PixelFormatGrayChar::filter (const Image & image)
+{
+  Image result (*this);
+
+  if (*image.format == *this)
+  {
+	result = image;
+	return result;
+  }
+
+  result.width     = image.width;
+  result.height    = image.height;
+  result.timestamp = image.timestamp;
+
+  if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
+  {
+	fromGrayFloat (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayDouble))
+  {
+	fromGrayDouble (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBAChar))
+  {
+	fromRGBAChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
+  {
+	fromRGBABits (image, result);
+  }
+  else
+  {
+	fromAny (image, result);
+  }
+
+  return result;
 }
 
 void
@@ -677,6 +663,45 @@ PixelFormatGrayFloat::PixelFormatGrayFloat ()
   precedence  = 3;  // Above all integer formats and below GrayDouble
   monochrome  = true;
   hasAlpha    = false;
+}
+
+Image
+PixelFormatGrayFloat::filter (const Image & image)
+{
+  Image result (*this);
+
+  if (*image.format == *this)
+  {
+	result = image;
+	return result;
+  }
+
+  result.width     = image.width;
+  result.height    = image.height;
+  result.timestamp = image.timestamp;
+
+  if (typeid (* image.format) == typeid (PixelFormatGrayChar))
+  {
+	fromGrayChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayDouble))
+  {
+	fromGrayDouble (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBAChar))
+  {
+	fromRGBAChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
+  {
+	fromRGBABits (image, result);
+  }
+  else
+  {
+	fromAny (image, result);
+  }
+
+  return result;
 }
 
 void
@@ -895,6 +920,45 @@ PixelFormatGrayDouble::PixelFormatGrayDouble ()
   hasAlpha    = false;
 }
 
+Image
+PixelFormatGrayDouble::filter (const Image & image)
+{
+  Image result (*this);
+
+  if (*image.format == *this)
+  {
+	result = image;
+	return result;
+  }
+
+  result.width     = image.width;
+  result.height    = image.height;
+  result.timestamp = image.timestamp;
+
+  if (typeid (* image.format) == typeid (PixelFormatGrayChar))
+  {
+	fromGrayChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
+  {
+	fromGrayFloat (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBAChar))
+  {
+	fromRGBAChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
+  {
+	fromRGBABits (image, result);
+  }
+  else
+  {
+	fromAny (image, result);
+  }
+
+  return result;
+}
+
 void
 PixelFormatGrayDouble::fromGrayChar (const Image & image, Image & result) const
 {
@@ -1111,6 +1175,45 @@ PixelFormatRGBAChar::PixelFormatRGBAChar ()
   precedence = 2;  // Above GrayChar and below all floating point formats
   monochrome = false;
   hasAlpha   = true;
+}
+
+Image
+PixelFormatRGBAChar::filter (const Image & image)
+{
+  Image result (*this);
+
+  if (*image.format == *this)
+  {
+	result = image;
+	return result;
+  }
+
+  result.width     = image.width;
+  result.height    = image.height;
+  result.timestamp = image.timestamp;
+
+  if (typeid (* image.format) == typeid (PixelFormatGrayChar))
+  {
+	fromGrayChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
+  {
+	fromGrayFloat (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayDouble))
+  {
+	fromGrayDouble (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
+  {
+	fromRGBABits (image, result);
+  }
+  else
+  {
+	fromAny (image, result);
+  }
+
+  return result;
 }
 
 void
@@ -1348,6 +1451,49 @@ PixelFormatRGBABits::PixelFormatRGBABits (int depth, unsigned int redMask, unsig
   precedence = 2;  // on par with RGBAChar
   monochrome = false;
   hasAlpha   = true;
+}
+
+Image
+PixelFormatRGBABits::filter (const Image & image)
+{
+  Image result (*this);
+
+  if (*image.format == *this)
+  {
+	result = image;
+	return result;
+  }
+
+  result.width     = image.width;
+  result.height    = image.height;
+  result.timestamp = image.timestamp;
+
+  if (typeid (* image.format) == typeid (PixelFormatGrayChar))
+  {
+	fromGrayChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
+  {
+	fromGrayFloat (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayDouble))
+  {
+	fromGrayDouble (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBAChar))
+  {
+	fromRGBAChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
+  {
+	fromRGBABits (image, result);
+  }
+  else
+  {
+	fromAny (image, result);
+  }
+
+  return result;
 }
 
 // fromGrayChar () produces a bogus alpha channel!  Fix it.
@@ -1837,6 +1983,48 @@ PixelFormatYVYUChar::PixelFormatYVYUChar ()
   hasAlpha   = false;
 }
 
+Image
+PixelFormatYVYUChar::filter (const Image & image)
+{
+  Image result (*this);
+
+  if (*image.format == *this)
+  {
+	result = image;
+	return result;
+  }
+
+  result.width     = image.width;
+  result.height    = image.height;
+  result.timestamp = image.timestamp;
+
+  if (typeid (* image.format) == typeid (PixelFormatVYUYChar))
+  {
+	fromVYUYChar (image, result);
+  }
+  else
+  {
+	fromAny (image, result);
+  }
+
+  return result;
+}
+
+void
+PixelFormatYVYUChar::fromVYUYChar (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  unsigned int * fromPixel = (unsigned int *) image.buffer;
+  unsigned int * toPixel = (unsigned int *) result.buffer;
+  unsigned int * end = toPixel + result.width * result.height / 2;  // width *must* be a multiple of 2!
+  while (toPixel < end)
+  {
+	register unsigned int p = *fromPixel++;
+	*toPixel++ = ((p & 0xFF0000) << 8) | ((p & 0xFF000000) >> 8) | ((p & 0xFF) << 8) | ((p & 0xFF00) >> 8);
+  }
+}
+
 unsigned int
 PixelFormatYVYUChar::getRGBA (void * pixel) const
 {
@@ -1908,6 +2096,48 @@ PixelFormatVYUYChar::PixelFormatVYUYChar ()
   hasAlpha   = false;
 }
 
+Image
+PixelFormatVYUYChar::filter (const Image & image)
+{
+  Image result (*this);
+
+  if (*image.format == *this)
+  {
+	result = image;
+	return result;
+  }
+
+  result.width     = image.width;
+  result.height    = image.height;
+  result.timestamp = image.timestamp;
+
+  if (typeid (* image.format) == typeid (PixelFormatYVYUChar))
+  {
+	fromYVYUChar (image, result);
+  }
+  else
+  {
+	fromAny (image, result);
+  }
+
+  return result;
+}
+
+void
+PixelFormatVYUYChar::fromYVYUChar (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  unsigned int * fromPixel = (unsigned int *) image.buffer;
+  unsigned int * toPixel = (unsigned int *) result.buffer;
+  unsigned int * end = toPixel + result.width * result.height / 2;
+  while (toPixel < end)
+  {
+	register unsigned int p = *fromPixel++;
+	*toPixel++ = ((p & 0xFF0000) << 8) | ((p & 0xFF000000) >> 8) | ((p & 0xFF) << 8) | ((p & 0xFF00) >> 8);
+  }
+}
+
 unsigned int
 PixelFormatVYUYChar::getRGBA (void * pixel) const
 {
@@ -1924,12 +2154,6 @@ PixelFormatVYUYChar::getRGBA (void * pixel) const
   int u = ((unsigned char *) pixel)[1] - 128;
   int v = ((unsigned char *) pixel)[3] - 128;
 
-  // R = Y           +1.4022*V
-  // G = Y -0.3456*U -0.7145*V
-  // B = Y +1.7710*U
-  // The coefficients below are in fixed-point with decimal between bits 15 and 16.
-  // Figure out a more elegant way to express these constants letting the
-  // compiler do the work!
   unsigned int r = min (max (y               + 0x166F7 * v, 0), 0xFFFFFF);
   unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v, 0), 0xFFFFFF);
   unsigned int b = min (max (y + 0x1C560 * u,               0), 0xFFFFFF);
@@ -1940,7 +2164,7 @@ PixelFormatVYUYChar::getRGBA (void * pixel) const
 unsigned char
 PixelFormatVYUYChar::getGray (void * pixel) const
 {
-  return (unsigned char *) pixel;
+  return * (unsigned char *) pixel;
 }
 
 void
@@ -1950,9 +2174,6 @@ PixelFormatVYUYChar::setRGBA (void * pixel, unsigned int rgba) const
   int g = (rgba &   0xFF00) >> 8;
   int b =  rgba &     0xFF;
 
-  // Y =  0.2989*R +0.5866*G +0.1145*B
-  // U = -0.1687*R -0.3312*G +0.5000*B
-  // V =  0.5000*R -0.4183*G -0.0816*B
   unsigned int y =  min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b,            0), 0xFFFFFF) & 0xFF0000;
   unsigned int u = (min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000, 0), 0xFFFFFF) & 0xFF0000) >> 8;
   unsigned int v = (min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000, 0), 0xFFFFFF) & 0xFF0000) << 8;
