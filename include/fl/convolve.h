@@ -9,29 +9,6 @@
 #include <ostream>
 
 
-/**
-   Coordinate system convention: For efficiency's sake, we follow the standard
-   coordinate system for pixel rasters.  The origin is in the upper left.
-   Positive x axis goes toward the right, and positive y axis goes downward.
-
-   Note about handedness:
-   If you like to imagine that you are looking down at the plane where the
-   pixels live, and that the positive z-axis comes out of the plane towards
-   you, then this forms a "left-handed" coordinate system, which is universally
-   condemned by purists.  However, it is better to imagine that the positive
-   z-axis is heading away from you, in which case this is a proper right-handed
-   system.  It is even better to realize that there is no z-axis whatsoever and
-   that a 2D plane has no intrinsic handedness.  (It is possible to define a
-   handedness by choosing three non-colinear points as a basis.  Since we have
-   a coordiate system, we have implicitly already made this choice.)
-
-   All float-valued pixel coordinates follow the convention for
-   Point (integral numbers refer to center of pixel).  Integer-valued
-   pixel coordinates refer to either the entire pixel or to its center,
-   depending on context.
-**/
-
-
 namespace fl
 {
   enum BorderMode  ///< What to do with resulting pixels when the kernel exceeds the border of the input image.
@@ -45,7 +22,27 @@ namespace fl
   /**
 	 A Convolution is a type of Filter which computes the convolution of the
 	 image with some function.
-   **/
+
+	 Coordinate system convention: For efficiency's sake, we follow the standard
+	 coordinate system for pixel rasters.  The origin is in the upper left.
+	 Positive x axis goes toward the right, and positive y axis goes downward.
+
+	 Note about handedness:
+	 If you like to imagine that you are looking down at the plane where the
+	 pixels live, and that the positive z-axis comes out of the plane towards
+	 you, then this forms a "left-handed" coordinate system, which is universally
+	 condemned by purists.  However, it is better to imagine that the positive
+	 z-axis is heading away from you, in which case this is a proper right-handed
+	 system.  It is even better to realize that there is no z-axis whatsoever and
+	 that a 2D plane has no intrinsic handedness.  (It is possible to define a
+	 handedness by choosing three non-colinear points as a basis.  Since we have
+	 a coordiate system, we have implicitly already made this choice.)
+
+	 All float-valued pixel coordinates follow the convention for
+	 Point (integral numbers refer to center of pixel).  Integer-valued
+	 pixel coordinates refer to either the entire pixel or to its center,
+	 depending on context.
+  **/
   class Convolution : public Filter
   {
   public:
