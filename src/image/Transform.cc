@@ -215,6 +215,63 @@ Transform::filter (const Image & image)
 	}
 	return result;
   }
+
+  /* TODO: Replace the last two cases above with the following code, and test thoroughly.  Best I recollect, it screwed up at large upsampling ratios, producing gaps in the output between pixels.
+  else if (*image.format == RGBAFloat)
+  {
+	// This method is meant to be fast, so it avoids a lot of the library
+	// machinery that would otherwise make this simple to express.
+
+	ImageOf<float[4]> result (RGBAFloat);
+	prepareResult (image, result, H);
+	ImageOf<float[4]> that (image);
+
+	float zero[] = {0, 0, 0, 0};
+	float * p00;
+	float * p01;
+	float * p10;
+	float * p11;
+	float * r = result (0, 0);
+
+	for (int toY = 0; toY < result.height; toY++)
+	{
+	  for (int toX = 0; toX < result.width; toX++)
+	  {
+		float x = H(0,0) * toX + H(0,1) * toY + H(0,2);
+		float y = H(1,0) * toX + H(1,1) * toY + H(1,2);
+		float z = H(2,0) * toX + H(2,1) * toY + H(2,2);
+		x /= z;
+		y /= z;
+		if (x > -0.5  &&  x < fImageWidth  &&  y > -0.5  &&  y < fImageHeight)
+		{
+		  int fromX = (int) floorf (x);
+		  int fromY = (int) floorf (y);
+		  float dx = x - fromX;
+		  float dy = y - fromY;
+		  p00 = (fromX < 0             ||  fromY < 0            ) ? zero : that (fromX,     fromY);
+		  p01 = (fromX < 0             ||  fromY >= iImageHeight) ? zero : that (fromX,     fromY + 1);
+		  p10 = (fromX >= iImageWidth  ||  fromY < 0            ) ? zero : that (fromX + 1, fromY);
+		  p11 = (fromX >= iImageWidth  ||  fromY >= iImageHeight) ? zero : that (fromX + 1, fromY + 1);
+		  float dx1 = 1.0f - dx;
+		  float dy1 = 1.0f - dy;
+		  *r++ =   (*p00++ * dx1 + *p10++ * dx) * dy1
+			     + (*p01++ * dx1 + *p11++ * dx) * dy;
+		  *r++ =   (*p00++ * dx1 + *p10++ * dx) * dy1
+			     + (*p01++ * dx1 + *p11++ * dx) * dy;
+		  *r++ =   (*p00++ * dx1 + *p10++ * dx) * dy1
+			     + (*p01++ * dx1 + *p11++ * dx) * dy;
+		  *r++ =   (*p00   * dx1 + *p10   * dx) * dy1   // Don't advance p## pointers on last step, because uneeded.  However, r must advance.
+			     + (*p01   * dx1 + *p11   * dx) * dy;
+		}
+	  }
+	}
+	return result;
+  }
+  else  // all other formats
+  {
+	return filter (image * RGBAFloat) * (*image.format);
+  }
+  */
 }
 
 void
