@@ -36,6 +36,30 @@ VideoInFileFFMPEG::seekFrame (int frame)
   {
 	return;
   }
+
+  // TODO: Hack to work around problem with AVI seeking.  Remove as soon as AVI seek works right.
+  /*
+  if (fileName.find (".avi") != string::npos)
+  {
+	if (frame < cc->frame_number)
+	{
+	  close ();
+	  open (fileName);
+	}
+	while (cc->frame_number < frame)
+	{
+	  readNext (NULL);
+	  if (! gotPicture)
+	  {
+		return;
+	  }
+	  gotPicture = 0;
+	}
+	return;
+  }
+  */
+  // end of hack
+
   seekTime ((double) frame * stream->r_frame_rate_base / stream->r_frame_rate);
 }
 
