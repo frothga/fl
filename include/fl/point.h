@@ -72,10 +72,11 @@ namespace fl
 
 	enum DetectorType
 	{
+	  Unknown,
 	  Harris,
 	  Laplacian
 	};
-	DetectorType detector;  // which interest point detector found this point?
+	DetectorType detector;  ///< which interest point detector found this point?
 
 	bool operator < (const PointInterest & that) const
 	{
