@@ -1,5 +1,6 @@
 #include "fl/convolve.h"
 #include "fl/pi.h"
+#include "fl/lapackd.h"
 
 
 using namespace std;
@@ -8,131 +9,89 @@ using namespace fl;
 
 // class Transform ------------------------------------------------------------
 
-Transform::Transform (const MatrixAbstract<float> & A, bool inverse)
+Transform::Transform (const Matrix<double> & A, bool inverse)
+{
+  initialize (A, inverse);
+}
+
+Transform::Transform (double angle)
+{
+  Matrix2x2<double> temp;
+  temp(0,0) = cos (angle);
+  temp(1,0) = sin (angle);
+  temp(0,1) = -temp(1,0);
+  temp(1,1) = temp(0,0);
+
+  initialize (temp, false);
+}
+
+Transform::Transform (double scaleX, double scaleY)
+{
+  Matrix2x2<double> temp;
+  temp(0,0) = scaleX;
+  temp(0,1) = 0;
+  temp(1,0) = 0;
+  temp(1,1) = scaleY;
+
+  initialize (temp, false);
+}
+
+void
+Transform::initialize (const Matrix<double> & A, bool inverse)
 {
   if (inverse)
   {
-	IA = A;
-	this->A = !IA;
-	needInverse = false;
+	IA = MatrixRegion<double> (A, 0, 0, 1, 1);
   }
   else
   {
-	this->A = A;
-	needInverse = true;
+	// Use Matrix2x2's inversion method.
+	IA = ! Matrix2x2<double> (MatrixRegion<double> (A, 0, 0, 1, 1));
   }
 
   defaultViewport = true;
 
   if (A.columns () >= 3)
   {
-	peg = false;
 	if (inverse)
 	{
-	  float scale = 1;
+	  // "scale" is a special hack to accomodate "S" matrices that have been
+	  // scaled as a whole.  These matrices have the form
+	  //   [ R  T ]
+	  //   [ 0  1 ]
+	  // before scaling.  Afterward, they have the form
+	  //   [ R/s T/s ]
+	  //   [ 0   1/s ]
+	  // However, the intention is that only R is scaled, so T must be
+	  // unscaled.  This work should really be pushed back into the client
+	  // program.  It is not appropriate here.  Current programs relying on
+	  // this hack in coapp are: findmatch, learnmodel, recognize
+	  double scale = 1.0;
 	  if (A.rows () >= 3)
 	  {
 		scale = A(2,2);
 	  }
-	  translateX = - (this->A(0,0) * A(0,2) + this->A(0,1) * A(1,2)) / scale;
-	  translateY = - (this->A(1,0) * A(0,2) + this->A(1,1) * A(1,2)) / scale;
+
+	  translateX = A(0,2) / scale;
+	  translateY = A(1,2) / scale;
 	}
 	else
 	{
-	  translateX = A(0,2);
-	  translateY = A(1,2);
+	  translateX = - (IA(0,0) * A(0,2) + IA(0,1) * A(1,2));
+	  translateY = - (IA(1,0) * A(0,2) + IA(1,1) * A(1,2));
 	}
   }
   else
   {
-	peg = true;
 	translateX = 0;
 	translateY = 0;
   }
-}
-
-Transform::Transform (const MatrixAbstract<double> & A, bool inverse)
-{
-  if (inverse)
-  {
-	IA <<= MatrixRegion<double> (A, 0, 0, 1, 1);
-	this->A = !IA;
-	needInverse = false;
-  }
-  else
-  {
-	this->A <<= MatrixRegion<double> (A, 0, 0, 1, 1);
-	needInverse = true;
-  }
-
-  defaultViewport = true;
-
-  if (A.columns () >= 3)
-  {
-	peg = false;
-	if (inverse)
-	{
-	  double scale = 1;
-	  if (A.rows () >= 3)
-	  {
-		scale = A(2,2);
-	  }
-	  translateX = - (this->A(0,0) * A(0,2) + this->A(0,1) * A(1,2)) / scale;
-	  translateY = - (this->A(1,0) * A(0,2) + this->A(1,1) * A(1,2)) / scale;
-	}
-	else
-	{
-	  translateX = A(0,2);
-	  translateY = A(1,2);
-	}
-  }
-  else
-  {
-	peg = true;
-	translateX = 0;
-	translateY = 0;
-  }
-}
-
-Transform::Transform (float angle)
-{
-  A (0, 0) = cos (angle);
-  A (1, 0) = sin (angle);
-  A (0, 1) = - A (1, 0);
-  A (1, 1) = A (0, 0);
-
-  needInverse = true;
-  defaultViewport = true;
-  peg = true;
-  translateX = 0;
-  translateY = 0;
-}
-
-Transform::Transform (float scaleX, float scaleY)
-{
-  A (0, 0) = scaleX;
-  A (0, 1) = 0;
-  A (1, 0) = 0;
-  A (1, 1) = scaleY;
-
-  needInverse = true;
-  defaultViewport = true;
-  peg = true;
-  translateX = 0;
-  translateY = 0;
 }
 
 Image
 Transform::filter (const Image & image)
 {
-  if (needInverse)
-  {
-	IA = !A;
-	needInverse = false;
-  }
-
-  Vector<float> cs (2);  // Center of source image
-  Vector<float> cd (2);  // Center of destination image
+  Matrix3x3<float> H;  // homography from destination image to source image
 
   const float fImageWidth  = image.width - 0.5;
   const float fImageHeight = image.height - 0.5;
@@ -142,29 +101,30 @@ Transform::filter (const Image & image)
   if (*image.format == GrayFloat)
   {
 	ImageOf<float> result (GrayFloat);
-	prepareResult (image, result, cs, cd);
+	prepareResult (image, result, H);
 	ImageOf<float> that (image);
-	for (int toX = 0; toX < result.width; toX++)
+	for (int toY = 0; toY < result.height; toY++)
 	{
-	  for (int toY = 0; toY < result.height; toY++)
+	  for (int toX = 0; toX < result.width; toX++)
 	  {
-		float x = toX - cd[0];
-		float y = toY - cd[1];
-		float tx =  IA (0, 0) * x + IA (0, 1) * y;
-		y        = (IA (1, 0) * x + IA (1, 1) * y) + cs[1];
-		x        = tx + cs[0];
+		float x = H(0,0) * toX + H(0,1) * toY + H(0,2);
+		float y = H(1,0) * toX + H(1,1) * toY + H(1,2);
+		float z = H(2,0) * toX + H(2,1) * toY + H(2,2);
+		x /= z;
+		y /= z;
 		if (x > -0.5  &&  x < fImageWidth  &&  y > -0.5  &&  y < fImageHeight)
 		{
-		  int fromX = (int) floor (x);
-		  int fromY = (int) floor (y);
+		  int fromX = (int) floorf (x);
+		  int fromY = (int) floorf (y);
 		  float dx = x - fromX;
 		  float dy = y - fromY;
 		  float p00 = (fromX < 0             ||  fromY < 0            ) ? 0 : that (fromX,     fromY);
 		  float p01 = (fromX < 0             ||  fromY >= iImageHeight) ? 0 : that (fromX,     fromY + 1);
 		  float p10 = (fromX >= iImageWidth  ||  fromY < 0            ) ? 0 : that (fromX + 1, fromY);
 		  float p11 = (fromX >= iImageWidth  ||  fromY >= iImageHeight) ? 0 : that (fromX + 1, fromY + 1);
-		  result (toX, toY) =   (1.0 - dy) * ((1.0 - dx) * p00 + dx * p10)
-			                  +  dy        * ((1.0 - dx) * p01 + dx * p11);
+		  float dx1 = 1.0f - dx;
+		  result (toX, toY) =   (1.0f - dy) * (dx1 * p00 + dx * p10)
+			                  +  dy         * (dx1 * p01 + dx * p11);
 		}
 	  }
 	}
@@ -173,17 +133,17 @@ Transform::filter (const Image & image)
   else if (*image.format == GrayDouble)
   {
 	ImageOf<double> result (GrayDouble);
-	prepareResult (image, result, cs, cd);
+	prepareResult (image, result, H);
 	ImageOf<double> that (image);
-	for (int toX = 0; toX < result.width; toX++)
+	for (int toY = 0; toY < result.height; toY++)
 	{
-	  for (int toY = 0; toY < result.height; toY++)
+	  for (int toX = 0; toX < result.width; toX++)
 	  {
-		float x = toX - cd[0];
-		float y = toY - cd[1];
-		float tx =  IA (0, 0) * x + IA (0, 1) * y;
-		y        = (IA (1, 0) * x + IA (1, 1) * y) + cs[1];
-		x        = tx + cs[0];
+		double x = H(0,0) * toX + H(0,1) * toY + H(0,2);
+		double y = H(1,0) * toX + H(1,1) * toY + H(1,2);
+		double z = H(2,0) * toX + H(2,1) * toY + H(2,2);
+		x /= z;
+		y /= z;
 		if (x > -0.5  &&  x < fImageWidth  &&  y > -0.5  &&  y < fImageHeight)
 		{
 		  int fromX = (int) floor (x);
@@ -194,8 +154,9 @@ Transform::filter (const Image & image)
 		  double p01 = (fromX < 0             ||  fromY >= iImageHeight) ? 0 : that (fromX,     fromY + 1);
 		  double p10 = (fromX >= iImageWidth  ||  fromY < 0            ) ? 0 : that (fromX + 1, fromY);
 		  double p11 = (fromX >= iImageWidth  ||  fromY >= iImageHeight) ? 0 : that (fromX + 1, fromY + 1);
-		  result (toX, toY) =   (1.0 - dy) * ((1.0 - dx) * p00 + dx * p10)
-			                  +  dy        * ((1.0 - dx) * p01 + dx * p11);
+		  double dx1 = 1.0 - dx;
+		  result (toX, toY) =   (1.0 - dy) * (dx1 * p00 + dx * p10)
+			                  +  dy        * (dx1 * p01 + dx * p11);
 		}
 	  }
 	}
@@ -208,30 +169,31 @@ Transform::filter (const Image & image)
   else  // Any other format
   {
 	Image result (*image.format);
-	prepareResult (image, result, cs, cd);
+	prepareResult (image, result, H);
 	Pixel zero;
 	zero.setRGBA ((unsigned int) 0xFF000000);
-	for (int toX = 0; toX < result.width; toX++)
+	for (int toY = 0; toY < result.height; toY++)
 	{
-	  for (int toY = 0; toY < result.height; toY++)
+	  for (int toX = 0; toX < result.width; toX++)
 	  {
-		float x = toX - cd[0];
-		float y = toY - cd[1];
-		float tx =  IA (0, 0) * x + IA (0, 1) * y;
-		y        = (IA (1, 0) * x + IA (1, 1) * y) + cs[1];
-		x        = tx + cs[0];
+		float x = H(0,0) * toX + H(0,1) * toY + H(0,2);
+		float y = H(1,0) * toX + H(1,1) * toY + H(1,2);
+		float z = H(2,0) * toX + H(2,1) * toY + H(2,2);
+		x /= z;
+		y /= z;
 		if (x > -0.5  &&  x < fImageWidth  &&  y > -0.5  &&  y < fImageHeight)
 		{
-		  int fromX = (int) floor (x);
-		  int fromY = (int) floor (y);
+		  int fromX = (int) floorf (x);
+		  int fromY = (int) floorf (y);
 		  float dx = x - fromX;
 		  float dy = y - fromY;
 		  Pixel p00 = (fromX < 0             ||  fromY < 0            ) ? zero : image (fromX,     fromY);
 		  Pixel p01 = (fromX < 0             ||  fromY >= iImageHeight) ? zero : image (fromX,     fromY + 1);
 		  Pixel p10 = (fromX >= iImageWidth  ||  fromY < 0            ) ? zero : image (fromX + 1, fromY);
 		  Pixel p11 = (fromX >= iImageWidth  ||  fromY >= iImageHeight) ? zero : image (fromX + 1, fromY + 1);
-		  result (toX, toY) =   (p00 * (1.0 - dx) + p10 * dx) * (1.0 - dy)
-			                  + (p01 * (1.0 - dx) + p11 * dx) * dy;
+		  float dx1 = 1.0f - dx;
+		  result (toX, toY) =   (p00 * dx1 + p10 * dx) * (1.0f - dy)
+			                  + (p01 * dx1 + p11 * dx) * dy;
 		}
 	  }
 	}
@@ -240,25 +202,25 @@ Transform::filter (const Image & image)
 }
 
 void
-Transform::setPeg (float originX, float originY, int width, int height)
+Transform::setPeg (float centerX, float centerY, int width, int height)
 {
-  defaultViewport = false;
   peg = true;
+  defaultViewport = false;
 
-  this->originX = originX;
-  this->originY = originY;
+  this->centerX = centerX;
+  this->centerY = centerY;
   this->width   = width;
   this->height  = height;
 }
 
 void
-Transform::setWindow (float originX, float originY, int width, int height)
+Transform::setWindow (float centerX, float centerY, int width, int height)
 {
-  defaultViewport = false;
   peg = false;
+  defaultViewport = false;
 
-  this->originX = originX;
-  this->originY = originY;
+  this->centerX = centerX;
+  this->centerY = centerY;
   this->width   = width;
   this->height  = height;
 }
@@ -266,79 +228,89 @@ Transform::setWindow (float originX, float originY, int width, int height)
 Transform
 Transform::operator * (const Transform & that) const
 {
-  Transform result (A * that.A);
-  result.translateX = A (0, 0) * that.translateX + A (0, 1) * that.translateY + translateX;
-  result.translateY = A (1, 0) * that.translateX + A (1, 1) * that.translateY + translateY;
-  result.peg = result.translateX == 0  &&  result.translateY == 0;
+  Transform result (that.IA * IA, true);  // same as !(A * that.A)
+  result.translateX = that.IA(0,0) * translateX + that.IA(0,1) * translateY + that.translateX;
+  result.translateY = that.IA(1,0) * translateX + that.IA(1,1) * translateY + that.translateY;
   return result;
 }
 
 void
-Transform::prepareResult (const Image & image, Image & result, Vector<float> & cs, Vector<float> & cd) const
+Transform::prepareResult (const Image & image, Image & result, Matrix3x3<float> & C)
 {
   // Prepare image and various parameters
+
+  if (defaultViewport)
+  {
+	float l = INFINITY;
+	float r = -INFINITY;
+	float t = INFINITY;
+	float b = -INFINITY;
+
+	// Remove this code and just use A
+	Matrix2x2<float> A = !IA;
+	float itX = -(A(0,0) * translateX + A(0,1) * translateY);
+	float itY = -(A(1,0) * translateX + A(1,1) * translateY);
+
+    #define twistCorner(inx,iny) \
+	{ \
+	  float outx = A(0,0) * inx + A(0,1) * iny + itX; \
+	  float outy = A(1,0) * inx + A(1,1) * iny + itY; \
+	  l = min (l, outx); \
+	  r = max (r, outx); \
+	  t = min (t, outy); \
+	  b = max (b, outy); \
+    }
+
+	twistCorner (-0.5,                -0.5);                  // Upper  left  corner
+	twistCorner ((image.width - 0.5), -0.5);                  // Upper  right corner
+	twistCorner (-0.5,                (image.height - 0.5)); // Bottom left  corner
+	twistCorner ((image.width - 0.5), (image.height - 0.5)); // Bottom right corner
+
+	peg = false;
+	centerX = (l + r) / 2.0;
+	centerY = (t + b) / 2.0;
+	width = (int) ceil (r - l);
+	height = (int) ceil (b - t);
+  }
+
+  int w = width < 0 ? image.width : width;
+  int h = height < 0 ? image.height : height;
+  result.resize (w, h);
+
+  Vector<float> cd (2);
   if (peg)
   {
-	if (defaultViewport)
-	{
-	  cs[0] = (image.width - 1) / 2.0;
-	  cs[1] = (image.height - 1) / 2.0;
+	// Just use A in this section
 
-	  float l = cs[0];
-	  float r = cs[0];
-	  float t = cs[1];
-	  float b = cs[1];
+	// Use cd as temporary storage for source image center.
+	cd[0] = centerX < 0 ? (image.width - 1)  / 2.0 : centerX;
+	cd[1] = centerY < 0 ? (image.height - 1) / 2.0 : centerY;
 
-      #define twistCorner(inx,iny) \
-	  { \
-	    float outx = inx - cs[0]; \
-	    float outy = iny - cs[1]; \
-	    float tx =  A (0, 0) * outx + A (0, 1) * outy; \
-	    outy     = (A (1, 0) * outx + A (1, 1) * outy) + cs[1]; \
-	    outx     = tx + cs[0]; \
-	    l = l <? outx; \
-	    r = r >? outx; \
-	    t = t <? outy; \
-	    b = b >? outy; \
-      }
+	// Transform center of source image into a point in virtual destination image.
+	Matrix2x2<float> A = !IA;
+	float itX = -(A(0,0) * translateX + A(0,1) * translateY);
+	float itY = -(A(1,0) * translateX + A(1,1) * translateY);
 
-	  twistCorner (-0.5,                -0.5);                  // Upper  left  corner
-	  twistCorner ((image.width - 0.5), -0.5);                  // Upper  right corner
-	  twistCorner (-0.5,                (image.height - 0.5)); // Bottom left  corner
-	  twistCorner ((image.width - 0.5), (image.height - 0.5)); // Bottom right corner
-
-	  cd[0] = cs[0] - l - 0.5;
-	  cd[1] = cs[1] - t - 0.5;
-	  result.resize ((int) ceil (r - l), (int) ceil (b - t));
-	}
-	else
-	{
-	  int w = width < 0 ? image.width : width;
-	  int h = height < 0 ? image.height : height;
-	  result.resize (w, h);
-	  cd[0] = (w - 1) / 2.0;
-	  cd[1] = (h - 1) / 2.0;
-	  cs[0] = originX < 0 ? (image.width - 1)  / 2.0 : originX;
-	  cs[1] = originY < 0 ? (image.height - 1) / 2.0 : originY;
-	}
+	float tx = A(0,0) * cd[0] + A(0,1) * cd[1] + itX;
+	cd[1]    = A(1,0) * cd[0] + A(1,1) * cd[1] + itY;
+	cd[0] = tx;
   }
   else
   {
-	if (defaultViewport)
-	{
-	  cd[0] = translateX;
-	  cd[1] = translateY;
-	  cs[0] = 0;
-	  cs[1] = 0;
-	  result.resize (image.width, image.height);
-	}
-	else
-	{
-	  cd[0] = translateX - (originX - width  / 2.0);
-	  cd[1] = translateY - (originY - height / 2.0);
-	  cs[0] = 0;
-	  cs[1] = 0;
-	  result.resize (width, height);
-	}
+	cd[0] = centerX;
+	cd[1] = centerY;
   }
+
+  // Combine center of real destination image with virtual destination point.
+  cd[0] -= (result.width  - 1) / 2.0;
+  cd[1] -= (result.height - 1) / 2.0;
+
+  // Use cd to construct C
+  C.region (0, 0, 1, 1) = IA;
+  C.region (0, 2, 1, 2) = IA * cd;
+  C(0,2) += translateX;
+  C(1,2) += translateY;
+  C(2,0) = 0;
+  C(2,1) = 0;
+  C(2,2) = 1;
 }
