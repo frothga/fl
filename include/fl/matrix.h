@@ -3,6 +3,7 @@
 
 
 #include "fl/pointer.h"
+#include "fl/complex.h"
 
 #include <math.h>
 #include <iostream>
@@ -69,7 +70,7 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract * duplicate () const = 0; // Make a new instance of self on the heap, with shallow copy semantics.  Used for views.  Since this is class sensitive, it must be overridden.
-	virtual void clear ();  // Set all elements to zero.
+	virtual void clear (const T scalar = (T) 0);  ///< Set all elements to given value.
 	virtual void resize (const int rows, const int columns = 1) = 0;  // Change number of rows and columns.  Does not preserve data.
 
 	// Higher level functions
@@ -189,7 +190,7 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void clear ();
+	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns = 1);
 	virtual void copyFrom (const Matrix<T> & that);
 
@@ -280,7 +281,7 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void clear ();
+	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns = -1);
 	virtual void copyFrom (const MatrixAbstract<T> & that);
 	virtual void copyFrom (const MatrixPacked & that);
@@ -314,7 +315,7 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void clear ();
+	virtual void clear (const T scalar = (T) 0);  ///< Completely ignore the value of scalar, and simply delete all data.
 	virtual void resize (const int rows, const int columns = 1);  // Changing number of rows has no effect at all.  Changing number of columns resizes column list.
 	virtual void copyFrom (const MatrixSparse & that);
 
@@ -338,7 +339,7 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void clear ();
+	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns = -1);
 
 	int size;
@@ -360,7 +361,7 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void clear ();
+	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns = -1);
 
 	int rows_;
@@ -404,7 +405,7 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void clear ();
+	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns);
 
 	// It is the job of the matrix being transposed to make another instance
@@ -449,7 +450,7 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void clear ();
+	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns = 1);
 
 	virtual MatrixTranspose<T> operator ~ () const;
@@ -659,7 +660,7 @@ namespace fl
 	T b4c = b * b - 4 * c;
 	if (b4c < 0)
 	{
-	  throw "eigen: no real eigenvalues!";  // Obviously, this function will have to be specialized for complex numbers.
+	  throw "eigen: no real eigenvalues!";
 	}
 	if (b4c > 0)
 	{
@@ -668,6 +669,32 @@ namespace fl
 	eigenvalues.resize (2, 1);
 	eigenvalues (0, 0) = (-b - b4c) / 2.0;
 	eigenvalues (1, 0) = (-b + b4c) / 2.0;
+  }
+
+  inline void
+  geev (const Matrix2x2<double> & A, Matrix<complex double> & eigenvalues)
+  {
+	eigenvalues.resize (2, 1);
+
+	// a = 1  :)
+	double b = -(A.data[0][0] + A.data[1][1]);  // trace
+	double c = A.data[0][0] * A.data[1][1] - A.data[0][1] * A.data[1][0];  // determinant
+	double b4c = b * b - 4 * c;
+	bool imaginary = b4c < 0;
+	if (b4c != 0)
+	{
+	  b4c = sqrt (fabs (b4c));
+	}
+	if (imaginary)
+	{
+	  eigenvalues(0,0) = (-b + b4c * I) / 2.0;
+	  eigenvalues(1,0) = (-b - b4c * I) / 2.0;
+	}
+	else
+	{
+	  eigenvalues(0,0) = (complex double) ((-b - b4c) / 2.0);
+	  eigenvalues(1,0) = (complex double) ((-b + b4c) / 2.0);
+	}
   }
 }
 
