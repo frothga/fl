@@ -29,7 +29,7 @@ namespace fl
 	  typename std::map<int,T>::iterator i;
 	  for (i = C.begin (); i != C.end ()  &&  i->first < column; i++)
 	  {
-		T temp = fabs (i->second);
+		T temp = std::fabs (i->second);
 		if (temp > value)
 		{
 		  row = i->first;
@@ -485,7 +485,7 @@ namespace fl
 		result += i->second * i->second;
 		i++;
 	  }
-	  return sqrt (result);
+	  return std::sqrt (result);
 	}
   };
 
@@ -553,7 +553,7 @@ namespace fl
   {
 	// Factorize A as U*D*U' using the upper triangle of A
 
-	const T alpha = (1.0 + sqrt (17.0)) / 8.0;
+	const T alpha = (1.0 + std::sqrt (17.0)) / 8.0;
 	int n = A.columns ();
 
 	pivots.resize (n);
@@ -568,7 +568,7 @@ namespace fl
 
 	  int kstep = 1;
 
-	  T absakk = fabs (A(k,k));
+	  T absakk = std::fabs (A(k,k));
 
 	  // IMAX is the row-index of the largest off-diagonal element in
 	  // column K, and COLMAX is its absolute value
@@ -599,7 +599,7 @@ namespace fl
 		  for (int j = imax + 1; j <= k; j++)
 		  {
 			// no need to update jmax, because it is not used below
-			rowmax = std::max (rowmax, fabs (A(imax,j)));
+			rowmax = std::max (rowmax, std::fabs (A(imax,j)));
 		  }
 
 		  if (absakk >= alpha * colmax * colmax / rowmax)
@@ -607,7 +607,7 @@ namespace fl
 			// no interchange, use 1-by-1 pivot block
 			kp = k;
 		  }
-		  else if (fabs (A(imax,imax)) >= alpha * rowmax)
+		  else if (std::fabs (A(imax,imax)) >= alpha * rowmax)
 		  {
 			// interchange rows and columns K and IMAX, use 1-by-1 pivot block
 			kp = imax;
@@ -810,7 +810,7 @@ namespace fl
 
 	for (int i = 0; i < x.rows (); i++)
 	{
-	  T xabs = fabs (x[i]);
+	  T xabs = std::fabs (x[i]);
 	  if (xabs <= rdwarf)
 	  {
 		// sum for small components.
@@ -851,22 +851,22 @@ namespace fl
 	// calculation of norm.
 	if (large != (T) 0)
 	{
-	  return largeMax * sqrt (large + (intermediate / largeMax) / largeMax);
+	  return largeMax * std::sqrt (large + (intermediate / largeMax) / largeMax);
 	}
 	else if (intermediate != (T) 0)
 	{
 	  if (intermediate >= smallMax)
 	  {
-		return sqrt (intermediate * ((T) 1.0 + (smallMax / intermediate) * (smallMax * small)));
+		return std::sqrt (intermediate * ((T) 1.0 + (smallMax / intermediate) * (smallMax * small)));
 	  }
 	  else
 	  {
-		return sqrt (smallMax * ((intermediate / smallMax) + (smallMax * small)));
+		return std::sqrt (smallMax * ((intermediate / smallMax) + (smallMax * small)));
 	  }
 	}
 	else
 	{
-	  return smallMax * sqrt (small);
+	  return smallMax * std::sqrt (small);
 	}
   }
 
@@ -962,7 +962,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 	  // If the function is small enough, accept the current value
 	  // of par.  Also test for the exceptional cases where parl
 	  // is zero or the number of iterations has reached 10.
-	  if (   fabs (fp) <= (T) 0.1 * delta
+	  if (   std::fabs (fp) <= (T) 0.1 * delta
 		  || (parl == (T) 0  &&  fp <= oldFp  &&  oldFp < (T) 0)
 		  || iter >= 10)
 	  {
@@ -999,13 +999,13 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
   {
 	if (toleranceF < (T) 0)
 	{
-	  toleranceF = sqrt (epsilon);
+	  toleranceF = std::sqrt (epsilon);
 	}
 	this->toleranceF = toleranceF;
 
 	if (toleranceX < (T) 0)
 	{
-	  toleranceX = sqrt (epsilon);
+	  toleranceX = std::sqrt (epsilon);
 	}
 	this->toleranceX = toleranceX;
 
@@ -1072,7 +1072,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 		  T temp = diag[j] * point[j];
 		  xnorm += temp * temp;
 		}
-		xnorm = sqrt (xnorm);
+		xnorm = std::sqrt (xnorm);
 
 		const T factor = (T) 1;
 		delta = factor * xnorm;
@@ -1091,7 +1091,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 		  if (jacobianNorms[j] != (T) 0)
 		  {
 			T value = fjac.dot (j, m - 1, fvec);
-			gnorm = std::max (gnorm, fabs (value / (fnorm * jacobianNorms[j])));
+			gnorm = std::max (gnorm, std::fabs (value / (fnorm * jacobianNorms[j])));
 		  }
 		}
 	  }
@@ -1125,7 +1125,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 		  T temp = diag[j] * p[j];
 		  pnorm += temp * temp;
 		}
-		pnorm = sqrt (pnorm);
+		pnorm = std::sqrt (pnorm);
 
 		// on the first iteration, adjust the initial step bound
 		if (iter == 1)
@@ -1149,7 +1149,7 @@ std::cerr << "actred=" << actred << " " << fnorm1 << " " << fnorm << std::endl;
 
 		// compute the scaled predicted reduction and the scaled directional derivative
 		T temp1 = (fjac * p).frob (2) / fnorm;
-		T temp2 = sqrt (par) * pnorm / fnorm;
+		T temp2 = std::sqrt (par) * pnorm / fnorm;
 		T prered = temp1 * temp1 + (T) 2 * temp2 * temp2;
 		T dirder = -(temp1 * temp1 + temp2 * temp2);
 
@@ -1201,14 +1201,14 @@ std::cerr << "actred=" << actred << " " << fnorm1 << " " << fnorm << std::endl;
 			T temp = diag[j] * point[j];
 			xnorm += temp * temp;
 		  }
-		  xnorm = sqrt (xnorm);
+		  xnorm = std::sqrt (xnorm);
 
 		  fnorm = fnorm1;
 		}
 std::cerr << "ratio=" << ratio << std::endl;
 
 		// tests for convergence
-		if (   fabs (actred) <= toleranceF
+		if (   std::fabs (actred) <= toleranceF
 			&& prered <= toleranceF
 			&& ratio <= 2)
 		{
@@ -1226,7 +1226,7 @@ std::cerr << "ratio=" << ratio << std::endl;
 		{
 		  throw (int) 5;
 		}
-		if (   fabs (actred) <= epsilon
+		if (   std::fabs (actred) <= epsilon
 			&& prered <= epsilon
 			&& ratio <= 2)
 		{

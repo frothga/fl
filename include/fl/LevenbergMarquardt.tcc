@@ -19,13 +19,13 @@ namespace fl
 
 	if (toleranceF < 0)
 	{
-	  toleranceF = sqrt (epsilon);
+	  toleranceF = std::sqrt (epsilon);
 	}
 	this->toleranceF = toleranceF;
 
 	if (toleranceX < 0)
 	{
-	  toleranceX = sqrt (epsilon);
+	  toleranceX = std::sqrt (epsilon);
 	}
 	this->toleranceX = toleranceX;
   }
@@ -88,7 +88,7 @@ namespace fl
 		  T temp = diag[j] * point[j];
 		  xnorm += temp * temp;
 		}
-		xnorm = sqrt (xnorm);
+		xnorm = std::sqrt (xnorm);
 
 		const T factor = 1;
 		delta = factor * xnorm;
@@ -137,7 +137,7 @@ namespace fl
 			{
 			  sum += fjac(i,j) * qtf[i];  // This use of the factored fjac is equivalent to ~fjac * fvec using the original fjac.
 			}
-			gnorm = std::max (gnorm, fabs (sum / (fnorm * jacobianNorms[l])));
+			gnorm = std::max (gnorm, std::fabs (sum / (fnorm * jacobianNorms[l])));
 		  }
 		}
 	  }
@@ -171,7 +171,7 @@ namespace fl
 		  T temp = diag[j] * p[j];
 		  pnorm += temp * temp;
 		}
-		pnorm = sqrt (pnorm);
+		pnorm = std::sqrt (pnorm);
 
 		// on the first iteration, adjust the initial step bound
 		if (iter == 1)
@@ -203,7 +203,7 @@ namespace fl
 		  }
 		}
 		T temp1 = fjacp.frob (2) / fnorm;
-		T temp2 = sqrt (par) * pnorm / fnorm;
+		T temp2 = std::sqrt (par) * pnorm / fnorm;
 		T prered = temp1 * temp1 + 2 * temp2 * temp2;
 		T dirder = -(temp1 * temp1 + temp2 * temp2);
 
@@ -255,13 +255,13 @@ namespace fl
 			T temp = diag[j] * point[j];
 			xnorm += temp * temp;
 		  }
-		  xnorm = sqrt (xnorm);
+		  xnorm = std::sqrt (xnorm);
 
 		  fnorm = fnorm1;
 		}
 
 		// tests for convergence
-		if (   fabs (actred) <= toleranceF
+		if (   std::fabs (actred) <= toleranceF
 			&& prered <= toleranceF
 			&& ratio <= 2)
 		{
@@ -279,7 +279,7 @@ namespace fl
 		{
 		  throw (int) 5;
 		}
-		if (   fabs (actred) <= epsilon
+		if (   std::fabs (actred) <= epsilon
 			&& prered <= epsilon
 			&& ratio <= 2)
 		{
@@ -362,7 +362,7 @@ namespace fl
 		  if(rdiag[k] != 0)
 		  {
 			T temp = a(j,k) / rdiag[k];
-			rdiag[k] *= sqrt (std::max ((T) 0, 1 - temp * temp));
+			rdiag[k] *= std::sqrt (std::max ((T) 0, 1 - temp * temp));
 			temp = rdiag[k] / wa[k];
 			if (0.05 * temp * temp <= epsilon)
 			{
@@ -424,16 +424,16 @@ namespace fl
 		  }
 		  T sin;
 		  T cos;
-		  if (fabs (r(k,k)) < fabs (sdiag[k]))
+		  if (std::fabs (r(k,k)) < std::fabs (sdiag[k]))
 		  {
 			T cotan = r(k,k) / sdiag[k];
-			sin = 0.5 / sqrt (0.25 + 0.25 * cotan * cotan);
+			sin = 0.5 / std::sqrt (0.25 + 0.25 * cotan * cotan);
 			cos = sin * cotan;
 		  }
 		  else
 		  {
 			T tan = sdiag[k] / r(k,k);
-			cos = 0.5 / sqrt (0.25 + 0.25 * tan * tan);
+			cos = 0.5 / std::sqrt (0.25 + 0.25 * tan * tan);
 			sin = cos * tan;
 		  }
 
@@ -644,7 +644,7 @@ namespace fl
 	  {
 		par = std::max (minimum, (T) 0.001 * paru);
 	  }
-	  T temp = sqrt (par);
+	  T temp = std::sqrt (par);
 	  for (int j = 0; j < n; j++)
 	  {
 		wa1[j] = temp * diag[j];
@@ -664,7 +664,7 @@ namespace fl
 	  // If the function is small enough, accept the current value
 	  // of par.  Also test for the exceptional cases where parl
 	  // is zero or the number of iterations has reached 10.
-	  if (   fabs (fp) <= 0.1 * delta
+	  if (   std::fabs (fp) <= 0.1 * delta
 		  || (parl == 0  &&  fp <= temp  &&  temp < 0)
 		  || iter >= 10)
 	  {

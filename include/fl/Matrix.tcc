@@ -62,7 +62,6 @@ namespace fl
   T
   MatrixAbstract<T>::frob (T n) const
   {
-	// Some of this code may have to be modified for complex numbers.
 	int h = rows ();
 	int w = columns ();
 	if (n == (T) INFINITY)
@@ -100,7 +99,7 @@ namespace fl
 		  result += t * t;
 		}
 	  }
-	  return (T) sqrt (result);
+	  return (T) std::sqrt (result);
 	}
 	else
 	{
@@ -109,10 +108,10 @@ namespace fl
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  result += (T) pow ((*this) (r, c), n);
+		  result += (T) std::pow ((*this) (r, c), n);
 		}
 	  }
-	  return (T) pow (result, 1.0 / n);
+	  return (T) std::pow (result, 1.0f / n);
 	}
   }
 
@@ -641,16 +640,16 @@ namespace fl
 	  {
 		result += (*i) * (*i++);
 	  }
-	  return (T) sqrt (result);
+	  return (T) std::sqrt (result);
 	}
 	else
 	{
 	  T result = 0;
 	  while (i < end)
 	  {
-		result += (T) pow (*i++, n);
+		result += (T) std::pow (*i++, n);
 	  }
-	  return (T) pow (result, 1.0 / n);
+	  return (T) std::pow (result, 1.0f / n);
 	}
   }
 

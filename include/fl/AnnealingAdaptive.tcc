@@ -50,7 +50,7 @@ namespace fl
 		guess[r] = randGaussian ();
 	  }
 	  guess.normalize ();
-	  guess *= pow ((T) 0.5, level);
+	  guess *= std::pow ((T) 0.5, level);
 	  guess += point;
 
 	  // Evaluate distance from guess to value

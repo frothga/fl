@@ -189,7 +189,7 @@ namespace fl
 		  i++;
 		}
 	  }
-	  return (T) sqrt (result);
+	  return (T) std::sqrt (result);
 	}
 	else
 	{
@@ -200,11 +200,11 @@ namespace fl
 		typename std::map<int,T>::iterator i = C.begin ();
 		while (i != C.end ())
 		{
-		  result += (T) pow (i->second, n);
+		  result += (T) std::pow (i->second, n);
 		  i++;
 		}
 	  }
-	  return (T) pow (result, 1.0 / n);
+	  return (T) std::pow (result, 1.0f / n);
 	}
   }
 

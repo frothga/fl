@@ -111,7 +111,7 @@ namespace fl
 	  {
 		int k = parmList[j];
 
-		T h = perturbation * fabs (point[k]);
+		T h = perturbation * std::fabs (point[k]);
 		if (h == 0)
 		{
 		  h = perturbation;
@@ -164,7 +164,7 @@ namespace fl
 	  {
 		int k = parmList[j];
 
-		T h = perturbation * fabs (point[k]);
+		T h = perturbation * std::fabs (point[k]);
 		if (h == 0)
 		{
 		  h = perturbation;

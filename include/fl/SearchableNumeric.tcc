@@ -67,7 +67,7 @@ namespace fl
 	  Vector<T> column (& result(0,i), m);
 
 	  T temp = point[i];
-	  T h = perturbation * fabs (temp);
+	  T h = perturbation * std::fabs (temp);
 	  if (h == 0)
 	  {
 		h = perturbation;
@@ -104,7 +104,7 @@ namespace fl
 	for (int i = 0; i < n; i++)
 	{
 	  T temp = point[i];
-	  T h = perturbation * fabs (temp);
+	  T h = perturbation * std::fabs (temp);
 	  if (h == 0)
 	  {
 		h = perturbation;
