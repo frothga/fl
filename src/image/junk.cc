@@ -4,7 +4,10 @@
 #include "fl/convolve.h"
 #include "fl/video.h"
 #include "fl/interest.h"
-
+#include "fl/descriptor.h"
+#include "fl/lapackd.h"
+#include "fl/random.h"
+#include "fl/track.h"
 
 #include <math.h>
 #include <fstream>
@@ -23,7 +26,233 @@ main (int argc, char * argv[])
 
   try
   {
-	SlideShow window;
+	//SlideShow window;
+
+
+	// Test KLT
+	new ImageFileFormatPGM;
+	Image image0 ("/home/rothgang/software/klt/img0.pgm");
+	Image image1 ("/home/rothgang/software/klt/img1.pgm");
+	KLT tracker (3, 27);
+	tracker.nextImage (image0);
+	tracker.nextImage (image1);
+	ifstream ifs ("/home/rothgang/software/klt/points");
+	while (ifs.good ())
+	{
+	  float x0;
+	  float y0;
+	  float x1;
+	  float y1;
+	  ifs >> x0 >> y0 >> x1 >> y1;
+	  if (! ifs.good ()) break;
+	  Point p0 (x0, y0);
+	  Point p1 (x1, y1);
+	  cerr << p0;
+	  tracker.track (p0);
+	  cerr  << ": (" << p0 << ") - (" << p1 << ") = " << p0.distance (p1) << endl;
+	}
+
+
+
+	// Convert squashed comparison values
+	/*
+	int m = DescriptorColorHistogram2D (10).dimension ();
+	cerr << acosh (1 / parmFloat (1, 1)) << endl;
+	//cerr << acosh (1 / parmFloat (1, 1)) * m / 100 << endl;
+	//cerr << 1 / cosh (parmFloat (1, 1) * 100 / m) << endl;
+	*/
+
+
+	// Test effect of removing intensity information from image
+	/*
+	new ImageFileFormatJPEG;
+	new ImageFileFormatPGM;
+	new ImageFileFormatTIFF;
+	Image image (parmChar (1, "test.jpg"));
+	float total = 0;
+	float U = 0;
+	float V = 0;
+	for (int y = 75; y < image.height - 50; y++)
+	{
+	  for (int x = 100; x < image.width - 50; x++)
+	  {
+		unsigned int yuv = image.getYUV (x, y);
+		total++;
+		U += ((yuv & 0xFF00) >> 8);
+		V += (yuv & 0xFF);
+		yuv = (yuv & 0xFFFF) | 0x800000;
+		image.setYUV (x, y, yuv);
+	  }
+	}
+	U /= total;
+	V /= total;
+	cerr << "(U,V) = " << U << " " << V << endl;
+	//image *= GrayFloat;
+	window.show (image);
+	window.waitForClick ();
+	*/
+
+
+	// Test rotation in HLS space
+	/*
+	new ImageFileFormatJPEG;
+	new ImageFileFormatPGM;
+	new ImageFileFormatTIFF;
+	Image image (parmChar (1, "test.jpg"));
+	ImageOf<float[3]> image2 = image * HLSFloat;
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		image2(x,y)[0] += parmFloat (2, 0);
+	  }
+	}
+	window.show (image2);
+	window.waitForClick ();
+	*/
+
+
+	// Test colorization
+	/*
+	new ImageFileFormatJPEG;
+	new ImageFileFormatPGM;
+	new ImageFileFormatTIFF;
+	Image image (parmChar (1, "test.jpg"));
+	float xyz[3];
+	float rgba[4];
+	float hls[3];
+	hls[0] = 0;  // hue == red
+	hls[2] = 1.0f;  // saturation
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		image(x,y).getXYZ (xyz);
+		hls[1] = xyz[1];  // lightness
+		HLSFloat.getRGBA (hls, rgba);
+		image(x,y).setRGBA (rgba);
+	  }
+	}
+	window.show (image);
+	window.waitForClick ();
+	*/
+
+
+	// Test angle detector
+	/*
+	new ImageFileFormatJPEG;
+	Image patch (parmChar (1, "test.jpg"));
+	DescriptorOrientationHistogram angler (6, 32);
+	PointAffine p;
+	p.x = patch.width / 2;
+	p.y = patch.height / 2;
+	p.scale = 2;
+	p.A(0,0) = 1.01;
+	cerr << "angles = " << angler.value (patch, p) << endl;
+	*/
+
+
+	/*
+	new ImageFileFormatJPEG;
+	DescriptorTextonScale descriptor;
+	Image image (parmChar (1, "test.jpg"));
+	cerr << "loaded" << endl;
+	image *= RGBAChar;
+	cerr << "converted" << endl;
+	for (int x = 0; x < image.width; x++)
+	{
+	  for (int y = 0; y < image.height; y++)
+	  {
+		image.setAlpha (x, y, 1);
+	  }
+	}
+	cerr << "alpha set" << endl;
+	Vector<float> value = descriptor.value (image);
+	cerr << "value = " << value << endl;
+	Image disp = descriptor.patch (value);
+	disp *= Rescale (disp);
+	window.show (disp);
+	window.waitForClick ();
+	*/
+
+
+	// Demo of derivative of Gaussian convolutions
+	/*
+	new ImageFileFormatJPEG;
+	new ImageFileFormatPGM;
+	IntensityAverage ave;
+	Image patch;
+
+	GaussianDerivativeSecond Gx2 (0, 0, 80);
+	patch = Gx2;
+	patch *= ave;
+	patch *= Rescale (0.5 / max (ave.maximum, - ave.minimum), 0.5);
+	window.show (patch);
+	window.waitForClick ();
+
+	GaussianDerivativeFirst Gx1 (0, 80);
+	patch = Gx1;
+	patch *= ave;
+	patch *= Rescale (0.5 / ave.maximum, 0.5);
+	window.show (patch);
+	window.waitForClick ();
+
+	GaussianDerivativeFirst Gx3 (0, 80, 80, PI * 0.2);
+	patch = Gx3;
+	patch *= ave;
+	patch *= Rescale (0.5 / ave.maximum, 0.5);
+	window.show (patch);
+	window.waitForClick ();
+
+	GaussianDerivativeFirst Gx4 (0, 80, 80, PI * 0.4);
+	patch = Gx4;
+	patch *= ave;
+	patch *= Rescale (0.5 / ave.maximum, 0.5);
+	window.show (patch);
+	window.waitForClick ();
+
+	// Now to convolve some images.
+	Image image ("test.ppm");
+	window.show (image);
+	window.waitForClick ();
+
+	for (int i = 0; i < 4; i++)
+	{
+	  GaussianDerivativeFirst g (0, 5, 5, PI * i / 8);
+	  Image disp = image * g;
+	  window.show (disp);
+	  window.waitForClick ();
+	}
+
+	for (int i = 0; i < 4; i++)
+	{
+	  GaussianDerivativeFirst g (0, 3 * i);
+	  Image disp = image * g;
+	  window.show (disp);
+	  window.waitForClick ();
+	}
+	*/
+
+
+	// Test HLS color space
+	/*
+	float values[4];
+	values[0] = parmFloat (1, 0);
+	values[1] = parmFloat (2, 0.5);
+	values[2] = parmFloat (3, 1);
+	cerr << hex << HLSFloat.getRGBA (values) << endl;
+	*/
+
+
+	// Test file format reading
+	/*
+	new ImageFileFormatMatlab;
+	new ImageFileFormatJPEG;
+	Image image (parmChar (1, "test.mat"));
+	image *= Rescale (image);
+	window.show (image);
+	window.waitForClick ();
+	*/
 
 
 	// Find average color (for redball demo).  Integrate this with that code.
@@ -51,32 +280,71 @@ main (int argc, char * argv[])
 	*/
 
 
-	// Test Video class
+	// Generate pattern for video camera resolution test
+	// The basic idea is to generate a sine wave pattern at two spatial
+	// frequencies 1 octave apart.
 	/*
-	new ImageFileFormatJPEG;
-	new VideoFileFormatFFMPEG;
-	VideoIn vin (argv[1]);
-	if (*(parmChar (3, "f")) == 's')
+	new ImageFileFormatPGM;
+	ImageOf<float> pattern (640, 480, GrayFloat);
+	pattern.clear (0xFFFFFF);
+	float cycles = 40;
+	for (int x = 0; x < pattern.width; x++)
 	{
-	  vin.seekTime (parmFloat (2, 0));
-	}
-	else
-	{
-	  vin.seekFrame (parmInt (2, 0));
-	}
-	Image image;
-	while (vin.good ())
-	{
-	  vin >> image;
-	  cerr << image.timestamp << " " << image.width << " " << image.height << endl;
-
-	  if (parmInt (4, 0))
+	  float value = sin (2 * PI * x * cycles / pattern.width);
+	  for (int y = 0; y < pattern.height / 2 - 10; y++)
 	  {
-		image.write ("frame.jpg", "jpeg");
+		pattern(x,y) = value;
+	  }
+	}
+	cycles = 80;
+	for (int x = 0; x < pattern.width; x++)
+	{
+	  float value = sin (2 * PI * x * cycles / pattern.width);
+	  for (int y = pattern.height / 2 + 10; y < pattern.height; y++)
+	  {
+		pattern(x,y) = value;
+	  }
+	}
+	pattern *= Rescale (0.5, 0.5);
+	pattern.write ("pattern.pgm");
+	window.show (pattern);
+	window.waitForClick ();
+	*/
+
+
+	// Test video reading
+	/*
+	new VideoFileFormatFFMPEG;
+	VideoIn vin (parmChar (1, "test.avi"));
+	while (true)
+	{
+	  Image image;
+	  vin >> image;
+	  if (! vin.good ()) break;
+	  cerr << image.timestamp << " " << image.width << " " << image.height << endl;
+	  window.clear ();
+	  window.show (image);
+	}
+	window.waitForClick ();
+	*/
+
+
+	// Test video writing
+	/*
+	new VideoFileFormatFFMPEG;
+	VideoOut vout ("test.mpg");
+	//vout.set ("framerate", 5);
+	Image image (320, 240, RGBAChar);
+	for (unsigned int i = 128; i < 255; i++)
+	{
+	  if (! vout.good ())
+	  {
+		cerr << "vout is bad" << endl;
 		exit (0);
 	  }
-
+	  image.clear ((i << 16) | (i << 8) | i);
 	  window.show (image);
+	  vout << image;
 	}
 	*/
 
@@ -91,22 +359,71 @@ main (int argc, char * argv[])
 	*/
 
 
+	// Test average and deviation filters
+	/*
+	new ImageFileFormatPGM;
+	new ImageFileFormatJPEG;
+	ImageOf<float> image;
+	image.read ("test.jpg");
+	image *= GrayFloat;
+
+	float average = 0;
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		average += image (x, y);
+	  }
+	}
+	average /= image.width * image.height;
+	float variance = 0;
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		float t = image (x, y) - average;
+		variance += t * t;
+	  }
+	}
+	variance /= image.width * image.height;
+	float deviation = sqrtf (variance);
+	cerr << average << endl;
+	cerr << deviation << endl;
+
+	IntensityAverage avg;
+	image * avg;
+	IntensityDeviation std (avg.average);
+	image * std;
+	cerr << avg.average << endl;
+	cerr << std.deviation << endl;
+	return 0;
+	*/
+
+
+
 	// Test Transform
+	/*
 	new ImageFileFormatPGM;
 	new ImageFileFormatJPEG;
 	Image image;
 	image.read ("test.jpg");
-	//image *= GrayDouble;
+	image *= GrayFloat;
 
 	Transform rot (parmFloat (1, 0) * PI / 180);
 	Transform scale (parmFloat (2, 1), parmFloat (3, 1));
-	TransformGauss T = scale * rot;
+	Matrix2x2<float> A;
+	A.identity ();
+	A(0,1) = parmFloat (4, 0);
+	Transform sheer (A);
+	TransformGauss T = scale * rot * sheer;
 
 	//T.setWindow (0, 0, 100, 100);
-	T.setPeg (50, 50, 100, 100);
+	//T.setPeg (50, 50, 100, 100);
 	image *= T;
+	cerr << typeid (*image.format).name () << endl;
 	window.show (image);
 	window.waitForClick ();
+	*/
 
 
 
@@ -129,6 +446,19 @@ main (int argc, char * argv[])
 	{
 	  cerr << i << " " << id(i,0) << " - " << ig(i,0) << " = " << id(i,0) - ig(i,0) << endl;
 	}
+	*/
+
+
+	// Test filter
+	/*
+	new ImageFileFormatJPEG;
+	Image image (parmChar (1, "test.jpg"));
+	FiniteDifferenceX dx;
+	window.show (image * dx);
+	window.waitForClick ();
+	FiniteDifferenceY dy;
+	window.show (image * dy);
+	window.waitForClick ();
 	*/
 
 
@@ -156,6 +486,7 @@ main (int argc, char * argv[])
 	cerr << p << endl;
 	p /= -3;
 	cerr << p << endl;
+	cerr << A.row (2).dot (Vector<double> (p.homogenous (1))) << endl;
 	*/
 
 
@@ -193,13 +524,15 @@ main (int argc, char * argv[])
 	// Test interest operator
 	/*
 	new ImageFileFormatPGM;
-	InterestLaplacian l (5000, 0.02, 2, 0, 3);
+	new ImageFileFormatJPEG;
+	InterestDOG l;
 	Image i;
-	i.read ("test.ppm");
+	i.read (parmChar (1, "test.jpg"));
 	CanvasImage ci = i;
 	i *= GrayFloat;
 	multiset<PointInterest> points;
 	l.run (i, points);
+	cerr << "total points = " << points.size () << endl;
 	multiset<PointInterest>::iterator it;
 	for (it = points.begin (); it != points.end (); it++)
 	{
@@ -207,6 +540,150 @@ main (int argc, char * argv[])
 	}
 	window.show (ci);
 	window.waitForClick ();
+	*/
+
+
+	// Test SIFT
+	/*
+	ImageOf<float> image (128, 128, GrayFloat);
+	for (int x = 0; x < image.width; x++)
+	{
+	  for (int y = 0; y < image.height; y++)
+	  {
+		image(x,y) = (float) max (y, 67) / image.width;
+		//image(x,y) = (float) x / image.width;
+	  }
+	}
+	window.show (image);
+	window.waitForClick ();
+	DescriptorSIFT sift;
+	PointAffine p;
+	p.x = (image.width - 1) / 2.0;
+	p.y = (image.height - 1) / 2.0;
+	p.scale = image.width / (2 * sift.supportRadial);
+	//p.scale = 2;
+	p.angle = 0;
+	double angle = 0; //PI * 0.13;
+	p.A(0,0) = cos (angle);
+	p.A(0,1) = -sin (angle);
+	p.A(1,0) = -p.A(0,1);
+	p.A(1,1) = p.A(0,0);
+	Vector<float> value = sift.value (image, p);
+	// Covert to integer format used by Lowe's implementation
+	//for (int i = 0; i < value.rows (); i++)
+	//{
+	//  value[i] = min (255, (int) (512 * value[i]));
+	//}
+	//for (int i = 0; i < 6; i++) cerr << "  " << value.region (i * 20, 0, (i+1) * 20 - 1) << endl;
+	//cerr << "  " << value.region (120, 0) << endl;
+	CanvasImage ci (image);
+	ci.drawParallelogram (p);
+	window.show (ci);
+	window.waitForClick ();
+	window.clear ();
+	window.show (sift.patch (value));
+	window.waitForClick ();
+	*/
+
+
+	// Test DOG + SIFT
+	/*
+	new ImageFileFormatPGM;
+	new ImageFileFormatJPEG;
+	InterestDOG l;
+	l.storePyramid = true;
+	//Image i (parmChar (1, "test.jpg"));
+	ImageOf<float> i (1280, 960, GrayFloat);
+	for (int x = 0; x < i.width; x++)
+	{
+	  for (int y = 0; y < i.height; y++)
+	  {
+		i(x,y) = (float) x / i.width;
+	  }
+	}
+	CanvasImage ci = i;
+	i *= GrayFloat;
+	multiset<PointInterest> points;
+	l.run (i, points);
+	PointInterest tp;
+	tp.x = 167.52;
+	tp.y = 470.56;
+	tp.scale = 66.68;
+	//tp.x = i.width / 2;
+	//tp.y = i.height / 2;
+	//tp.scale = 5;
+	points.clear ();
+	points.insert (tp);
+	cerr << "total points = " << points.size () << endl;
+	multimap<float, PointInterest> sorted;
+	multiset<PointInterest>::iterator it;
+	for (it = points.begin (); it != points.end (); it++)
+	{
+	  sorted.insert (make_pair (it->scale, *it));
+	}
+	DescriptorSIFT sift;
+	DescriptorOrientationHistogram orient;
+	multimap<float, PointInterest>::iterator sit;
+	for (sit = sorted.begin (); sit != sorted.end (); sit++)
+	{
+	  PointAffine p = sit->second;
+	  // find closest pyramid entry
+	  float closestRatio = INFINITY;
+	  int closestIndex = 0;
+	  for (int j = 0; j < l.scales.size (); j++)
+	  {
+		float ratio = fabsf (1.0f - l.scales[j] / p.scale);
+		if (ratio < closestRatio)
+		{
+		  closestRatio = ratio;
+		  closestIndex = j;
+		}
+	  }
+	  cerr << "closestRatio = " << closestRatio << endl;
+	  float octave = (float) l.pyramid[0].width / l.pyramid[closestIndex].width;
+	  p.x = (p.x + 0.5f) / octave - 0.5f;
+	  p.y = (p.y + 0.5f) / octave - 0.5f;
+	  p.scale /= octave;
+	  Vector<float> angles = orient.value (l.pyramid[closestIndex], p);
+	  cerr << sit->second << " " << sit->second.scale << " : " << angles[0] << endl;
+	  //p.angle = angles[0];
+	  p.angle = -2.892;
+	  //p.angle = PI * 0.13;
+	  cerr << "p=" << p << " " << p.scale << " " << p.angle << endl;
+	  cerr << "pyramid image =" << l.pyramid[closestIndex].width << " " << l.pyramid[closestIndex].height << endl;
+	  Vector<float> value = sift.value (l.pyramid[closestIndex], p);
+	  // Covert to integer format used by Lowe's implementation
+	  for (int i = 0; i < value.rows (); i++)
+	  {
+		value[i] = min (255, (int) (512 * value[i]));
+	  }
+	  for (int i = 0; i < 6; i++) cerr << "  " << value.region (i * 20, 0, (i+1) * 20 - 1) << endl;
+	  cerr << "  " << value.region (120, 0) << endl;
+	}
+	*/
+
+
+	// Test DescriptorLBP
+	/*
+	new ImageFileFormatJPEG;
+	new ImageFileFormatPGM;
+	new ImageFileFormatTIFF;
+	Image image (parmChar (1, "test.ppm"));
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		image.setAlpha (x, y, 0xFF);
+	  }
+	}
+	window.show (image);
+	DescriptorLBP lbp (parmInt (2, 8), parmFloat (3, 1));
+	PointAffine p;
+	p.x = image.width / 2;
+	p.y = image.height / 2;
+	p.scale = 20;
+	Vector<float> value = lbp.value (image);
+	cerr << value << endl;
 	*/
 
 
@@ -308,39 +785,106 @@ main (int argc, char * argv[])
 
 	// Test spin image
 	/*
-	DescriptorSpin spin1 (parmInt (1, 6), parmInt (2, 6), parmFloat (3, 3), parmFloat (4, 2));
-	DescriptorSpinExact spin2 (parmInt (1, 6), parmInt (2, 6), parmFloat (3, 3), parmFloat (4, 2));
-
-	Image synth1 (100, 100, Image::GrayFloat);
-	synth1.bias = 128;
-	synth1.scale = 127;
-	for (int x = 0; x < synth1.width; x++)
 	{
-	  for (int y = 0; y < synth1.height; y++)
+	  DescriptorSpin spin (parmInt (1, 6), parmInt (2, 6), parmFloat (3, 3), parmFloat (4, 2));
+	  ImageOf<float> synth1 (100, 100, GrayFloat);
+	  PointAffine p;
+	  p.x = (synth1.width - 1) / 2.0;
+	  p.y = (synth1.height - 1) / 2.0;
+	  p.scale = synth1.width / (2.0 * spin.supportRadial);
+
+	  // Random image with Gaussian distribution
+	  for (int x = 0; x < synth1.width; x++)
 	  {
-		synth1.pixelGrayFloat (x, y) = randGaussian ();
+		for (int y = 0; y < synth1.height; y++)
+		{
+		  synth1(x,y) = randGaussian ();
+		}
 	  }
+	  Vector<float> value = spin.value (synth1, p);
+	  Image patch = spin.patch (value);
+	  int zoomfactor = (int) ceilf ((float) synth1.height / patch.height);
+	  Zoom zoom (zoomfactor, zoomfactor);
+	  patch *= zoom;
+	  patch.bitblt (synth1, patch.width);
+	  window.show (patch);
+	  window.waitForClick ();
+
+	  // Random image with uniform distribution
+	  for (int x = 0; x < synth1.width; x++)
+	  {
+		for (int y = 0; y < synth1.height; y++)
+		{
+		  synth1 (x, y) = randfb ();
+		}
+	  }
+	  value = spin.value (synth1, p);
+	  patch = spin.patch (value);
+	  patch *= zoom;
+	  patch.bitblt (synth1, patch.width);
+	  window.show (patch);
+	  window.waitForClick ();
+
+	  // Coencentric steps: one intensity level per bin
+	  for (int x = 0; x < synth1.width; x++)
+	  {
+		for (int y = 0; y < synth1.height; y++)
+		{
+		  float dx = x - p.x;
+		  float dy = y - p.y;
+		  float radius = sqrt (dx * dx + dy * dy);
+		  int r = (int) (radius / (p.x / spin.binsRadial));
+		  synth1(x,y) = 1.0 - (r + 0.5) / spin.binsRadial;
+		}
+	  }
+	  value = spin.value (synth1, p);
+	  patch = spin.patch (value);
+	  patch *= zoom;
+	  patch.bitblt (synth1, patch.width);
+	  window.show (patch);
+	  window.waitForClick ();
+
+	  // Intensity surface which is a hemisphere
+	  for (int x = 0; x < synth1.width; x++)
+	  {
+		for (int y = 0; y < synth1.height; y++)
+		{
+		  float dx = x - p.x;
+		  float dy = y - p.y;
+		  float radius = sqrt (dx * dx + dy * dy);
+		  float value = sqrt (1.0 - pow (radius / p.x, 2));
+		  if (isnan (value))
+		  {
+			value = 0;
+		  }
+		  synth1 (x, y) = value;
+		}
+	  }
+	  value = spin.value (synth1, p);
+	  patch = spin.patch (value);
+	  patch *= zoom;
+	  patch.bitblt (synth1, patch.width);
+	  window.show (patch);
+	  window.waitForClick ();
+
+	  // Intensity surface which is a cone
+	  for (int x = 0; x < synth1.width; x++)
+	  {
+		for (int y = 0; y < synth1.height; y++)
+		{
+		  float dx = x - p.x;
+		  float dy = y - p.y;
+		  float radius = sqrt (dx * dx + dy * dy);
+		  synth1 (x, y) = 1.0 - radius / p.x;
+		}
+	  }
+	  value = spin.value (synth1, p);
+	  patch = spin.patch (value);
+	  patch *= zoom;
+	  patch.bitblt (synth1, patch.width);
+	  window.show (patch);
+	  window.waitForClick ();
 	}
-
-	PointInterest p;
-	p.x = (synth1.width - 1) / 2.0;
-	p.y = (synth1.height - 1) / 2.0;
-	p.scale = synth1.width / (2.0 * spin1.supportRadial);
-	Vector<float> value1 = spin1.value (synth1, p);
-	Image patch1 = spin1.patch (value1);
-	float zoomfactor = (float) synth1.height / patch1.height;
-	TransformGauss zoom (zoomfactor, zoomfactor);
-	patch1 *= zoom;
-	Vector<float> value2 = spin2.value (synth1, p);
-	Image patch2 = spin2.patch (value2) * zoom;
-
-	Image disp;
-	disp.bitblt (synth1);
-	disp.bitblt (patch1, synth1.width + 10);
-	disp.bitblt (patch2, synth1.width + patch1.width + 20);
-
-	window.show (disp);
-	window.waitForClick ();
 	*/
   }
   catch (const char * error)
