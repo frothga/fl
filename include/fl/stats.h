@@ -2,9 +2,10 @@
 #define fl_stats_h
 
 
+#include "fl/math.h"
+
 #include <vector>
 #include <ostream>
-#include <math.h>
 
 
 namespace fl
