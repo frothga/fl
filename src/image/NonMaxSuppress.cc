@@ -8,9 +8,22 @@ using namespace fl;
 
 // class NonMaxSuppress -------------------------------------------------------
 
-NonMaxSuppress::NonMaxSuppress (int half)
+NonMaxSuppress::NonMaxSuppress (int half, BorderMode mode)
 {
   this->half = half;
+
+  // Remap border modes to ones that we actually handle.
+  switch (mode)
+  {
+    case Crop:
+    case ZeroFill:
+	  mode = ZeroFill;
+	  break;
+    default:
+	  mode = UseZeros;
+  }
+  this->mode = mode;
+
   maximum = 0;
   average = 0;
 }
@@ -26,20 +39,18 @@ NonMaxSuppress::filter (const Image & image)
   {
 	ImageOf<float> result (image.width, image.height, GrayFloat);
 	ImageOf<float> that (image);
-	for (int x = 0; x < result.width; x++)
+	for (int y = 0; y < result.height; y++)
 	{
-	  for (int y = 0; y < result.height; y++)
+	  for (int x = 0; x < result.width; x++)
 	  {
-		int h;
 		int hl = max (0,               x - half);
 		int hh = min (image.width - 1, x + half);
-		int v;
 		int vl = max (0,                y - half);
 		int vh = min (image.height - 1, y + half);
 		float me = that (x, y);
-		for (h = hl; me != 0  &&  h <= hh; h++)
+		for (int v = vl; me != 0  &&  v <= vh; v++)
 		{
-		  for (v = vl; v <= vh; v++)
+		  for (int h = hl; h <= hh; h++)
 		  {
 			if (that (h, v) >= me)  // Forces a group of equals to be supressed, but we assume this is a zero-probability case.  Alternative is center-of-gravity test as in GrayChar chase below.
 			{
@@ -67,20 +78,18 @@ NonMaxSuppress::filter (const Image & image)
   {
 	ImageOf<double> result (image.width, image.height, GrayDouble);
 	ImageOf<double> that (image);
-	for (int x = 0; x < result.width; x++)
+	for (int y = 0; y < result.height; y++)
 	{
-	  for (int y = 0; y < result.height; y++)
+	  for (int x = 0; x < result.width; x++)
 	  {
-		int h;
 		int hl = max (0,               x - half);
 		int hh = min (image.width - 1, x + half);
-		int v;
 		int vl = max (0,                y - half);
 		int vh = min (image.height - 1, y + half);
 		double me = that (x, y);
-		for (h = hl; me != 0  &&  h <= hh; h++)
+		for (int v = vl; me != 0  &&  v <= vh; v++)
 		{
-		  for (v = vl; v <= vh; v++)
+		  for (int h = hl; h <= hh; h++)
 		  {
 			if (that (h, v) >= me)  // Forces a group of equals to be supressed, but we assume this is a zero-probability case.  Alternative is center-of-gravity test as in GrayChar chase below.
 			{
@@ -108,23 +117,21 @@ NonMaxSuppress::filter (const Image & image)
   {
 	ImageOf<unsigned char> result (image.width, image.height, GrayChar);
 	ImageOf<unsigned char> that (image);
-	for (int x = 0; x < result.width; x++)
+	for (int y = 0; y < result.height; y++)
 	{
-	  for (int y = 0; y < result.height; y++)
+	  for (int x = 0; x < result.width; x++)
 	  {
-		int h;
 		int hl = max (0,               x - half);
 		int hh = min (image.width - 1, x + half);
-		int v;
 		int vl = max (0,                y - half);
 		int vh = min (image.height - 1, y + half);
 		unsigned char me = that (x, y);
 		int c = 0;
 		int cx = 0;
 		int cy = 0;
-		for (h = hl; me  &&  h <= hh; h++)
+		for (int v = vl; me  &&  v <= vh; v++)
 		{
-		  for (v = vl; v <= vh; v++)
+		  for (int h = hl; h <= hh; h++)
 		  {
 			if (that (h, v) > me)
 			{
@@ -152,10 +159,10 @@ NonMaxSuppress::filter (const Image & image)
 			// so arbitrate further by suppressing self if any point has already been added to output
 			// within our neighborhood.
 
-			// Scan everything to the left ...
-			for (h = hl; me  &&  h < x; h++)
+			// Scan everything above ...
+			for (int v = vl; me  &&  v < y; v++)
 			{
-			  for (v = vl; v < vh; v++)
+			  for (int h = hl; h <= hh; h++)
 			  {
 				if (result (h, v))
 				{
@@ -164,12 +171,12 @@ NonMaxSuppress::filter (const Image & image)
 				}
 			  }
 			}
-			// ... and for extra measure, scan the column above us.
+			// ... and for extra measure, scan the row to the left of us.
 			if (me)
 			{
-			  for (v = vl; v < y; v++)
+			  for (int h = hl; h < x; h++)
 			  {
-				if (result (x, v))
+				if (result (h, y))
 				{
 				  me = 0;
 				  break;
