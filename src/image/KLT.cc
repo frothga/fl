@@ -211,13 +211,75 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	throw 1;
   }
 
-  // Determine bilinear mixing constants for image0
+  // Compute the constant window (from image0)
+  Vector<float> gradientX0 (windowWidth * windowWidth);
+  Vector<float> gradientY0 (windowWidth * windowWidth);
+  Vector<float> intensity0 (windowWidth * windowWidth);
+  //   Determine bilinear mixing constants
   int x0 = (int) point0.x;
   int y0 = (int) point0.y;
   const float bx0 = point0.x - x0;
   const float by0 = point0.y - y0;
   x0 -= windowRadius;
   y0 -= windowRadius;
+  //   Iterate over images using 12 pointers, 4 for each of 3 images
+  float * i0_00 = & image0(x0,y0);
+  float * i0_10 = i0_00 + 1;
+  float * i0_01 = i0_00 + image0.width;
+  float * i0_11 = i0_01 + 1;
+  float * dx0_00 = & dx0(x0,y0);
+  float * dx0_10 = dx0_00 + 1;
+  float * dx0_01 = dx0_00 + dx0.width;
+  float * dx0_11 = dx0_01 + 1;
+  float * dy0_00 = & dy0(x0,y0);
+  float * dy0_10 = dy0_00 + 1;
+  float * dy0_01 = dy0_00 + dy0.width;
+  float * dy0_11 = dy0_01 + 1;
+  float * gx0 = & gradientX0[0];
+  float * gy0 = & gradientY0[0];
+  float * i0 = & intensity0[0];
+  for (int y = 0; y < windowWidth; y++)
+  {
+	for (int x = 0; x < windowWidth; x++)
+	{
+	  // Compute intensity difference and gradient values
+	  float a = *i0_00 + bx0 * (*i0_10 - *i0_00);
+	  float b = *i0_01 + bx0 * (*i0_11 - *i0_01);
+	  *i0++ = a + by0 * (b - a);
+	  a = *dx0_00 + bx0 * (*dx0_10 - *dx0_00);
+	  b = *dx0_01 + bx0 * (*dx0_11 - *dx0_01);
+	  *gx0++ = a + by0 * (b - a);
+	  a = *dy0_00 + bx0 * (*dy0_10 - *dy0_00);
+	  b = *dy0_01 + bx0 * (*dy0_11 - *dy0_01);
+	  *gy0++ = a + by0 * (b - a);
+	  // Advance to next x position
+	  i0_00++;
+	  i0_10++;
+	  i0_01++;
+	  i0_11++;
+	  dx0_00++;
+	  dx0_10++;
+	  dx0_01++;
+	  dx0_11++;
+	  dy0_00++;
+	  dy0_10++;
+	  dy0_01++;
+	  dy0_11++;
+	}
+	// Advance pointers to next row
+	i0_00 += rowAdvance;
+	i0_10 += rowAdvance;
+	i0_01 += rowAdvance;
+	i0_11 += rowAdvance;
+	dx0_00 += rowAdvance;
+	dx0_10 += rowAdvance;
+	dx0_01 += rowAdvance;
+	dx0_11 += rowAdvance;
+	dy0_00 += rowAdvance;
+	dy0_10 += rowAdvance;
+	dy0_01 += rowAdvance;
+	dy0_11 += rowAdvance;
+  }
 
   int count = 0;
   while (count++ < maxIterations)
@@ -227,34 +289,20 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	  throw 1;
 	}
 
-	// Determine bilinear mixing constants for image1
-	int x1 = (int) point1.x;
-	int y1 = (int) point1.y;
-	const float bx1 = point1.x - x1;
-	const float by1 = point1.y - y1;
-	x1 -= windowRadius;
-	y1 -= windowRadius;
-
 	// Compute second moment matrix and error vector
 	float gxx = 0;
 	float gxy = 0;
 	float gyy = 0;
 	float ex = 0;
 	float ey = 0;
-
-	//     Set up 24 pointers, 4 for each of the 6 images.
-	float * i0_00 = & image0(x0,y0);
-	float * i0_10 = i0_00 + 1;
-	float * i0_01 = i0_00 + image0.width;
-	float * i0_11 = i0_01 + 1;
-	float * dx0_00 = & dx0(x0,y0);
-	float * dx0_10 = dx0_00 + 1;
-	float * dx0_01 = dx0_00 + dx0.width;
-	float * dx0_11 = dx0_01 + 1;
-	float * dy0_00 = & dy0(x0,y0);
-	float * dy0_10 = dy0_00 + 1;
-	float * dy0_01 = dy0_00 + dy0.width;
-	float * dy0_11 = dy0_01 + 1;
+	//   Determine bilinear mixing constants for image1
+	int x1 = (int) point1.x;
+	int y1 = (int) point1.y;
+	const float bx1 = point1.x - x1;
+	const float by1 = point1.y - y1;
+	x1 -= windowRadius;
+	y1 -= windowRadius;
+	//   Set up 12 pointers, 4 for each of the 3 images.
 	float * i1_00 = & image1(x1,y1);
 	float * i1_10 = i1_00 + 1;
 	float * i1_01 = i1_00 + image1.width;
@@ -267,51 +315,30 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	float * dy1_10 = dy1_00 + 1;
 	float * dy1_01 = dy1_00 + dy1.width;
 	float * dy1_11 = dy1_01 + 1;
-
+	gx0 = & gradientX0[0];
+	gy0 = & gradientY0[0];
+	i0 = & intensity0[0];
 	for (int y = 0; y < windowWidth; y++)
 	{
 	  for (int x = 0; x < windowWidth; x++)
 	  {
 		// Compute intensity difference and gradient values
-		float a = *i0_00 + bx0 * (*i0_10 - *i0_00);
-		float b = *i0_01 + bx0 * (*i0_11 - *i0_01);
-		float diff = a + by0 * (b - a);
-		a       = *i1_00 + bx1 * (*i1_10 - *i1_00);
-		b       = *i1_01 + bx1 * (*i1_11 - *i1_01);
-		diff -= a + by1 * (b - a);
-		a = *dx0_00 + bx0 * (*dx0_10 - *dx0_00);
-		b = *dx0_01 + bx0 * (*dx0_11 - *dx0_01);
-		float gx = a + by0 * (b - a);
+		float a = *i1_00 + bx1 * (*i1_10 - *i1_00);
+		float b = *i1_01 + bx1 * (*i1_11 - *i1_01);
+		float diff = *i0++ - (a + by1 * (b - a));
 		a = *dx1_00 + bx1 * (*dx1_10 - *dx1_00);
 		b = *dx1_01 + bx1 * (*dx1_11 - *dx1_01);
-		gx += a + by1 * (b - a);
-		a = *dy0_00 + bx0 * (*dy0_10 - *dy0_00);
-		b = *dy0_01 + bx0 * (*dy0_11 - *dy0_01);
-		float gy = a + by0 * (b - a);
+		float gx = *gx0++ + a + by1 * (b - a);
 		a = *dy1_00 + bx1 * (*dy1_10 - *dy1_00);
 		b = *dy1_01 + bx1 * (*dy1_11 - *dy1_01);
-		gy += a + by1 * (b - a);
-
+		float gy = *gy0++ + a + by1 * (b - a);
 		// Accumulate second moment matrix and error vector
 		gxx += gx * gx;
 		gxy += gx * gy;
 		gyy += gy * gy;
 		ex += diff * gx;
 		ey += diff * gy;
-
 		// Advance to next x position
-		i0_00++;
-		i0_10++;
-		i0_01++;
-		i0_11++;
-		dx0_00++;
-		dx0_10++;
-		dx0_01++;
-		dx0_11++;
-		dy0_00++;
-		dy0_10++;
-		dy0_01++;
-		dy0_11++;
 		i1_00++;
 		i1_10++;
 		i1_01++;
@@ -325,20 +352,7 @@ KLT::track (const Point & point0, const int level, Point & point1)
 		dy1_01++;
 		dy1_11++;
 	  }
-
 	  // Advance pointers to next row
-	  i0_00 += rowAdvance;
-	  i0_10 += rowAdvance;
-	  i0_01 += rowAdvance;
-	  i0_11 += rowAdvance;
-	  dx0_00 += rowAdvance;
-	  dx0_10 += rowAdvance;
-	  dx0_01 += rowAdvance;
-	  dx0_11 += rowAdvance;
-	  dy0_00 += rowAdvance;
-	  dy0_10 += rowAdvance;
-	  dy0_01 += rowAdvance;
-	  dy0_11 += rowAdvance;
 	  i1_00 += rowAdvance;
 	  i1_10 += rowAdvance;
 	  i1_01 += rowAdvance;
