@@ -97,8 +97,10 @@ namespace fl
 	PointAffine (const Point & p);
 	PointAffine (const PointInterest & p);
 	PointAffine (std::istream & stream);
+	PointAffine (const Matrix<double> & S);  ///< Constructs from a patch matrix.  S = ! this->rectification()
 
-	Matrix<double> rectification () const;  ///< Compute the 3x3 (affine) homography between the image patch indicated by this point and the normalized form.
+	Matrix<double> rectification () const;  ///< Computes the 3x3 (affine) homography from the image patch indicated by this point to the normalized form.
+	Matrix<double> projection () const;  ///< Computes the 3x3 (affine) homography from the normalized form back into the image patch indicated by this point.
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = false);
