@@ -130,7 +130,9 @@ cerr << "center: " << center << endl;
 	cerr << endl;
   }
 
-  // Iterate to convergence.  Convergence condition is that cluster centers are stable and that all features fall within maxSize of nearest cluster center.
+  // Iterate to convergence.  Convergence condition is that cluster
+  // centers are stable and that all features fall within maxSize of
+  // nearest cluster center.
   iteration = 0;
   bool converged = false;
   while (! converged  &&  ! stop)
@@ -320,7 +322,7 @@ cerr << "center: " << center << endl;
 	  {
 		for (int j = i + 1; j < clusters.size (); j++)
 		{
-		  float distance = (clusters[i].center - clusters[j].center).norm (2);
+		  float distance = (clusters[i].center - clusters[j].center).frob (2);
 		  if (distance < minSize  &&  distance < closestDistance)
 		  {
 			merge = i;
