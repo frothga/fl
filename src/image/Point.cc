@@ -120,6 +120,7 @@ PointInterest::PointInterest ()
 {
   weight = 0;
   scale = 1;
+  detector = Unknown;
 }
 
 PointInterest::PointInterest (const Point & p)
@@ -127,6 +128,7 @@ PointInterest::PointInterest (const Point & p)
 {
   weight = 0;
   scale = 1;
+  detector = Unknown;
 }
 
 PointInterest::PointInterest (std::istream & stream)
