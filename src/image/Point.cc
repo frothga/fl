@@ -105,11 +105,23 @@ Point::distance (const Point & that) const
 }
 
 float
+Point::distance () const
+{
+  return sqrtf (x * x + y * y);
+}
+
+float
 Point::angle (const Point & that) const
 {
   float dx = that.x - x;
   float dy = that.y - y;
   return atan2f (dy, dx);
+}
+
+float
+Point::angle () const
+{
+  return atan2f (y, x);
 }
 
 
