@@ -31,56 +31,9 @@ DescriptorOrientationHistogram::computeGradient (const Image & image)
   }
   lastImage = &image;
 
-  ImageOf<float> work = image * GrayFloat;
-
-  I_x.format = &GrayFloat;
-  I_y.format = &GrayFloat;
-  I_x.resize (image.width, image.height);
-  I_y.resize (image.width, image.height);
-
-  // Compute all of I_x
-  int lastX = image.width - 1;
-  int penX  = lastX - 1;  // "pen" as in "penultimate"
-  for (int y = 0; y < image.height; y++)
-  {
-	I_x(0,    y) = 2.0f * (work(1,    y) - work(0,   y));
-	I_x(lastX,y) = 2.0f * (work(lastX,y) - work(penX,y));
-
-	float * p = & work(2,y);
-	float * m = & work(0,y);
-	float * c = & I_x (1,y);
-	float * end = c + (image.width - 2);
-	while (c < end)
-	{
-	  *c++ = *p++ - *m++;
-	}
-  }
-
-  // Compute top and bottom rows of I_y
-  int lastY = image.height - 1;
-  int penY  = lastY - 1;
-  float * pt = & work(0,1);
-  float * mt = & work(0,0);
-  float * pb = & work(0,lastY);
-  float * mb = & work(0,penY);
-  float * ct = & I_y (0,0);
-  float * cb = & I_y (0,lastY);
-  float * end = ct + image.width;
-  while (ct < end)
-  {
-	*ct++ = 2.0f * (*pt++ - *mt++);
-	*cb++ = 2.0f * (*pb++ - *mb++);
-  }
-
-  // Compute everything else in I_y
-  float * p = & work(0,2);
-  float * m = & work(0,0);
-  float * c = & I_y (0,1);
-  end = &I_y(lastX,penY) + 1;
-  while (c < end)
-  {
-	*c++ = *p++ - *m++;
-  }
+  Image work = image * GrayFloat;
+  I_x = work * FiniteDifferenceX ();
+  I_y = work * FiniteDifferenceY ();
 }
 
 Vector<float>
