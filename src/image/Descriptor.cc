@@ -1,4 +1,5 @@
 #include "fl/descriptor.h"
+#include "fl/factory.h"
 
 
 using namespace std;
@@ -7,20 +8,10 @@ using namespace fl;
 
 // class Descriptor -----------------------------------------------------------
 
+Factory<Descriptor>::productMap Factory<Descriptor>::products;
+
 Descriptor::~Descriptor ()
 {
-}
-
-Vector<float>
-Descriptor::value (const Image & image, const Point & point)
-{
-  return value (image, PointAffine (point));
-}
-
-Vector<float>
-Descriptor::value (const Image & image, const PointInterest & point)
-{
-  return value (image, PointAffine (point));
 }
 
 Vector<float>
