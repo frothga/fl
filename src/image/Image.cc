@@ -177,6 +177,11 @@ Image::detach ()
   height = 0;
 }
 
+struct triad
+{
+  unsigned char channel[3];
+};
+
 void
 Image::resize (const int width, const int height)
 {
@@ -230,6 +235,9 @@ Image::resize (const int width, const int height)
       case 2:
 		reshuffle (unsigned short);
 		break;
+      case 3:
+		reshuffle (triad);
+		break;
       case 4:
 		reshuffle (unsigned int);
 		break;
@@ -242,11 +250,6 @@ Image::resize (const int width, const int height)
 	}
   }
 }
-
-struct triad
-{
-  unsigned char channel[3];
-};
 
 void
 Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int width, int height)
