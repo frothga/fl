@@ -54,13 +54,14 @@ VideoInFileFFMPEG::seekTime (double timestamp)
   }
 
   int64_t targetDTS = (int64_t) rint (timestamp * AV_TIME_BASE);
-  //cerr << "timestamp = " << timestamp << endl;
-  //cerr << "targetDTS = " << targetDTS;
+  cerr << "timestamp = " << timestamp << endl;
+  cerr << "targetDTS = " << targetDTS;
   if (fc->start_time != AV_NOPTS_VALUE)
   {
 	targetDTS += fc->start_time;
+	cerr << " + " << fc->start_time << " = " << targetDTS;
   }
-  //cerr << " " << targetDTS << endl;
+  cerr << endl;
   state = av_seek_frame (fc, stream->index, targetDTS);
   if (state < 0)
   {
@@ -82,22 +83,27 @@ VideoInFileFFMPEG::seekTime (double timestamp)
   size = packet.size;
   data = packet.data;
   gotPicture = false;
+  cerr << "queued packet.pts=" << packet.pts << " dts=" << packet.dts << " skew=" << packet.pts - packet.dts << endl;
 
   // Read forward until finding the exact frame requested.
-  int targetFrame = (int) floor (timestamp * stream->r_frame_rate / stream->r_frame_rate_base);  // floor() because any timestamp should equate to the frame visible at that time.
-  int64_t DTS = av_rescale (packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
+  int targetFrame = (int) floor (timestamp * stream->r_frame_rate / stream->r_frame_rate_base + 1e-6);  // floor() because any timestamp should equate to the frame visible at that time.
+  int64_t PTS = av_rescale (packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
   if (fc->start_time != AV_NOPTS_VALUE)
   {
-	DTS -= fc->start_time;
+	PTS -= fc->start_time;
   }
-  cc->frame_number = (int) rint (((double) DTS / AV_TIME_BASE) * stream->r_frame_rate / stream->r_frame_rate_base);  // rint() because DTS should be exactly on some frame's timestamp, and we want to compensate for numerical error.
-  //cerr << "targetFrame = " << targetFrame << endl;
-  //cerr << "DTS = " << DTS << endl;
-  //cerr << "frame_number = " << cc->frame_number << endl;
-  //cerr << "codec.frame_rate = " << cc->frame_rate << endl;
-  //cerr << "codec.frame_rate_base = " << cc->frame_rate_base << endl;
-  //cerr << "r_frame_rate = " << stream->r_frame_rate << endl;
-  //cerr << "r_frame_rate_base = " << stream->r_frame_rate_base << endl;
+  double actualFrame = ((double) PTS / AV_TIME_BASE) * stream->r_frame_rate / stream->r_frame_rate_base;
+  double skew = 0;
+  if (packet.pts != AV_NOPTS_VALUE)
+  {
+	PTS = av_rescale (packet.pts - packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
+	skew = ((double) PTS / AV_TIME_BASE) * cc->frame_rate / cc->frame_rate_base;
+  }
+  cc->frame_number = (int) rint (actualFrame + skew);  // rint() because PTS should be exactly on some frame's timestamp, and we want to compensate for numerical error.
+  cerr.precision (20);
+  cerr << "targetFrame = " << targetFrame << endl;
+  cerr << "PTS = " << PTS << endl;
+  cerr << "frame_number = " << cc->frame_number << " " << actualFrame << " " << skew << endl;
   while (cc->frame_number < targetFrame)
   {
 	readNext (0);
@@ -142,7 +148,16 @@ VideoInFileFFMPEG::readNext (Image * image)
 		data = packet.data;
 		state = 0;
 	  }
-if (packet.pts != AV_NOPTS_VALUE  ||  packet.dts != AV_NOPTS_VALUE) cerr << "packet.pts=" << packet.pts << " dts=" << packet.dts << " skew=" << packet.pts - packet.dts << endl;
+if (packet.pts != AV_NOPTS_VALUE  ||  packet.dts != AV_NOPTS_VALUE)
+{
+  int64_t DTS = av_rescale (packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
+  if (fc->start_time != AV_NOPTS_VALUE)
+  {
+	DTS -= fc->start_time;
+  }
+  int frame_number = (int) rint (((double) DTS / AV_TIME_BASE) * stream->r_frame_rate / stream->r_frame_rate_base);
+  cerr << "read packet: pts=" << packet.pts << " dts=" << packet.dts << " skew=" << packet.pts - packet.dts << " frame=" << frame_number << endl;
+}
 	}
 
 	while (size > 0  &&  ! gotPicture)
@@ -158,6 +173,7 @@ if (packet.pts != AV_NOPTS_VALUE  ||  packet.dts != AV_NOPTS_VALUE) cerr << "pac
 	}
   }
 
+if (gotPicture) cerr << "Got picture: type=" << picture.pict_type << endl;
   if (gotPicture  &&  image)
   {
 	extractImage (*image);
@@ -242,6 +258,9 @@ VideoInFileFFMPEG::open (const string & fileName)
   }
 
   state = 0;
+
+  stream->r_frame_rate = 24000;  cerr << "Warning: hacking frame rate to 24000" << endl;
+  cc->debug = FF_DEBUG_PICT_INFO;  cerr << "Setting debug mode" << endl;
 }
 
 void
