@@ -8,7 +8,6 @@ using namespace fl;
 using namespace std;
 
 
-
 // class DescriptorSIFT ------------------------------------------------------
 
 DescriptorSIFT::DescriptorSIFT (int width, int angles)
@@ -27,11 +26,12 @@ DescriptorSIFT::DescriptorSIFT (int width, int angles)
 void
 DescriptorSIFT::computeGradient (const Image & image)
 {
-  if (lastImage == &image)
+  if (lastImage == &image  &&  lastBuffer == (void *) image.buffer)
   {
 	return;
   }
   lastImage = &image;
+  lastBuffer = (void *) image.buffer;
 
   ImageOf<float> work = image * GrayFloat;
   I_x = work * FiniteDifferenceX ();
@@ -231,7 +231,13 @@ DescriptorSIFT::patch (const Vector<float> & value)
 Comparison *
 DescriptorSIFT::comparison ()
 {
-  return new MetricEuclidean;
+  return new MetricEuclidean (6.0f, -0.75f);
+}
+
+int
+DescriptorSIFT::dimension ()
+{
+  return width * width * angles;
 }
 
 void
