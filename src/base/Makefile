@@ -8,7 +8,7 @@ libflBase.a: random.o Parameters.o
 	ar rcsv $(SOURCE_LIB)/$@ $^
 
 clean:
-	rm -f *~ *.o core core.* Dependencies $(SOURCE_LIB)/libflBase.a
+	rm -f *~ *.o core core.* $(SOURCE_LIB)/libflBase.a
 
 depend:
 	rm -f Dependencies
