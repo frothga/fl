@@ -63,7 +63,7 @@ FilterHessian::filter (const Image & image)
   }
   else if (*dxx.format == GrayDouble)
   {
-	ImageOf<double> result (min (dxx.width, dyy.width), min (dxx.height, dyy.height), GrayFloat);
+	ImageOf<double> result (min (dxx.width, dyy.width), min (dxx.height, dyy.height), GrayDouble);
 	ImageOf<double> dxxd (dxx);
 	ImageOf<double> dyyd (dyy);
 	for (int y = 0; y < result.height; y++)
