@@ -142,11 +142,11 @@ namespace fl
 
   template<class T>
   T
-  MatrixSparse<T>::frob (T n) const
+  MatrixSparse<T>::frob (float n) const
   {
 	int w = data->size ();
 
-	if (n == (T) INFINITY)
+	if (n == INFINITY)
 	{
 	  T result = (T) -INFINITY;
 	  for (int c = 0; c < w; c++)
@@ -161,7 +161,7 @@ namespace fl
 	  }
 	  return result;
 	}
-	else if (n == 1)
+	else if (n == 1.0f)
 	{
 	  T result = 0;
 	  for (int c = 0; c < w; c++)
@@ -176,7 +176,7 @@ namespace fl
 	  }
 	  return result;
 	}
-	else if (n == 2)
+	else if (n == 2.0f)
 	{
 	  T result = 0;
 	  for (int c = 0; c < w; c++)
@@ -200,11 +200,11 @@ namespace fl
 		typename std::map<int,T>::iterator i = C.begin ();
 		while (i != C.end ())
 		{
-		  result += (T) std::pow (i->second, n);
+		  result += (T) std::pow (i->second, (T) n);
 		  i++;
 		}
 	  }
-	  return (T) std::pow (result, 1.0f / n);
+	  return (T) std::pow (result, (T) (1.0f / n));
 	}
   }
 
