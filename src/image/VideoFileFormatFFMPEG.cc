@@ -167,20 +167,20 @@ VideoInFileFFMPEG::open (const string & fileName)
   }
   cc = &stream->codec;
 
-  if (cc->codec_id == CODEC_ID_MPEG1VIDEO)
+  codec = avcodec_find_decoder (cc->codec_id);
+  if (! codec)
+  {
+	state = -11;
+	return;
+  }
+
+  if (codec->capabilities & CODEC_CAP_TRUNCATED)
   {
 	cc->flags |= CODEC_FLAG_TRUNCATED;
   }
   if (hint->monochrome)
   {
 	cc->flags |= CODEC_FLAG_GRAY;
-  }
-
-  codec = avcodec_find_decoder (cc->codec_id);
-  if (! codec)
-  {
-	state = -11;
-	return;
   }
 
   state = avcodec_open (cc, codec);
