@@ -7,9 +7,6 @@ using namespace fl;
 
 // class Point ----------------------------------------------------------------
 
-float Point::zero = 0;
-float Point::one  = 1;
-
 Point::Point ()
 {
   x = 0;
@@ -22,71 +19,40 @@ Point::Point (float x, float y)
   this->y = y;
 }
 
-Point::Point (const MatrixAbstract<float> & A)
-{
-  x = A[0];
-  y = A[1];
-}
-
-Point::Point (const MatrixAbstract<double> & A)
-{
-  x = A[0];
-  y = A[1];
-}
-
 Point::Point (std::istream & stream)
 {
   read (stream);
 }
 
 /*
-Point::operator Vector<float> ()
+Point::operator Vector<double> () const
+{
+  Vector<double> result (2);
+  result[0] = x;
+  result[1] = y;
+  return result;
+}
+*/
+
+Vector<float>
+Point::homogenous (float third) const
 {
   Vector<float> result (3);
   result[0] = x;
   result[1] = y;
-  result[2] = 1;
+  result[2] = third;
+  return result;
 }
 
-Point::operator Vector<double> ()
+Vector<float>
+Point::homogenous (float third, float fourth) const
 {
-  Vector<double> result (3);
+  Vector<float> result (3);
   result[0] = x;
   result[1] = y;
-  result[2] = 1;
-}
-*/
-
-float &
-Point::operator () (const int row, const int column) const
-{
-  switch (row)
-  {
-    case 0:
-	  return const_cast<float &> (x);
-    case 1:
-	  return const_cast<float &> (y);
-    case 2:
-	  return const_cast<float &> (one);
-    default:
-	  return const_cast<float &> (zero);
-  }
-}
-
-float &
-Point::operator [] (const int row) const
-{
-  switch (row)
-  {
-    case 0:
-	  return const_cast<float &> (x);
-    case 1:
-	  return const_cast<float &> (y);
-    case 2:
-	  return const_cast<float &> (one);
-    default:
-	  return const_cast<float &> (zero);
-  }
+  result[2] = third;
+  result[3] = fourth;
+  return result;
 }
 
 int
@@ -172,49 +138,51 @@ void
 PointInterest::read (std::istream & stream)
 {
   Point::read (stream);
-  stream.read ((char *) &weight, sizeof (weight));
-  stream.read ((char *) &scale,  sizeof (scale));
+  stream.read ((char *) &weight,   sizeof (weight));
+  stream.read ((char *) &scale,    sizeof (scale));
+  stream.read ((char *) &detector, sizeof (detector));
 }
 
 void
 PointInterest::write (std::ostream & stream, bool withName)
 {
   Point::write (stream);
-  stream.write ((char *) &weight, sizeof (weight));
-  stream.write ((char *) &scale,  sizeof (scale));
+  stream.write ((char *) &weight,   sizeof (weight));
+  stream.write ((char *) &scale,    sizeof (scale));
+  stream.write ((char *) &detector, sizeof (detector));
 }
 
 
-// class PointInterestAffine -------------------------------------------------
+// class PointAffine ----------------------------------------------------------
 
-PointInterestAffine::PointInterestAffine ()
+PointAffine::PointAffine ()
 : PointInterest ()
 {
   A.identity ();
   angle = 0;
 }
 
-PointInterestAffine::PointInterestAffine (const Point & p)
+PointAffine::PointAffine (const Point & p)
 : PointInterest (p)
 {
   A.identity ();
   angle = 0;
 }
 
-PointInterestAffine::PointInterestAffine (const PointInterest & p)
+PointAffine::PointAffine (const PointInterest & p)
 : PointInterest (p)
 {
   A.identity ();
   angle = 0;
 }
 
-PointInterestAffine::PointInterestAffine (std::istream & stream)
+PointAffine::PointAffine (std::istream & stream)
 {
   read (stream);
 }
 
 void
-PointInterestAffine::read (std::istream & stream)
+PointAffine::read (std::istream & stream)
 {
   PointInterest::read (stream);
   A.read (stream);
@@ -222,7 +190,7 @@ PointInterestAffine::read (std::istream & stream)
 }
 
 void
-PointInterestAffine::write (std::ostream & stream, bool withName)
+PointAffine::write (std::ostream & stream, bool withName)
 {
   PointInterest::write (stream);
   A.write (stream, false);
