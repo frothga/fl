@@ -87,6 +87,7 @@ test: test.cc libflNumeric.a
 
 clean:
 	rm -f *~ *.o core core.* test Dependencies $(SOURCE_LIB)/libflNumeric.a
+	rm -rf Debug Release
 
 depend:
 	rm -f Dependencies

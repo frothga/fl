@@ -9,6 +9,7 @@ libflBase.a: random.o Parameters.o
 
 clean:
 	rm -f *~ *.o core core.* Dependencies $(SOURCE_LIB)/libflBase.a
+	rm -rf Debug Release
 
 depend:
 	rm -f Dependencies

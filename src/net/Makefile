@@ -14,6 +14,7 @@ test: test.o socket.o
 
 clean:
 	rm -f *~ *.o core core.* test Dependencies $(SOURCE_LIB)/libflNet.a
+	rm -rf Debug Release
 
 depend:
 	rm -f Dependencies
