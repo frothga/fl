@@ -68,6 +68,19 @@ extern "C"
 			   const int &  lwork,
 			   int &        info);
 
+  void ssygv_ (const int &  itype,
+			   const char & jobz,
+			   const char & uplo,
+			   const int &  n,
+			   float        a[],
+			   const int &  lda,
+			   float        b[],
+			   const int &  ldb,
+			   float        w[],
+			   float        work[],
+			   const int &  lwork,
+			   int &        info);
+
   void sgetrf_ (const int & m,
 				const int & n,
 				float       a[],
