@@ -7,8 +7,9 @@
 
 namespace fl
 {
+  template<>
   bool
-  MatrixAbstract<bool>::frob (bool n) const
+  MatrixAbstract<bool>::frob (float n) const
   {
 	int h = rows ();
 	int w = columns ();
@@ -23,8 +24,9 @@ namespace fl
 	return false;
   }
 
+  template<>
   bool
-  Matrix<bool>::frob (bool n) const
+  Matrix<bool>::frob (float n) const
   {
 	bool * i = (bool *) data;
 	bool * end = i + rows_ * columns_;
@@ -33,25 +35,6 @@ namespace fl
 	{
 	  if (*i++) return true;
 	}
-	return false;
-  }
-
-  bool
-  MatrixSparse<bool>::frob (bool n) const
-  {
-	int w = data->size ();
-
-	for (int c = 0; c < w; c++)
-	{
-	  std::map<int,bool> & C = (*data)[c];
-	  std::map<int,bool>::iterator i = C.begin ();
-	  while (i != C.end ())
-	  {
-		if (i->second) return true;
-		i++;
-	  }
-	}
-
 	return false;
   }
 }
