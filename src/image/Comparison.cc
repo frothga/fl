@@ -236,21 +236,46 @@ ChiSquared::ChiSquared (istream & stream)
   read (stream);
 }
 
+Vector<float>
+ChiSquared::preprocess (const Vector<float> & value) const
+{
+  return value / value.frob (1);  // probability distribution over bins
+}
+
 float
 ChiSquared::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
 {
   float result = 0;
   const int m = value1.rows ();
-  for (int i = 0; i < m; i++)
+  if (preprocessed)
   {
-	float sum = value1[i] + value2[i];
-	if (sum != 0.0f)
+	for (int i = 0; i < m; i++)
 	{
-	  float d = value1[i] - value2[i];
-	  result += d * d / sum;
+	  float sum = value1[i] + value2[i];
+	  if (sum != 0.0f)
+	  {
+		float d = value1[i] - value2[i];
+		result += d * d / sum;
+	  }
 	}
   }
-  //result = (m - result) / m;
-  //return result;
-  return 1.0f / coshf (result * 100.0f / m);  // scale to make all lengths of feature vectors come out as if they have 100 elements.
+  else
+  {
+	float s1 = value1.frob (1);
+	float s2 = value2.frob (1);
+	for (int i = 0; i < m; i++)
+	{
+	  float a = value1[i] / s1;
+	  float b = value2[i] / s2;
+	  float sum = a + b;
+	  if (sum != 0.0f)
+	  {
+		float d = a - b;
+		result += d * d / sum;
+	  }
+	}
+  }
+
+  // result is always in [0, 2].
+  return 1.0f - result / 2.0f;
 }
