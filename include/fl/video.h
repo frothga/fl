@@ -29,7 +29,7 @@ namespace fl
   class VideoIn
   {
   public:
-	VideoIn (const std::string & fileName, const PixelFormat & hint = RGBAChar);  ///< hint indicates what format we eventually want to work in.  We may be able to read directly in that format.
+	VideoIn (const std::string & fileName, const fl::PixelFormat & hint = RGBAChar);  ///< hint indicates what format we eventually want to work in.  We may be able to read directly in that format.
 	~VideoIn ();
 
 	void seekFrame (int frame);  ///< Position stream just before the given frame.  Numbers are zero based.  (Maybe they should be one-based.  Research the convention.)
@@ -90,7 +90,7 @@ namespace fl
 	VideoFileFormat ();
 	virtual ~VideoFileFormat ();
 
-	virtual VideoInFile * openInput (const std::string & fileName, const PixelFormat & hint) const = 0;  ///< Creates a new VideoInFile attached to the given file and positioned before the first frame.  The caller is responsible to destroy the object.
+	virtual VideoInFile * openInput (const std::string & fileName, const fl::PixelFormat & hint) const = 0;  ///< Creates a new VideoInFile attached to the given file and positioned before the first frame.  The caller is responsible to destroy the object.
 	virtual VideoOutFile * openOutput (const std::string & fileName, const std::string & formatName, const std::string & codecName) const = 0;
 	virtual float isIn (const std::string & fileName) const = 0;  ///< Determines probability [0,1] that this object handles the video format contained in the file.
 	virtual float handles (const std::string & formatName, const std::string & codecName) const = 0;  ///< Determines probability [0,1] that this object handles the format with the given human readable name.
@@ -111,7 +111,7 @@ namespace fl
   class VideoInFileFFMPEG : public VideoInFile
   {
   public:
-	VideoInFileFFMPEG (const std::string & fileName, const PixelFormat & hint);
+	VideoInFileFFMPEG (const std::string & fileName, const fl::PixelFormat & hint);
 	virtual ~VideoInFileFFMPEG ();
 
 	virtual void seekFrame (int frame);
@@ -141,7 +141,7 @@ namespace fl
 	double expectedSkew;  ///< Compensates for difference between PTS and DTS when seeking.  Units = frames.
 	bool seekLinear;  ///< Indicates that the file only supports linear seeking, not random seeking.  Generally due to lack of timestamps in stream.
 
-	const PixelFormat * hint;
+	const fl::PixelFormat * hint;
 	std::string fileName;
   };
 
@@ -167,7 +167,7 @@ namespace fl
   public:
 	VideoFileFormatFFMPEG ();
 
-	virtual VideoInFile * openInput (const std::string & fileName, const PixelFormat & hint) const;
+	virtual VideoInFile * openInput (const std::string & fileName, const fl::PixelFormat & hint) const;
 	virtual VideoOutFile * openOutput (const std::string & fileName, const std::string & formatName, const std::string & codecName) const;
 	virtual float isIn (const std::string & fileName) const;
 	virtual float handles (const std::string & formatName, const std::string & codecName) const;
