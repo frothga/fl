@@ -8,6 +8,11 @@ using namespace fl;
 
 // class Rotate180 ------------------------------------------------------------
 
+struct triad
+{
+  unsigned char channel[3];
+};
+
 Image
 Rotate180::filter (const Image & image)
 {
@@ -30,6 +35,9 @@ Rotate180::filter (const Image & image)
 	  break;
     case 4:
 	  transfer (unsigned int);
+	  break;
+    case 3:
+	  transfer (triad);
 	  break;
     case 2:
 	  transfer (unsigned short);
