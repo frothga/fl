@@ -490,6 +490,33 @@ VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
   {
 	if (! needHeader)
 	{
+	  // Flush codec (ie: push out any B frames).
+	  const int bufferSize = 1024 * 1024;
+	  unsigned char * videoBuffer = new unsigned char[bufferSize];
+	  while (true)
+	  {
+		int size = avcodec_encode_video (& stream->codec, videoBuffer, bufferSize, 0);
+		if (size > 0)
+		{
+		  AVPacket packet;
+		  av_init_packet (&packet);
+		  packet.pts = stream->codec.coded_frame->pts;
+		  if (stream->codec.coded_frame->key_frame)
+		  {
+			packet.flags |= PKT_FLAG_KEY;
+		  }
+		  packet.stream_index = stream->index;
+		  packet.data = videoBuffer;
+		  packet.size = size;
+		  state = av_write_frame (fc, &packet);
+		}
+		else
+		{
+		  break;
+		}
+	  }
+	  delete [] videoBuffer;
+
 	  avcodec_close (& stream->codec);
 	}
 	codec = 0;
@@ -583,7 +610,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   source.linesize[0] = sourceImage.width * sourceImage.format->depth;
 
   AVFrame dest;
-  memset (&dest, 0, sizeof (dest));
+  avcodec_get_frame_defaults (&dest);
 
   int size = avpicture_get_size (destFormat, image.width, image.height);
   unsigned char * destBuffer = new unsigned char[size];
@@ -599,11 +626,11 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	size = 1024 * 1024;
 	unsigned char * videoBuffer = new unsigned char[size];
 	size = avcodec_encode_video (& stream->codec, videoBuffer, size, &dest);
-	if (size < 0)
+	if (size < 0)  // TODO: Not sure if this case ever happens.
 	{
 	  state = size;
 	}
-	else
+	else if (size > 0)
 	{
 	  AVPacket packet;
 	  av_init_packet (&packet);
@@ -612,12 +639,15 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	  {
 		packet.flags |= PKT_FLAG_KEY;
 	  }
-	  packet.stream_index = 0;
+	  packet.stream_index = stream->index;
 	  packet.data = videoBuffer;
 	  packet.size = size;
 	  state = av_write_frame (fc, &packet);
-	  if (state >= 0)
+	  if (state == 1)
 	  {
+		// According to doc-comments on av_write_frame(), this means
+		// "end of stream wanted".  Not sure what action to take here, or
+		// if the doc-comment is even valid.
 		state = 0;
 	  }
 	}
