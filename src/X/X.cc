@@ -19,10 +19,9 @@ fl::Display::Display ()
 {
   display = 0;
 
-  cerr << "Initializing Xlib:" << endl;
-  cerr << "  thread support: " << XInitThreads () << endl;
-  //cerr << "  error handler: " << XSetErrorHandler (errorHandler) << endl;
-  cerr << "  io error handler: " << XSetIOErrorHandler (ioErrorHandler) << endl;
+  XInitThreads ();
+  XSetErrorHandler (errorHandler);
+  XSetIOErrorHandler (ioErrorHandler);
 }
 
 fl::Display::Display (const string & name)
@@ -372,6 +371,30 @@ fl::Drawable::putImage (const fl::GC & gc, const XImage * image, int toX, int to
   );
 }
 
+Image
+fl::Drawable::getImage (int x, int y, int width, int height) const
+{
+  if (width <= 0  ||  height <= 0)
+  {
+	getSize (width, height);
+  }
+
+  XImage * image = XGetImage (screen->display->display, id, x, y, width, height, ~ ((unsigned long) 0), ZPixmap);
+
+  int d = (int) ceil (image->depth / 8.0);
+  if (d == 3)
+  {
+	d = 4;
+  }
+  PixelFormatRGBABits format (d, image->red_mask, image->green_mask, image->blue_mask, 0x0);
+
+  Image temp ((unsigned char *) image->data, image->width, image->height, format);
+  Image result = temp * RGBAChar;  // since alpha channel == 0, should be that RGBAChar != format, so buffer will be duplicated
+  XDestroyImage (image);
+
+  return result;
+}
+
 void
 fl::Drawable::copyArea (const fl::GC & gc, const fl::Drawable & source, int toX, int toY, int fromX, int fromY, int width, int height)
 {
@@ -468,6 +491,12 @@ void
 fl::Window::unmap ()
 {
   XUnmapWindow (screen->display->display, id);
+}
+
+void
+fl::Window::resize (int width, int height)
+{
+  XResizeWindow (screen->display->display, id, width, height);
 }
 
 void
