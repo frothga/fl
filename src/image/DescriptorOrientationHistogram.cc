@@ -115,8 +115,8 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
   }
 
   // Second, gather up the gradient histogram.
-  float histogram[bins];
-  memset (histogram, 0, sizeof (histogram));
+  float * histogram = new float[bins];
+  memset (histogram, 0, bins * sizeof (float));
   float radius2 = radius * radius;
   float sigma2 = 2.0 * sigma * sigma;
   for (int y = sourceT; y <= sourceB; y++)
@@ -161,7 +161,7 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
   float threshold = cutoff * maximum;
 
   // Collect peaks
-  vector<float> angles;
+  map<float, float> angles;
   for (int i = 0; i < bins; i++)
   {
 	float h0 = histogram[(i == 0 ? bins : i) - 1];
@@ -170,15 +170,18 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
 	if (h1 > h0  &&  h1 > h2  &&  h1 >= threshold)
 	{
 	  float peak = 0.5f * (h0 - h2) / (h0 - 2.0f * h1 + h2);
-	  angles.push_back ((i + 0.5f + peak) * 2 * PI / bins - PI);
+	  angles.insert (make_pair (h1, (i + 0.5f + peak) * 2 * PI / bins - PI));
 	}
   }
+  delete [] histogram;
 
   // Store peak angles in result
   Vector<float> result (angles.size ());
-  for (int i = 0; i < angles.size (); i++)
+  float * r = & result[0];
+  map<float, float>::reverse_iterator ri;
+  for (ri = angles.rbegin (); ri != angles.rend (); ri++)
   {
-	result[i] = angles[i];
+	*r++ = ri->second;
   }
   return result;
 }
