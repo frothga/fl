@@ -103,11 +103,13 @@ namespace fl
 
 	virtual void setTranslation (float x, float y);
 	virtual void setScale (float x, float y);
+	virtual void setLineWidth (float width);
 
 	void expandColor (unsigned int color);
 
 	std::ofstream psf;  ///< "Postscript file"
 	float scale;  ///< Used to compute line widths.
+	float lineWidth;
 	float bboxT;  ///< Top of bounding box in points
 	float bboxB;  ///< Bottom
 	float bboxL;  ///< Left
