@@ -37,7 +37,6 @@ NonMaxSuppress::filter (const Image & image)
 		int vl = max (0, y - half);
 		int vh = min (image.height, y + half + 1);
 		float me = that (x, y);
-	   	maximum = max (maximum, me);
 		for (h = hl; me != 0  &&  h < hh; h++)
 		{
 		  for (v = vl; v < vh; v++)
@@ -55,6 +54,7 @@ NonMaxSuppress::filter (const Image & image)
 		result (x, y) = me;
 		if (me != 0)
 		{
+		  maximum = max (maximum, me);
 		  average += me;
 		  count++;
 		}
@@ -78,7 +78,6 @@ NonMaxSuppress::filter (const Image & image)
 		int vl = max (0, y - half);
 		int vh = min (image.height, y + half + 1);
 		double me = that (x, y);
-	   	maximum = maximum >? me;
 		for (h = hl; me != 0  &&  h < hh; h++)
 		{
 		  for (v = vl; v < vh; v++)
@@ -96,6 +95,7 @@ NonMaxSuppress::filter (const Image & image)
 		result (x, y) = me;
 		if (me != 0)
 		{
+		  maximum = max (maximum, (float) me);
 		  average += me;
 		  count++;
 		}
@@ -119,7 +119,6 @@ NonMaxSuppress::filter (const Image & image)
 		int vl = max (0, y - half);
 		int vh = min (image.height, y + half + 1);
 		unsigned char me = that (x, y);
-		maximum = max (maximum, (float) me);
 		int c = 0;
 		int cx = 0;
 		int cy = 0;
@@ -182,6 +181,7 @@ NonMaxSuppress::filter (const Image & image)
 		result (x, y) = me;
 		if (me)
 		{
+		  maximum = max (maximum, (float) me);
 		  average += me;
 		  count++;
 		}
