@@ -142,7 +142,6 @@ namespace fl
 	virtual MatrixAbstract & operator -= (const T scalar);  ///< Decrease each element by scalar
 
 	// Serialization
-	static MatrixAbstract * factory (std::istream & stream);  ///< Constructs any matrix class from a stream.
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = false) const;
 
