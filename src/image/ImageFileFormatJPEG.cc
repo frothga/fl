@@ -90,20 +90,19 @@ fill_input_buffer (j_decompress_ptr cinfo)
 static void
 skip_input_data (j_decompress_ptr cinfo, long count)
 {
-  SourceManager * sm = (SourceManager *) cinfo->src;
-  while (count > 0)
+  if (! count)
   {
-	if (sm->jsm.bytes_in_buffer > count)
-	{
-	  sm->jsm.bytes_in_buffer -= count;
-	  count = 0;
-	}
-	else
-	{
-	  count -= sm->jsm.bytes_in_buffer;
-	  fill_input_buffer (cinfo);
-	}
+	return;
   }
+
+  SourceManager * sm = (SourceManager *) cinfo->src;
+  while (sm->jsm.bytes_in_buffer < count)
+  {
+	count -= sm->jsm.bytes_in_buffer;
+	fill_input_buffer (cinfo);
+  }
+  sm->jsm.next_input_byte += count;
+  sm->jsm.bytes_in_buffer -= count;
 }
 
 static void
