@@ -16,11 +16,11 @@ namespace fl
 	  values.push_back (value);
 	}
 
-	void dump (std::ostream & out, int binCount = 0)
+	void summarize ()
 	{
-	  float min = INFINITY;
-	  float max = -INFINITY;
-	  float ave = 0;
+	  min = INFINITY;
+	  max = -INFINITY;
+	  ave = 0;
 	  for (int i = 0; i < values.size (); i++)
 	  {
 		ave += values[i];
@@ -29,41 +29,50 @@ namespace fl
 	  }
 	  ave /= values.size ();
 
-	  float std = 0;
+	  std = 0;
 	  for (int i = 0; i < values.size (); i++)
 	  {
 		float t = values[i] - ave;
 		std += t * t;
 	  }
 	  std = sqrtf (std / values.size ());
+	}
 
-	  if (binCount <= 0)
+	void histogram (std::ostream & out, int binCount = 10)
+	{
+	  summarize ();
+	  float range = (max - min) / binCount;
+	  std::vector<int> bins (binCount);
+	  for (int i = 0; i < binCount; i++)
 	  {
-		out << values.size () << " " << ave << " " << std << " " << min << " " << max << std::endl;
+		bins[i] = 0;
 	  }
-	  else
+	  for (int i = 0; i < values.size (); i++)
 	  {
-		float range = (max - min) / binCount;
-		std::vector<int> bins (binCount);
-		for (int i = 0; i < binCount; i++)
-		{
-		  bins[i] = 0;
-		}
-		for (int i = 0; i < values.size (); i++)
-		{
-		  bins[(int) floorf ((values[i] - min) / range) <? (binCount - 1)]++;
-		}
+		bins[(int) floorf ((values[i] - min) / range) <? (binCount - 1)]++;
+	  }
 
-		for (int i = 0; i < binCount; i++)
-		{
-		  //out << "     [" << min + range * i << "," << min + range * (i+1) << ") = " << bins[i] << endl;
-		  out << min + range * (i + 0.5f) << " " << bins[i] << std::endl;
-		}
+	  for (int i = 0; i < binCount; i++)
+	  {
+		//out << "     [" << min + range * i << "," << min + range * (i+1) << ") = " << bins[i] << endl;
+		out << min + range * (i + 0.5f) << " " << bins[i] << std::endl;
 	  }
 	}
 
 	std::vector<float> values;
+	float ave;
+	float std;
+	float min;
+	float max;
   };
+
+  inline std::ostream &
+  operator << (std::ostream & out, Stats & stats)
+  {
+	stats.summarize ();
+	out << stats.values.size () << " " << stats.ave << " " << stats.std << " " << stats.min << " " << stats.max;
+	return out;
+  }
 }
 
 #endif
