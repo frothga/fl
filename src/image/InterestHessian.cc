@@ -16,7 +16,7 @@ using namespace fl;
   At small scales, Hessian finds a large number of points.  On a histogram of
   count versus response value, most of the points appear close to zero response.
   There is actually a hump (fast rise, fast fall) near (but not at) zero.
-  After that, it appears to fall off exonentially until it reaches the maximum
+  After that, it appears to fall off exponentially until it reaches the maximum
   response value, at which point (of course) there are no more points.  :)
 
   As scale gets larger, the hump gradually dissappears, and the curve gets
