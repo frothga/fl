@@ -228,7 +228,7 @@ namespace fl
 		  }
 		  if (fnorm1 / 10 >= fnorm  ||  update < 0.1)
 		  {
-			update = 0.1;
+			update = (T) 0.1;
 		  }
 		  delta = update * std::min (delta, pnorm * 10);
 		  par /= update;
