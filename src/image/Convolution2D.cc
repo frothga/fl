@@ -410,7 +410,7 @@ ConvolutionDiscrete2D::normalFloats ()
 	float * end = a + width * height;
 	while (a < end)
 	{
-	  if (fpclassify (*a) == FP_SUBNORMAL)
+	  if (issubnormal (*a))
 	  {
 		*a = 0;
 	  }
@@ -423,7 +423,7 @@ ConvolutionDiscrete2D::normalFloats ()
 	double * end = a + width * height;
 	while (a < end)
 	{
-	  if (fpclassify (*a) == FP_SUBNORMAL)
+	  if (issubnormal (*a))
 	  {
 		*a = 0;
 	  }

@@ -554,7 +554,7 @@ ConvolutionDiscrete1D::normalFloats ()
 	float * end = a + width;
 	while (a < end)
 	{
-	  if (fpclassify (*a) == FP_SUBNORMAL)
+	  if (issubnormal (*a))
 	  {
 		*a = 0;
 	  }
@@ -567,7 +567,7 @@ ConvolutionDiscrete1D::normalFloats ()
 	double * end = a + width;
 	while (a < end)
 	{
-	  if (fpclassify (*a) == FP_SUBNORMAL)
+	  if (issubnormal (*a))
 	  {
 		*a = 0;
 	  }
