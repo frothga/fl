@@ -98,6 +98,8 @@ namespace fl
 	PointAffine (const PointInterest & p);
 	PointAffine (std::istream & stream);
 
+	Matrix<double> rectification () const;  ///< Compute the 3x3 (affine) homography between the image patch indicated by this point and the normalized form.
+
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = false);
 
