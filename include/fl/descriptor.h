@@ -131,6 +131,8 @@ namespace fl
   public:
 	ChiSquared () {}
 	ChiSquared (std::istream & stream);
+
+	virtual Vector<float> preprocess (const Vector<float> & value) const;
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
   };
 
@@ -388,7 +390,7 @@ namespace fl
 
   /**
 	 Implements David Lowe's SIFT descriptor.
-	 Note on supportRadial: supportRadial * point.scale gives pixel distance from center to edge of bins when they overlay the image.  The pixel diameter of one bin is 2 * supportPixel * point.scale / width.
+	 Note on supportRadial: supportRadial * point.scale gives pixel distance from center to edge of bins when they overlay the image.  The pixel diameter of one bin is 2 * supportRadial * point.scale / width.
   **/
   class DescriptorSIFT : public Descriptor
   {
@@ -408,7 +410,7 @@ namespace fl
 
 	int width;  ///< Number of horizontal or vertical positions.
 	int angles;  ///< Number of orientation bins.
-	int supportPixel;  ///< Number of pixels in normalized form of affine-invariant patch, if used.
+	int supportPixel;  ///< Pixel radius of normalized form of affine-invariant patch, if used.
 	float sigmaWeight;  ///< Size of Gaussian that weights the entries in the bins.
 	float maxValue;  ///< Largest permissible entry in one bin.
 
@@ -425,7 +427,7 @@ namespace fl
   class DescriptorColorHistogram2D : public Descriptor
   {
   public:
-	DescriptorColorHistogram2D (int width = 4, float supportRadial = 4.2f);
+	DescriptorColorHistogram2D (int width = 5, float supportRadial = 4.2f);
 	DescriptorColorHistogram2D (std::istream & stream);
 	void initialize ();
 
@@ -455,7 +457,7 @@ namespace fl
   class DescriptorColorHistogram3D : public Descriptor
   {
   public:
-	DescriptorColorHistogram3D (int width = 4, int height = -1, float supportRadial = 4.2f);  ///< height == -1 means use value of width
+	DescriptorColorHistogram3D (int width = 5, int height = -1, float supportRadial = 4.2f);  ///< height == -1 means use value of width
 	DescriptorColorHistogram3D (std::istream & stream);
 	~DescriptorColorHistogram3D ();
 	void initialize ();
