@@ -123,6 +123,8 @@ namespace fl
 		}
 	  }
 	}
+
+	return *this;
   }
 
   template<class T>
