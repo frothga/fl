@@ -9,7 +9,7 @@ using namespace fl;
 // class Laplacian ------------------------------------------------------------
 
 Laplacian::Laplacian (double sigma, const PixelFormat & format, const BorderMode mode)
-: Convolution2D (format, mode)
+: ConvolutionDiscrete2D (format, mode)
 {
   // This constructs a Laplacian that is strictly circular.  It would not be
   // hard to make a version that separates sigmaX and sigmaY
