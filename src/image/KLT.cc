@@ -165,100 +165,6 @@ window.waitForClick ();
 */
 }
 
-inline float
-interpolate (float bx, float by, int x, int y, ImageOf<float> & image)
-{
-  float * p00 = & image(x,y);
-  float * p10 = p00 + 1;
-  float * p01 = p00 + image.width;
-  float * p11 = p01 + 1;
-  float a = *p00 + bx * (*p10 - *p00);
-  float b = *p01 + bx * (*p11 - *p01);
-  return a + by * (b - a);
-}
-
-void
-KLT::track (const Point & point0, const int level, Point & point1)
-{
-  ImageOf<float> & image0 = pyramid0[level];
-  ImageOf<float> & dx0    = this->dx0[level];
-  ImageOf<float> & dy0    = this->dy0[level];
-  ImageOf<float> & image1 = pyramid1[level];
-  ImageOf<float> & dx1    = this->dx1[level];
-  ImageOf<float> & dy1    = this->dy1[level];
-
-  const int border = windowRadius; // + dG.width / 2;
-  const float left = border;
-  const float right = image0.width - border - 1;
-  const float top = border;
-  const float bottom = image0.height - border - 1;
-
-  if (point0.x < left  ||  point0.x >= right  ||  point0.y < top  ||  point0.y >= bottom)
-  {
-	throw 1;
-  }
-
-  // Iteratively update the window position
-  int count = 0;
-  while (count++ < maxIterations)
-  {
-	if (point1.x < left  ||  point1.x >= right  ||  point1.y < top  ||  point1.y >= bottom)
-	{
-	  throw 1;
-	}
-
-    // Compute gradient and difference windows
-	float gxx = 0;
-	float gxy = 0;
-	float gyy = 0;
-	float ex = 0;
-	float ey = 0;
-
-	float bx0 = point0.x - floorf (point0.x);
-	float bx1 = point1.x - floorf (point1.x);
-	float by0 = point0.y - floorf (point0.y);
-	float by1 = point1.y - floorf (point1.y);
-
-	for (int j = -windowRadius; j <= windowRadius; j++)
-	{
-	  for (int i = -windowRadius; i <= windowRadius; i++)
-	  {
-		float g0 = interpolate (bx0, by0, (int) point0.x+i, (int) point0.y+j, image0);
-		float g1 = interpolate (bx1, by1, (int) point1.x+i, (int) point1.y+j, image1);
-		float diff = g0 - g1;
-		g0 = interpolate (bx0, by0, (int) point0.x+i, (int) point0.y+j, dx0);
-		g1 = interpolate (bx1, by1, (int) point1.x+i, (int) point1.y+j, dx1);
-		float gx = g0 + g1;
-		g0 = interpolate (bx0, by0, (int) point0.x+i, (int) point0.y+j, dy0);
-		g1 = interpolate (bx1, by1, (int) point1.x+i, (int) point1.y+j, dy1);
-		float gy = g0 + g1;
-
-		gxx += gx * gx;
-		gxy += gx * gy;
-		gyy += gy * gy;
-		ex += diff * gx;
-		ey += diff * gy;
-	  }
-	}
-				
-    // Using matrices, solve equation for new displacement
-	float det = gxx * gyy - gxy * gxy;
-	if (det < minDeterminant)
-	{
-	  throw 2;
-	}
-	float dx = (gyy * ex - gxy * ey) / det;
-	float dy = (gxx * ey - gxy * ex) / det;
-    point1.x += dx;
-    point1.y += dy;
-
-	if (sqrtf (dx * dx + dy * dy) < minDisplacement)
-	{
-	  break;
-	}
-  }
-}
-
 void
 KLT::track (Point & point)
 {
@@ -283,7 +189,6 @@ KLT::track (Point & point)
   point = point1;
 }
 
-/*
 void
 KLT::track (const Point & point0, const int level, Point & point1)
 {
@@ -294,7 +199,7 @@ KLT::track (const Point & point0, const int level, Point & point1)
   ImageOf<float> & dx1    = this->dx1[level];
   ImageOf<float> & dy1    = this->dy1[level];
 
-  const int border = windowRadius + dG.width / 2;
+  const int border = windowRadius; // + dG.width / 2;
   const float left = border;
   const float right = image0.width - border - 1;
   const float top = border;
@@ -306,6 +211,14 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	throw 1;
   }
 
+  // Determine bilinear mixing constants for image0
+  int x0 = (int) point0.x;
+  int y0 = (int) point0.y;
+  const float bx0 = point0.x - x0;
+  const float by0 = point0.y - y0;
+  x0 -= windowRadius;
+  y0 -= windowRadius;
+
   int count = 0;
   while (count++ < maxIterations)
   {
@@ -314,72 +227,70 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	  throw 1;
 	}
 
-	// Compute second moment matrix and error vector
+	// Determine bilinear mixing constants for image1
+	int x1 = (int) point1.x;
+	int y1 = (int) point1.y;
+	const float bx1 = point1.x - x1;
+	const float by1 = point1.y - y1;
+	x1 -= windowRadius;
+	y1 -= windowRadius;
 
+	// Compute second moment matrix and error vector
 	float gxx = 0;
 	float gxy = 0;
 	float gyy = 0;
 	float ex = 0;
 	float ey = 0;
 
-	//   Determine bilinear mixing constants
-	int xl = (int) point1.x;
-	int yl = (int) point1.y;
-	float bx = point1.x - xl;
-	float by = point1.y - yl;
-	xl -= windowRadius;
-	yl -= windowRadius;
-	int xh = xl + windowWidth - 1;
-	int yh = yl + windowWidth - 1;
-
-	//   Iterate over window
-int step = 0;
 	//     Set up 24 pointers, 4 for each of the 6 images.
-	float * i0_00 = & image0(xl,yl);
+	float * i0_00 = & image0(x0,y0);
 	float * i0_10 = i0_00 + 1;
 	float * i0_01 = i0_00 + image0.width;
 	float * i0_11 = i0_01 + 1;
-	float * dx0_00 = & dx0(xl,yl);
+	float * dx0_00 = & dx0(x0,y0);
 	float * dx0_10 = dx0_00 + 1;
 	float * dx0_01 = dx0_00 + dx0.width;
 	float * dx0_11 = dx0_01 + 1;
-	float * dy0_00 = & dy0(xl,yl);
+	float * dy0_00 = & dy0(x0,y0);
 	float * dy0_10 = dy0_00 + 1;
 	float * dy0_01 = dy0_00 + dy0.width;
 	float * dy0_11 = dy0_01 + 1;
-	float * i1_00 = & image1(xl,yl);
+	float * i1_00 = & image1(x1,y1);
 	float * i1_10 = i1_00 + 1;
 	float * i1_01 = i1_00 + image1.width;
 	float * i1_11 = i1_01 + 1;
-	float * dx1_00 = & dx1(xl,yl);
+	float * dx1_00 = & dx1(x1,y1);
 	float * dx1_10 = dx1_00 + 1;
 	float * dx1_01 = dx1_00 + dx1.width;
 	float * dx1_11 = dx1_01 + 1;
-	float * dy1_00 = & dy1(xl,yl);
+	float * dy1_00 = & dy1(x1,y1);
 	float * dy1_10 = dy1_00 + 1;
 	float * dy1_01 = dy1_00 + dy1.width;
 	float * dy1_11 = dy1_01 + 1;
-	for (int y = yl; y <= yh; y++)
+
+	for (int y = 0; y < windowWidth; y++)
 	{
-	  for (int x = xl; x <= xh; x++)
+	  for (int x = 0; x < windowWidth; x++)
 	  {
 		// Compute intensity difference and gradient values
-		float a = *i0_00 + bx * (*i0_10 - *i0_00);
-		float b = *i0_01 + bx * (*i0_11 - *i0_01);
-		a      -= *i1_00 + bx * (*i1_10 - *i1_00);
-		b      -= *i1_01 + bx * (*i1_11 - *i1_01);
-		float diff = a + by * (b - a);
-		a  = *dx0_00 + bx * (*dx0_10 - *dx0_00);
-		b  = *dx0_01 + bx * (*dx0_11 - *dx0_01);
-		a += *dx1_00 + bx * (*dx1_10 - *dx1_00);
-		b += *dx1_01 + bx * (*dx1_11 - *dx1_01);
-		float gx = a + by * (b - a);
-		a  = *dy0_00 + bx * (*dy0_10 - *dy0_00);
-		b  = *dy0_01 + bx * (*dy0_11 - *dy0_01);
-		a += *dy1_00 + bx * (*dy1_10 - *dy1_00);
-		b += *dy1_01 + bx * (*dy1_11 - *dy1_01);
-		float gy = a + by * (b - a);
-cerr << "   " << step++ << " " << gx << " " << gy << " " << diff << endl;
+		float a = *i0_00 + bx0 * (*i0_10 - *i0_00);
+		float b = *i0_01 + bx0 * (*i0_11 - *i0_01);
+		float diff = a + by0 * (b - a);
+		a       = *i1_00 + bx1 * (*i1_10 - *i1_00);
+		b       = *i1_01 + bx1 * (*i1_11 - *i1_01);
+		diff -= a + by1 * (b - a);
+		a = *dx0_00 + bx0 * (*dx0_10 - *dx0_00);
+		b = *dx0_01 + bx0 * (*dx0_11 - *dx0_01);
+		float gx = a + by0 * (b - a);
+		a = *dx1_00 + bx1 * (*dx1_10 - *dx1_00);
+		b = *dx1_01 + bx1 * (*dx1_11 - *dx1_01);
+		gx += a + by1 * (b - a);
+		a = *dy0_00 + bx0 * (*dy0_10 - *dy0_00);
+		b = *dy0_01 + bx0 * (*dy0_11 - *dy0_01);
+		float gy = a + by0 * (b - a);
+		a = *dy1_00 + bx1 * (*dy1_10 - *dy1_00);
+		b = *dy1_01 + bx1 * (*dy1_11 - *dy1_01);
+		gy += a + by1 * (b - a);
 
 		// Accumulate second moment matrix and error vector
 		gxx += gx * gx;
@@ -452,7 +363,6 @@ cerr << "   " << step++ << " " << gx << " " << gy << " " << diff << endl;
 	float dy = (gxx * ey - gxy * ex) / det;
 	point1.x += dx;
 	point1.y += dy;
-	cerr << count << " " << gxx << " " << gxy << " " << gyy << " " << ex << " " << ey << " " << dx << " " << dy << endl;
 
 	if (sqrtf (dx * dx + dy * dy) < minDisplacement)
 	{
@@ -460,4 +370,3 @@ cerr << "   " << step++ << " " << gx << " " << gy << " " << diff << endl;
 	}
   }
 }
-*/
