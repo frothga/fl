@@ -22,10 +22,11 @@ namespace fl
   public:
 	static ClusterMethod * factory (std::istream & stream);
 
-	virtual void              run (const std::vector< fl::Vector<float> > & data) = 0;  ///< Peform clustering on collection of points.
-	virtual int               classify (const fl::Vector<float> & point) = 0;  ///< Determine class of given point.
-	virtual int               classCount () = 0;  ///< Returns the number of classes (aka cluster centers, aka groups).
-	virtual fl::Vector<float> representative (int group) = 0;  ///< Return a representative member of group.  "group" has same semantics as return value of classify (); we just can't use the word "class" because it is a keyword in C++.  :)
+	virtual void          run (const std::vector< Vector<float> > & data) = 0;  ///< Peform clustering on collection of points.
+	virtual int           classify (const Vector<float> & point) = 0;  ///< Determine the single best class of given point.
+	virtual Vector<float> distribution (const Vector<float> & point) = 0;  ///< Return a probability distribution over the classes.  Row number in the returned Vector corresponds to class number.
+	virtual int           classCount () = 0;  ///< Returns the number of classes.
+	virtual Vector<float> representative (int group) = 0;  ///< Return a representative member of group.  "group" has same semantics as return value of classify (); we just can't use the word "class" because it is a keyword in C++.  :)
 
 	// The read () and write () methods should serialize enough data to either
 	// resume clustering with a call to run () or to answer cluster queries via
@@ -42,22 +43,22 @@ namespace fl
   class ClusterGauss
   {
   public:
-	ClusterGauss (fl::Vector<float> & center, float alpha = 1.0);
-	ClusterGauss (fl::Vector<float> & center, fl::Matrix<float> & covariance, float alpha = 1.0);
+	ClusterGauss (Vector<float> & center, float alpha = 1.0);
+	ClusterGauss (Vector<float> & center, Matrix<float> & covariance, float alpha = 1.0);
 	ClusterGauss (std::istream & stream);  ///< Construct from stream
 	~ClusterGauss ();
 
 	void prepareInverse ();  ///< When covariance is changed, update cached information necessary to compute Mahalanobis distance.
-	float probability (const fl::Vector<float> & point, float * scale = NULL, float * minScale = NULL);  ///< The probability of being in the cluster, which is simply the Gaussian of the distance from the center.  Result is multiplied by exp (scale) if minScale == NULL; otherwise scale and minScale are updated, and result is unscaled.
+	float probability (const Vector<float> & point, float * scale = NULL, float * minScale = NULL);  ///< The probability of being in the cluster, which is simply the Gaussian of the distance from the center.  Result is multiplied by exp (scale) if minScale == NULL; otherwise scale and minScale are updated, and result is unscaled.
 	void read (std::istream & stream);
 	void write (std::ostream & stream);
 
 	float alpha;
-	fl::Vector<float> center;
-	fl::Matrix<float> covariance;
-	fl::Matrix<float> eigenvectors;
-	fl::Vector<float> eigenvalues;
-	fl::Matrix<float> eigenverse;
+	Vector<float> center;
+	Matrix<float> covariance;
+	Matrix<float> eigenvectors;
+	Vector<float> eigenvalues;
+	Matrix<float> eigenverse;
 	float det;  ///< preprocessed multiplier that goes in front of probability expression.  Includes determinant of the covariance matrix.
   };
 
@@ -67,15 +68,16 @@ namespace fl
 	KMeans (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");  ///< clusterFileName refers to target file for new clustering data, which is very likely to be different from input file.
 	KMeans (std::istream & stream, const std::string & clusterFileName = "");  ///< Construct from stream.
 
-	virtual void run (const std::vector< fl::Vector<float> > & data);
-	virtual int classify (const fl::Vector<float> & point);
-	virtual int classCount ();
-	virtual fl::Vector<float> representative (int group);
-	virtual void read (std::istream & stream, bool withName = false);
-	virtual void write (std::ostream & stream);
+	virtual void          run (const std::vector< Vector<float> > & data);
+	virtual int           classify (const Vector<float> & point);
+	virtual Vector<float> distribution (const Vector<float> & point);
+	virtual int           classCount ();
+	virtual Vector<float> representative (int group);
+	virtual void          read (std::istream & stream, bool withName = false);
+	virtual void          write (std::ostream & stream);
 
-	void estimate (const std::vector< fl::Vector<float> > & data, fl::Matrix<float> & member, int jbegin, int jend);
-	float maximize (const std::vector <fl::Vector<float> > & data, const fl::Matrix<float> & member, int i);
+	void estimate (const std::vector< Vector<float> > & data, Matrix<float> & member, int jbegin, int jend);
+	float maximize (const std::vector <Vector<float> > & data, const Matrix<float> & member, int i);
 
 	// State of clustering process
 	float maxSize;  ///< Largest length of dominant axis of covariance matrix.  If any cluster exceeds this value, create a new cluster.
@@ -98,7 +100,7 @@ namespace fl
 	KMeansParallel (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");
 	KMeansParallel (std::istream & stream, const std::string & clusterFileName = "");
 
-	virtual void run (const std::vector< fl::Vector<float> > & data);
+	virtual void run (const std::vector< Vector<float> > & data);
 
 	static void * listenThread (void * arg);
 	static void * proxyThread (void * arg);
@@ -106,8 +108,8 @@ namespace fl
 
 	// Shared state for parallel processing
 	int iteration;
-	const std::vector<fl::Vector<float> > * data;
-	fl::Matrix<float> member;
+	const std::vector<Vector<float> > * data;
+	Matrix<float> member;
 	float largestChange;
 	enum EMstate
 	{
@@ -143,16 +145,16 @@ namespace fl
   {
   public:
 	ClusterCosine (int dimension);
-	ClusterCosine (fl::Vector<float> & center);
+	ClusterCosine (Vector<float> & center);
 	ClusterCosine (std::istream & stream);
 
-	float distance (const fl::Vector<float> & point);
-	float update (const fl::Vector<float> & point, float weight);
+	float distance (const Vector<float> & point);
+	float update (const Vector<float> & point, float weight);
 
 	void read (std::istream & stream);
 	void write (std::ostream & stream);
 
-	fl::Vector<float> center;
+	Vector<float> center;
   };
 
   class Kohonen : public ClusterMethod
@@ -161,12 +163,13 @@ namespace fl
 	Kohonen (int width, float sigma = 1.0, float learningRate = 0.1, float decayRate = 0.5);
 	Kohonen (std::istream & stream);
 
-	virtual void              run (const std::vector< fl::Vector<float> > & data);
-	virtual int               classify (const fl::Vector<float> & point);
-	virtual int               classCount ();
-	virtual fl::Vector<float> representative (int group);
-	virtual void              read (std::istream & stream, bool withName = false);
-	virtual void              write (std::ostream & stream);
+	virtual void          run (const std::vector< Vector<float> > & data);
+	virtual int           classify (const Vector<float> & point);
+	virtual Vector<float> distribution (const Vector<float> & point);
+	virtual int           classCount ();
+	virtual Vector<float> representative (int group);
+	virtual void          read (std::istream & stream, bool withName = false);
+	virtual void          write (std::ostream & stream);
 
 	std::vector<ClusterCosine> map;
 	int width;  ///< Number of discrete positions in one dimension.
