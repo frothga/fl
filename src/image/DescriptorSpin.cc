@@ -1,10 +1,5 @@
 #include "fl/descriptor.h"
-#include "fl/pi.h"
-
-// For debugging
-#include "fl/time.h"
-#include "fl/slideshow.h"
-//#include "fl/canvas.h"
+#include "fl/lapackd.h"
 
 
 using namespace std;
@@ -29,91 +24,139 @@ DescriptorSpin::DescriptorSpin (std::istream & stream)
 Vector<float>
 DescriptorSpin::value (const Image & image, const PointAffine & point)
 {
-  double startTime = getTimestamp ();
+  // Determine square region in source image to scan
 
-  // Convert patch into a square
-  // This is a temporary adapter until the rest of the code can be rewritten
-  // to handle affine transformations.
-  const int patchSize = 50;
-  const float half = patchSize / 2.0;
-  PointAffine center;
-  center.x = (patchSize - 1) / 2.0;
-  center.y = (patchSize - 1) / 2.0;
-  center.scale = half / supportRadial;
-  TransformGauss rectify (point.A / (half / (supportRadial * point.scale)), true);
-  rectify.setPeg (point.x, point.y, patchSize, patchSize);
-  ImageOf<float> patch = image * rectify;
+  Matrix<double> R = point.rectification ();
+  Matrix<double> S = !R;
 
-  // Determine various sizes
-  /*
-  float width = supportRadial * point.scale;
-  float binRadius = width / binsRadial;
-  int x1 = (int) rint (point.x - width);
-  int x2 = (int) rint (point.x + width);
-  int y1 = (int) rint (point.y - width);
-  int y2 = (int) rint (point.y + width);
-  x1 = max (x1, 0);
-  x2 = min (x2, image.width - 1);
-  y1 = max (y1, 0);
-  y2 = min (y2, image.height - 1);
-  */
-  float width = half;
-  float binRadius = width / binsRadial;
-  int x1 = 0;
-  int x2 = patch.width - 1;
-  int y1 = 0;
-  int y2 = patch.width - 1;
+  Vector<double> tl (3);
+  tl[0] = -supportRadial;
+  tl[1] = supportRadial;
+  tl[2] = 1;
+  Vector<double> tr (3);
+  tr[0] = supportRadial;
+  tr[1] = supportRadial;
+  tr[2] = 1;
+  Vector<double> bl (3);
+  bl[0] = -supportRadial;
+  bl[1] = -supportRadial;
+  bl[2] = 1;
+  Vector<double> br (3);
+  br[0] = supportRadial;
+  br[1] = -supportRadial;
+  br[2] = 1;
 
-  // Determine intensity bin values
-  float minIntensity;
-  float quantum;
-  //rangeMeanDeviation (image, point, x1, y1, x2, y2, width, minIntensity, quantum);
-  rangeMeanDeviation (patch, center, x1, y1, x2, y2, width, minIntensity, quantum);
+  Point ptl = S * tl;
+  Point ptr = S * tr;
+  Point pbl = S * bl;
+  Point pbr = S * br;
+
+  int sourceL = (int) rint (ptl.x <? ptr.x <? pbl.x <? pbr.x >? 0);
+  int sourceR = (int) rint (ptl.x >? ptr.x >? pbl.x >? pbr.x <? image.width - 1);
+  int sourceT = (int) rint (ptl.y <? ptr.y <? pbl.y <? pbr.y >? 0);
+  int sourceB = (int) rint (ptl.y >? ptr.y >? pbl.y >? pbr.y <? image.height - 1);
+
+  R.region (0, 0, 1, 2) *= binsRadial / supportRadial;  // Now R maps directly to radial bin values
+
+  // Determine mapping between pixel values and intensity bins
+  ImageOf<float> that (image);
+  float average = 0;
+  float count = 0;
+  Point q;
+  for (int y = sourceT; y <= sourceB; y++)
+  {
+	q.y = y;
+	for (int x = sourceL; x <= sourceR; x++)
+	{
+	  q.x = x;
+	  float radius = (R * q).distance ();
+	  if (radius < binsRadial)
+	  {
+		float weight = 1.0f - radius / binsRadial;
+		average += that(x,y) * weight;
+		count += weight;
+	  }
+	}
+  }
+  average /= count;
+  float deviation = 0;
+  for (int y = sourceT; y <= sourceB; y++)
+  {
+	q.y = y;
+	for (int x = sourceL; x <= sourceR; x++)
+	{
+	  q.x = x;
+	  float radius = (R * q).distance ();
+	  if (radius < binsRadial)
+	  {
+		float d = that(x,y) - average;
+		float weight = 1.0f - radius / binsRadial;
+		deviation += d * d * weight;
+	  }
+	}
+  }
+  deviation = sqrt (deviation / count);
+  float range = 2.0f * supportIntensity * deviation;
+  if (range == 0.0f)  // In case the image is completely flat
+  {
+	range = 1.0f;
+  }
+  float quantum = range / binsIntensity;
+  float minIntensity = average - range / 2 + 0.5f * quantum;
 
   // Bin up all the pixels
-  Vector<float> result (binsRadial * binsIntensity);
+  Matrix<float> result (binsIntensity, binsRadial);
   result.clear ();
-  for (int x = x1; x <= x2; x++)
+  for (int y = sourceT; y <= sourceB; y++)
   {
-	float dx = x - center.x;
-	for (int y = y1; y <= y2; y++)
+	q.y = y;
+	for (int x = sourceL; x <= sourceR; x++)
 	{
-	  float dy = y - center.y;
-	  float radius = sqrt (dx * dx + dy * dy);
-	  if (radius < width)
+	  q.x = x;
+	  float rf = (R * q).distance () - 0.5f;
+	  if (rf < binsRadial)
 	  {
-		int d = (int) ((patch(x,y) - minIntensity) / quantum);
-		d = d >? 0;
-		d = d <? binsIntensity - 1;
-		int r = (int) (radius / binRadius);
-		result[r * binsIntensity + d] += 1.0;
+		int rl = (int) floorf (rf);
+		int rh = rl + 1;
+		rf -= rl;
+		float rf1 = 1.0f - rf;
+		if (rh > binsRadial - 1)
+		{
+		  rh = binsRadial - 1;
+		  rf = 0.0f;
+		}
+		rl = max (rl, 0);
+
+		float df = (that(x,y) - minIntensity) / quantum;
+		int dl = (int) floorf (df);
+		int dh = dl + 1;
+		df -= dl;
+		float df1 = 1.0f - df;
+		if (dl < 0)
+		{
+		  dl = 0;
+		  dh = 0;
+		}
+		if (dh > binsIntensity - 1)
+		{
+		  dl = binsIntensity - 1;
+		  dh = binsIntensity - 1;
+		}
+
+		result(dl,rl) += df1 * rf1;
+		result(dl,rh) += df1 * rf;
+		result(dh,rl) += df  * rf1;
+		result(dh,rh) += df  * rf;
 	  }
-	  cerr << endl;
 	}
   }
 
   // Convert to probabilities
-cerr << "time = " << getTimestamp () - startTime << endl;
-cerr << binRadius << endl;
-float sum = 0;
   for (int r = 0; r < binsRadial; r++)
   {
-	float total = 0;
-	for (int d = 0; d < binsIntensity; d++)
-	{
-	  total += result[r * binsIntensity + d];
-	}
-sum += total;
-cerr << r << "\t" << pow ((r + 1) * binRadius, 2) * PI << "\t" << total << "\t" << sum << endl;
-	if (total > 0)
-	{
-	  for (int d = 0; d < binsIntensity; d++)
-	  {
-		result[r * binsIntensity + d] /= total;
-	  }
-	}
+	float sum = result.column (r).frob (1);
+	result.column (r) /= sum;
   }
-cerr << endl;
 
   return result;
 }
@@ -132,6 +175,20 @@ DescriptorSpin::patch (const Vector<float> & value)
   }
 
   return result;
+}
+
+Comparison *
+DescriptorSpin::comparison ()
+{
+  //return new NormalizedCorrelation (true, 5.0f);
+  //return new ChiSquared;
+  return new HistogramIntersection (1.14f);
+}
+
+int
+DescriptorSpin::dimension ()
+{
+  return binsRadial * binsIntensity;
 }
 
 void
@@ -155,88 +212,4 @@ DescriptorSpin::write (std::ostream & stream, bool withName)
   stream.write ((char *) &binsIntensity,    sizeof (binsIntensity));
   stream.write ((char *) &supportRadial,    sizeof (supportRadial));
   stream.write ((char *) &supportIntensity, sizeof (supportIntensity));
-}
-
-void
-DescriptorSpin::rangeMinMax (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float & minIntensity, float & quantum)
-{
-  ImageOf<float> that (image);
-  minIntensity = 1;
-  float maxIntensity = -1;
-  for (int x = x1; x <= x2; x++)
-  {
-	float dx = x - point.x;
-	for (int y = y1; y <= y2; y++)
-	{
-	  float dy = y - point.y;
-	  float radius = sqrt (dx * dx + dy * dy);
-	  if (radius < width)
-	  {
-		minIntensity = minIntensity <? that (x, y);
-		maxIntensity = maxIntensity >? that (x, y);
-	  }
-	}
-  }
-  float range = maxIntensity - minIntensity;
-  if (range == 0)  // In case the image is completely flat
-  {
-	range = 1;
-  }
-  quantum = range / binsIntensity;
-cerr << "Using min-max: " << minIntensity << " " << quantum << endl;
-}
-
-void
-DescriptorSpin::rangeMeanDeviation (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float & minIntensity, float & quantum)
-{
-  ImageOf<float> that (image);
-  float average = 0;
-  float count = 0;
-  for (int x = x1; x <= x2; x++)
-  {
-	float dx = x - point.x;
-	for (int y = y1; y <= y2; y++)
-	{
-	  float dy = y - point.y;
-	  float radius = sqrt (dx * dx + dy * dy);
-	  if (radius < width)
-	  {
-		float weight = 1.0 - radius / width;
-		average += that (x, y) * weight;
-		count += weight;
-	  }
-	}
-  }
-  average /= count;
-  float deviation = 0;
-  for (int x = x1; x <= x2; x++)
-  {
-	float dx = x - point.x;
-	for (int y = y1; y <= y2; y++)
-	{
-	  float dy = y - point.y;
-	  float radius = sqrt (dx * dx + dy * dy);
-	  if (radius < width)
-	  {
-		float d = that (x, y) - average;
-		float weight = 1.0 - radius / width;
-		deviation += d * d * weight;
-	  }
-	}
-  }
-  deviation = sqrt (deviation / count);
-  float range = 2.0 * supportIntensity * deviation;
-  if (range == 0)  // In case the image is completely flat
-  {
-	range = 1.0;
-  }
-
-  quantum = range / binsIntensity;
-  minIntensity = average - range / 2;
-cerr << "Using average: " << minIntensity << " " << quantum << endl;
-}
-
-void
-DescriptorSpin::doBinning (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float minIntensity, float quantum, float binRadius, Vector<float> & result)
-{
 }
