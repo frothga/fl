@@ -39,13 +39,22 @@ ImageFileFormatTIFF::read (const std::string & fileName, Image & image) const
   uint16 planarConfig;
   ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PLANARCONFIG, &planarConfig);
 
-  /*
+  /*  Attempt to find sufficient information to indicate presence of alpha channel.
+  uint32 depth;
+  ok &= TIFFGetField (tif, TIFFTAG_IMAGEDEPTH, &depth);
+  uint16 extra;
+  uint16 * extraFormat;
+  ok &= TIFFGetField (tif, TIFFTAG_EXTRASAMPLES, &extra, &extraFormat);
+
   cerr << "ok = " << ok << endl;
   cerr << "w, h = " << w << " " << h << endl;
   cerr << "samples, bits, format = "  << samplesPerPixel << " " << bitsPerSample << " " << format << endl;
   cerr << "photometric = " << photometric << endl;
   cerr << "orientation = " << orientation << endl;
   cerr << "planar = " << planarConfig << endl;
+
+  cerr << "depth = " << depth << endl;
+  cerr << "extra = " << extra << endl;
   */
 
   if (! ok)
