@@ -34,17 +34,18 @@ namespace fl
 
 	virtual void nextImage (const Image & image);
 	virtual void track (Point & point);
-	void track (const Point & point0, const int level, Point & point1);  ///< Subroutine of track().
+	float track (const Point & point0, const int level, Point & point1);  ///< Subroutine of track().
 
 	std::vector< ImageOf<float> > pyramid0;  ///< "previous" image.  First entry is full sized image, and each subsequent entry is downsampled by 2.
 	std::vector< ImageOf<float> > pyramid1;  ///< "current" image.  Same structure as pyramid0
 	Gaussian1D preBlur;  ///< For blurring full image at base of pyramid.  Purpose is to ensure smooth texture within search window.
-	int pyramidRatio;  ///< Ratio between number of pixels in adjacent levels of pyramid.
+	float pyramidRatio;  ///< Ratio between number of pixels in adjacent levels of pyramid.
 	int windowRadius;  ///< Number of pixels from center to edge of search window.
 	int windowWidth;  ///< Diameter of search window.
 	float minDeterminant;  ///< Smallest allowable determinant of second moment matrix.
 	float minDisplacement;  ///< Convergence threshold on change in location.
 	int maxIterations;  ///< To quit iterating even without convergence.
+	float maxError;  ///< Largest allowable root mean squared error of pixel intensity within the window.  Note that intensity is in the range [0,1].
   };
 }
 
