@@ -75,9 +75,9 @@ FilterHarris::preprocess (const Image & image)
 	ImageOf<float> xxf (xx);
 	ImageOf<float> xyf (xy);
 	ImageOf<float> yyf (yy);
-	for (int x = 0; x < xx.width; x++)
+	for (int y = 0; y < xx.height; y++)
 	{
-	  for (int y = 0; y < xx.height; y++)
+	  for (int x = 0; x < xx.width; x++)
 	  {
 		float tx = dxf (x + offset1, y + offset2);
 		float ty = dyf (x + offset2, y + offset1);
@@ -94,9 +94,9 @@ FilterHarris::preprocess (const Image & image)
 	ImageOf<double> xxd (xx);
 	ImageOf<double> xyd (xy);
 	ImageOf<double> yyd (yy);
-	for (int x = 0; x < xx.width; x++)
+	for (int y = 0; y < xx.height; y++)
 	{
-	  for (int y = 0; y < xx.height; y++)
+	  for (int x = 0; x < xx.width; x++)
 	  {
 		double tx = dxd (x + offset1, y + offset2);
 		double ty = dyd (x + offset2, y + offset1);
@@ -132,9 +132,9 @@ FilterHarris::process ()
 	ImageOf<float> Sxxf (Sxx);
 	ImageOf<float> Sxyf (Sxy);
 	ImageOf<float> Syyf (Syy);
-	for (int x = 0; x < result.width; x++)
+	for (int y = 0; y < result.height; y++)
 	{
-	  for (int y = 0; y < result.height; y++)
+	  for (int x = 0; x < result.width; x++)
 	  {
 		float txx = Sxxf (x, y);
 		float txy = Sxyf (x, y);
@@ -150,9 +150,9 @@ FilterHarris::process ()
 	ImageOf<double> Sxxd (Sxx);
 	ImageOf<double> Sxyd (Sxy);
 	ImageOf<double> Syyd (Syy);
-	for (int x = 0; x < result.width; x++)
+	for (int y = 0; y < result.height; y++)
 	{
-	  for (int y = 0; y < result.height; y++)
+	  for (int x = 0; x < result.width; x++)
 	  {
 		double txx = Sxxd (x, y);
 		double txy = Sxyd (x, y);
