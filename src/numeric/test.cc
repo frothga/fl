@@ -1,11 +1,13 @@
+#include "fl/complex.h"
 #include "fl/matrix.h"
 #include "fl/random.h"
 #include "fl/search.h"
 #include "fl/lapackd.h"
 #include "fl/time.h"
-#include "fl/complex.h"
+#include "fl/zroots.h"
+#include "fl/pi.h"
+#include "fl/neural.h"
 
-//#include "fl/MatrixSparse.tcc"
 
 
 #include <iostream>
@@ -111,6 +113,16 @@ public:
 
 
 
+inline Matrix2x2<double>
+rotationMatrix (const double angle)
+{
+  Matrix2x2<double> R;
+  R(0,0) = cos (angle);
+  R(0,1) = -sin (angle);
+  R(1,0) = -R(0,1);
+  R(1,1) = R(0,0);
+  return R;
+}
 
 inline double
 randbad ()
@@ -141,6 +153,151 @@ makeMatrix (const int m, const int n)
 }
 
 
+
+
+
+
+
+
+class NeuronInput : public NeuronBackprop
+{
+public:
+  virtual float getOutput ()
+  {
+	if (line[position] == code)
+	{
+	  return 1.0;
+	}
+	else if (line[position] == '?')
+	{
+	  return unknownValue;
+	}
+	else
+	{
+	  return 0;
+	}
+  }
+
+  char * line;
+  int position;
+  char code;
+  float unknownValue;
+};
+
+class NeuronOutput : public NeuronBackprop
+{
+public:
+  virtual float getDelta ()
+  {
+	float desired = line[0] == code ? 0.9f : -0.9f;
+	delta = desired - getOutput ();
+	return delta;
+  }
+
+  char * line;
+  char code;
+};
+
+class TestNN : public NeuralNetworkBackprop
+{
+public:
+  TestNN ()
+  {
+	char * values[] =
+	{
+	  "bcxfks",
+	  "fgys",
+	  "nbcgrpuewy",
+	  "tf",
+	  "alcyfmnps",
+	  "adfn",
+	  "cwd",
+	  "bn",
+	  "knbhgropuewy",
+	  "et",
+	  "bcuezr",  // also includes "?", but handled differently
+	  "fyks",
+	  "fyks",
+	  "nbcgopewy",
+	  "nbcgopewy",
+	  "pu",
+	  "nowy",
+	  "not",
+	  "ceflnpsz",
+	  "knbhrouwy",
+	  "acnsvy",
+	  "glmpuwd"
+	};
+
+	for (int j = 0; j < 22; j++)
+	{
+	  for (int k = 0; values[j][k]; k++)
+	  {
+		NeuronInput * n = new NeuronInput;
+		n->line         = buffer;
+		n->position     = (j + 1) * 2;
+		n->code         = values[j][k];
+		n->unknownValue = 1.0 / strlen (values[j]);
+		inputs.push_back (n);
+	  }
+	}
+
+	NeuronOutput * e = new NeuronOutput;
+	e->line = buffer;
+	e->code = 'e';
+	outputs.push_back (e);
+	NeuronOutput * p = new NeuronOutput;
+	p->line = buffer;
+	p->code = 'p';
+	outputs.push_back (p);
+
+	vector<int> hiddenSizes;
+	//hiddenSizes.push_back (40);
+	//hiddenSizes.push_back (5);
+	constructHiddenLayers (hiddenSizes);
+  }
+
+  virtual void startData ()
+  {
+	index = 0;
+  }
+
+  virtual bool nextDatum ()
+  {
+	if (index == dataCount)
+	{
+	  return false;
+	}
+	strcpy (buffer, data[index++]);
+	return true;
+  }
+
+  virtual bool correct ()
+  {
+	return fabsf (outputs[0]->getDelta ()) < 0.4f  &&  fabsf (outputs[1]->getDelta ()) < 0.4f;
+  }
+
+  virtual void happyGraph (int iteration, float accuracy)
+  {
+	cerr << iteration << " " << accuracy << endl;
+  }
+
+  int index;
+  int dataCount;
+  char * data[9000];
+  char buffer[80];
+};
+
+
+
+
+
+
+
+
+
+
+
 int
 main (int argc, char * argv[])
 {
@@ -153,22 +310,62 @@ main (int argc, char * argv[])
   srand (seed);
   cerr << "Random seed = " << seed << endl;
 
-  int m = parmInt (1, 4);  // rows
-  int n = parmInt (2, 4);  // columns
+  //int m = parmInt (1, 4);  // rows
+  //int n = parmInt (2, 4);  // columns
 
 
 
-  Matrix2x2<float> A = makeMatrix (2, 2);
-  cerr << "A=" << A << endl << endl;
 
-  Matrix3x3<float> B;
-  B.identity ();
-  cerr << "B=" << B << endl << endl;
-  cerr << "region=" << B.region (0, 0, 1, 1) << endl << endl;
-  cerr << &B << endl;
+  // Construct the NN
+  srand ((unsigned) time (NULL));
+  TestNN NN;
 
-  B.region (0, 0, 1, 1) = A;
-  cerr << "region=" << B.region (0, 0, 1, 1) << endl << endl;
+  char buffer[80];
+  char * testset[9000];
+
+  // Load data
+  NN.dataCount = 0;
+  ifstream trainStream ("trainset");
+  while (! trainStream.eof ())
+  {
+	trainStream.getline (buffer, sizeof (buffer));
+	if (strlen (buffer) > 10)
+	{
+	  NN.data[NN.dataCount++] = strdup (buffer);
+	}
+  }
+  trainStream.close ();
+
+  int testCount = 0;
+  ifstream testStream ("testset");
+  while (! testStream.eof ())
+  {
+	testStream.getline (buffer, sizeof (buffer));
+	if (strlen (buffer) > 10)
+	{
+	  testset[testCount++] = strdup (buffer);
+	}
+  }
+  testStream.close ();
+  cerr << "testset size = " << testCount << endl;
+
+  // Train
+  NN.train ();
+
+  // Test
+  int accuracy = 0;
+  for (int i = 0; i < testCount; i++)
+  {
+	strcpy (NN.buffer, testset[i]);
+	NN.reset ();
+	if (NN.correct ()) accuracy++;
+  }
+  cout << "Test accuracy: " << accuracy << " (" << (float) accuracy / testCount << ")" << endl;
+
+  return 0;
+
+
+
 
 
   /*
