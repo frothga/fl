@@ -6,25 +6,28 @@ using namespace std;
 using namespace fl;
 
 
-// class DimensionalityReductionPCA -------------------------------------------
+// class PCA ------------------------------------------------------------------
 
-DimensionalityReductionPCA::DimensionalityReductionPCA (int targetDimension)
+PCA::PCA (int targetDimension)
 {
   this->targetDimension = targetDimension;
 }
 
-DimensionalityReductionPCA::DimensionalityReductionPCA (istream & stream)
+PCA::PCA (istream & stream)
 {
   read (stream);
 }
 
 void
-DimensionalityReductionPCA::analyze (const vector< Vector<float> > & data)
+PCA::analyze (const vector< Vector<float> > & data)
 {
+  cerr << "Warning: PCA has not been properly tested yet." << endl;
+
   int sourceDimension = data[0].rows ();
   int d = min (sourceDimension, targetDimension);
 
   Vector<float> mean (sourceDimension);
+  mean.clear ();
   for (int i = 0; i < data.size (); i++)
   {
 	mean += data[i];
@@ -32,6 +35,7 @@ DimensionalityReductionPCA::analyze (const vector< Vector<float> > & data)
   mean /= data.size ();
 
   Matrix<float> covariance (sourceDimension, sourceDimension);
+  covariance.clear ();
   for (int i = 0; i < data.size (); i++)
   {
 	Vector<float> delta = data[i] - mean;
@@ -58,20 +62,20 @@ DimensionalityReductionPCA::analyze (const vector< Vector<float> > & data)
 }
 
 Vector<float>
-DimensionalityReductionPCA::reduce (const Vector<float> & datum)
+PCA::reduce (const Vector<float> & datum)
 {
   return W * datum;
 }
 
 void
-DimensionalityReductionPCA::read (istream & stream)
+PCA::read (istream & stream)
 {
   stream.read ((char *) & targetDimension, sizeof (targetDimension));
   W.read (stream);
 }
 
 void
-DimensionalityReductionPCA::write (ostream & stream, bool withName)
+PCA::write (ostream & stream, bool withName)
 {
   DimensionalityReduction::write (stream, withName);
 
