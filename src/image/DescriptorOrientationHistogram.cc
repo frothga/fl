@@ -8,14 +8,14 @@ using namespace fl;
 using namespace std;
 
 
-
 // class DescriptorOrientationHistogram ---------------------------------------
 
-DescriptorOrientationHistogram::DescriptorOrientationHistogram (int bins, float supportRadial, int supportPixel)
+DescriptorOrientationHistogram::DescriptorOrientationHistogram (float supportRadial, int supportPixel, float kernelSize, int bins)
 {
-  this->bins          = bins;
   this->supportRadial = supportRadial;
   this->supportPixel  = supportPixel;
+  this->kernelSize    = kernelSize;
+  this->bins          = bins;
 
   cutoff = 0.8f;
 
@@ -25,11 +25,12 @@ DescriptorOrientationHistogram::DescriptorOrientationHistogram (int bins, float 
 void
 DescriptorOrientationHistogram::computeGradient (const Image & image)
 {
-  if (lastImage == &image)
+  if (lastImage == &image  &&  lastBuffer == (void *) image.buffer)
   {
 	return;
   }
   lastImage = &image;
+  lastBuffer = (void *) image.buffer;
 
   Image work = image * GrayFloat;
   I_x = work * FiniteDifferenceX ();
@@ -76,7 +77,22 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
 	double scale = supportPixel / supportRadial;
 	Transform t (S, scale);
 	t.setWindow (0, 0, patchSize, patchSize);
-	Image patch = image * GrayFloat * t;
+	Image patch = image * t;
+	patch *= GrayFloat;
+
+	// Add necessary blur.  Assume blur level in source image is 0.5.
+	// The current blur level in the transformed patch depends on
+	// the ratio of scale to point.scale.
+	double currentBlur = scale * 0.5 / point.scale;
+	currentBlur = max (currentBlur, 0.5);
+	double targetBlur = supportPixel / kernelSize;
+	if (currentBlur < targetBlur)
+	{
+	  Gaussian1D blur (sqrt (targetBlur * targetBlur - currentBlur * currentBlur), GrayFloat, Horizontal, Boost);
+	  patch *= blur;
+	  blur.direction = Vertical;
+	  patch *= blur;
+	}
 
 	lastImage = 0;
 	computeGradient (patch);
@@ -89,6 +105,7 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
 	center.x = supportPixel - 0.5f;
 	center.y = center.x;
 	sigma = supportPixel / supportRadial;
+	radius = supportPixel;
   }
 
   // Second, gather up the gradient histogram.
@@ -174,9 +191,10 @@ DescriptorOrientationHistogram::patch (const Vector<float> & value)
 void
 DescriptorOrientationHistogram::read (std::istream & stream)
 {
-  stream.read ((char *) &bins,          sizeof (bins));
   stream.read ((char *) &supportRadial, sizeof (supportRadial));
   stream.read ((char *) &supportPixel,  sizeof (supportPixel));
+  stream.read ((char *) &kernelSize,    sizeof (kernelSize));
+  stream.read ((char *) &bins,          sizeof (bins));
   stream.read ((char *) &cutoff,        sizeof (cutoff));
 }
 
@@ -188,8 +206,9 @@ DescriptorOrientationHistogram::write (std::ostream & stream, bool withName)
 	stream << typeid (*this).name () << endl;
   }
 
-  stream.write ((char *) &bins,          sizeof (bins));
   stream.write ((char *) &supportRadial, sizeof (supportRadial));
   stream.write ((char *) &supportPixel,  sizeof (supportPixel));
+  stream.write ((char *) &kernelSize,    sizeof (kernelSize));
+  stream.write ((char *) &bins,          sizeof (bins));
   stream.write ((char *) &cutoff,        sizeof (cutoff));
 }
