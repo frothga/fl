@@ -21,6 +21,8 @@ SlideShow::SlideShow ()
 : fl::Window (fl::Display::getPrimary ()->defaultScreen (), 640, 480)
 {
   pthread_mutex_init (&mutexImage, NULL);
+  pthread_mutex_init (&waitingMutex, NULL);
+  pthread_cond_init (&waitingCondition, NULL);
 
   visual = & screen->defaultVisual ();
 
@@ -55,12 +57,15 @@ SlideShow::~SlideShow ()
 {
   screen->display->removeCallback (*this);  // Need to stop event handling before destroying ximage.
   unmap ();
+  stopWaiting ();
   if (ximage)
   {
 	ximage->data = (char *) malloc (1);  // Will be freed immediately by XDestroyImage.
 	XDestroyImage (ximage);
   }
   pthread_mutex_destroy (&mutexImage);
+  pthread_cond_destroy (&waitingCondition);
+  pthread_mutex_destroy (&waitingMutex);
   delete colormap;
   delete gc;
 }
@@ -82,7 +87,7 @@ SlideShow::processEvent (XEvent & event)
 	  {
 		if (event.xclient.data.l[0] == WM_DELETE_WINDOW)
 		{
-		  waitingForClick = false;
+		  stopWaiting ();
 		  unmap ();
 		  return true;
 		}
@@ -106,7 +111,7 @@ SlideShow::processEvent (XEvent & event)
 	{
 	  if (! modeDrag)
 	  {
-		waitingForClick = false;
+		stopWaiting ();
 	  }
 	  return true;
 	}
@@ -184,7 +189,7 @@ SlideShow::processEvent (XEvent & event)
 	}
     case KeyPress:
 	{
-	  waitingForClick = false;
+	  stopWaiting ();
 	  return true;
 	}
   }
@@ -195,11 +200,19 @@ SlideShow::processEvent (XEvent & event)
 void
 SlideShow::waitForClick ()
 {
-  waitingForClick = true;
-  while (waitingForClick)
-  {
-	sleep (1);
-  }
+  // Put thread to sleep.
+  pthread_mutex_lock (&waitingMutex);
+  pthread_cond_wait (&waitingCondition, &waitingMutex);
+  pthread_mutex_unlock (&waitingMutex);
+}
+
+void
+SlideShow::stopWaiting ()
+{
+  // Release waiting threads.
+  pthread_mutex_lock (&waitingMutex);
+  pthread_cond_broadcast (&waitingCondition);
+  pthread_mutex_unlock (&waitingMutex);
 }
 
 void
