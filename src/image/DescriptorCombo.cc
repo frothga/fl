@@ -10,12 +10,12 @@ using namespace fl;
 
 DescriptorCombo::DescriptorCombo ()
 {
-  lastImage = 0;
+  lastBuffer = 0;
 }
 
 DescriptorCombo::DescriptorCombo (istream & stream)
 {
-  lastImage = 0;
+  lastBuffer = 0;
 
   read (stream);
 }
@@ -40,11 +40,11 @@ DescriptorCombo::add (Descriptor * descriptor)
 Vector<float>
 DescriptorCombo::value (const Image & image, const PointAffine & point)
 {
-  if (&image != lastImage  ||  (void *) image.buffer != lastBuffer)
+  if ((void *) image.buffer != lastBuffer  ||  image.timestamp != lastTime)
   {
 	grayImage = image * GrayFloat;
-	lastImage = &image;
 	lastBuffer = (void *) image.buffer;
+	lastTime = image.timestamp;
   }
 
   Vector<float> result (dimension);

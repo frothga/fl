@@ -172,8 +172,8 @@ namespace fl
 
 	std::vector<Descriptor *> descriptors;
 
-	const Image * lastImage;
-	void *        lastBuffer;
+	void * lastBuffer;  ///< For detecting change in cached image.
+	double lastTime;  ///< For detecting change in cached image.
 	Image grayImage;
   };
 
@@ -239,8 +239,8 @@ namespace fl
 	int bins;  ///< Number of orientation bins in histogram.
 	float cutoff;  ///< Ratio of maximum histogram value above which to accept secondary maxima.
 
-	const Image * lastImage;  ///< For cacheing derivative images.
-	void *        lastBuffer;  ///< For cacheing derivative images.  Allows finer granularity in detecting change.
+	void * lastBuffer;  ///< For detecting change in cached image.
+	double lastTime;  ///< For detecting change in cached image.
 	ImageOf<float> I_x;
 	ImageOf<float> I_y;
   };
@@ -406,8 +406,8 @@ namespace fl
 	float sigmaWeight;  ///< Size of Gaussian that weights the entries in the bins.
 	float maxValue;  ///< Largest permissible entry in one bin.
 
-	const Image * lastImage;  ///< For cacheing derivative images.
-	void *        lastBuffer;  ///< For cacheing derivative images.  Allows finer granularity in detecting change.
+	void * lastBuffer;  ///< For detecting change in cached image.
+	double lastTime;  ///< For detecting change in cached image.
 	ImageOf<float> I_x;  ///< x component of gradient vectors
 	ImageOf<float> I_y;  ///< y component of gradient vectors
   };
@@ -493,8 +493,8 @@ namespace fl
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
-	const Image * lastImage;  ///< Pointer to the currently cached input image.
-	void *        lastBuffer;  ///< Pointer to buffer of currently cached input image.  Allows finer granularity in detecting change.
+	void * lastBuffer;  ///< For detecting change in cached image.
+	double lastTime;  ///< For detecting change in cached image.
 	std::vector< ImageOf<float> > responses;  ///< Responses to each filter in the bank over the entire input image.
 
 	int angles;  ///< Number of discrete orientations in the filter bank.
@@ -541,9 +541,8 @@ namespace fl
 	float R;  ///< Radius of circle of sample points.
 	int supportPixel;  ///< Radius of patch to draw off if point specifies a shape change.
 
-	const Image * lastImage;  ///< Pointer to the currently cached input image.
-	void *        lastBuffer;  ///< Pointer to buffer of currently cached input image.  Allows finer granularity in detecting change.
-	double        lastTime;  ///< Time when image was generated.  Provides for finer granularity of change detection.
+	void * lastBuffer;  ///< For detecting change in cached image.
+	double lastTime;  ///< For detecting change in cached image.
 	ImageOf<unsigned char> categoryImage;  ///< Cached LBP categories for each pixel.  P is limited to 254.
 
 	/**

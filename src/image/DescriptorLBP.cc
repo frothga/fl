@@ -32,7 +32,7 @@ void
 DescriptorLBP::initialize ()
 {
   dimension = P + 2;
-  lastImage = 0;
+  lastBuffer = 0;
 
   interpolates.resize (P);
   for (int i = 0; i < P; i++)
@@ -70,11 +70,10 @@ DescriptorLBP::initialize ()
 inline void
 DescriptorLBP::preprocess (const Image & image)
 {
-  if (lastImage == &image  &&  lastBuffer == (void *) image.buffer  &&  lastTime == image.timestamp)
+  if (lastBuffer == (void *) image.buffer  &&  lastTime == image.timestamp)
   {
 	return;
   }
-  lastImage = &image;
   lastBuffer = (void *) image.buffer;
   lastTime = image.timestamp;
 

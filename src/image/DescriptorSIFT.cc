@@ -22,24 +22,24 @@ DescriptorSIFT::DescriptorSIFT (int width, int angles)
   sigmaWeight = width / 2.0;
   maxValue = 0.2f;
 
-  lastImage = 0;
+  lastBuffer = 0;
 }
 
 DescriptorSIFT::DescriptorSIFT (istream & stream)
 {
-  lastImage = 0;
+  lastBuffer = 0;
   read (stream);
 }
 
 void
 DescriptorSIFT::computeGradient (const Image & image)
 {
-  if (lastImage == &image  &&  lastBuffer == (void *) image.buffer)
+  if (lastBuffer == (void *) image.buffer  &&  lastTime == image.timestamp)
   {
 	return;
   }
-  lastImage = &image;
   lastBuffer = (void *) image.buffer;
+  lastTime = image.timestamp;
 
   ImageOf<float> work = image * GrayFloat;
   I_x = work * FiniteDifferenceX ();
@@ -115,7 +115,7 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 	t.setWindow (0, 0, patchSize, patchSize);
 	Image patch = image * GrayFloat * t;
 
-	lastImage = 0;
+	lastBuffer = 0;
 	computeGradient (patch);
 
 	sourceT = 0;

@@ -34,7 +34,7 @@ DescriptorTextonScale::DescriptorTextonScale (istream & stream)
 void
 DescriptorTextonScale::initialize ()
 {
-  lastImage = 0;
+  lastBuffer = 0;
   filters.clear ();
 
   const float dogRatio = 1.33f;
@@ -74,12 +74,12 @@ DescriptorTextonScale::initialize ()
 void
 DescriptorTextonScale::preprocess (const Image & image)
 {
-  if (lastImage == &image  &&  lastBuffer == (void *) image.buffer)
+  if (lastBuffer == (void *) image.buffer  &&  lastTime == image.timestamp)
   {
 	return;
   }
-  lastImage = &image;
   lastBuffer = (void *) image.buffer;
+  lastTime = image.timestamp;
 
   ImageOf<float> work;
   if (*image.format == GrayFloat)

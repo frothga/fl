@@ -19,24 +19,24 @@ DescriptorOrientationHistogram::DescriptorOrientationHistogram (float supportRad
 
   cutoff = 0.8f;
 
-  lastImage = 0;
+  lastBuffer = 0;
 }
 
 DescriptorOrientationHistogram::DescriptorOrientationHistogram (istream & stream)
 {
-  lastImage = 0;
+  lastBuffer = 0;
   read (stream);
 }
 
 void
 DescriptorOrientationHistogram::computeGradient (const Image & image)
 {
-  if (lastImage == &image  &&  lastBuffer == (void *) image.buffer)
+  if (lastBuffer == (void *) image.buffer  &&  lastTime == image.timestamp)
   {
 	return;
   }
-  lastImage = &image;
   lastBuffer = (void *) image.buffer;
+  lastTime = image.timestamp;
 
   Image work = image * GrayFloat;
   I_x = work * FiniteDifferenceX ();
@@ -100,7 +100,7 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
 	  patch *= blur;
 	}
 
-	lastImage = 0;
+	lastBuffer = 0;
 	computeGradient (patch);
 
 	sourceT = 0;
