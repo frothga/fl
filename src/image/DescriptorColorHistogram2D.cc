@@ -22,8 +22,6 @@ DescriptorColorHistogram2D::DescriptorColorHistogram2D (int width, float support
 void
 DescriptorColorHistogram2D::initialize ()
 {
-  monochrome = false;
-
   valid.resize (width, width);
   valid.clear ();
   validCount = 0;
@@ -82,7 +80,8 @@ DescriptorColorHistogram2D::addToHistogram (const Image & image, const int x, co
 {
   YUV yuv;
   yuv.all = image.getYUV (x, y);
-  float weight = yuv.y / 255.0f;
+  //float weight = yuv.y / 255.0f;
+  float weight = 1.0f;  // All pixels count the same, regardless of intensity.  This is the right way to collapse the intensity dimension of a 3D histogram.
   float uf = yuv.u * width / 256.0f - 0.5f;
   float vf = yuv.v * width / 256.0f - 0.5f;
   int ul = (int) floorf (uf);
@@ -130,7 +129,7 @@ DescriptorColorHistogram2D::finish ()
 	  }
 	}
   }
-  result.normalize ();
+  result /= result.frob (1);  // normalize to a probability distribution
 
   return result;
 }
@@ -232,8 +231,8 @@ DescriptorColorHistogram2D::patch (const Vector<float> & value)
 		yuv.y = (unsigned char) (255    * value[i++] / maximum);
 		if (yuv.y > 0)
 		{
-		  yuv.u = (unsigned char) (255.0f * u / width);
-		  yuv.v = (unsigned char) (255.0f * v / width);
+		  yuv.u = (unsigned char) (255.0f * (u + 0.5f) / width);
+		  yuv.v = (unsigned char) (255.0f * (v + 0.5f) / width);
 		  result.setYUV (u, v, yuv.all);
 		}
 	  }
@@ -241,6 +240,25 @@ DescriptorColorHistogram2D::patch (const Vector<float> & value)
   }
 
   return result;
+}
+
+Comparison *
+DescriptorColorHistogram2D::comparison ()
+{
+  return new ChiSquared (50.0f);
+  //return new HistogramIntersection;
+}
+
+bool
+DescriptorColorHistogram2D::isMonochrome ()
+{
+  return false;
+}
+
+int
+DescriptorColorHistogram2D::dimension ()
+{
+  return validCount;
 }
 
 void
