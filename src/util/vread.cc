@@ -43,7 +43,8 @@ public:
 		{
 		  if (event.xclient.data.l[0] == WM_DELETE_WINDOW)
 		  {
-			waitingForClick = false;
+			pause ();
+			stopWaiting ();
 			return true;
 		  }
 		}
@@ -133,7 +134,8 @@ public:
 		  }
 		  case 'q':
 		  {
-			waitingForClick = false;
+			pause ();
+			stopWaiting ();
 			return true;
 		  }
 		}
@@ -147,7 +149,7 @@ public:
   static void * playThread (void * data)
   {
 	VideoShow * me = (VideoShow *) data;
-	while (me->vin.good ()  &&  me->playing  &&  me->waitingForClick)
+	while (me->vin.good ()  &&  me->playing)
 	{
 	  me->vin >> me->image;
 	  if (! me->vin.good ()) break;
