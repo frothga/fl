@@ -48,7 +48,13 @@ ImageFileFormat *
 ImageFileFormat::find (const std::string & fileName)
 {
   ifstream ifs (fileName.c_str ());
-  return find (ifs);
+  ImageFileFormat * result = find (ifs);
+  if (! result)
+  {
+	string suffix = fileName.substr (fileName.find_last_of ('.') + 1);
+	result = findName (suffix);
+  }
+  return result;
 }
 
 ImageFileFormat *
