@@ -21,10 +21,12 @@ DescriptorColorHistogram3D::DescriptorColorHistogram3D (int width, int height, f
   this->height        = height;
   this->supportRadial = supportRadial;
 
-  valid = 0;
-  histogram = 0;
-
   initialize ();
+}
+
+DescriptorColorHistogram3D::DescriptorColorHistogram3D (istream & stream)
+{
+  read (stream);
 }
 
 DescriptorColorHistogram3D::~DescriptorColorHistogram3D ()

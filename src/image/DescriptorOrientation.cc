@@ -14,6 +14,11 @@ DescriptorOrientation::DescriptorOrientation (float supportRadial, int supportPi
   initialize (supportRadial, supportPixel, kernelSize);
 }
 
+DescriptorOrientation::DescriptorOrientation (istream & stream)
+{
+  read (stream);
+}
+
 static inline void
 killRadius (float limit, Image & image)
 {

@@ -13,6 +13,11 @@ DescriptorScale::DescriptorScale (float firstScale, float lastScale, int interQu
   initialize (firstScale, lastScale, powf (quantum, 1.0f / interQuanta));
 }
 
+DescriptorScale::DescriptorScale (istream & stream)
+{
+  read (stream);
+}
+
 void
 DescriptorScale::initialize (float firstScale, float lastScale, float stepSize)
 {

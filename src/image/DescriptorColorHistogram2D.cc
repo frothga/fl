@@ -19,6 +19,11 @@ DescriptorColorHistogram2D::DescriptorColorHistogram2D (int width, float support
   initialize ();
 }
 
+DescriptorColorHistogram2D::DescriptorColorHistogram2D (istream & stream)
+{
+  read (stream);
+}
+
 void
 DescriptorColorHistogram2D::initialize ()
 {

@@ -14,6 +14,11 @@ DescriptorContrast::DescriptorContrast (float supportRadial, int supportPixel)
   this->supportPixel  = supportPixel;
 }
 
+DescriptorContrast::DescriptorContrast (istream & stream)
+{
+  read (stream);
+}
+
 Vector<float>
 DescriptorContrast::value (const Image & image, const PointAffine & point)
 {

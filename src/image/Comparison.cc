@@ -1,4 +1,5 @@
 #include "fl/descriptor.h"
+#include "fl/factory.h"
 
 
 using namespace fl;
@@ -6,6 +7,8 @@ using namespace std;
 
 
 // class Comparison -----------------------------------------------------------
+
+Factory<Comparison>::productMap Factory<Comparison>::products;
 
 Comparison::~Comparison ()
 {
@@ -17,12 +20,47 @@ Comparison::preprocess (const Vector<float> & value) const
   return Vector<float> (value);
 }
 
+void
+Comparison::read (istream & stream)
+{
+}
+
+void
+Comparison::write (ostream & stream, bool withName)
+{
+  if (withName)
+  {
+	stream << typeid (*this).name () << endl;
+  }
+}
+
+/**
+   Since at present all Comparisons (other than ComparisonCombo) are
+   lightweight classes implemented in this single source file, it makes sense
+   to just register them all at once.  Another alternative would be to hard
+   code a factory just for Comparisons.  However, the Factory template is
+   more flexible.
+ **/
+void
+Comparison::addProducts ()
+{
+  Product<Comparison, NormalizedCorrelation>::add ();
+  Product<Comparison, MetricEuclidean>::add ();
+  Product<Comparison, HistogramIntersection>::add ();
+  Product<Comparison, ChiSquared>::add ();
+}
+
 
 // class NormalizedCorrelation ------------------------------------------------
 
 NormalizedCorrelation::NormalizedCorrelation (bool subtractMean)
 {
   this->subtractMean = subtractMean;
+}
+
+NormalizedCorrelation::NormalizedCorrelation (istream & stream)
+{
+  read (stream);
 }
 
 Vector<float>
@@ -92,8 +130,26 @@ NormalizedCorrelation::value (const Vector<float> & value1, const Vector<float> 
   return result;
 }
 
+void
+NormalizedCorrelation::read (istream & stream)
+{
+  stream.read ((char *) &subtractMean, sizeof (subtractMean));
+}
+
+void
+NormalizedCorrelation::write (ostream & stream, bool withName)
+{
+  Comparison::write (stream, withName);
+  stream.write ((char *) &subtractMean, sizeof (subtractMean));
+}
+
 
 // class MetricEuclidean ------------------------------------------------------
+
+MetricEuclidean::MetricEuclidean (istream & stream)
+{
+  read (stream);
+}
 
 float
 MetricEuclidean::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
@@ -103,6 +159,11 @@ MetricEuclidean::value (const Vector<float> & value1, const Vector<float> & valu
 
 
 // class HistogramIntersection ------------------------------------------------
+
+HistogramIntersection::HistogramIntersection (istream & stream)
+{
+  read (stream);
+}
 
 float
 HistogramIntersection::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
@@ -134,6 +195,11 @@ HistogramIntersection::value (const Vector<float> & value1, const Vector<float> 
 
 
 // class ChiSquared -----------------------------------------------------------
+
+ChiSquared::ChiSquared (istream & stream)
+{
+  read (stream);
+}
 
 float
 ChiSquared::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const

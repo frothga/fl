@@ -26,6 +26,11 @@ DescriptorTextonScale::DescriptorTextonScale (int angles, float firstScale, floa
   initialize ();
 }
 
+DescriptorTextonScale::DescriptorTextonScale (istream & stream)
+{
+  read (stream);
+}
+
 void
 DescriptorTextonScale::initialize ()
 {

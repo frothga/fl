@@ -22,6 +22,12 @@ DescriptorOrientationHistogram::DescriptorOrientationHistogram (float supportRad
   lastImage = 0;
 }
 
+DescriptorOrientationHistogram::DescriptorOrientationHistogram (istream & stream)
+{
+  lastImage = 0;
+  read (stream);
+}
+
 void
 DescriptorOrientationHistogram::computeGradient (const Image & image)
 {
