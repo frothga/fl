@@ -1,8 +1,11 @@
 #include "fl/cluster.h"
 #include "fl/lapacks.h"
 #include "fl/pi.h"
+#include "fl/random.h"
+#include "fl/time.h"
 
 #include <algorithm>
+
 
 using namespace std;
 using namespace fl;
@@ -136,7 +139,146 @@ KMeans::KMeans (istream & stream, const string & clusterFileName)
 void
 KMeans::run (const std::vector<Vector<float> > & data)
 {
-  throw "Currently, only the parallel version of KMeans is implemented.";
+  stop = false;
+  initialize (data);
+
+  // Iterate to convergence.  Convergence condition is that cluster
+  // centers are stable and that all features fall within maxSize of
+  // nearest cluster center.
+  int iteration = 0;
+  bool converged = false;
+  while (! converged  &&  ! stop)
+  {
+	cerr << "========================================================" << iteration++ << endl;
+	double timestamp = getTimestamp ();
+
+    // We assume that one iteration takes a very long time, so the cost of
+    // dumping our state every time is relatively small (esp. compared to the
+    // cost of losing everything in a crash).
+	if (clusterFileName.size ())
+	{
+	  ofstream target (clusterFileName.c_str ());
+	  write (target);
+	}
+
+	// Estimation: Generate probability of membership for each datum in each cluster.
+	Matrix<float> member (clusters.size (), data.size ());
+	estimate (data, member, 0, data.size ());
+	if (stop)
+	{
+	  break;
+	}
+
+	// Maximization: Update clusters based on member data.
+	cerr << clusters.size () << endl;
+	float largestChange = 0;
+	for (int i = 0; i < clusters.size (); i++)
+	{
+	  float change = maximize (data, member, i);
+	  largestChange = max (largestChange, change);
+	}
+	if (stop)
+	{
+	  break;
+	}
+
+	converged = convergence (data, member, largestChange);
+
+	cerr << "time = " << getTimestamp () - timestamp << endl;
+  }
+}
+
+void
+KMeans::initialize (const vector<Vector<float> > & data)
+{
+  // Generate set of random clusters
+  int K = min (initialK, (int) data.size () / 2);
+  if (clusters.size () < K)
+  {
+	cerr << "Creating " << K - clusters.size () << " clusters" << endl;
+
+	// Locate center and covariance of entire data set
+	Vector<float> center (data[0].rows ());
+	center.clear ();
+	for (int i = 0; i < data.size (); i++)
+    {
+	  center += data[i];
+	  if (i % 1000 == 0)
+	  {
+		cerr << ".";
+	  }
+	}
+	cerr << endl;
+	center /= data.size ();
+
+	Matrix<float> covariance (data[0].rows (), data[0].rows ());
+	covariance.clear ();
+	for (int i = 0; i < data.size (); i++)
+	{
+	  Vector<float> delta = data[i] - center;
+	  covariance += delta * ~delta;
+	  if (i % 1000 == 0)
+	  {
+		cerr << ".";
+	  }
+	}
+	cerr << endl;
+	covariance /= data.size ();
+cerr << "center: " << center << endl;
+
+	// Prepare matrix of basis vectors on which to project the cluster centers
+	Matrix<float> eigenvectors;
+	Vector<float> eigenvalues;
+	syev (covariance, eigenvalues, eigenvectors);
+	float minev = largestNormalFloat;
+	float maxev = 0;
+	for (int i = 0; i < eigenvalues.rows (); i++)
+	{
+	  minev = min (minev, fabsf (eigenvalues[i]));
+	  maxev = max (maxev, fabsf (eigenvalues[i]));
+	}
+	cerr << "eigenvalue range = " << sqrtf (minev) << " " << sqrtf (maxev) << endl;
+	for (int c = 0; c < eigenvectors.columns (); c++)
+	{
+	  float scale = sqrt (fabs (eigenvalues[c]));
+	  eigenvectors.column (c) *= scale;
+	}
+
+	// Throw points into the space and create clusters around them
+	for (int i = clusters.size (); i < K; i++)
+	{
+	  Vector<float> point (center.rows ());
+	  for (int row = 0; row < point.rows (); row++)
+	  {
+		point[row] = randGaussian ();
+	  }
+
+	  point = center + eigenvectors * point;
+
+	  ClusterGauss c (point, 1.0 / K);
+	  clusters.push_back (c);
+	}
+  }
+  else
+  {
+	cerr << "KMeans already initialized with:" << endl;
+	cerr << "  clusters = " << clusters.size () << endl;
+	cerr << "  maxSize  = " << maxSize << endl;
+	cerr << "  minSize  = " << minSize << endl;
+	cerr << "  maxK     = " << maxK << endl;
+	cerr << "  changes: ";
+	for (int i = 0; i < changes.size (); i++)
+	{
+	  cerr << changes[i] << " ";
+	}
+	cerr << endl;
+	cerr << "  velocities: ";
+	for (int i = 0; i < velocities.size (); i++)
+	{
+	  cerr << velocities[i] << " ";
+	}
+	cerr << endl;
+  }
 }
 
 void
@@ -144,6 +286,9 @@ KMeans::estimate (const vector<Vector<float> > & data, Matrix<float> & member, i
 {
   for (int j = jbegin; j < jend; j++)
   {
+    // TODO: The current approach to normalization below forces everything
+	// to be calculated twice.  Instead, we should remember the "scale" value
+	// for each feature between calls and adapt it as we go.
 	float sum = 0;
 	float scale = 0;
 	float minScale = largestNormalFloat;
@@ -173,10 +318,7 @@ KMeans::estimate (const vector<Vector<float> > & data, Matrix<float> & member, i
 		sum += value;
 	  }
 	}
-	for (int i = 0; i < clusters.size (); i++)
-	{
-	  member (i, j) /= sum;
-	}
+	member.column (j) /= sum;
   }
 }
 
@@ -226,6 +368,148 @@ KMeans::maximize (const vector<Vector<float> > & data, const Matrix<float> & mem
   return result;
 }
 
+bool
+KMeans::convergence (const vector<Vector<float> > & data, const Matrix<float> & member, float largestChange)
+{
+  bool converged = false;
+
+  // Analyze movement data to detect convergence
+  cerr << "change = " << largestChange << "\t";
+  largestChange /= maxSize * sqrtf ((float) data[0].rows ());
+  cerr << largestChange << "\t";
+  // Calculate velocity
+  changes.push_back (largestChange);
+  if (changes.size () > 4)
+  {
+	changes.erase (changes.begin ()); // Limit size of history
+	float xbar  = (changes.size () - 1) / 2.0;
+	float sxx   = 0;
+	float nybar = 0;
+	float sxy   = 0;
+	for (int x = 0; x < changes.size (); x++)
+	{
+	  sxx   += powf (x - xbar, 2);
+	  nybar += changes[x];
+	  sxy   += x * changes[x];
+	}
+	sxy -= xbar * nybar;
+	float velocity = sxy / sxx;
+	cerr << velocity << "\t";
+
+	// Calculate acceleration
+	velocities.push_back (velocity);
+	if (velocities.size () > 4)
+	{
+	  velocities.erase (velocities.begin ());
+	  xbar  = (velocities.size () - 1) / 2.0;
+	  sxx   = 0;
+	  nybar = 0;
+	  sxy   = 0;
+	  for (int x = 0; x < velocities.size (); x++)
+	  {
+		sxx   += powf (x - xbar, 2);
+		nybar += velocities[x];
+		sxy   += x * velocities[x];
+	  }
+	  sxy -= xbar * nybar;
+	  float acceleration = sxy / sxx;
+	  cerr << acceleration;
+	  if (fabs (acceleration) < 1e-4  &&  velocity > -1e-2)
+	  {
+		converged = true;
+	  }
+	}
+  }
+  cerr << endl;
+  if (largestChange < 1e-4)
+  {
+	converged = true;
+  }
+
+  // Change number of clusters, if necessary
+  if (converged)
+  {
+	cerr << "checking K" << endl;
+
+	// The basic approach is to check the eigenvalues of each cluster
+	// to see if the shape of the cluster exceeds the arbitrary limit
+	// maxSize.  If so, pick the worst offending cluster and  split
+	// it into two along the dominant axis.
+	float largestEigenvalue = 0;
+	Vector<float> largestEigenvector (data[0].rows ());
+	int largestCluster = 0;
+	for (int i = 0; i < clusters.size (); i++)
+	{
+	  int last = clusters[i].eigenvalues.rows () - 1;
+	  float evf = fabsf (clusters[i].eigenvalues[0]);
+	  float evl = fabsf (clusters[i].eigenvalues[last]);
+	  if (evf > largestEigenvalue)
+	  {
+		largestEigenvalue = evf;
+		largestEigenvector = clusters[i].eigenvectors.column (0);
+		largestCluster = i;
+	  }
+	  if (evl > largestEigenvalue)
+	  {
+		largestEigenvalue = evl;
+		largestEigenvector = clusters[i].eigenvectors.column (last);
+		largestCluster = i;
+	  }
+	}
+	largestEigenvalue = sqrtf (largestEigenvalue);
+	if (largestEigenvalue > maxSize  &&  clusters.size () < maxK)
+	{
+	  Vector<float> le;
+	  le.copyFrom (largestEigenvector);
+	  largestEigenvector *= largestEigenvalue / 2;  // largestEigenvector is already unit length
+	  le                 *= -largestEigenvalue / 2;
+	  largestEigenvector += clusters[largestCluster].center;
+	  clusters[largestCluster].center += le;
+	  clusters[largestCluster].alpha /= 2;
+	  ClusterGauss c (largestEigenvector, clusters[largestCluster].covariance, clusters[largestCluster].alpha);
+	  clusters.push_back (c);
+	  cerr << "  splitting: " << largestCluster << " " << largestEigenvalue << endl; // " "; print_vector (c.center);
+	  converged = false;
+	}
+
+	// Also check if we need to merge clusters.
+	// Merge when clusters are closer then minSize to each other by Euclidean distance.
+	int remove = -1;
+	int merge;
+	float closestDistance = largestNormalFloat;
+	for (int i = 0; i < clusters.size (); i++)
+	{
+	  for (int j = i + 1; j < clusters.size (); j++)
+	  {
+		float distance = (clusters[i].center - clusters[j].center).frob (2);
+		if (distance < minSize  &&  distance < closestDistance)
+		{
+		  merge = i;
+		  remove = j;
+		  closestDistance = distance;
+		}
+	  }
+	}
+	if (remove > -1)
+	{
+	  cerr << "  merging: " << merge << " " << remove << " " << closestDistance << endl;
+	  converged = false;
+	  // Cluster "merge" claims all of cluster "remove"s points.
+	  if (remove < member.rows ())  // Test is necessary because "remove" could be newly created cluster (see above) with no row in member yet.
+	  {
+		for (int j = 0; j < data.size (); j++)
+		{
+		  member (merge, j) += member (remove, j);
+		}
+		maximize (data, member, merge);
+	  }
+	  clusters.erase (clusters.begin () + remove);
+	}
+  }
+
+  return converged;
+}
+
 int
 KMeans::classify (const Vector<float> & point)
 {
@@ -244,6 +528,16 @@ KMeans::classify (const Vector<float> & point)
   return result;
 }
 
+Vector<float>
+KMeans::distribution (const Vector<float> & point)
+{
+  Vector<float> result (clusters.size ());
+  vector< Vector<float> > data;
+  data.push_back (point);
+  estimate (data, result, 0, 0);
+  return result;
+}
+
 int
 KMeans::classCount ()
 {
@@ -257,14 +551,8 @@ KMeans::representative (int group)
 }
 
 void
-KMeans::read (istream & stream, bool withName)
+KMeans::read (istream & stream)
 {
-  if (withName)
-  {
-	string temp;
-	getline (stream, temp);
-  }
-
   stream.read ((char *) &maxSize,  sizeof (maxSize));
   stream.read ((char *) &minSize,  sizeof (minSize));
   stream.read ((char *) &initialK, sizeof (initialK));  // Actually, the current K!  :)
@@ -296,11 +584,12 @@ KMeans::read (istream & stream, bool withName)
 }
 
 void
-KMeans::write (ostream & stream)
+KMeans::write (ostream & stream, bool withName)
 {
+  cerr << "top of write" << endl;
   clusterFileTime = time (NULL);
 
-  stream << typeid (*this).name () << endl;
+  ClusterMethod::write (stream, withName);
 
   stream.write ((char *) &maxSize, sizeof (maxSize));
   stream.write ((char *) &minSize, sizeof (minSize));
@@ -328,4 +617,5 @@ KMeans::write (ostream & stream)
   }
 
   clusterFileSize = stream.tellp ();
+  cerr << "bottom of write" << endl;
 }
