@@ -4,7 +4,6 @@
 
 #include "fl/matrix.h"
 
-#include <math.h>
 #include <vector>
 
 
@@ -17,15 +16,16 @@ namespace fl
 	 Depending on what search method you choose, it may be a value function
 	 or an error function.
   **/
+  template<class T>
   class Searchable
   {
   public:
 	virtual int  dimension () = 0;
-	virtual void value (const Vector<double> & point, Vector<double> & result) = 0;  ///< Returns the value of the function at a given point.  Must throw an exception if point is out of domain.
-	virtual void gradient (const Vector<double> & point, Vector<double> & result, const int index = 0) = 0;  ///< Return the first derivative vector for the function value addressed by index.  index is zero-based.  If this function has only one variable, ignore index.
-	virtual void jacobian (const Vector<double> & point, Matrix<double> & result, const Vector<double> * currentValue = NULL) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
-	virtual void jacobian (const Vector<double> & point, MatrixSparse<double> & result, const Vector<double> * currentValue = NULL) = 0;  ///< Same as above, except omits all zero entries in Jacobian.
-	virtual void hessian (const Vector<double> & point, Matrix<double> & result, const int index = 0) = 0;  ///< Return the second derivative matrix for the function value addressed by index.  If this is a single-valued function, then ignore index.
+	virtual void value (const Vector<T> & point, Vector<T> & result) = 0;  ///< Returns the value of the function at a given point.  Must throw an exception if point is out of domain.
+	virtual void gradient (const Vector<T> & point, Vector<T> & result, const int index = 0) = 0;  ///< Return the first derivative vector for the function value addressed by index.  index is zero-based.  If this function has only one variable, ignore index.
+	virtual void jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue = NULL) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
+	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL) = 0;  ///< Same as above, except omits all zero entries in Jacobian.
+	virtual void hessian (const Vector<T> & point, Matrix<T> & result, const int index = 0) = 0;  ///< Return the second derivative matrix for the function value addressed by index.  If this is a single-valued function, then ignore index.
   };
 
   /**
@@ -36,17 +36,18 @@ namespace fl
 	 The programmer must implement at least the dimension() and value()
 	 functions to instantiate a subclass.
   **/
-  class SearchableNumeric : public Searchable
+  template<class T>
+  class SearchableNumeric : public Searchable<T>
   {
   public:
-	SearchableNumeric (double perturbation = -1);
+	SearchableNumeric (T perturbation = -1);
 
-	virtual void gradient (const Vector<double> & point, Vector<double> & result, const int index = 0);
-	virtual void jacobian (const Vector<double> & point, Matrix<double> & result, const Vector<double> * currentValue = NULL);
-	virtual void jacobian (const Vector<double> & point, MatrixSparse<double> & result, const Vector<double> * currentValue = NULL);
-	virtual void hessian (const Vector<double> & point, Matrix<double> & result, const int index = 0);
+	virtual void gradient (const Vector<T> & point, Vector<T> & result, const int index = 0);
+	virtual void jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue = NULL);
+	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);
+	virtual void hessian (const Vector<T> & point, Matrix<T> & result, const int index = 0);
 
-	double perturbation;  ///< Amount to perturb a variable for finding any of the derivatives by finite differences.
+	T perturbation;  ///< Amount to perturb a variable for finding any of the derivatives by finite differences.
   };
 
   /**
@@ -55,7 +56,8 @@ namespace fl
 	 Assumes that the sparsity structure of the Jacobian is fixed over the
 	 entire domain of the function.
   **/
-  class SearchableSparse : public SearchableNumeric
+  template<class T>
+  class SearchableSparse : public SearchableNumeric<T>
   {
   public:
 	/**
@@ -64,7 +66,7 @@ namespace fl
 	   programmer is welcome to write a constructor in the derived class that
 	   does call cover().  :)
 	**/
-	SearchableSparse (double perturbation = -1) : SearchableNumeric (perturbation) {}
+	SearchableSparse (T perturbation = -1) : SearchableNumeric<T> (perturbation) {}
 
 	/**
 	   The matrix returned by interaction encodes the sparsity structure of the
@@ -75,8 +77,8 @@ namespace fl
 	virtual MatrixSparse<bool> interaction () = 0;
 	virtual void cover ();  ///< Compute a structurally orthogonal cover of the Jacobian based on the interaction matrix.
 
-	virtual void jacobian (const Vector<double> & point, Matrix<double> & result, const Vector<double> * currentValue = NULL);  ///< Compute the Jacobian using the cover.
-	virtual void jacobian (const Vector<double> & point, MatrixSparse<double> & result, const Vector<double> * currentValue = NULL);  ///< Ditto, but omit zero entries.
+	virtual void jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue = NULL);  ///< Compute the Jacobian using the cover.
+	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);  ///< Ditto, but omit zero entries.
 
 	// These two members represent the cover in a way that is easy to execute.
 	MatrixSparse<int> parameters;  ///< If parameters(i,j) == k, then compute Jacobian(i,k) during the jth call to the function (by perturbing the kth parameter).
@@ -90,21 +92,23 @@ namespace fl
 	 (ie: as in least squares minimization).  Another possibility is to search
 	 for the largest value vector.
   **/
+  template<class T>
   class Search
   {
   public:
-	virtual void search (Searchable & searchable, Vector<double> & point) = 0;  ///< Finds the point that optimizes the search crierion.  "point" must be initialized to a reasonable starting point.
+	virtual void search (Searchable<T> & searchable, Vector<T> & point) = 0;  ///< Finds the point that optimizes the search crierion.  "point" must be initialized to a reasonable starting point.
   };
 
 
   // Specific Searches --------------------------------------------------------
 
-  class AnnealingAdaptive : public Search
+  template<class T>
+  class AnnealingAdaptive : public Search<T>
   {
   public:
 	AnnealingAdaptive (bool minimize = true, int levels = 10, int patience = -1);  ///< minimize == true means do least squares; minimize == false means find largest values
 
-	virtual void search (Searchable & searchable, Vector<double> & point);
+	virtual void search (Searchable<T> & searchable, Vector<T> & point);
 
 	bool minimize;
 	int levels;
@@ -112,32 +116,42 @@ namespace fl
   };
 
   /**
-	 LM based on QR decomposition.  Translated from MINPACK.
+	 LM based on QR decomposition.  Adapted from MINPACK.
   **/
-  class LevenbergMarquardt : public Search
+  template<class T>
+  class LevenbergMarquardt : public Search<T>
   {
   public:
-	LevenbergMarquardt (double toleranceF = -1, double toleranceX = -1, int maxIterations = 200);  ///< toleranceF/X == -1 means use sqrt (machine precision)
+	LevenbergMarquardt (T toleranceF = -1, T toleranceX = -1, int maxIterations = 200);  ///< toleranceF/X == -1 means use sqrt (machine precision)
 
-	virtual void search (Searchable & searchable, Vector<double> & point);
+	virtual void search (Searchable<T> & searchable, Vector<T> & point);
 
-	double toleranceF;
-	double toleranceX;
+	void qrfac (Matrix<T> & a, Vector<int> & ipvt, Vector<T> & rdiag, Vector<T> & acnorm);
+	void qrsolv (Matrix<T> & r, const Vector<int> & ipvt, const Vector<T> & diag, const Vector<T> & qtb, Vector<T> & x, Vector<T> & sdiag);
+	void lmpar (Matrix<T> & r, const Vector<int> & ipvt, const Vector<T> & diag, const Vector<T> & qtb, T delta, T & par, Vector<T> & x);
+
+	static const T epsilon;  ///< FLT_EPSILON or DBL_EPSILON
+	static const T minimum;  ///< FLT_MIN or DBL_MIN
+	T toleranceF;
+	T toleranceX;
 	int maxIterations;
   };
 
   /**
 	 LM based on Bunch-Kaufman decomposition with sparse implementation.
   **/
-  class LevenbergMarquardtSparseBK : public Search
+  template<class T>
+  class LevenbergMarquardtSparseBK : public Search<T>
   {
   public:
-	LevenbergMarquardtSparseBK (double toleranceF = -1, double toleranceX = -1, int maxIterations = 200, int maxPivot = 20);
+	LevenbergMarquardtSparseBK (T toleranceF = -1, T toleranceX = -1, int maxIterations = 200, int maxPivot = 20);
 
-	virtual void search (Searchable & searchable, Vector<double> & point);
+	virtual void search (Searchable<T> & searchable, Vector<T> & point);
 
-	double toleranceF;
-	double toleranceX;
+	static const T epsilon;  ///< FLT_EPSILON or DBL_EPSILON
+	static const T minimum;  ///< FLT_MIN or DBL_MIN
+	T toleranceF;
+	T toleranceX;
 	int maxIterations;
 	int maxPivot;  ///< Farthest from diagonal to permit a pivot
   };
