@@ -10,13 +10,20 @@ using namespace fl;
 IntensityAverage::IntensityAverage (bool ignoreZeros)
 {
   this->ignoreZeros = ignoreZeros;
+
+  average = 0;
+  count = 0;
+  minimum = INFINITY;
+  maximum = -INFINITY;
 }
 
 Image
 IntensityAverage::filter (const Image & image)
 {
   average = 0;
-  int count = 0;
+  count = 0;
+  minimum = INFINITY;
+  maximum = -INFINITY;
 
   #define addup(size) \
   { \
@@ -28,6 +35,8 @@ IntensityAverage::filter (const Image & image)
 	  { \
 		if (*pixel != 0) \
 		{ \
+		  minimum = min (minimum, (float) *pixel); \
+		  maximum = max (maximum, (float) *pixel); \
 		  average += *pixel; \
 		  count++; \
 		} \
@@ -38,6 +47,8 @@ IntensityAverage::filter (const Image & image)
 	{ \
 	  while (pixel < end) \
 	  { \
+		minimum = min (minimum, (float) *pixel); \
+		maximum = max (maximum, (float) *pixel); \
 		average += *pixel++; \
 	  } \
 	  count = image.width * image.height; \
