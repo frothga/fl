@@ -32,29 +32,80 @@ VideoInFileFFMPEG::~VideoInFileFFMPEG ()
 void
 VideoInFileFFMPEG::seekFrame (int frame)
 {
-  if (cc  &&  frame < cc->frame_number)
+  if (state  ||  ! stream)
   {
-	close ();
-	open (fileName);
+	return;
+  }
+  cerr << "frame = " << frame << endl;
+  seekTime ((double) frame * stream->r_frame_rate_base / stream->r_frame_rate);
+}
+
+/**
+   \todo Seek in c.avi (bear and dog rotating) is screwed up at the FFMPEG
+   level.  It has more index than video, and the index seems to be on a
+   different time base than the video itself.
+ **/
+void
+VideoInFileFFMPEG::seekTime (double timestamp)
+{
+  if (state  ||  ! stream)
+  {
+	return;
   }
 
-  while (cc  &&  cc->frame_number < frame)
+  int64_t targetDTS = (int64_t) rint (timestamp * AV_TIME_BASE);
+  //cerr << "timestamp = " << timestamp << endl;
+  //cerr << "targetDTS = " << targetDTS;
+  if (fc->start_time != AV_NOPTS_VALUE)
   {
-	readNext (NULL);
+	targetDTS += fc->start_time;
+  }
+  //cerr << " " << targetDTS << endl;
+  state = av_seek_frame (fc, stream->index, targetDTS);
+  if (state < 0)
+  {
+	return;
+  }
+
+  // Flush the codec's state, and also clear our own packet state.
+  avcodec_flush_buffers (cc);
+  if (packet.size)
+  {
+	av_free_packet (&packet);
+  }
+  state = av_read_packet (fc, &packet);
+  if (state < 0)
+  {
+	return;
+  }
+  state = 0;
+  size = packet.size;
+  data = packet.data;
+  gotPicture = false;
+
+  // Read forward until finding the exact frame requested.
+  int targetFrame = (int) floor (timestamp * stream->r_frame_rate / stream->r_frame_rate_base);  // floor() because any timestamp should equate to the frame visible at that time.
+  int64_t DTS = av_rescale (packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
+  if (fc->start_time != AV_NOPTS_VALUE)
+  {
+	DTS -= fc->start_time;
+  }
+  cc->frame_number = (int) rint (((double) DTS / AV_TIME_BASE) * stream->r_frame_rate / stream->r_frame_rate_base);  // rint() because DTS should be exactly on some frame's timestamp, and we want to compensate for numerical error.
+  //cerr << "targetFrame = " << targetFrame << endl;
+  //cerr << "DTS = " << DTS << endl;
+  //cerr << "frame_number = " << cc->frame_number << endl;
+  //cerr << "codec.frame_rate = " << cc->frame_rate << endl;
+  //cerr << "codec.frame_rate_base = " << cc->frame_rate_base << endl;
+  //cerr << "r_frame_rate = " << stream->r_frame_rate << endl;
+  //cerr << "r_frame_rate_base = " << stream->r_frame_rate_base << endl;
+  while (cc->frame_number < targetFrame)
+  {
+	readNext (0);
 	if (! gotPicture)
 	{
 	  return;
 	}
 	gotPicture = 0;
-  }
-}
-
-void
-VideoInFileFFMPEG::seekTime (double timestamp)
-{
-  if (stream)
-  {
-	seekFrame ((int) ceil (timestamp * stream->r_frame_rate / stream->r_frame_rate_base));
   }
 }
 
@@ -91,6 +142,7 @@ VideoInFileFFMPEG::readNext (Image * image)
 		data = packet.data;
 		state = 0;
 	  }
+if (packet.pts != AV_NOPTS_VALUE  ||  packet.dts != AV_NOPTS_VALUE) cerr << "packet.pts=" << packet.pts << " dts=" << packet.dts << " skew=" << packet.pts - packet.dts << endl;
 	}
 
 	while (size > 0  &&  ! gotPicture)
@@ -151,7 +203,7 @@ VideoInFileFFMPEG::open (const string & fileName)
 	return;
   }
 
-  stream = NULL;
+  stream = 0;
   for (int i = 0; i < fc->nb_streams; i++)
   {
 	if (fc->streams[i]->codec.codec_type == CODEC_TYPE_VIDEO)
