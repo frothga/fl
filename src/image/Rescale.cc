@@ -13,7 +13,7 @@ Rescale::Rescale (double a, double b)
   this->b = b;
 }
 
-Rescale::Rescale (const Image & image)
+Rescale::Rescale (const Image & image, bool useFullRange)
 {
   double lo = INFINITY;
   double hi = -INFINITY;
@@ -45,7 +45,7 @@ Rescale::Rescale (const Image & image)
 	return;
   }
 
-  if (hi <= 1)
+  if (! useFullRange  &&  hi <= 1)
   {
 	if (lo >= 0)
 	{
