@@ -110,35 +110,15 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
   {
 	computeGradient (image);
 
-	// Project the patch into the gradient image in order to find the window
-	// for scanning pixels there.
+	sourceL = (int) rint (point.x - supportRadial);
+	sourceR = (int) rint (point.x + supportRadial);
+	sourceT = (int) rint (point.y - supportRadial);
+	sourceB = (int) rint (point.y + supportRadial);
 
-	Vector<double> tl (3);
-	tl[0] = -supportRadial;
-	tl[1] = supportRadial;
-	tl[2] = 1;
-	Vector<double> tr (3);
-	tr[0] = supportRadial;
-	tr[1] = supportRadial;
-	tr[2] = 1;
-	Vector<double> bl (3);
-	bl[0] = -supportRadial;
-	bl[1] = -supportRadial;
-	bl[2] = 1;
-	Vector<double> br (3);
-	br[0] = supportRadial;
-	br[1] = -supportRadial;
-	br[2] = 1;
-
-	Point ptl = S * tl;
-	Point ptr = S * tr;
-	Point pbl = S * bl;
-	Point pbr = S * br;
-
-	sourceL = (int) rint (ptl.x <? ptr.x <? pbl.x <? pbr.x >? 0);
-	sourceR = (int) rint (ptl.x >? ptr.x >? pbl.x >? pbr.x <? I_x.width - 1);
-	sourceT = (int) rint (ptl.y <? ptr.y <? pbl.y <? pbr.y >? 0);
-	sourceB = (int) rint (ptl.y >? ptr.y >? pbl.y >? pbr.y <? I_x.height - 1);
+	sourceL = max (sourceL, 0);
+	sourceR = min (sourceR, image.width - 1);
+	sourceT = max (sourceT, 0);
+	sourceB = min (sourceB, image.height - 1);
 
 	R.region (0, 0, 1, 2) *= width / (2 * supportRadial);
 	R(0,2) += center;
