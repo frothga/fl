@@ -239,5 +239,5 @@ InterestDOG::run (const Image & image, std::multiset<PointInterest> & result)
 	octave *= 2.0f;
   }
 
-  cerr << "total time = " << getTimestamp () - startTime << endl;
+  cerr << "DoG time = " << getTimestamp () - startTime << endl;
 }
