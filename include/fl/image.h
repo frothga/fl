@@ -52,14 +52,16 @@ namespace fl
 
 	Pixel        operator () (int x, int y) const;  // Returns a Pixel object that wraps (x,y).
 	unsigned int getRGBA (int x, int y) const;  // The "RGB" functions are intended for abstract access to the buffer.  They perform conversion to whatever the buffer's format is.
+	void         getRGBA (int x, int y, float values[]) const;
 	void         setRGBA (int x, int y, unsigned int rgba);  // The "rgb" format is always 24-bit RGB, 8 bits per field.  Blue is in the least significant byte, then green, then red.
+	void         setRGBA (int x, int y, float values[]);
 
 	// Data
 	Pointer             buffer;
 	const PixelFormat * format;
-	int                 width;
-	int                 height;
-	double              timestamp;  // Time when image was captured.
+	int                 width;  ///< The Image class guarantees that width * height is always non-negative and that the raster stored in buffer has enough allocated memory to contain width * height pixels.  (Of course, you can set this field directly, in which case the warranty is void. :)
+	int                 height;  ///< See width for interface guarantees.
+	double              timestamp;  ///< Time when image was captured.  If part of a video, then time when image should be displayed.
   };
 
   // A simple wrap around Image that makes it easier to access pixels directly.
@@ -129,16 +131,20 @@ namespace fl
   // gamma = 2.2 as per sRGB spec), and all floating point values are linear.
   // We can add parameters to the formats if we need to distinguish more color
   // spaces.
+  // Naming convention: <color space><basic C type for one channel>
+  //   Color space names refer to sequence of channels (usually bytes) in
+  //   memory, rather than in machine words (eg: registers in the processor).
+  //   The leftmost letter in a name refers to the lowest numbered address.
+  //   The "Bits" formats also follow this convention with two exceptions:
+  //   1) The bitmasks are necessarily machine words.
+  //   2) The order of channels is actually arbitrary.
   // TODO:
+  // * Finish thinking about the naming convention and then actually apply it.
+  // * Fix code to work on both endians (right now it is just little endian).
   // * think about adding arbitrary information channels besides alpha
   //   (eg: depth).  alpha gets special treatment because it has a specific,
   //   well-defined effect on how pixels are combined.
   // * add alpha blend methods (operator << and >>) to Pixel
-  // * Think about naming conventions for formats.  Should letters such as
-  //   R, G, B and A follow the layout of the machine word?  Of actual memory?
-  //   Does it matter?  (Yes, it matters a little.  If structure is clearly
-  //   indicated in the format title, it is easier to think about how the
-  //   format interacts with the needs of other software packages.)
   class PixelFormat : public Filter
   {
   public:
@@ -339,27 +345,6 @@ namespace fl
   // R<red bits>G<green bits>B<blue bits>
   // EG: R5G5B5 would be a 15 bit RGB format.
 
-  // Another comment on naming: the order of the letters in names like "RGB"
-  // refer to an imaginary machine word that is laid out in front of our
-  // mind's eye with the most significant bits to the left.  This is how
-  // most people tend to think of machine words.  On a little-endian machine,
-  // which is where this software was developed, RGB will translate into "B"
-  // being in the least signficant byte and "R" in the most significant byte.
-  // BGRChar exists as an endian adjustment.  More work needs to be done to
-  // make this software endian neutral.
-
-  // Rant: The only reason different "endians" exist is that different
-  // engineers conceived of different ways of converting this imaginary
-  // machine word into physical storage.  "Little-endians" imagined that
-  // storage starts on the left, while "big-endians" imagined that storage
-  // starts on the right.  Of course, the organization of storage has nothing
-  // to do with handedness.  We could just as well imagined that storage
-  // starts at the bottom or top.  The most accurate conception of storage is
-  // a collection of random points in space that are directly addressable by
-  // a number, sort of like how telephone numbers address people.  There is
-  // some order, but it is usually not useful to think about that order
-  // (except that it is forced on us by the "endians").
-
 
   // Pixel --------------------------------------------------------------------
 
@@ -369,6 +354,12 @@ namespace fl
   // be better colorwise to do them in XYZ space, but most formats are closer
   // to RGB than XYZ numerically (ie: require less conversion), so it is
   // cheaper to do them in RGB.
+  // FIXME: Revise this class.  The job of Pixel should be to provide an
+  // abstract way to do numerical operations on pixels.  A good way to do
+  // this is to make Pixel a subclass of Vector<float>.  It would be variable
+  // length, so it could accomodate any number of channels.  It would also
+  // inherit all matrix operations.  Only alpha blending would impose any
+  // special structure.  Drop color accessors.
   class Pixel
   {
   public:
@@ -500,6 +491,18 @@ namespace fl
   Image::operator () (int x, int y) const
   {
 	return Pixel (*format, & ((char *) buffer)[(y * width + x) * format->depth]);
+  }
+
+  inline void
+  Image::getRGBA (int x, int y, float values[]) const
+  {
+	format->getRGBA (& ((char *) buffer)[(y * width + x) * format->depth], values);
+  }
+
+  inline void
+  Image::setRGBA (int x, int y, float values[])
+  {
+	format->setRGBA (& ((char *) buffer)[(y * width + x) * format->depth], values);
   }
 }
 
