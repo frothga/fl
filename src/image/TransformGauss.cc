@@ -59,22 +59,22 @@ TransformGauss::filter (const Image & image)
 	prepareG ();
   }
 
-  Vector<float> cd (2);  // Center of destination image
+  Matrix3x3<float> H;  // homography from destination image to source image
 
   if (*image.format == GrayFloat)
   {
 	ImageOf<float> result (GrayFloat);
-	prepareResult (image, result, cd);
+	prepareResult (image, result, H);
 	ImageOf<float> that (image);
 	for (int toY = 0; toY < result.height; toY++)
 	{
 	  for (int toX = 0; toX < result.width; toX++)
 	  {
-		float x = toX - cd[0];
-		float y = toY - cd[1];
-		float tx = IA(0,0) * x + IA(0,1) * y + translateX;
-		y        = IA(1,0) * x + IA(1,1) * y + translateY;
-		x = tx;
+		float x = H(0,0) * toX + H(0,1) * toY + H(0,2);
+		float y = H(1,0) * toX + H(1,1) * toY + H(1,2);
+		float z = H(2,0) * toX + H(2,1) * toY + H(2,2);
+		x /= z;
+		y /= z;
 		if (x > -0.5 - sigmaX  &&  x < image.width - 0.5 + sigmaX  &&  y > -0.5 - sigmaY  &&  y < image.height - 0.5 + sigmaY)
 		{
 		  int rx = (int) rint (x);
@@ -120,17 +120,17 @@ TransformGauss::filter (const Image & image)
   else if (*image.format == GrayDouble)
   {
 	ImageOf<double> result (GrayDouble);
-	prepareResult (image, result, cd);
+	prepareResult (image, result, H);
 	ImageOf<double> that (image);
 	for (int toY = 0; toY < result.height; toY++)
 	{
 	  for (int toX = 0; toX < result.width; toX++)
 	  {
-		double x = toX - cd[0];
-		double y = toY - cd[1];
-		double tx = IA(0,0) * x + IA(0,1) * y + translateX;
-		y         = IA(1,0) * x + IA(1,1) * y + translateY;
-		x = tx;
+		double x = H(0,0) * toX + H(0,1) * toY + H(0,2);
+		double y = H(1,0) * toX + H(1,1) * toY + H(1,2);
+		double z = H(2,0) * toX + H(2,1) * toY + H(2,2);
+		x /= z;
+		y /= z;
 		if (x > -0.5 - sigmaX  &&  x < image.width - 0.5 + sigmaX  &&  y > -0.5 - sigmaY  &&  y < image.height - 0.5 + sigmaY)
 		{
 		  int rx = (int) rint (x);
@@ -180,16 +180,16 @@ TransformGauss::filter (const Image & image)
   else
   {
 	Image result (*image.format);
-	prepareResult (image, result, cd);
+	prepareResult (image, result, H);
 	for (int toY = 0; toY < result.height; toY++)
 	{
 	  for (int toX = 0; toX < result.width; toX++)
 	  {
-		float x = toX - cd[0];
-		float y = toY - cd[1];
-		float tx = IA(0,0) * x + IA(0,1) * y + translateX;
-		y        = IA(1,0) * x + IA(1,1) * y + translateY;
-		x = tx;
+		float x = H(0,0) * toX + H(0,1) * toY + H(0,2);
+		float y = H(1,0) * toX + H(1,1) * toY + H(1,2);
+		float z = H(2,0) * toX + H(2,1) * toY + H(2,2);
+		x /= z;
+		y /= z;
 		if (x > -0.5 - sigmaX  &&  x < image.width - 0.5 + sigmaX  &&  y > -0.5 - sigmaY  &&  y < image.height - 0.5 + sigmaY)
 		{
 		  int rx = (int) rint (x);
