@@ -9,22 +9,17 @@
 #include <iostream>
 #include <vector>
 
+// for debugging
+#include "fl/slideshow.h"
+
 
 namespace fl
 {
   // Comparison ---------------------------------------------------------------
 
   /**
-	 Takes two feature vectors and returns a number in [-inf,inf] that
-	 describes their relationship to each other.  The more alike two
-	 vectors are, the more positive the value.  Exactly what value (a, a)
-	 is depends on the class.
-
-	 This is not the same concept as a metric.  Must be
-	 symmetric (ie: value (a, b) == value (b, a)), but does not necessarily
-	 satisfy positivity or triangle inequality.  If the comparison is a
-	 distance, it should return negative values so that the
-	 closer two vectors are, the more postive the value.
+	 Takes two feature vectors and returns the probability that they match.
+	 Probability values are in [0,1].
   **/
   class Comparison
   {
@@ -35,25 +30,89 @@ namespace fl
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const = 0;
   };
 
+  class Descriptor;
+
   /**
-	 Gives the correlation value, in range [-1,1], after normalizing each
-	 vector.
+	 Handles comparisons between feature vectors that are composed of several
+	 smaller feature vectors from various descriptors.
+   **/
+  class ComparisonCombo : public Comparison
+  {
+  public:
+	ComparisonCombo (std::vector<Descriptor *> & descriptors);
+	virtual ~ComparisonCombo ();  ///< Delete all comparisons we are holding.
+
+	virtual Vector<float> preprocess (const Vector<float> & value) const;
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+
+	std::vector<Comparison *> comparisons;
+	std::vector<int> dimensions;
+	int totalDimension;
+  };
+
+  /**
+	 Uses the correlation value, in range [-1,1], after normalizing each
+	 vector.  Returns positive correlations directly, and clips negative
+	 correlations to zero probability.  Normalization process is 1) subtract
+	 mean of elements in vector, and 2) scale vector to unit norm.
+
+	 May add other modes.  Two possibilities are:
+	 * Affinely map [-1,1] onto [0,1].
+	 * Let probability = absolute value of correlation
   **/
   class NormalizedCorrelation : public Comparison
   {
   public:
+	NormalizedCorrelation (bool subtractMean = true, float gamma = 1.0f);
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+
+	bool subtractMean;  ///< Indicates that during normalization, subtract the mean of the elements in the vector.
+	float gamma;  ///< Exponent of gamma function that maps correlations to probabilities.  Semantics are slightly different than gamma value in graphics.  Here we have y = x^gamma, rather than y = x^(1/gamma).
   };
 
   /**
-	 Returns the stardard Euclidean distance between two points.  Does no
-	 pre-processing.
+	 Uses the stardard Euclidean distance between two points.
+	 Maps zero distance to probability 1 and infinite distance to
+	 probability zero.
   **/
   class MetricEuclidean : public Comparison
   {
   public:
+	MetricEuclidean (float scale = 1.0f, float offset = 0.0f);
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+
+	float scale;  ///< Factor by which to multiply the Euclidean distance before squashing into a probability value.
+	float offset;  ///< Term to add to Euclidean distance before squashing into a probability value.
+  };
+
+  /**
+	 Counts number of similar entries in a pair of histograms.  Measures
+	 "similarity" as the ratio of the smaller entry to the larger entry.
+	 Scales count by the number entries in one of the histograms.
+   **/
+  class HistogramIntersection : public Comparison
+  {
+  public:
+	HistogramIntersection (float gamma = 1.0f);
+
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+
+	float gamma;  ///< Map intersection value i to probability p as: p = i^gamma.
+  };
+
+  /**
+	 Sum up the measure 1 - (a - b)^2 / (a + b) over all the elements of the
+	 two vectors.
+   **/
+  class ChiSquared : public Comparison
+  {
+  public:
+	ChiSquared (float gamma = 1.0f);
+
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+
+	float gamma;  ///< Exponent of gamma function that maps chi^2 to probability.  See NormalizedCorrelation::gamma.
   };
 
 
@@ -62,7 +121,6 @@ namespace fl
   class Descriptor
   {
   public:
-	Descriptor ();  ///< Initializes monochrome to true.  Color descriptors should change this in their own contructors.
 	virtual ~Descriptor ();
 
 	virtual Vector<float> value (const Image & image, const Point & point);  ///< Calls PointAffine version with default values for scale, angle and shape.
@@ -71,11 +129,37 @@ namespace fl
 	virtual Vector<float> value (const Image & image);  ///< Describe entire region that has non-zero alpha values.  Descriptor may treat all non-zero alpha values the same, or use them to weight the pixels.  This method is only available in Descriptors that don't require a specific point of reference.  IE: a spin image must have a central point, so it can't implement this method.
 	virtual Image patch (const Vector<float> & value) = 0;  ///< Return a graphical representation of the descriptor.  Preferrably an image patch that would stimulate this descriptor to return the given value.
 	virtual Comparison * comparison ();  ///< Return an instance of the recommended Comparison for feature vectors from this type of Descriptor.  Caller is responsible to destroy instance.
+	virtual bool isMonochrome ();  ///< Returns true if this descriptor works only on intensity values.  Returns false if this descriptor uses color channels in some way.
+	virtual int dimension ();  ///< Number of elements in result of value().  Returns 0 if dimension can change from one call to the next.
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
+  };
 
-	bool monochrome;  ///< Indicates that this descriptor works only on intensity values.  If false, this descriptor uses color channels in some way.
+  /**
+	 Applies several descriptors to a patch at once and returns the
+	 concatenation of all their feature vectors.
+   **/
+  class DescriptorCombo : public Descriptor
+  {
+  public:
+	DescriptorCombo ();
+	virtual ~DescriptorCombo ();  ///< Delete all descriptors we are holding.
+
+	void add (Descriptor * descriptor);  ///< Append another descriptor to the list.  This object takes responsibility for the pointer.
+	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Image patch (const Vector<float> & value);
+	virtual Comparison * comparison ();
+	virtual bool isMonochrome ();
+	virtual int dimension ();
+
+	std::vector<Descriptor *> descriptors;
+	int dimension_;
+	bool monochrome;
+
+	const Image * lastImage;
+	void *        lastBuffer;
+	Image grayImage;
   };
 
   /**
@@ -102,7 +186,7 @@ namespace fl
   class DescriptorOrientation : public Descriptor
   {
   public:
-	DescriptorOrientation (float supportRadial = 6, int supportPixel = 32, float kernelSize = 2.5f);
+	DescriptorOrientation (float supportRadial = 6.0f, int supportPixel = 32, float kernelSize = 2.5f);
 	void initialize (float supportRadial, int supportPixel, float kernelSize);
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
@@ -112,7 +196,7 @@ namespace fl
 
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel + 1.
 	float supportRadial;  ///< Number of sigmas away from center to include in patch (where 1 sigma = size of characteristic scale).
-	float kernelSize;  ///< Number of sigmas of the Gaussian kernel to cover the radius fo the patch.
+	float kernelSize;  ///< Number of sigmas of the Gaussian kernel to cover the radius fo the patch.  Similar semantics to supportRadial, except applies to the derivation kernels.
 	GaussianDerivativeFirst Gx;
 	GaussianDerivativeFirst Gy;
   };
@@ -124,23 +208,58 @@ namespace fl
   class DescriptorOrientationHistogram : public Descriptor
   {
   public:
-	DescriptorOrientationHistogram (int bins = 36, float supportRadial = 4.5f, int supportPixel = 16);
+	DescriptorOrientationHistogram (float supportRadial = 4.5f, int supportPixel = 16, float kernelSize = 2.5f, int bins = 36);
 
-	void computeGradient (const Image & image);  ///< Same as DescriptorSIFT::computeGradient().  TODO: combine somehow.
+	void computeGradient (const Image & image);
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
-	int bins;  ///< Number of orientation bins in histogram.
 	int supportPixel;  ///< Pixel radius of patch, if needed.  Patch size = 2 * supportPixel.
 	float supportRadial;  ///< Number of sigmas away from center to include in histogram.
+	float kernelSize;  ///< Similar to DescriptorOrientation::kernelSize, except that this class achieves the same effect by raising blur to the appropriate level.  Only applies to patches with shape change.
+	int bins;  ///< Number of orientation bins in histogram.
 	float cutoff;  ///< Ratio of maximum histogram value above which to accept secondary maxima.
 
 	const Image * lastImage;  ///< For cacheing derivative images.
+	void *        lastBuffer;  ///< For cacheing derivative images.  Allows finer granularity in detecting change.
 	ImageOf<float> I_x;
 	ImageOf<float> I_y;
+  };
+
+  /**
+	 Measures the degree of intensity variation in a patch.  The formula
+	 for the resulting value is
+	 \f[
+	 \sum_{p\in I}|\nabla I(p)|^2 \over{|I|}
+	 \f],
+	 that is, the average squared gradient length.
+
+	 The scale at which the gradient is measured directly impacts the meaning
+	 of the resulting value.  If you measure gradient at a large scale
+	 relative to the patch, you effectively measure overall orientation
+	 strength.  If you measure at smaller scales, you effectively measure
+	 the descriptiveness of the graylevel texture.  You can control the
+	 scale level by manipulating the ratio of supportRadial to supportPixel.
+   **/
+  class DescriptorContrast : public Descriptor
+  {
+  public:
+	DescriptorContrast (float supportRadial = 6.0f, int supportPixel = 32);
+
+	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Image patch (const Vector<float> & value);
+	virtual Comparison * comparison ();
+	virtual int dimension ();
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true);
+
+	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel.
+	float supportRadial;  ///< Number of sigmas away from center to include in patch (where 1 sigma = size of characteristic scale).
+
+	SlideShow * window;  ///< Temporary for debugging.
   };
 
   class DescriptorFilters : public Descriptor
@@ -178,6 +297,8 @@ namespace fl
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
+	virtual Comparison * comparison ();
+	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
@@ -238,36 +359,15 @@ namespace fl
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
+	virtual Comparison * comparison ();
+	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
-
-	// Subroutines for value ()
-	virtual void rangeMinMax (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float & minIntensity, float & quantum);  ///< Finds intensity range based on simple min and max pixel values
-	virtual void rangeMeanDeviation (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float & minIntensity, float & quantum);  ///< Finds intensity range using mean and standard deviation of pixel values
-	virtual void doBinning (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float minIntensity, float quantum, float binRadius, Vector<float> & result);  ///< Perform the actually binning process
 
 	int   binsRadial;
 	int   binsIntensity;
 	float supportRadial;
 	float supportIntensity;  ///< Number of standard deviations away from avarge intensity.
-  };
-
-  class DescriptorSpinSimple : public DescriptorSpin
-  {
-  public:
-	DescriptorSpinSimple (int binsRadial = 5, int binsIntensity = 6, float supportRadial = 3, float supportIntensity = 3);
-
-	virtual void rangeMinMax (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float & minIntensity, float & quantum);
-	virtual void rangeMeanDeviation (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float & minIntensity, float & quantum);
-	virtual void doBinning (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float minIntensity, float quantum, float binRadius, Vector<float> & result);
-  };
-
-  class DescriptorSpinExact : public DescriptorSpin
-  {
-  public:
-	DescriptorSpinExact (int binsRadial = 5, int binsIntensity = 6, float supportRadial = 3, float supportIntensity = 3);
-
-	virtual void doBinning (const Image & image, const PointAffine & point, int x1, int y1, int x2, int y2, float width, float minIntensity, float quantum, float binRadius, Vector<float> & result);
   };
 
   /**
@@ -283,6 +383,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();  ///< Return a MetricEuclidean, rather than the default (NormalizedCorrelation).
+	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
@@ -293,7 +394,8 @@ namespace fl
 	float sigmaWeight;  ///< Size of Gaussian that weights the entries in the bins.
 	float maxValue;  ///< Largest permissible entry in one bin.
 
-	const Image * lastImage;  ///< The image most recently processed to find gradient vectors.  Allows some caching.
+	const Image * lastImage;  ///< For cacheing derivative images.
+	void *        lastBuffer;  ///< For cacheing derivative images.  Allows finer granularity in detecting change.
 	ImageOf<float> I_x;  ///< x component of gradient vectors
 	ImageOf<float> I_y;  ///< y component of gradient vectors
   };
@@ -316,6 +418,9 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
+	virtual Comparison * comparison ();
+	virtual bool isMonochrome ();
+	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
@@ -349,6 +454,9 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
+	virtual Comparison * comparison ();
+	virtual bool isMonochrome ();
+	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
@@ -382,6 +490,7 @@ namespace fl
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	const Image * lastImage;  ///< Pointer to the currently cached input image.
+	void *        lastBuffer;  ///< Pointer to buffer of currently cached input image.  Allows finer granularity in detecting change.
 	std::vector< ImageOf<float> > responses;  ///< Responses to each filter in the bank over the entire input image.
 
 	int angles;  ///< Number of discrete orientations in the filter bank.
