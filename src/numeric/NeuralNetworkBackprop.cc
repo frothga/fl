@@ -1,6 +1,5 @@
 #include "fl/neural.h"
-
-#include <math.h>
+#include "fl/math.h"
 
 
 using namespace std;
