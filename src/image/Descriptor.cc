@@ -7,11 +7,6 @@ using namespace fl;
 
 // class Descriptor -----------------------------------------------------------
 
-Descriptor::Descriptor ()
-{
-  monochrome = true;
-}
-
 Descriptor::~Descriptor ()
 {
 }
@@ -38,6 +33,18 @@ Comparison *
 Descriptor::comparison ()
 {
   return new NormalizedCorrelation;
+}
+
+bool
+Descriptor::isMonochrome ()
+{
+  return true;
+}
+
+int
+Descriptor::dimension ()
+{
+  return 0;
 }
 
 void
