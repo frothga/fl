@@ -12,19 +12,30 @@ namespace fl
   public:
 	Point ();
 	Point (float x, float y);
-	Point (const MatrixAbstract<float> & A);
-	Point (const MatrixAbstract<double> & A);
+	template<class T>
+	Point (const MatrixAbstract<T> & A)
+	{
+	  x = A[0];
+	  y = A[1];
+	}
 	Point (std::istream & stream);
 
-	//operator Vector<float> ();
-	//operator Vector<double> ();
+	//operator Vector<double> () const;
+	Vector<float> homogenous (float third) const;
+	Vector<float> homogenous (float third, float fourth) const;
 
-	virtual float & operator () (const int row, const int column) const;
-    virtual float & operator [] (const int row) const;
+	virtual float & operator () (const int row, const int column) const
+	{
+	  return const_cast<float *> (&x) [row];
+	}
+    virtual float & operator [] (const int row) const
+	{
+	  return const_cast<float *> (&x) [row];
+	}
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<float> * duplicate () const;
-	virtual void resize (const int rows, const int columns = 1);  // We only have one size, so this may produce an exception.
+	virtual void resize (const int rows, const int columns = 1);  // We only have one size.  This will throw an exception if (rows * columns) != 2.
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = false);  // withName is ignored, and no class id is ever written for Points
@@ -44,10 +55,6 @@ namespace fl
 	// image, usually one-time calculations.
 	float x;
 	float y;
-
-	// For use in pretending to be a homogenous coordinate vector
-	static float zero;
-	static float one;
   };
 
   class PointInterest : public Point
@@ -63,21 +70,26 @@ namespace fl
 	float weight;  // strength of response of interest operator
 	float scale;  // "characteristic scale" of image around interest point
 
+	enum DetectorType
+	{
+	  Harris,
+	  Laplacian
+	};
+	DetectorType detector;  // which interest point detector found this point?
+
 	bool operator < (const PointInterest & that) const
 	{
 	  return weight < that.weight;
 	}
   };
 
-  // Encapsulate additional information needed to correct the patch around a
-  // point so the x and y gradients are equal.
-  class PointInterestAffine : public PointInterest
+  class PointAffine : public PointInterest
   {
   public:
-	PointInterestAffine ();
-	PointInterestAffine (const Point & p);
-	PointInterestAffine (const PointInterest & p);
-	PointInterestAffine (std::istream & stream);
+	PointAffine ();
+	PointAffine (const Point & p);
+	PointAffine (const PointInterest & p);
+	PointAffine (std::istream & stream);
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = false);
