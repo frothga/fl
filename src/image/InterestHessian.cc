@@ -10,7 +10,37 @@ using namespace std;
 using namespace fl;
 
 
-// class InterestHessian ----------------------------------------------
+/*
+  Notes:
+
+  At small scales, Hessian finds a large number of points.  On a histogram of
+  count versus response value, most of the points appear close to zero response.
+  There is actually a hump (fast rise, fast fall) near (but not at) zero.
+  After that, it appears to fall off exonentially until it reaches the maximum
+  response value, at which point (of course) there are no more points.  :)
+
+  As scale gets larger, the hump gradually dissappears, and the curve gets
+  more level.  Also, the number of points goes down.  The fact that we are
+  zooming in a piece of texture predicts both of these effects.  If you look
+  at just the "hill", the amount of area at each response level becomes more
+  equal; whereas if you look at the hill and the plains surrounding it, most
+  of the response values will be at the low end.  Also, as you zoom in there
+  will be fewer maxima.
+
+  I tried writing code that would histogram the points and cut off the hump,
+  on the assumption that they were noise.  This approach does not work any
+  better than using standard deviation in some form (either relative to zero
+  or to the average).
+
+  The problem is that a threshold found on std goes up with scale, and if the
+  multiple is high enough (say 2 or greater) it eventually exceeds the maximum,
+  and so allows no points.  A hack to work around this allows *all* points
+  once the threshold exceeds the maximum.  This works because at large scales
+  there are very few points at any response level.
+*/
+
+
+// class InterestHessian ------------------------------------------------------
 
 InterestHessian::InterestHessian (int maxPoints, float thresholdFactor, float neighborhood, float firstScale, float lastScale, int extraSteps, float stepSize)
 {
@@ -64,6 +94,7 @@ InterestHessian::run (const Image & image, std::multiset<PointInterest> & result
   result.clear ();
 
   AbsoluteValue abs;
+  float lastThreshold = 0.2;  // some reasonable default, in case no good threshold is found before we need this variable.
 
   for (int i = 0; i < filters.size (); i++)
   {
@@ -86,10 +117,26 @@ double startTime = getTimestamp ();
 	NonMaxSuppress nms (nmsSize);
 	filtered *= nms;
 
-	IntensityDeviation std (nms.average, true);
+	IntensityDeviation std (0, true);
 	filtered * std;
-	float threshold = nms.average + std.deviation * thresholdFactor;
+	float threshold = max (0.0f, std.deviation * thresholdFactor);
 
+	// Hack for large scales
+	if (nms.count < 20)
+	{
+	  threshold = 0;
+	}
+	else if (nms.count < 100)  // Approaching flat distribution
+	{
+	  threshold = lastThreshold * nms.count / 100;  // Gradually ease back to zero.
+	}
+	else
+	{
+	  lastThreshold = threshold;
+	}
+cerr << " " << nms.count << " " << std.deviation << " " << threshold;
+
+int added = 0;
 	for (int y = 0; y < filtered.height; y++)
 	{
 	  for (int x = 0; x < filtered.width; x++)
@@ -122,6 +169,7 @@ double startTime = getTimestamp ();
 
 		  if (p.scale > 0)
 		  {
+added++;
 			p.weight = pixel;
 			p.detector = PointInterest::Laplacian;
 			result.insert (p);
@@ -133,6 +181,6 @@ double startTime = getTimestamp ();
 		}
 	  }
 	}
-cerr << " " << getTimestamp () - startTime << endl;
+cerr << " " << added << " " << getTimestamp () - startTime << endl;
   }
 }
