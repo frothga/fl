@@ -14,6 +14,7 @@ CanvasPS::CanvasPS (const std::string & fileName, float width, float height)
 : psf (fileName.c_str ())
 {
   scale = 1.0;
+  lineWidth = 1.0;
   bboxL = 72;
   bboxB = 72;
   bboxR = bboxL + width;
@@ -40,6 +41,11 @@ CanvasPS::CanvasPS (const std::string & fileName, float width, float height)
   psf << "/st {setrgbcolor stroke} def" << endl;
   psf << "/tr {translate} def" << endl;
   psf << endl;
+
+  // Set coordinate system similar to image rasters.  A freshly constructed
+  // CanvasPS acts just like a CanvasImage.
+  setTranslation (bboxL, bboxT);
+  setScale (1, -1);
 }
 
 CanvasPS::~CanvasPS ()
@@ -187,6 +193,14 @@ CanvasPS::setScale (float x, float y)
   scale = x >? y;
 
   psf << x << " " << y << " sc" << endl;
-  psf << 1.0 / scale << " slw" << endl;
+  psf << lineWidth / scale << " slw" << endl;
+  psf << endl;
+}
+
+void
+CanvasPS::setLineWidth (float width)
+{
+  lineWidth = width;
+  psf << lineWidth / scale << " slw" << endl;
   psf << endl;
 }
