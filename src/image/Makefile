@@ -34,12 +34,18 @@ CONVOLVE_O = \
 	Convolution1D.o \
 	Gaussian1D.o \
 	GaussianDerivative1D.o \
+	GaussianDerivativeSecond1D.o \
 	FilterHarris.o \
 	FilterHarrisEigen.o \
+	FilterHessian.o \
 	NonMaxSuppress.o \
+	IntensityAverage.o \
+	IntensityDeviation.o \
+	IntensityHistogram.o \
 	Normalize.o \
 	AbsoluteValue.o \
 	Rescale.o \
+	Rotate90.o \
 	Rotate180.o \
 	Transform.o \
 	TransformGauss.o \
@@ -47,6 +53,7 @@ CONVOLVE_O = \
 
 DESCRIPTOR_O = \
 	Descriptor.o \
+	DescriptorScale.o \
 	DescriptorFilters.o \
 	DescriptorFiltersTexton.o \
 	DescriptorPatch.o \
@@ -60,7 +67,8 @@ INTEREST_O = \
 	Interest.o \
 	InterestHarris.o \
 	InterestHarrisLaplacian.o \
-	InterestLaplacian.o 
+	InterestLaplacian.o \
+	InterestHessian.o
 
 VIDEO_O = \
 	Video.o \
@@ -73,12 +81,12 @@ DescriptorSpin.o:
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $*.cc -ffloat-store
 
 
-test: test.o $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(CONVOLVE_O)
+test: test.o $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(INTEREST_O) $(CONVOLVE_O) $(VIDEO_O) $(CANVAS_O)
 	g++ -o $@ $^ -L../../lib -lflNumeric -lflX $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) # -lefence
 
 
 clean:
-	rm -f *~ *.o core core.* Dependencies test $(SOURCE_LIB)/libflImage.a
+	rm -f *~ *.o core core.* test $(SOURCE_LIB)/libflImage.a
 
 depend:
 	rm -f Dependencies
