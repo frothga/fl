@@ -39,12 +39,19 @@ MATRIX_INT_O = \
 	VectorInt.o \
 	MatrixSparseInt.o
 
-SEARCH_O = \
-	SearchableNumeric.o \
-	SearchableSparse.o \
-	AnnealingAdaptive.o \
-	LevenbergMarquardt.o \
-	LevenbergMarquardtSparseBK.o
+SEARCH_DOUBLE_O = \
+	SearchableNumericDouble.o \
+	SearchableSparseDouble.o \
+	AnnealingAdaptiveDouble.o \
+	LevenbergMarquardtDouble.o \
+	LevenbergMarquardtSparseBKDouble.o
+
+SEARCH_FLOAT_O = \
+	SearchableNumericFloat.o \
+	SearchableSparseFloat.o \
+	AnnealingAdaptiveFloat.o \
+	LevenbergMarquardtFloat.o \
+	LevenbergMarquardtSparseBKFloat.o
 
 ROOTS_O = \
 	zroots.o
@@ -66,7 +73,7 @@ REDUCE_O = \
 	PCA.o \
 	MDA.o
 
-libflNumeric.a: $(MATRIX_DOUBLE_O) $(MATRIX_FLOAT_O) $(MATRIX_BOOL_O) $(MATRIX_INT_O) $(MATRIX_COMPLEX_DOUBLE_O) $(SEARCH_O) $(ROOTS_O) $(CLUSTER_O) $(NEURAL_O) $(REDUCE_O)
+libflNumeric.a: $(MATRIX_DOUBLE_O) $(MATRIX_FLOAT_O) $(MATRIX_BOOL_O) $(MATRIX_INT_O) $(MATRIX_COMPLEX_DOUBLE_O) $(SEARCH_DOUBLE_O) $(SEARCH_FLOAT_O) $(ROOTS_O) $(CLUSTER_O) $(NEURAL_O) $(REDUCE_O)
 	ar rcsv $(SOURCE_LIB)/$@ $^
 
 
