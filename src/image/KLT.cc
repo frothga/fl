@@ -70,7 +70,6 @@ KLT::KLT (int windowRadius, int searchRadius)
 
   // Create convolution kernels
   preBlur = Gaussian1D (windowWidth * 0.1, Boost);
-  pyramidBlur = Gaussian1D (sqrt (pyramidRatio * pyramidRatio / 4.0 - 0.25), Boost);  // sigma_needed^2 = sigma_new^2 - sigma_old^2; sigma_new = pyramidRatio * sigma_old; sigma_old = 0.5 by definition
 
   // Create pyramids
   pyramid0.resize (levels, ImageOf<float> (GrayFloat));
@@ -83,34 +82,12 @@ KLT::nextImage (const Image & image)
   pyramid0[0] = pyramid1[0];
   pyramid1[0] = image * GrayFloat * preBlur;
 
-  const float start = pyramidRatio / 2;
-
+  TransformGauss t (1.0 / pyramidRatio, 1.0 / pyramidRatio);
   for (int i = 1; i < pyramid0.size (); i++)
   {
 	ImageOf<float> & p = pyramid1[i];
 	pyramid0[i] = p;
-	p.detach ();
-
-	int hw = pyramid1[i-1].width / pyramidRatio;
-	int hh = pyramid1[i-1].height / pyramidRatio;
-	p.resize (hw, hh);
-
-	pyramidBlur.direction = Horizontal;
-	Image temp = pyramid1[i-1] * pyramidBlur;
-
-	pyramidBlur.direction = Vertical;
-	Point t;
-	t.y = start;
-	for (int y = 0; y < hh; y++)
-	{
-	  t.x = start;
-	  for (int x = 0; x < hw; x++)
-	  {
-		p(x,y) = pyramidBlur.response (temp, t);
-		t.x += pyramidRatio;
-	  }
-	  t.y += pyramidRatio;
-	}
+	p = pyramid1[i-1] * t;
   }
 }
 
