@@ -19,7 +19,6 @@ killRadius (float limit, Image & image)
 {
   float cx = (image.width - 1) / 2.0f;
   float cy = (image.height - 1) / 2.0f;
-  float zero = 0;
 
   for (int y = 0; y < image.height; y++)
   {
@@ -30,7 +29,7 @@ killRadius (float limit, Image & image)
 	  float d = sqrtf (dx * dx + dy * dy);
 	  if (d > limit)
 	  {
-		image.setGray (x, y, &zero);
+		image.setGray (x, y, 0.0f);
 	  }
 	}
   }
