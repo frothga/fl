@@ -56,13 +56,13 @@ namespace fl
 	void          getRGBA  (int x, int y, float values[]) const;
 	unsigned int  getYUV   (int x, int y) const;
 	unsigned char getGray  (int x, int y) const;
-	void          getGray  (int x, int y, float * value) const;
+	void          getGray  (int x, int y, float & gray) const;
 	unsigned char getAlpha (int x, int y) const;
 	void          setRGBA  (int x, int y, unsigned int rgba);  ///< The "rgb" format is always 24-bit RGB, 8 bits per field.  Blue is in the least significant byte, then green, then red.
 	void          setRGBA  (int x, int y, float values[]);
 	void          setYUV   (int x, int y, unsigned int yuv);
 	void          setGray  (int x, int y, unsigned char gray);
-	void          setGray  (int x, int y, float * value);
+	void          setGray  (int x, int y, float gray);
 	void          setAlpha (int x, int y, unsigned char alpha);
 
 	// Data
@@ -177,14 +177,14 @@ namespace fl
 	virtual void          getXYZ   (void * pixel, float values[]) const;
 	virtual unsigned int  getYUV   (void * pixel) const;
 	virtual unsigned char getGray  (void * pixel) const;
-	virtual void          getGray  (void * pixel, float * gray) const;
+	virtual void          getGray  (void * pixel, float & gray) const;
 	virtual unsigned char getAlpha (void * pixel) const;  ///< Returns fully opaque by default.  PixelFormats that actually have an alpha channel must override this to return correct value.
 	virtual void          setRGBA  (void * pixel, unsigned int rgba) const = 0;
 	virtual void          setRGBA  (void * pixel, float values[]) const;  ///< Each value must be in [0,1].  Values outside this range will be clamped and modified directly in the array.
 	virtual void          setXYZ   (void * pixel, float values[]) const;
 	virtual void          setYUV   (void * pixel, unsigned int yuv) const;
 	virtual void          setGray  (void * pixel, unsigned char gray) const;
-	virtual void          setGray  (void * pixel, float * gray) const;
+	virtual void          setGray  (void * pixel, float gray) const;
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;  ///< Ignored by default.  Formats that actually have an alpha channel must override this method.
 
 	int depth;  ///< Number of bytes in one pixel, including any padding
@@ -214,11 +214,11 @@ namespace fl
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getXYZ  (void * pixel, float values[]) const;
 	virtual unsigned char getGray (void * pixel) const;
-	virtual void          getGray (void * pixel, float * gray) const;
+	virtual void          getGray (void * pixel, float & gray) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
 	virtual void          setXYZ  (void * pixel, float values[]) const;
 	virtual void          setGray (void * pixel, unsigned char gray) const;
-	virtual void          setGray (void * pixel, float * gray) const;
+	virtual void          setGray (void * pixel, float gray) const;
   };
 
   class PixelFormatGrayFloat : public PixelFormat
@@ -237,12 +237,12 @@ namespace fl
 	virtual void          getRGBA (void * pixel, float values[]) const;
 	virtual void          getXYZ  (void * pixel, float values[]) const;
 	virtual unsigned char getGray (void * pixel) const;
-	virtual void          getGray (void * pixel, float * gray) const;
+	virtual void          getGray (void * pixel, float & gray) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
 	virtual void          setRGBA (void * pixel, float values[]) const;
 	virtual void          setXYZ  (void * pixel, float values[]) const;
 	virtual void          setGray (void * pixel, unsigned char gray) const;
-	virtual void          setGray (void * pixel, float * gray) const;
+	virtual void          setGray (void * pixel, float gray) const;
   };
 
   class PixelFormatGrayDouble : public PixelFormat
@@ -261,12 +261,12 @@ namespace fl
 	virtual void          getRGBA (void * pixel, float values[]) const;
 	virtual void          getXYZ  (void * pixel, float values[]) const;
 	virtual unsigned char getGray (void * pixel) const;
-	virtual void          getGray (void * pixel, float * gray) const;
+	virtual void          getGray (void * pixel, float & gray) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
 	virtual void          setRGBA (void * pixel, float values[]) const;
 	virtual void          setXYZ  (void * pixel, float values[]) const;
 	virtual void          setGray (void * pixel, unsigned char gray) const;
-	virtual void          setGray (void * pixel, float * gray) const;
+	virtual void          setGray (void * pixel, float gray) const;
   };
 
   class PixelFormatRGBAChar : public PixelFormat
@@ -592,9 +592,9 @@ namespace fl
   }
 
   inline void
-  Image::getGray (int x, int y, float * value) const
+  Image::getGray (int x, int y, float & gray) const
   {
-	format->getGray (& ((char *) buffer)[(y * width + x) * format->depth], value);
+	format->getGray (& ((char *) buffer)[(y * width + x) * format->depth], gray);
   }
 
   inline unsigned char
@@ -622,9 +622,9 @@ namespace fl
   }
 
   inline void
-  Image::setGray (int x, int y, float * value)
+  Image::setGray (int x, int y, float gray)
   {
-	format->setGray (& ((char *) buffer)[(y * width + x) * format->depth], value);
+	format->setGray (& ((char *) buffer)[(y * width + x) * format->depth], gray);
   }
 
   inline void
