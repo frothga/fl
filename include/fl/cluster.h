@@ -4,6 +4,7 @@
 
 #include "fl/matrix.h"
 #include "fl/socket.h"
+#include "fl/descriptor.h"
 
 #include <iostream>
 #include <vector>
@@ -20,8 +21,6 @@ namespace fl
   class ClusterMethod
   {
   public:
-	static ClusterMethod * factory (std::istream & stream);
-
 	virtual void          run (const std::vector< Vector<float> > & data) = 0;  ///< Peform clustering on collection of points.
 	virtual int           classify (const Vector<float> & point) = 0;  ///< Determine the single best class of given point.
 	virtual Vector<float> distribution (const Vector<float> & point) = 0;  ///< Return a probability distribution over the classes.  Row number in the returned Vector corresponds to class number.
@@ -31,8 +30,8 @@ namespace fl
 	// The read () and write () methods should serialize enough data to either
 	// resume clustering with a call to run () or to answer cluster queries via
 	// classify () and representative ().
-	virtual void read (std::istream & stream, bool withName = false) = 0;
-	virtual void write (std::ostream & stream) = 0;
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = false);
 
 	bool stop;  ///< If set true, signals run () to terminate at the next reasonable spot.  run () should clear this flag when it first starts, but only monitor it after that.
   };
@@ -73,11 +72,13 @@ namespace fl
 	virtual Vector<float> distribution (const Vector<float> & point);
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
-	virtual void          read (std::istream & stream, bool withName = false);
-	virtual void          write (std::ostream & stream);
+	virtual void          read (std::istream & stream);
+	virtual void          write (std::ostream & stream, bool withName = false);
 
+	void initialize (const std::vector< Vector<float> > & data);
 	void estimate (const std::vector< Vector<float> > & data, Matrix<float> & member, int jbegin, int jend);
-	float maximize (const std::vector <Vector<float> > & data, const Matrix<float> & member, int i);
+	float maximize (const std::vector< Vector<float> > & data, const Matrix<float> & member, int i);
+	bool convergence (const std::vector< Vector<float> > & data, const Matrix<float> & member, float largestChange);
 
 	// State of clustering process
 	float maxSize;  ///< Largest length of dominant axis of covariance matrix.  If any cluster exceeds this value, create a new cluster.
@@ -168,14 +169,52 @@ namespace fl
 	virtual Vector<float> distribution (const Vector<float> & point);
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
-	virtual void          read (std::istream & stream, bool withName = false);
-	virtual void          write (std::ostream & stream);
+	virtual void          read (std::istream & stream);
+	virtual void          write (std::ostream & stream, bool withName = false);
 
 	std::vector<ClusterCosine> map;
 	int width;  ///< Number of discrete positions in one dimension.
 	float sigma;  ///< Of Gaussian that determines neighborhood to be updated.
 	float learningRate;  ///< How much to scale feature vector during update.
 	float decayRate;  ///< How much to scale learningRate after each iteration.
+  };
+
+
+  // Agglomerative clustering -------------------------------------------------
+
+  class ClusterAgglomerative
+  {
+  public:
+	ClusterAgglomerative (const Vector<float> & center, int count = 1);
+	ClusterAgglomerative (std::istream & stream);
+
+	void operator += (const ClusterAgglomerative & that);
+	void read (std::istream & stream);
+	void write (std::ostream & stream);
+
+	Vector<float> center;
+	int count;  ///< Number of data represented by this cluster.
+  };
+
+  class Agglomerate : public ClusterMethod
+  {
+  public:
+	Agglomerate (Comparison * comparison, float distanceLimit, int minClusters = 1);
+	Agglomerate (std::istream & stream);
+	~Agglomerate ();
+
+	virtual void          run (const std::vector< Vector<float> > & data);
+	virtual int           classify (const Vector<float> & point);
+	virtual Vector<float> distribution (const Vector<float> & point);
+	virtual int           classCount ();
+	virtual Vector<float> representative (int group);
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = false);
+
+	Comparison * comparison;
+	float distanceLimit;  ///< The largest distance permissible between two clusters.
+	int minClusters;  ///< The target number of clusters at convergence.  Result will be no smaller than this unless there are fewer input data.
+	std::vector<ClusterAgglomerative *> clusters;
   };
 }
 
