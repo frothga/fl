@@ -137,14 +137,21 @@ namespace fl
   T
   MatrixAbstract<T>::dot (const MatrixAbstract<T> & B) const
   {
-	int h = std::min (rows (), B.rows ());
-	int w = std::min (columns (), B.columns ());
+	int h = rows ();
+	int w = columns ();
+	int bh = B.rows ();
+	int count = bh * B.columns ();
+	int i = 0;
 	T result = (T) 0;
 	for (int c = 0; c < w; c++)
 	{
 	  for (int r = 0; r < h; r++)
 	  {
-		result += (*this) (r, c) * B (r, c);
+		result += (*this)(r,c) * B(i % bh, i / bh);
+		if (++i >= count)
+		{
+		  return result;
+		}
 	  }
 	}
 	return result;
