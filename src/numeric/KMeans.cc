@@ -247,7 +247,7 @@ KMeans::maximize (const vector<Vector<float> > & data, const Matrix<float> & mem
 	covariance += delta * ~delta *= member (i, j);
   }
   covariance /= sum;
-  if (covariance.norm (1) == 0)
+  if (covariance.frob (1) == 0)
   {
 	cerr << "covariance went to zero; setting to I * " << smallestNormalFloat << endl;
 	covariance.identity (smallestNormalFloat);
@@ -255,7 +255,7 @@ KMeans::maximize (const vector<Vector<float> > & data, const Matrix<float> & mem
 
   // Record changes to cluster.  While we are at it, detect if we have
   // converged.
-  float result = (center - clusters[i].center).norm (2);
+  float result = (center - clusters[i].center).frob (2);
   clusters[i].center = center;
   clusters[i].prepareInverse ();
 
@@ -278,6 +278,12 @@ KMeans::classify (const Vector<float> & point)
   }
 
   return result;
+}
+
+int
+KMeans::classCount ()
+{
+  return clusters.size ();
 }
 
 Vector<float>
