@@ -18,10 +18,12 @@ namespace fl
 	return t.tv_sec + (double) t.tv_usec / 1e6;
   }
 
-  // Like a stopwatch, this class can accumulate time from several separate
-  // events.
-  // Note that each method, regardless of its purpose, moves the internal
-  // timestamp forward to the current point in time.
+  /**
+	 Like a stopwatch, this class accumulates time as long as it is
+	 "running", and it can be paused.  It starts running the moment
+	 it is created.  In addition to stopping and starting, it can
+	 also clear its accumulated time and start from zero again.
+  **/
   class Stopwatch
   {
   public:
@@ -30,33 +32,59 @@ namespace fl
 	  reset ();
 	}
 
+	/**
+	   Clears accumulated time and starts running.
+	 **/
 	void reset ()
 	{
-	  total = 0;
+	  accumulator = 0;
 	  timestamp = getTimestamp ();
 	}
 
+	/**
+	   Restarts the accumulation of time.  If this stopwatch is already
+	   running, then this method throws away all time since that last
+	   start, but retains any time accumulated before that start.
+	 **/
 	void start ()
 	{
 	  timestamp = getTimestamp ();
 	}
 
-	// stop() updates total time and then effectively calls start()
+	/**
+	   Updates total time and then effectively calls start()
+	**/
 	void stop ()
 	{
 	  double current = getTimestamp ();
-	  total += current - timestamp;
-	  timestamp = current;
+	  if (timestamp)
+	  {
+		accumulator += current - timestamp;
+	  }
+	  timestamp = 0;
 	}
 
-	double total;
+	double total () const
+	{
+	  double current = getTimestamp ();
+	  if (timestamp)
+	  {
+		return accumulator + current - timestamp;
+	  }
+	  else
+	  {
+		return accumulator;
+	  }
+	}
+
+	double accumulator;
 	double timestamp;
   };
 
   inline std::ostream &
   operator << (std::ostream & stream, const Stopwatch & stopwatch)
   {
-	stream << stopwatch.total;
+	stream << stopwatch.total ();
 	return stream;
   }
 }
