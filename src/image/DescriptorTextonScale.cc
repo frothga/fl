@@ -67,11 +67,12 @@ DescriptorTextonScale::initialize ()
 void
 DescriptorTextonScale::preprocess (const Image & image)
 {
-  if (lastImage == &image)
+  if (lastImage == &image  &&  lastBuffer == (void *) image.buffer)
   {
 	return;
   }
   lastImage = &image;
+  lastBuffer = (void *) image.buffer;
 
   ImageOf<float> work;
   if (*image.format == GrayFloat)
