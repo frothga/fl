@@ -17,6 +17,7 @@ VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName, const PixelF
   cc = 0;
   packet.size = 0;
   timestampMode = false;
+  seekLinear = false;
 
   this->hint = &hint;
   this->fileName = fileName;
@@ -37,29 +38,6 @@ VideoInFileFFMPEG::seekFrame (int frame)
 	return;
   }
 
-  // TODO: Hack to work around problem with AVI seeking.  Remove as soon as AVI seek works right.
-  /*
-  if (fileName.find (".avi") != string::npos)
-  {
-	if (frame < cc->frame_number)
-	{
-	  close ();
-	  open (fileName);
-	}
-	while (cc->frame_number < frame)
-	{
-	  readNext (NULL);
-	  if (! gotPicture)
-	  {
-		return;
-	  }
-	  gotPicture = 0;
-	}
-	return;
-  }
-  */
-  // end of hack
-
   seekTime ((double) frame * stream->r_frame_rate_base / stream->r_frame_rate);
 }
 
@@ -79,7 +57,7 @@ VideoInFileFFMPEG::seekTime (double timestamp)
   int targetFrame = (int) floor (timestamp * stream->r_frame_rate / stream->r_frame_rate_base + 1e-6);  // floor() because any timestamp should equate to the frame visible at that time.
   while (cc->frame_number != targetFrame)
   {
-	if (cc->frame_number > targetFrame  ||  cc->frame_number < targetFrame - 12)  // 12 is arbitrary, but based on the typical size of a GOP in mpeg
+	if (! seekLinear  &&  (cc->frame_number > targetFrame  ||  cc->frame_number < targetFrame - 12))  // 12 is arbitrary, but based on the typical size of a GOP in mpeg
 	{
 	  // Use seek to position at or before the frame
 	  int64_t targetDTS = (int64_t) rint (timestamp * AV_TIME_BASE);
@@ -111,6 +89,12 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	  gotPicture = false;
 
 	  // Determine what frame the seek actually obtained.
+	  if (packet.dts == AV_NOPTS_VALUE)
+	  {
+		seekLinear = true;
+		cc->frame_number = targetFrame + 1;  // to force reopen, since we don't know where we are in the video now
+		continue;
+	  }
 	  int64_t PTS = av_rescale (packet.dts, AV_TIME_BASE * (int64_t) stream->time_base.num, stream->time_base.den);
 	  if (fc->start_time != AV_NOPTS_VALUE)
 	  {
@@ -137,6 +121,12 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 		  expectedSkew++;
 		}
 	  }
+	}
+
+	if (seekLinear  &&  targetFrame < cc->frame_number)
+	{
+	  close ();
+	  open (fileName);
 	}
 
 	// Read forward until finding the exact frame requested.

@@ -139,6 +139,7 @@ namespace fl
 	int state;  ///< state == 0 means good; anything else means we can't read more frames
 	bool timestampMode;  ///< Indicates that image.timestamp should be frame number rather than presentation time.
 	double expectedSkew;  ///< Compensates for difference between PTS and DTS when seeking.  Units = frames.
+	bool seekLinear;  ///< Indicates that the file only supports linear seeking, not random seeking.  Generally due to lack of timestamps in stream.
 
 	const PixelFormat * hint;
 	std::string fileName;
