@@ -10,6 +10,10 @@ using namespace std;
 
 // class DescriptorColorHistogram3D -------------------------------------------
 
+/**
+   \param width An odd value provides a bin centered exactly on white, which
+   may improve color matching.
+ **/
 DescriptorColorHistogram3D::DescriptorColorHistogram3D (int width, int height, float supportRadial)
 {
   if (height < 1)
