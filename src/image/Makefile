@@ -16,7 +16,8 @@ IMAGE_FILE_FORMAT_O = \
 	ImageFileFormatPGM.o \
 	ImageFileFormatEPS.o \
 	ImageFileFormatJPEG.o \
-	ImageFileFormatTIFF.o
+	ImageFileFormatTIFF.o \
+	ImageFileFormatMatlab.o
 
 CANVAS_O = \
 	Canvas.o \
@@ -54,6 +55,8 @@ CONVOLVE_O = \
 DESCRIPTOR_O = \
 	Descriptor.o \
 	DescriptorScale.o \
+	DescriptorOrientation.o \
+	DescriptorOrientationHistogram.o \
 	DescriptorFilters.o \
 	DescriptorFiltersTexton.o \
 	DescriptorPatch.o \
@@ -61,14 +64,18 @@ DESCRIPTOR_O = \
 	DescriptorSchmid.o \
 	DescriptorSpin.o \
 	DescriptorSpinSimple.o \
-	DescriptorSpinExact.o
+	DescriptorSpinExact.o \
+	DescriptorSIFT.o \
+	DescriptorColorHistogram2D.o \
+	DescriptorColorHistogram3D.o
 
 INTEREST_O = \
 	Interest.o \
 	InterestHarris.o \
 	InterestHarrisLaplacian.o \
 	InterestLaplacian.o \
-	InterestHessian.o
+	InterestHessian.o \
+	InterestDOG.o
 
 VIDEO_O = \
 	Video.o \
@@ -81,8 +88,8 @@ DescriptorSpin.o:
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $*.cc -ffloat-store
 
 
-test: test.o $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(INTEREST_O) $(CONVOLVE_O) $(VIDEO_O) $(CANVAS_O)
-	g++ -o $@ $^ -L../../lib -lflNumeric -lflX $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) # -lefence
+test: test.o $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(INTEREST_O) $(CONVOLVE_O) $(VIDEO_O) $(CANVAS_O) $(DESCRIPTOR_O)
+	g++ -o $@ $^ -L../../lib -lflBase -lflNumeric -lflX $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB)
 
 
 clean:
