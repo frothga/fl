@@ -1,4 +1,5 @@
 #include "fl/descriptor.h"
+#include "fl/factory.h"
 
 
 using namespace std;
@@ -12,6 +13,15 @@ DescriptorCombo::DescriptorCombo ()
   dimension_ = 0;
   monochrome = true;
   lastImage = 0;
+}
+
+DescriptorCombo::DescriptorCombo (istream & stream)
+{
+  dimension_ = 0;
+  monochrome = true;
+  lastImage = 0;
+
+  read (stream);
 }
 
 DescriptorCombo::~DescriptorCombo ()
@@ -51,11 +61,39 @@ DescriptorCombo::value (const Image & image, const PointAffine & point)
   return result;
 }
 
+Vector<float>
+DescriptorCombo::value (const Image & image)
+{
+  Vector<float> result (dimension ());
+  int r = 0;
+  for (int i = 0; i < descriptors.size (); i++)
+  {
+	Vector<float> value = descriptors[i]->value (image);
+	result.region (r) = value;
+	r += value.rows ();
+  }
+  return result;
+}
+
 Image
 DescriptorCombo::patch (const Vector<float> & value)
 {
   Image result;
   return result;
+}
+
+Image
+DescriptorCombo::patch (int index, const Vector<float> & value)
+{
+  int r2 = 0;
+  int r1;
+  for (int i = 0; i <= index; i++)
+  {
+	r1 = r2;
+	r2 += descriptors[i]->dimension ();
+  }
+  r2 -= 1;
+  return descriptors[index]->patch (value.region (r1, 0, r2));
 }
 
 Comparison *
@@ -76,6 +114,32 @@ DescriptorCombo::dimension ()
   return dimension_;
 }
 
+void
+DescriptorCombo::read (istream & stream)
+{
+  int count = 0;
+  stream.read ((char *) &count, sizeof (count));
+  if (! stream.good ())
+  {
+	throw "Can't finish reading DescriptorCombo: stream bad.";
+  }
+  for (int i = 0; i < count; i++)
+  {
+	add (Factory<Descriptor>::read (stream));
+  }
+}
+
+void
+DescriptorCombo::write (ostream & stream, bool withName)
+{
+  int count = descriptors.size ();
+  stream.write ((char *) &count, sizeof (count));
+  for (int i = 0; i < count; i++)
+  {
+	descriptors[i]->write (stream, true);
+  }
+}
+
 
 // class ComparisonCombo ------------------------------------------------------
 
@@ -88,6 +152,12 @@ ComparisonCombo::ComparisonCombo (vector<Descriptor *> & descriptors)
 	dimensions.push_back (descriptors[i]->dimension ());
 	totalDimension += dimensions[i];
   }
+}
+
+ComparisonCombo::ComparisonCombo (istream & stream)
+{
+  totalDimension = 0;
+  read (stream);
 }
 
 ComparisonCombo::~ComparisonCombo ()
@@ -148,4 +218,38 @@ ComparisonCombo::extract (int index, const Vector<float> & value) const
   }
   int l = dimensions[index] - 1;
   return value.region (r, 0, r+l);
+}
+
+void
+ComparisonCombo::read (istream & stream)
+{
+  int count = 0;
+  stream.read ((char *) &count, sizeof (count));
+  if (! stream.good ())
+  {
+	throw "Can't finish reading ComparisonCombo: stream bad.";
+  }
+  for (int i = 0; i < count; i++)
+  {
+    comparisons.push_back (Factory<Comparison>::read (stream));
+	int d;
+	stream.read ((char *) &d, sizeof (d));
+    dimensions.push_back (d);
+    totalDimension += d;
+  }
+}
+
+void
+ComparisonCombo::write (ostream & stream, bool withName)
+{
+  Comparison::write (stream, withName);
+
+  int count = comparisons.size ();
+  stream.write ((char *) &count, sizeof (count));
+  for (int i = 0; i < count; i++)
+  {
+	comparisons[i]->write (stream);
+	int d = dimensions[i];
+	stream.write ((char *) &d, sizeof (d));
+  }
 }
