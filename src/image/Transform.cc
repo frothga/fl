@@ -48,6 +48,12 @@ Transform::Transform (double scaleX, double scaleY)
   initialize (temp, false);
 }
 
+/**
+   \todo Store full homography rather than separating into translation
+   and deformation components.  The only thing preventing this before was
+   some programs depending on a hack for scaling.  No program does this
+   any more.
+ **/
 void
 Transform::initialize (const Matrix<double> & A, bool inverse)
 {
@@ -76,9 +82,6 @@ Transform::initialize (const Matrix<double> & A, bool inverse)
 	  //   [ 0   1/s ]
 	  // However, the intention is that only R is scaled, so T must be
 	  // unscaled.
-	  // Change all programs that rely on this hack to use Transform(A,scale)
-	  // instead.  Current programs relying on
-	  // this hack in coapp are: findmatch, learnmodel, recognize
 	  double scale = 1.0;
 	  if (A.rows () >= 3)
 	  {
