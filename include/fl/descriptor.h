@@ -134,17 +134,20 @@ namespace fl
   class Descriptor
   {
   public:
+	Descriptor ();
 	virtual ~Descriptor ();
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point) = 0;  ///< Returns a vector of floats that describe the image patch near the interest point.
 	virtual Vector<float> value (const Image & image);  ///< Describe entire region that has non-zero alpha values.  Descriptor may treat all non-zero alpha values the same, or use them to weight the pixels.  This method is only available in Descriptors that don't require a specific point of reference.  IE: a spin image must have a central point, so it can't implement this method.
 	virtual Image patch (const Vector<float> & value) = 0;  ///< Return a graphical representation of the descriptor.  Preferrably an image patch that would stimulate this descriptor to return the given value.
 	virtual Comparison * comparison ();  ///< Return an instance of the recommended Comparison for feature vectors from this type of Descriptor.  Caller is responsible to destroy instance.
-	virtual bool isMonochrome ();  ///< Returns true if this descriptor works only on intensity values.  Returns false if this descriptor uses color channels in some way.
-	virtual int dimension ();  ///< Number of elements in result of value().  Returns 0 if dimension can change from one call to the next.
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
+
+	bool monochrome;  ///< True if this descriptor works only on intensity values.  False if this descriptor uses color channels in some way.
+	int dimension;  ///< Number of elements in result of value().  0 if dimension can change from one call to the next.
+	float supportRadial;  ///< Number of sigmas away from center to include in patch (where 1 sigma = size of characteristic scale).  0 means this descriptor does not depend on characteristic scale.
   };
 
   /**
@@ -164,14 +167,10 @@ namespace fl
 	virtual Image patch (const Vector<float> & value);
 	Image patch (int index, const Vector<float> & value);  ///< Returns a visualization of one specific feature vector in the set.
 	virtual Comparison * comparison ();
-	virtual bool isMonochrome ();
-	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	std::vector<Descriptor *> descriptors;
-	int dimension_;
-	bool monochrome;
 
 	const Image * lastImage;
 	void *        lastBuffer;
@@ -213,7 +212,6 @@ namespace fl
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel + 1.
-	float supportRadial;  ///< Number of sigmas away from center to include in patch (where 1 sigma = size of characteristic scale).
 	float kernelSize;  ///< Number of sigmas of the Gaussian kernel to cover the radius fo the patch.  Similar semantics to supportRadial, except applies to the derivation kernels.
 	GaussianDerivativeFirst Gx;
 	GaussianDerivativeFirst Gy;
@@ -237,7 +235,6 @@ namespace fl
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	int supportPixel;  ///< Pixel radius of patch, if needed.  Patch size = 2 * supportPixel.
-	float supportRadial;  ///< Number of sigmas away from center to include in histogram.
 	float kernelSize;  ///< Similar to DescriptorOrientation::kernelSize, except that this class achieves the same effect by raising blur to the appropriate level.  Only applies to patches with shape change.
 	int bins;  ///< Number of orientation bins in histogram.
 	float cutoff;  ///< Ratio of maximum histogram value above which to accept secondary maxima.
@@ -272,12 +269,10 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel.
-	float supportRadial;  ///< Number of sigmas away from center to include in patch (where 1 sigma = size of characteristic scale).
   };
 
   class DescriptorFilters : public Descriptor
@@ -317,12 +312,10 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	int width;
-	float supportRadial;
   };
 
   class DescriptorSchmidScale : public Descriptor
@@ -379,18 +372,17 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	int   binsRadial;
 	int   binsIntensity;
-	float supportRadial;
 	float supportIntensity;  ///< Number of standard deviations away from avarge intensity.
   };
 
   /**
 	 Implements David Lowe's SIFT descriptor.
+	 Note on supportRadial: supportRadial * point.scale gives pixel distance from center to edge of bins when they overlay the image.  The pixel diameter of one bin is 2 * supportPixel * point.scale / width.
   **/
   class DescriptorSIFT : public Descriptor
   {
@@ -405,13 +397,11 @@ namespace fl
 	void patch (const std::string & fileName, const Vector<float> & value);  ///< Write a visualization of the descriptor to a postscript file.
 	void patch (Canvas * canvas, const Vector<float> & value, int size);  ///< Subroutine used by other patch() methods.
 	virtual Comparison * comparison ();  ///< Return a MetricEuclidean, rather than the default (NormalizedCorrelation).
-	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	int width;  ///< Number of horizontal or vertical positions.
 	int angles;  ///< Number of orientation bins.
-	float supportRadial;  ///< supportRadial * point.scale gives pixel distance from center to edge of bins when they overlay the image.  The pixel diameter of one bin is 2 * supportPixel * point.scale / width.
 	int supportPixel;  ///< Number of pixels in normalized form of affine-invariant patch, if used.
 	float sigmaWeight;  ///< Size of Gaussian that weights the entries in the bins.
 	float maxValue;  ///< Largest permissible entry in one bin.
@@ -424,6 +414,7 @@ namespace fl
 
   /**
 	 Form a 2D color histogram of the UV components in a YUV patch.
+	 Note on dimension: it is the total number of true entries in valid.
   **/
   class DescriptorColorHistogram2D : public Descriptor
   {
@@ -442,17 +433,11 @@ namespace fl
 	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual bool isMonochrome ();
-	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	int width;  ///< Number of bins in the U and V dimensions.
-	float supportRadial;  ///< Multiple of characteristic scale to use when drawing off a normalized patch.
-
 	Matrix<bool> valid;  ///< Stores true for every bin that translates to a valid RGB color.
-	int validCount;  ///< Total number of true entries in valid.  Effectively the dimension of the vector recturned by value().
-
 	Matrix<float> histogram;  ///< Working histogram.  Forces this Descriptor object to be single threaded.
   };
 
@@ -479,18 +464,12 @@ namespace fl
 	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual bool isMonochrome ();
-	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	int width;  ///< Number of bins in the U and V dimensions.
 	int height;  ///< Number of bins in the Y dimension.
-	float supportRadial;  ///< Multiple of characteristic scale to use when drawing off a normalized patch.
-
 	bool * valid;  ///< A 3D block of booleans that stores true for every bin that translates to a valid RGB color.
-	int validCount;  ///< Total number of true entries in valid.  Effectively the dimension of the vector recturned by value().
-
 	float * histogram;  ///< Working histogram.  Forces this Descriptor object to be single threaded.
   };
 
@@ -522,7 +501,6 @@ namespace fl
 	float firstScale;  ///< Delimits lower end of scale space.
 	float lastScale;  ///< Delimits upper end of scale space.
 	int steps;  ///< Number of discrete scale levels in one octave.
-	float supportRadial;  ///< Multiple of scale to use when selecting image region specified by PointAffine.
 
 	int bankSize;  ///< Number of filters at a given scale level.
 	float scaleRatio;  ///< Ratio between two adjacent scale levels.
@@ -556,13 +534,11 @@ namespace fl
 	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual int dimension ();
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
 	int P;  ///< Number of evenly spaced sample points around center.
 	float R;  ///< Radius of circle of sample points.
-	float supportRadial;  ///< Multiple of characteristic scale to use when drawing off a normalized patch.
 	int supportPixel;  ///< Radius of patch to draw off if point specifies a shape change.
 
 	const Image * lastImage;  ///< Pointer to the currently cached input image.
