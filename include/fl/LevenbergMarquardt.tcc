@@ -12,11 +12,6 @@ namespace fl
 {
   // class LevenbergMarquardt -------------------------------------------------
 
-  const double LevenbergMarquardt<double>::epsilon = DBL_EPSILON;
-  const double LevenbergMarquardt<double>::minimum = DBL_MIN;
-  const float LevenbergMarquardt<float>::epsilon = FLT_EPSILON;
-  const float LevenbergMarquardt<float>::minimum = FLT_MIN;
-
   template<class T>
   LevenbergMarquardt<T>::LevenbergMarquardt (T toleranceF, T toleranceX, int maxIterations)
   {

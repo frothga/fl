@@ -11,12 +11,6 @@
 
 namespace fl
 {
-  const double LevenbergMarquardtSparseBK<double>::epsilon = DBL_EPSILON;
-  const double LevenbergMarquardtSparseBK<double>::minimum = DBL_MIN;
-  const float LevenbergMarquardtSparseBK<float>::epsilon = FLT_EPSILON;
-  const float LevenbergMarquardtSparseBK<float>::minimum = FLT_MIN;
-
-
   // class SparseBK -----------------------------------------------------------
 
   template<class T>
