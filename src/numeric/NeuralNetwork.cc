@@ -38,6 +38,11 @@ Neuron::~Neuron ()
 	(*i)->to = NULL;
 	delete *i;
   }
+  for (i = outputs.begin (); i < outputs.end (); i++)
+  {
+	(*i)->from = NULL;
+	delete *i;
+  }
 }
 
 
