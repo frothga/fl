@@ -288,6 +288,9 @@ namespace fl
 
 	virtual MatrixPacked operator ~ () const;
 
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = true) const;
+
 	// Data
 	Pointer data;
 	int rows_;  // columns = rows
