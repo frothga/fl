@@ -39,95 +39,7 @@ KMeansParallel::run (const std::vector<Vector<float> > & data)
   state = initializing;
   pthread_t pid;
   pthread_create (&pid, NULL, listenThread, this);
-
-  // Generate set of random clusters
-  int K = min (initialK, (int) data.size () / 2);
-  if (clusters.size () < K)
-  {
-	cerr << "Creating " << K - clusters.size () << " clusters" << endl;
-
-	// Locate center and covariance of entire data set
-	Vector<float> center (data[0].rows ());
-	center.clear ();
-	for (int i = 0; i < data.size (); i++)
-    {
-	  center += data[i];
-	  if (i % 1000 == 0)
-	  {
-		cerr << ".";
-	  }
-	}
-	cerr << endl;
-	center /= data.size ();
-
-	Matrix<float> covariance (data[0].rows (), data[0].rows ());
-	covariance.clear ();
-	for (int i = 0; i < data.size (); i++)
-	{
-	  Vector<float> delta = data[i] - center;
-	  covariance += delta * ~delta;
-	  if (i % 1000 == 0)
-	  {
-		cerr << ".";
-	  }
-	}
-	cerr << endl;
-	covariance /= data.size ();
-cerr << "center: " << center << endl;
-
-	// Prepare matrix of basis vectors on which to project the cluster centers
-	Matrix<float> eigenvectors;
-	Vector<float> eigenvalues;
-	syev (covariance, eigenvalues, eigenvectors);
-	float minev = largestNormalFloat;
-	float maxev = 0;
-	for (int i = 0; i < eigenvalues.rows (); i++)
-	{
-	  minev = min (minev, fabsf (eigenvalues[i]));
-	  maxev = max (maxev, fabsf (eigenvalues[i]));
-	}
-	cerr << "eigenvalue range = " << sqrtf (minev) << " " << sqrtf (maxev) << endl;
-	for (int c = 0; c < eigenvectors.columns (); c++)
-	{
-	  float scale = sqrt (fabs (eigenvalues[c]));
-	  eigenvectors.column (c) *= scale;
-	}
-
-	// Throw points into the space and create clusters around them
-	for (int i = clusters.size (); i < K; i++)
-	{
-	  Vector<float> point (center.rows ());
-	  for (int row = 0; row < point.rows (); row++)
-	  {
-		point[row] = randGaussian ();
-	  }
-
-	  point = center + eigenvectors * point;
-
-	  ClusterGauss c (point, 1.0 / K);
-	  clusters.push_back (c);
-	}
-  }
-  else
-  {
-	cerr << "KMeans already initialized with:" << endl;
-	cerr << "  clusters = " << clusters.size () << endl;
-	cerr << "  maxSize  = " << maxSize << endl;
-	cerr << "  minSize  = " << minSize << endl;
-	cerr << "  maxK     = " << maxK << endl;
-	cerr << "  changes: ";
-	for (int i = 0; i < changes.size (); i++)
-	{
-	  cerr << changes[i] << " ";
-	}
-	cerr << endl;
-	cerr << "  velocities: ";
-	for (int i = 0; i < velocities.size (); i++)
-	{
-	  cerr << velocities[i] << " ";
-	}
-	cerr << endl;
-  }
+  initialize (data);
 
   // Iterate to convergence.  Convergence condition is that cluster
   // centers are stable and that all features fall within maxSize of
@@ -205,147 +117,11 @@ cerr << "center: " << center << endl;
 	  break;
 	}
 
+	// Check for convergence, and update number of clusters.
 	pthread_mutex_lock (&stateLock);
 	state = checking;
 	pthread_mutex_unlock (&stateLock);
-
-	// Analyze movement data to detect convergence
-	cerr << "change = " << largestChange << "\t";
-	largestChange /= maxSize * sqrtf ((float) data[0].rows ());
-	cerr << largestChange << "\t";
-	// Calculate velocity
-	changes.push_back (largestChange);
-	if (changes.size () > 4)
-	{
-	  changes.erase (changes.begin ()); // Limit size of history
-	  float xbar  = (changes.size () - 1) / 2.0;
-	  float sxx   = 0;
-	  float nybar = 0;
-	  float sxy   = 0;
-	  for (int x = 0; x < changes.size (); x++)
-	  {
-		sxx   += powf (x - xbar, 2);
-		nybar += changes[x];
-		sxy   += x * changes[x];
-	  }
-	  sxy -= xbar * nybar;
-	  float velocity = sxy / sxx;
-	  cerr << velocity << "\t";
-
-	  // Calculate acceleration
-	  velocities.push_back (velocity);
-	  if (velocities.size () > 4)
-	  {
-		velocities.erase (velocities.begin ());
-		xbar  = (velocities.size () - 1) / 2.0;
-		sxx   = 0;
-		nybar = 0;
-		sxy   = 0;
-		for (int x = 0; x < velocities.size (); x++)
-		{
-		  sxx   += powf (x - xbar, 2);
-		  nybar += velocities[x];
-		  sxy   += x * velocities[x];
-		}
-		sxy -= xbar * nybar;
-		float acceleration = sxy / sxx;
-		cerr << acceleration;
-		if (fabs (acceleration) < 1e-4  &&  velocity > -1e-2)
-		{
-		  converged = true;
-		}
-	  }
- 	}
-	cerr << endl;
-    if (largestChange < 1e-4)
-    {
-	  converged = true;
-	}
-
-	// Change number of clusters, if necessary
-    if (stop)
-    {
-	  break;
-	}
-	if (converged)
-	{
-	  cerr << "checking K" << endl;
-
-	  // The basic approach is to check the eigenvalues of each cluster
-	  // to see if the shape of the cluster exceeds the arbitrary limit
-	  // maxSize.  If so, pick the worst offending cluster and  split
-      // it into two along the dominant axis.
-	  float largestEigenvalue = 0;
-	  Vector<float> largestEigenvector (data[0].rows ());
-	  int largestCluster = 0;
-	  for (int i = 0; i < clusters.size (); i++)
-	  {
-		int last = clusters[i].eigenvalues.rows () - 1;
-		float evf = fabsf (clusters[i].eigenvalues[0]);
-		float evl = fabsf (clusters[i].eigenvalues[last]);
-		if (evf > largestEigenvalue)
-		{
-		  largestEigenvalue = evf;
-		  largestEigenvector = clusters[i].eigenvectors.column (0);
-		  largestCluster = i;
-		}
-		if (evl > largestEigenvalue)
-		{
-		  largestEigenvalue = evl;
-		  largestEigenvector = clusters[i].eigenvectors.column (last);
-		  largestCluster = i;
-		}
-	  }
-	  largestEigenvalue = sqrtf (largestEigenvalue);
-	  if (largestEigenvalue > maxSize  &&  clusters.size () < maxK)
-	  {
-		Vector<float> le;
-		le.copyFrom (largestEigenvector);
-		largestEigenvector *= largestEigenvalue / 2;  // largestEigenvector is already unit length
-		le                 *= -largestEigenvalue / 2;
-		largestEigenvector += clusters[largestCluster].center;
-		clusters[largestCluster].center += le;
-		clusters[largestCluster].alpha /= 2;
-		ClusterGauss c (largestEigenvector, clusters[largestCluster].covariance, clusters[largestCluster].alpha);
-		clusters.push_back (c);
-		cerr << "  splitting: " << largestCluster << " " << largestEigenvalue << endl; // " "; print_vector (c.center);
-		converged = false;
-	  }
-
-	  // Also check if we need to merge clusters.
-	  // Merge when clusters are closer then minSize to each other by Euclidean distance.
-	  int remove = -1;
-	  int merge;
-	  float closestDistance = largestNormalFloat;
-	  for (int i = 0; i < clusters.size (); i++)
-	  {
-		for (int j = i + 1; j < clusters.size (); j++)
-		{
-		  float distance = (clusters[i].center - clusters[j].center).frob (2);
-		  if (distance < minSize  &&  distance < closestDistance)
-		  {
-			merge = i;
-			remove = j;
-			closestDistance = distance;
-		  }
-		}
-	  }
-	  if (remove > -1)
-	  {
-		cerr << "  merging: " << merge << " " << remove << " " << closestDistance << endl;
-		converged = false;
-		// Cluster "merge" claims all of cluster "remove"s points.
-		if (remove < member.rows ())  // Test is necessary because "remove" could be newly created cluster (see above) with no row in member yet.
-		{
-		  for (int j = 0; j < data.size (); j++)
-		  {
-			member (merge, j) += member (remove, j);
-		  }
-		  maximize (data, member, merge);
-		}
-		clusters.erase (clusters.begin () + remove);
-	  }
-	}
+	converged = convergence (data, member, largestChange);
 
 	cerr << "time = " << getTimestamp () - timestamp << endl;
   }
@@ -639,7 +415,7 @@ cerr << "  checking NFS: " << stats.st_size << " " << ctime (&stats.st_mtime);
 		  cerr << "Unable to reopen cluster file " << clusterFileName << endl;
 		  exit (1);
 		}
-		read (target, true);
+		read (target);
 		member.resize (clusters.size (), data->size ());
 		break;
 	  }
@@ -676,7 +452,7 @@ cerr << "perform maximization" << endl;
 			cerr << "Unable to reopen cluster file " << clusterFileName << endl;
 			exit (1);
 		  }
-		  read (target, true);
+		  read (target);
 		  member.resize (clusters.size (), data->size ());
 		}
 		int unit;
