@@ -406,10 +406,16 @@ PixelFormat::getGray (void * pixel) const
 }
 
 void
-PixelFormat::getGray (void * pixel, float * value) const
+PixelFormat::getGray (void * pixel, float * gray) const
 {
-  *value = getGray (pixel) / 255.0f;
-  linearize (*value);
+  *gray = getGray (pixel) / 255.0f;
+  linearize (*gray);
+}
+
+unsigned char
+PixelFormat::getAlpha (void * pixel) const
+{
+  return 0xFF;
 }
 
 void
@@ -463,15 +469,31 @@ PixelFormat::setYUV (void * pixel, unsigned int yuv) const
 }
 
 void
-PixelFormat::setGray (void * pixel, float * value) const
+PixelFormat::setGray (void * pixel, unsigned char gray) const
 {
-  float v = *value;
+  register unsigned int iv = gray;
+  setRGBA (pixel, 0xFF000000 | (iv << 16) | (iv << 8) | iv);
+}
+
+void
+PixelFormat::setGray (void * pixel, float * gray) const
+{
+  float v = *gray;
   v = min (v, 1.0f);
   v = max (v, 0.0f);
   delinearize (v);
   unsigned int iv = (unsigned int) (v * 255);
   unsigned int rgba = 0xFF000000 | (iv << 16) | (iv << 8) | iv;
   setRGBA (pixel, rgba);
+}
+
+void
+PixelFormat::setAlpha (void * pixel, unsigned char alpha) const
+{
+  // Do nothing.
+  // Could getRGBA(), replace alpha value, and then setRGBA().  However,
+  // a better plan is simply to let clases that actually have an alpha
+  // channel override this method.
 }
 
 
@@ -681,10 +703,10 @@ PixelFormatGrayChar::getGray (void * pixel) const
 }
 
 void
-PixelFormatGrayChar::getGray (void * pixel, float * value) const
+PixelFormatGrayChar::getGray (void * pixel, float * gray) const
 {
-  *value = *((unsigned char *) pixel) / 255.0f;
-  linearize (*value);
+  *gray = *((unsigned char *) pixel) / 255.0f;
+  linearize (*gray);
 }
 
 void
@@ -702,6 +724,20 @@ PixelFormatGrayChar::setXYZ (void * pixel, float values[]) const
 {
   // Convert Y value to non-linear form
   float v = min (max (values[1], 0.0f), 1.0f);
+  delinearize (v);
+  *((unsigned char *) pixel) = (unsigned int) rint (255 * v);
+}
+
+void
+PixelFormatGrayChar::setGray (void * pixel, unsigned char gray) const
+{
+  *((unsigned char *) pixel) = gray;
+}
+
+void
+PixelFormatGrayChar::setGray (void * pixel, float * gray) const
+{
+  register float v = min (max (*gray, 0.0f), 1.0f);
   delinearize (v);
   *((unsigned char *) pixel) = (unsigned int) rint (255 * v);
 }
@@ -932,9 +968,9 @@ PixelFormatGrayFloat::getGray (void * pixel) const
 }
 
 void
-PixelFormatGrayFloat::getGray (void * pixel, float * value) const
+PixelFormatGrayFloat::getGray (void * pixel, float * gray) const
 {
-  *value = *((float *) pixel);
+  *gray = *((float *) pixel);
 }
 
 void
@@ -959,6 +995,20 @@ void
 PixelFormatGrayFloat::setXYZ (void * pixel, float values[]) const
 {
   *((float *) pixel) = values[1];
+}
+
+void
+PixelFormatGrayFloat::setGray  (void * pixel, unsigned char gray) const
+{
+  register float g = gray / 255.0f;
+  linearize (g);
+  *((float *) pixel) = g;
+}
+
+void
+PixelFormatGrayFloat::setGray  (void * pixel, float * gray) const
+{
+  *((float *) pixel) = *gray;
 }
 
 
@@ -1189,9 +1239,9 @@ PixelFormatGrayDouble::getGray (void * pixel) const
 }
 
 void
-PixelFormatGrayDouble::getGray (void * pixel, float * value) const
+PixelFormatGrayDouble::getGray (void * pixel, float * gray) const
 {
-  *value = *((double *) pixel);
+  *gray = *((double *) pixel);
 }
 
 void
@@ -1216,6 +1266,20 @@ void
 PixelFormatGrayDouble::setXYZ (void * pixel, float values[]) const
 {
   *((double *) pixel) = values[1];
+}
+
+void
+PixelFormatGrayDouble::setGray  (void * pixel, unsigned char gray) const
+{
+  register double g = gray / 255.0;
+  linearize (g);
+  *((double *) pixel) = g;
+}
+
+void
+PixelFormatGrayDouble::setGray  (void * pixel, float * gray) const
+{
+  *((double *) pixel) = *gray;
 }
 
 
@@ -1483,10 +1547,22 @@ PixelFormatRGBAChar::getRGBA (void * pixel) const
   return *((unsigned int *) pixel);
 }
 
+unsigned char
+PixelFormatRGBAChar::getAlpha (void * pixel) const
+{
+  return ((unsigned char *) pixel)[3];
+}
+
 void
 PixelFormatRGBAChar::setRGBA (void * pixel, unsigned int rgba) const
 {
   *((unsigned int *) pixel) = rgba;
+}
+
+void
+PixelFormatRGBAChar::setAlpha (void * pixel, unsigned char alpha) const
+{
+  ((unsigned char *) pixel)[3] = alpha;
 }
 
 
@@ -1502,7 +1578,7 @@ PixelFormatRGBABits::PixelFormatRGBABits (int depth, unsigned int redMask, unsig
 
   precedence = 2;  // on par with RGBAChar
   monochrome = false;
-  hasAlpha   = true;
+  hasAlpha   = alphaMask;
 }
 
 Image
@@ -1906,6 +1982,37 @@ PixelFormatRGBABits::getRGBA (void * pixel) const
 		 | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & 0xFF000000);
 }
 
+unsigned char
+PixelFormatRGBABits::getAlpha (void * pixel) const
+{
+  Int2Char value;
+  switch (depth)
+  {
+    case 1:
+	  value.all = *((unsigned char *) pixel);
+	  break;
+    case 2:
+	  value.all = *((unsigned short *) pixel);
+	  break;
+    case 3:
+	  value.piece[0] = ((unsigned char *) pixel)[0];
+	  value.piece[1] = ((unsigned char *) pixel)[1];
+	  value.piece[2] = ((unsigned char *) pixel)[2];
+	  break;
+    case 4:
+    default:
+	  value.all = *((unsigned int *) pixel);
+	  break;
+  }
+  unsigned int a = value.all & alphaMask;
+
+  int shift = 7;
+  unsigned int mask = alphaMask;
+  while (mask >>= 1) {shift--;}
+
+  return (shift > 0 ? a << shift : a >> -shift) & 0xFF;
+}
+
 void
 PixelFormatRGBABits::setRGBA (void * pixel, unsigned int rgba) const
 {
@@ -1949,6 +2056,23 @@ PixelFormatRGBABits::setRGBA (void * pixel, unsigned int rgba) const
   }
 }
 
+void
+PixelFormatRGBABits::setAlpha (void * pixel, unsigned char alpha) const
+{
+  // There's no need to be careful about number of bytes in a pixel,
+  // because the bit masking below will safely preserve data outside the
+  // current pixel.
+
+  int shift = -7;
+  unsigned int mask = alphaMask;
+  while (mask >>= 1) {shift++;}
+
+  unsigned int a = alpha;
+  a = (shift > 0 ? a << shift : a >> -shift) & alphaMask;
+
+  * (unsigned int *) pixel = a | ((* (unsigned int *) pixel) & ~alphaMask);
+}
+
 
 // class PixelFormatRGBAFloat -------------------------------------------------
 
@@ -1990,6 +2114,12 @@ PixelFormatRGBAFloat::getRGBA (void * pixel, float values[]) const
   values[3] = ((float *) pixel)[3];
 }
 
+unsigned char
+PixelFormatRGBAFloat::getAlpha (void * pixel) const
+{
+  return (unsigned char) (((float *) pixel)[3] * 255);
+}
+
 void
 PixelFormatRGBAFloat::setRGBA (void * pixel, unsigned int rgba) const
 {
@@ -2015,6 +2145,12 @@ PixelFormatRGBAFloat::setRGBA (void * pixel, float values[]) const
   ((float *) pixel)[1] = values[1];
   ((float *) pixel)[2] = values[2];
   ((float *) pixel)[3] = values[3];
+}
+
+void
+PixelFormatRGBAFloat::setAlpha (void * pixel, unsigned char alpha) const
+{
+  ((float *) pixel)[3] = alpha / 255.0f;
 }
 
 
