@@ -25,7 +25,7 @@ namespace fl
 
 	int lwork = n * n;
 	lwork = lwork >? 10;  // Special case for n == 1 and n == 2;
-	float * work = new float [lwork];
+	float * work = (float *) malloc (lwork * sizeof (float));
 	int info = 0;
 
 	ssyev_ (jobz,
@@ -38,7 +38,7 @@ namespace fl
 			lwork,
 			info);
 
-	delete work;
+	free (work);
 
 	if (info)
 	{
@@ -57,7 +57,7 @@ namespace fl
 	eigenvalues.resize (n);
 	eigenvectors.resize (n, n);
 
-	float * work = new float [3 * n];
+	float * work = (float *) malloc (3 * n * sizeof (float));
 	int info = 0;
 
 	sspev_ ('V',
@@ -70,7 +70,7 @@ namespace fl
 			work,
 			info);
 
-	delete work;
+	free (work);
 
 	if (info)
 	{
@@ -93,7 +93,7 @@ namespace fl
 
 	int lwork = n * n;
 	lwork = lwork >? 10;  // Special case for n == 1 and n == 2;
-	float * work = new float [lwork];
+	float * work = (float *) malloc (lwork * sizeof (float));
 	int info = 0;
 
 	ssyev_ (jobz,
@@ -106,7 +106,7 @@ namespace fl
 			lwork,
 			info);
 
-	delete work;
+	free (work);
 
 	if (info)
 	{
@@ -132,7 +132,7 @@ namespace fl
 	eigenvectors.resize (n, n);
 
 	int lwork = 5 * n;
-	float * work = new float [lwork];
+	float * work = (float *) malloc (lwork * sizeof (float));
 	int info = 0;
 
 	sgeev_ (jobvl,
@@ -150,7 +150,7 @@ namespace fl
 			lwork,
 			info);
 
-	delete work;
+	free (work);
 
 	if (info)
 	{
@@ -171,7 +171,7 @@ namespace fl
 	Matrix<float> wi (n);
 
 	int lwork = 5 * n;
-	float * work = new float [lwork];
+	float * work = (float *) malloc (lwork * sizeof (float));
 	int info = 0;
 
 	sgeev_ ('N',
@@ -189,7 +189,7 @@ namespace fl
 			lwork,
 			info);
 
-	delete work;
+	free (work);
 
 	if (info)
 	{
@@ -215,7 +215,7 @@ namespace fl
 	eigenvectors.resize (n, n);
 
 	int lwork = 5 * n;
-	float * work = new float [lwork];
+	float * work = (float *) malloc (lwork * sizeof (float));
 	int info = 0;
 
 	sgeev_ (jobvl,
@@ -233,7 +233,7 @@ namespace fl
 			lwork,
 			info);
 
-	delete work;
+	free (work);
 
 	if (info)
 	{
@@ -272,7 +272,7 @@ namespace fl
 
 	int rank;
     int ldwork = 5 * (ldb >? nrhs);
-    float * work = new float[ldwork];
+    float * work = (float *) malloc (ldwork * sizeof (float));
 	int info = 0;
 
     sgelss_ (m,
@@ -289,7 +289,7 @@ namespace fl
 			 ldwork,
 			 info);
 
-    delete work;
+    free (work);
 
 	if (info)
 	{
@@ -371,7 +371,7 @@ namespace fl
 			 info);
 
 	lwork = (int) optimalSize;
-    float * work = new float[lwork];
+    float * work = (float *) malloc (lwork * sizeof (float));
 
 	// Now for the real thing
 	sgesvd_ (jobu,
@@ -389,7 +389,7 @@ namespace fl
 			 lwork,
 			 info);
 
-    delete work;
+    free (work);
 
 	if (info)
 	{
@@ -439,7 +439,7 @@ namespace fl
 	Matrix<float> tempA;
 	tempA.copyFrom (A);
 
-	int * ipiv = new int[std::min (m, n)];
+	int * ipiv = (int *) malloc (std::min (m, n) * sizeof (int));
 
 	int info = 0;
 
@@ -464,7 +464,7 @@ namespace fl
 			   info);
 
 	  lwork = (int) optimalSize;
-	  float * work = new float[lwork];
+	  float * work = (float *) malloc (lwork * sizeof (float));
 
 	  sgetri_ (n,
 			   & tempA[0],
@@ -474,10 +474,10 @@ namespace fl
 			   lwork,
 			   info);
 
-	  delete work;
+	  free (work);
 	}
 
-	delete ipiv;
+	free (ipiv);
 
 	if (info != 0)
 	{
@@ -499,7 +499,7 @@ namespace fl
 	Matrix<float> tempA;
 	tempA.copyFrom (A);
 
-	int * ipiv = new int[m];
+	int * ipiv = (int *) malloc (m * sizeof (int));
 
 	int info = 0;
 
@@ -525,7 +525,7 @@ namespace fl
 	  result *= -1;
 	}
 
-	delete ipiv;
+	free (ipiv);
 
 	if (info != 0)
 	{
