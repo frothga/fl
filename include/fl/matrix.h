@@ -76,7 +76,7 @@ namespace fl
 	virtual void resize (const int rows, const int columns = 1) = 0;  ///< Change number of rows and columns.  Does not preserve data.
 
 	// Higher level functions
-	virtual T frob (T n) const;  ///< Generalized Frobenius norm: (sum_elements (element^n))^(1/n).  Effectively: INFINITY is max, 1 is sum, 2 is standard Frobenius norm
+	virtual T frob (float n) const;  ///< Generalized Frobenius norm: (sum_elements (element^n))^(1/n).  Effectively: INFINITY is max, 1 is sum, 2 is standard Frobenius norm
 	virtual T sumSquares () const;  ///< Similar to frob(2), but without taking the square root.
 	virtual void normalize (const T scalar = 1.0);  ///< View matrix as vector and adjust so frob (2) == scalar.
 	virtual T dot (const MatrixAbstract & B) const;  ///< View both matrices as vectors and return dot product.  Ie: returns the sum of the products of corresponding elements.
@@ -200,7 +200,7 @@ namespace fl
 
 	virtual Matrix reshape (const int rows, const int columns = 1) const;
 
-	virtual T frob (T n) const;
+	virtual T frob (float n) const;
 	virtual T sumSquares () const;
 	virtual T dot (const Matrix & B) const;
 	virtual Matrix transposeSquare () const;  ///< Computes the upper triangular part of the symmetric matrix (~this * this).
@@ -333,7 +333,7 @@ namespace fl
 	virtual void resize (const int rows, const int columns = 1);  ///< Changing number of rows has no effect at all.  Changing number of columns resizes column list.
 	virtual void copyFrom (const MatrixSparse & that);
 
-	virtual T frob (T n) const;
+	virtual T frob (float n) const;
 
 	virtual MatrixSparse operator - (const MatrixSparse & B) const;
 
@@ -697,15 +697,16 @@ namespace fl
 	eigenvalues (1, 0) = (b + b4c) / 2.0;
   }
 
+  template<class T>
   inline void
-  geev (const Matrix2x2<double> & A, Matrix<std::complex<double> > & eigenvalues)
+  geev (const Matrix2x2<T> & A, Matrix<std::complex<T> > & eigenvalues)
   {
 	eigenvalues.resize (2, 1);
 
 	// a = 1  :)
-	double b = -(A.data[0][0] + A.data[1][1]);  // trace
-	double c = A.data[0][0] * A.data[1][1] - A.data[0][1] * A.data[1][0];  // determinant
-	double b4c = b * b - 4 * c;
+	T b = -(A.data[0][0] + A.data[1][1]);  // trace
+	T c = A.data[0][0] * A.data[1][1] - A.data[0][1] * A.data[1][0];  // determinant
+	T b4c = b * b - 4 * c;
 	bool imaginary = b4c < 0;
 	if (b4c != 0)
 	{
@@ -715,13 +716,13 @@ namespace fl
 	{
 	  b /= -2.0;
 	  b4c /= 2.0;
-	  eigenvalues(0,0) = std::complex<double> (b, b4c);
-	  eigenvalues(1,0) = std::complex<double> (b, -b4c);
+	  eigenvalues(0,0) = std::complex<T> (b, b4c);
+	  eigenvalues(1,0) = std::complex<T> (b, -b4c);
 	}
 	else
 	{
-	  eigenvalues(0,0) = (-b - b4c) / 2.0;
-	  eigenvalues(1,0) = (-b + b4c) / 2.0;
+	  eigenvalues(0,0) = (-b - b4c) / T (2);
+	  eigenvalues(1,0) = (-b + b4c) / T (2);
 	}
   }
 }
