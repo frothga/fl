@@ -169,11 +169,23 @@ FilterHarris::process ()
 }
 
 double
-FilterHarris::response (const int x, const int y) const
+FilterHarris::response (int x, int y) const
+{
+  Matrix<double> t;
+  gradientSquared (x, y, t);
+  double & txx = t(0,0);
+  double & txy = t(0,1);
+  double & tyy = t(1,1);
+  return (txx * tyy - txy * txy) - alpha * (txx + tyy) * (txx + tyy);
+}
+
+void
+FilterHarris::gradientSquared (int x, int y, Matrix<double> & result) const
 {
   Point p (x + offsetI, y + offsetI);
-  double txx = G_I.response (xx, p);
-  double txy = G_I.response (xy, p);
-  double tyy = G_I.response (yy, p);
-  return (txx * tyy - txy * txy) - alpha * (txx + tyy) * (txx + tyy);
+  result.resize (2, 2);
+  result(0,0) = G_I.response (xx, p);
+  result(0,1) = G_I.response (xy, p);
+  result(1,0) = result(0,1);
+  result(1,1) = G_I.response (yy, p);
 }
