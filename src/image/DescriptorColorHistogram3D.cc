@@ -46,6 +46,8 @@ DescriptorColorHistogram3D::~DescriptorColorHistogram3D ()
 void
 DescriptorColorHistogram3D::initialize ()
 {
+  monochrome = false;
+
   histogram = new float[width * width * height];
   valid     = new bool [width * width * height];
 

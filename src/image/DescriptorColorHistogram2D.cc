@@ -22,6 +22,8 @@ DescriptorColorHistogram2D::DescriptorColorHistogram2D (int width, float support
 void
 DescriptorColorHistogram2D::initialize ()
 {
+  monochrome = false;
+
   valid.resize (width, width);
   valid.clear ();
   validCount = 0;
