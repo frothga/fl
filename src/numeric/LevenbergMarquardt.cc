@@ -44,8 +44,8 @@ qrfac (Matrix<double> & a, Vector<int> & ipvt, Vector<double> & rdiag, Vector<do
 	if (kmax != j)
 	{
 	  Vector<double> temp = a.column (j);
-	  a.column (j) <<= a.column (kmax);
-	  a.column (kmax) <<= temp;
+	  a.column (j) = a.column (kmax);
+	  a.column (kmax) = temp;
 
 	  rdiag[kmax] = rdiag[j];
 	  wa[kmax] = wa[j];
@@ -285,10 +285,6 @@ lmpar (Matrix<double> & r, const Vector<int> & ipvt, const Vector<double> & diag
 	dx[j] = diag[j] * x[j];
   }
   double dxnorm = dx.frob (2);
-cerr << "x=" << x << endl;
-cerr << "d=" << diag << endl;
-cerr << "dx=" << dx << endl;
-cerr << "dxnorm=" << dxnorm << endl;
   double fp = dxnorm - delta;
   if (fp <= 0.1 * delta)
   {
@@ -462,9 +458,11 @@ LevenbergMarquardt::search (Searchable & searchable, Vector<double> & point)
   double delta;
 
   // outer loop
-  int iter = 1;
+  int iter = 0;
   while (true)
   {
+	iter++;
+
 	// calculate the jacobian matrix
 	searchable.jacobian (point, fjac, &fvec);
 
@@ -570,8 +568,7 @@ LevenbergMarquardt::search (Searchable & searchable, Vector<double> & point)
 	  lmpar (fjac, ipvt, diag, qtf, delta, par, p);
 
 	  // store the direction p and x + p. calculate the norm of p.
-	  p *= -1;
-	  Vector<double> xp = point + p;
+	  Vector<double> xp = point - p;  // p is actually negative
 	  double pnorm = 0;
 	  for (int j = 0; j < n; j++)
 	  {
@@ -592,7 +589,7 @@ LevenbergMarquardt::search (Searchable & searchable, Vector<double> & point)
 
 	  // compute the scaled actual reduction
 	  double actred = -1;
-	  if (0.1 * fnorm1 < fnorm)
+	  if (fnorm1 / 10 < fnorm)
 	  {
 		double temp = fnorm1 / fnorm;
 		actred = 1 - temp * temp;
@@ -611,7 +608,7 @@ LevenbergMarquardt::search (Searchable & searchable, Vector<double> & point)
 	  }
 	  double temp1 = fjacp.frob (2) / fnorm;
 	  double temp2 = sqrt (par) * pnorm / fnorm;
-	  double prered = temp1 * temp1 + temp2 * temp2 / 0.5;
+	  double prered = temp1 * temp1 + 2 * temp2 * temp2;
 	  double dirder = -(temp1 * temp1 + temp2 * temp2);
 
 	  // compute the ratio of the actual to the predicted reduction
@@ -624,28 +621,28 @@ LevenbergMarquardt::search (Searchable & searchable, Vector<double> & point)
 	  // update the step bound
 	  if (ratio <= 0.25)
 	  {
-		double temp;
+		double update;
 		if (actred >= 0)
 		{
-		  temp = 0.5;
+		  update = 0.5;
 		}
 		else
 		{
-		  temp = 0.5 * dirder / (dirder + 0.5 * actred);
+		  update = dirder / (2 * dirder + actred);
 		}
-		if (0.1 * fnorm1 >= fnorm  ||  temp < 0.1)
+		if (fnorm1 / 10 >= fnorm  ||  update < 0.1)
 		{
-		  temp = 0.1;
+		  update = 0.1;
 		}
-		delta = temp * min (delta, pnorm / 0.1);
-		par /= temp;
+		delta = update * min (delta, pnorm * 10);
+		par /= update;
 	  }
 	  else
 	  {
 		if (par == 0  ||  ratio >= 0.75)
 		{
-		  delta = pnorm / 0.5;
-		  par = 0.5 * par;
+		  delta = pnorm * 2;
+		  par /= 2;
 		}
 	  }
 
@@ -665,13 +662,12 @@ LevenbergMarquardt::search (Searchable & searchable, Vector<double> & point)
 		xnorm = sqrt (xnorm);
 
 		fnorm = fnorm1;
-		iter++;
 	  }
 
 	  // tests for convergence
-	  if(   fabs (actred) <= toleranceF
-		 && prered <= toleranceF
-		 && 0.5 * ratio <= 1)
+	  if (   fabs (actred) <= toleranceF
+		  && prered <= toleranceF
+		  && ratio <= 2)
 	  {
 		// info = 1;
 		return;
@@ -689,7 +685,7 @@ LevenbergMarquardt::search (Searchable & searchable, Vector<double> & point)
 	  }
 	  if (   fabs (actred) <= DBL_EPSILON
 		  && prered <= DBL_EPSILON
-		  && 0.5 * ratio <= 1)
+		  && ratio <= 2)
 	  {
 		throw (int) 6;
 	  }
