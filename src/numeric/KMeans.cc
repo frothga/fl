@@ -1,7 +1,6 @@
-#include "cluster.h"
-
-#include <fl/lapacks.h>
-#include <fl/pi.h>
+#include "fl/cluster.h"
+#include "fl/lapacks.h"
+#include "fl/pi.h"
 
 #include <algorithm>
 
@@ -113,41 +112,6 @@ ClusterGauss::write (ostream & stream)
   center.write (stream, false);
   covariance.write (stream, false);
 }
-
-/*
-void
-ClusterGauss::read (FILE * stream)
-{
-  // Extract alpha
-  fread (&alpha, sizeof (float), 1, stream);
-
-  // Extract center
-  int dimension;
-  fread (&dimension, sizeof (int), 1, stream);
-  center = LaMatrix (dimension, 1);
-  fread (center.data (), sizeof (float), dimension, stream);
-
-  // Extract covariance
-  covariance = LaMatrix (dimension, dimension);
-  fread (covariance.data (), sizeof (float), dimension * dimension, stream);
-
-  // Initialize everything else
-  eigenvectors = LaMatrix (center.nrows (), center.nrows ());
-  eigenvalues  = LaVector (center.nrows ());
-  eigenverse   = LaMatrix (center.nrows (), center.nrows ());
-  prepareInverse ();
-}
-
-void
-ClusterGauss::write (FILE * stream)
-{
-  fwrite (&alpha, sizeof (float), 1, stream);
-  int dimension = center.nrows ();
-  fwrite (&dimension, sizeof (int), 1, stream);
-  fwrite (center.data (), sizeof (float), dimension, stream);
-  fwrite (covariance.data (), sizeof (float), dimension * dimension, stream);
-}
-*/
 
 
 // class KMeans ---------------------------------------------------------------
@@ -291,78 +255,6 @@ KMeans::representative (int group)
 {
   return clusters[group].center;
 }
-
-/*
-void
-KMeans::read (FILE * stream)
-{
-  fread (&maxSize, sizeof (int), 1, stream);
-  fread (&minSize, sizeof (int), 1, stream);
-  fread (&initialK, sizeof (int), 1, stream);  // Actually, the current K!  :)
-  fread (&maxK, sizeof (int), 1, stream);
-
-  clusters.clear ();
-  for (int i = 0; i < initialK; i++)
-  {
-	ClusterGauss c (stream);
-	clusters.push_back (c);
-  }
-
-  int count;
-  fread (&count, sizeof (int), 1, stream);
-  for (int i = 0; i < count; i++)
-  {
-	float change;
-	fread (&change, sizeof (float), 1, stream);
-	changes.push_back (change);
-  }
-
-  fread (&count, sizeof (int), 1, stream);
-  for (int i = 0; i < count; i++)
-  {
-	float velocity;
-	fread (&velocity, sizeof (float), 1, stream);
-	velocities.push_back (velocity);
-  }
-}
-
-void
-KMeans::write (FILE * stream)
-{
-  clusterFileTime = time (NULL);
-
-  fprintf (stream, "%s\n", name);
-
-  fwrite (&maxSize, sizeof (int), 1, stream);
-  fwrite (&minSize, sizeof (int), 1, stream); 
-  int K = clusters.size ();
-  fwrite (&K, sizeof (int), 1, stream);
-  fwrite (&maxK, sizeof (int), 1, stream);
-
-  for (int i = 0; i < K; i++)
-  {
-	clusters[i].write (stream);
-  }
-
-  int count = changes.size ();
-  fwrite (&count, sizeof (int), 1, stream);
-  for (int i = 0; i < count; i++)
-  {
-	fwrite (&changes[i], sizeof (float), 1, stream);
-  }
-
-  count = velocities.size ();
-  fwrite (&count, sizeof (int), 1, stream);
-  for (int i = 0; i < count; i++)
-  {
-	fwrite (&velocities[i], sizeof (float), 1, stream);
-  }
-
-  clusterFileSize = ftell (stream);
-
-  fsync (fileno (stream));
-}
-*/
 
 void
 KMeans::read (istream & stream, bool withName)
