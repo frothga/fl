@@ -48,8 +48,8 @@ DescriptorOrientation::initialize (float supportRadial, int supportPixel, float 
   this->kernelSize    = kernelSize;
 
   double filterScale = supportPixel / kernelSize;
-  Gx = GaussianDerivativeFirst (0, filterScale, -1, 0, GrayFloat, UseZeros);
-  Gy = GaussianDerivativeFirst (1, filterScale, -1, 0, GrayFloat, UseZeros);
+  Gx = GaussianDerivativeFirst (0, filterScale, -1, 0, UseZeros);
+  Gy = GaussianDerivativeFirst (1, filterScale, -1, 0, UseZeros);
   killRadius (supportPixel + 0.5, Gx);
   killRadius (supportPixel + 0.5, Gy);
 }

@@ -90,7 +90,7 @@ DescriptorTextonScale::preprocess (const Image & image)
   }
   if (firstScale != 0.5f)  // The blur level of a raw image is defined to be 0.5
   {
-	Gaussian1D blur (sqrt (firstScale * firstScale - 0.25), GrayFloat, Horizontal, Boost);
+	Gaussian1D blur (sqrt (firstScale * firstScale - 0.25), Boost, GrayFloat, Horizontal);
 	work *= blur;
 	blur.direction = Vertical;
 	work *= blur;
@@ -109,7 +109,7 @@ DescriptorTextonScale::preprocess (const Image & image)
   while (scale <= lastScale)
   {
 	float nextScale = scale * scaleRatio;
-	Gaussian1D blur (sqrt (nextScale * nextScale - scale * scale), GrayFloat, Horizontal, Boost);  // Construction of the blur kernels can be pulled into initialize() to make handling multiple images more efficient.
+	Gaussian1D blur (sqrt (nextScale * nextScale - scale * scale), Boost, GrayFloat, Horizontal);  // Construction of the blur kernels can be pulled into initialize() to make handling multiple images more efficient.
 	nextWork = work * blur;
 	blur.direction = Vertical;
 	nextWork *= blur;

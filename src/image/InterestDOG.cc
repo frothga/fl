@@ -105,7 +105,7 @@ InterestDOG::run (const Image & image, std::multiset<PointInterest> & result)
   work *= GrayFloat;
   if (firstScale != 0.5f)  // The blur level of a raw image is defined to be 0.5
   {
-	Gaussian1D blur (sqrt (firstScale * firstScale - 0.25), GrayFloat, Horizontal, Boost);
+	Gaussian1D blur (sqrt (firstScale * firstScale - 0.25), Boost, GrayFloat, Horizontal);
 	work *= blur;
 	blur.direction = Vertical;
 	work *= blur;
@@ -120,7 +120,7 @@ InterestDOG::run (const Image & image, std::multiset<PointInterest> & result)
   float scale = firstScale;
   for (int i = 0; i < steps + 2; i++)
   {
-	blurs.push_back (Gaussian1D (scale * sigmaRatio, GrayFloat, Horizontal, Boost));
+	blurs.push_back (Gaussian1D (scale * sigmaRatio, Boost, GrayFloat, Horizontal));
 	scale *= scaleRatio;
   }
 

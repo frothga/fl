@@ -9,8 +9,8 @@ using namespace fl;
 // class FilterHessian --------------------------------------------------------
 
 FilterHessian::FilterHessian (double sigma, const PixelFormat & format)
-: G (sigma, format),
-  dG (sigma, format)
+: G (sigma, Crop, format),
+  dG (sigma, Crop, format)
 {
   this->sigma = sigma;
 

@@ -94,7 +94,7 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
 	double targetBlur = supportPixel / kernelSize;
 	if (currentBlur < targetBlur)
 	{
-	  Gaussian1D blur (sqrt (targetBlur * targetBlur - currentBlur * currentBlur), GrayFloat, Horizontal, Boost);
+	  Gaussian1D blur (sqrt (targetBlur * targetBlur - currentBlur * currentBlur), Boost, GrayFloat, Horizontal);
 	  patch *= blur;
 	  blur.direction = Vertical;
 	  patch *= blur;

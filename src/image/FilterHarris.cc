@@ -11,10 +11,10 @@ using namespace fl;
 const double FilterHarris::alpha = 0.06;
 
 FilterHarris::FilterHarris (double sigmaD, double sigmaI, const PixelFormat & format)
-: G_I (sigmaI, format),
-  G1_I (sigmaI, format),
-  G1_D (sigmaD, format),
-  dG_D (sigmaD, format),
+: G_I (sigmaI, Crop, format),
+  G1_I (sigmaI, Crop, format),
+  G1_D (sigmaD, Crop, format),
+  dG_D (sigmaD, Crop, format),
   xx (format),
   xy (format),
   yy (format)
