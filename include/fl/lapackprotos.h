@@ -14,6 +14,16 @@ extern "C"
 			   const int &  lwork,
 			   int &        info);
 
+  void sspev_ (const char & jobz,
+			   const char & uplo,
+			   const int &  n,
+			   float        ap[],
+			   float        w[],
+			   float        z[],
+			   const int &  ldz,
+			   float        work[],
+			   int &        info);
+
   void sgelss_ (const int &   m,
 				const int &   n,
 				const int &   nrhs,
