@@ -15,6 +15,7 @@ DescriptorSIFT::DescriptorSIFT (int width, int angles)
 {
   this->width = width;
   this->angles = angles;
+  dimension = width * width * angles;
 
   supportRadial = 3 * width / 2.0f;  // Causes each bin to cover 3 sigmas.
   supportPixel = (int) ceilf (2 * supportRadial);  // Causes drawn off patch to hold 2 pixels per sigma.
@@ -280,30 +281,25 @@ DescriptorSIFT::comparison ()
   return new MetricEuclidean;
 }
 
-int
-DescriptorSIFT::dimension ()
-{
-  return width * width * angles;
-}
-
 void
 DescriptorSIFT::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &width,         sizeof (width));
   stream.read ((char *) &angles,        sizeof (angles));
   stream.read ((char *) &supportRadial, sizeof (supportRadial));
   stream.read ((char *) &supportPixel,  sizeof (supportPixel));
   stream.read ((char *) &sigmaWeight,   sizeof (sigmaWeight));
   stream.read ((char *) &maxValue,      sizeof (maxValue));
+
+  dimension = width * width * angles;
 }
 
 void
 DescriptorSIFT::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   stream.write ((char *) &width,         sizeof (width));
   stream.write ((char *) &angles,        sizeof (angles));

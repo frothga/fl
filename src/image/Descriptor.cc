@@ -10,6 +10,13 @@ using namespace fl;
 
 Factory<Descriptor>::productMap Factory<Descriptor>::products;
 
+Descriptor::Descriptor ()
+{
+  monochrome = true;
+  dimension = 0;
+  supportRadial = 0;
+}
+
 Descriptor::~Descriptor ()
 {
 }
@@ -24,18 +31,6 @@ Comparison *
 Descriptor::comparison ()
 {
   return new NormalizedCorrelation;
-}
-
-bool
-Descriptor::isMonochrome ()
-{
-  return true;
-}
-
-int
-Descriptor::dimension ()
-{
-  return 0;
 }
 
 void

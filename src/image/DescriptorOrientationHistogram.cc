@@ -197,6 +197,8 @@ DescriptorOrientationHistogram::patch (const Vector<float> & value)
 void
 DescriptorOrientationHistogram::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &supportRadial, sizeof (supportRadial));
   stream.read ((char *) &supportPixel,  sizeof (supportPixel));
   stream.read ((char *) &kernelSize,    sizeof (kernelSize));
@@ -207,10 +209,7 @@ DescriptorOrientationHistogram::read (std::istream & stream)
 void
 DescriptorOrientationHistogram::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   stream.write ((char *) &supportRadial, sizeof (supportRadial));
   stream.write ((char *) &supportPixel,  sizeof (supportPixel));

@@ -10,15 +10,11 @@ using namespace fl;
 
 DescriptorCombo::DescriptorCombo ()
 {
-  dimension_ = 0;
-  monochrome = true;
   lastImage = 0;
 }
 
 DescriptorCombo::DescriptorCombo (istream & stream)
 {
-  dimension_ = 0;
-  monochrome = true;
   lastImage = 0;
 
   read (stream);
@@ -36,8 +32,9 @@ void
 DescriptorCombo::add (Descriptor * descriptor)
 {
   descriptors.push_back (descriptor);
-  dimension_ += descriptor->dimension ();
-  monochrome &= descriptor->isMonochrome ();
+  dimension += descriptor->dimension;
+  monochrome &= descriptor->monochrome;
+  supportRadial = max (supportRadial, descriptor->supportRadial);
 }
 
 Vector<float>
@@ -50,11 +47,11 @@ DescriptorCombo::value (const Image & image, const PointAffine & point)
 	lastBuffer = (void *) image.buffer;
   }
 
-  Vector<float> result (dimension ());
+  Vector<float> result (dimension);
   int r = 0;
   for (int i = 0; i < descriptors.size (); i++)
   {
-	Vector<float> value = descriptors[i]->value (descriptors[i]->isMonochrome () ? grayImage : image, point);
+	Vector<float> value = descriptors[i]->value (descriptors[i]->monochrome ? grayImage : image, point);
 	result.region (r) = value;
 	r += value.rows ();
   }
@@ -64,7 +61,7 @@ DescriptorCombo::value (const Image & image, const PointAffine & point)
 Vector<float>
 DescriptorCombo::value (const Image & image)
 {
-  Vector<float> result (dimension ());
+  Vector<float> result (dimension);
   int r = 0;
   for (int i = 0; i < descriptors.size (); i++)
   {
@@ -90,7 +87,7 @@ DescriptorCombo::patch (int index, const Vector<float> & value)
   for (int i = 0; i <= index; i++)
   {
 	r1 = r2;
-	r2 += descriptors[i]->dimension ();
+	r2 += descriptors[i]->dimension;
   }
   r2 -= 1;
   return descriptors[index]->patch (value.region (r1, 0, r2));
@@ -102,21 +99,11 @@ DescriptorCombo::comparison ()
   return new ComparisonCombo (descriptors);
 }
 
-bool
-DescriptorCombo::isMonochrome ()
-{
-  return monochrome;
-}
-
-int
-DescriptorCombo::dimension ()
-{
-  return dimension_;
-}
-
 void
 DescriptorCombo::read (istream & stream)
 {
+  Descriptor::read (stream);
+
   int count = 0;
   stream.read ((char *) &count, sizeof (count));
   if (! stream.good ())
@@ -132,6 +119,8 @@ DescriptorCombo::read (istream & stream)
 void
 DescriptorCombo::write (ostream & stream, bool withName)
 {
+  Descriptor::write (stream, withName);
+
   int count = descriptors.size ();
   stream.write ((char *) &count, sizeof (count));
   for (int i = 0; i < count; i++)
@@ -149,7 +138,7 @@ ComparisonCombo::ComparisonCombo (vector<Descriptor *> & descriptors)
   for (int i = 0; i < descriptors.size (); i++)
   {
 	comparisons.push_back (descriptors[i]->comparison ());
-	dimensions.push_back (descriptors[i]->dimension ());
+	dimensions.push_back (descriptors[i]->dimension);
 	totalDimension += dimensions[i];
   }
 }
@@ -223,6 +212,8 @@ ComparisonCombo::extract (int index, const Vector<float> & value) const
 void
 ComparisonCombo::read (istream & stream)
 {
+  Comparison::read (stream);
+
   int count = 0;
   stream.read ((char *) &count, sizeof (count));
   if (! stream.good ())

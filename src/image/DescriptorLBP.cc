@@ -31,6 +31,7 @@ DescriptorLBP::DescriptorLBP (istream & stream)
 void
 DescriptorLBP::initialize ()
 {
+  dimension = P + 2;
   lastImage = 0;
 
   interpolates.resize (P);
@@ -225,15 +226,11 @@ DescriptorLBP::comparison ()
   return new ChiSquared;
 }
 
-int
-DescriptorLBP::dimension ()
-{
-  return P + 2;
-}
-
 void
 DescriptorLBP::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &P,             sizeof (P));
   stream.read ((char *) &R,             sizeof (R));
   stream.read ((char *) &supportRadial, sizeof (supportRadial));
@@ -245,10 +242,7 @@ DescriptorLBP::read (std::istream & stream)
 void
 DescriptorLBP::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   stream.write ((char *) &P,             sizeof (P));
   stream.write ((char *) &R,             sizeof (R));

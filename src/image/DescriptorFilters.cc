@@ -80,8 +80,8 @@ DescriptorFilters::patch (const Vector<float> & value)
 void
 DescriptorFilters::read (istream & stream)
 {
-  // Don't read the class name.  Instead, assume it has already been read by
-  // factory ().
+  Descriptor::read (stream);
+
   int count = 0;
   stream.read ((char *) &count, sizeof (count));
   for (int i = 0; i < count; i++)
@@ -99,10 +99,8 @@ DescriptorFilters::read (istream & stream)
 void
 DescriptorFilters::write (ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
+
   int count = filters.size ();
   stream.write ((char *) &count, sizeof (count));
   for (int i = 0; i < count; i++)

@@ -27,9 +27,10 @@ DescriptorColorHistogram2D::DescriptorColorHistogram2D (istream & stream)
 void
 DescriptorColorHistogram2D::initialize ()
 {
+  monochrome = false;
+  dimension = 0;
   valid.resize (width, width);
   valid.clear ();
-  validCount = 0;
   for (int u = 0; u < width; u++)
   {
 	float uf = (u + 0.5f) / width - 0.5f;
@@ -56,7 +57,7 @@ DescriptorColorHistogram2D::initialize ()
 	  if (yh > yl)
 	  {
 		valid(u,v) = true;
-		validCount++;
+		dimension++;
 	  }
 	}
   }
@@ -122,7 +123,7 @@ DescriptorColorHistogram2D::add (const Image & image, const int x, const int y)
 Vector<float>
 DescriptorColorHistogram2D::finish ()
 {
-  Vector<float> result (validCount);
+  Vector<float> result (dimension);
   int i = 0;
   for (int u = 0; u < width; u++)
   {
@@ -253,21 +254,11 @@ DescriptorColorHistogram2D::comparison ()
   return new ChiSquared;
 }
 
-bool
-DescriptorColorHistogram2D::isMonochrome ()
-{
-  return false;
-}
-
-int
-DescriptorColorHistogram2D::dimension ()
-{
-  return validCount;
-}
-
 void
 DescriptorColorHistogram2D::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &width,         sizeof (width));
   stream.read ((char *) &supportRadial, sizeof (supportRadial));
 
@@ -277,10 +268,7 @@ DescriptorColorHistogram2D::read (std::istream & stream)
 void
 DescriptorColorHistogram2D::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   stream.write ((char *) &width,         sizeof (width));
   stream.write ((char *) &supportRadial, sizeof (supportRadial));

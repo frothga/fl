@@ -21,6 +21,7 @@ DescriptorScale::DescriptorScale (istream & stream)
 void
 DescriptorScale::initialize (float firstScale, float lastScale, float stepSize)
 {
+  dimension = 1;
   firstScale = max (1.0f, firstScale);
   lastScale = max (firstScale, lastScale);
 
@@ -74,6 +75,8 @@ DescriptorScale::patch (const Vector<float> & value)
 void
 DescriptorScale::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   float firstScale;
   float lastScale;
   float stepSize;
@@ -88,10 +91,7 @@ DescriptorScale::read (std::istream & stream)
 void
 DescriptorScale::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   float firstScale = laplacians.front ().sigma;
   float lastScale  = laplacians.back ().sigma;

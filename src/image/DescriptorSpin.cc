@@ -14,6 +14,7 @@ DescriptorSpin::DescriptorSpin (int binsRadial, int binsIntensity, float support
   this->binsIntensity    = binsIntensity;
   this->supportRadial    = supportRadial;
   this->supportIntensity = supportIntensity;
+  dimension = binsRadial * binsIntensity;
 }
 
 DescriptorSpin::DescriptorSpin (std::istream & stream)
@@ -184,28 +185,23 @@ DescriptorSpin::comparison ()
   return new ChiSquared;
 }
 
-int
-DescriptorSpin::dimension ()
-{
-  return binsRadial * binsIntensity;
-}
-
 void
 DescriptorSpin::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &binsRadial,       sizeof (binsRadial));
   stream.read ((char *) &binsIntensity,    sizeof (binsIntensity));
   stream.read ((char *) &supportRadial,    sizeof (supportRadial));
   stream.read ((char *) &supportIntensity, sizeof (supportIntensity));
+
+  dimension = binsRadial * binsIntensity;
 }
 
 void
 DescriptorSpin::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   stream.write ((char *) &binsRadial,       sizeof (binsRadial));
   stream.write ((char *) &binsIntensity,    sizeof (binsIntensity));

@@ -22,6 +22,8 @@ DescriptorSchmidScale::DescriptorSchmidScale (std::istream & stream)
 void
 DescriptorSchmidScale::initialize ()
 {
+  dimension = 9;
+
   G = Gaussian2D (sigma);
 
   Gx = GaussianDerivativeFirst (0, sigma);
@@ -184,6 +186,8 @@ DescriptorSchmidScale::patch (const Vector<float> & value)
 void
 DescriptorSchmidScale::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &sigma, sizeof (sigma));
   initialize ();
 }
@@ -191,9 +195,7 @@ DescriptorSchmidScale::read (std::istream & stream)
 void
 DescriptorSchmidScale::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
+
   stream.write ((char *) &sigma, sizeof (sigma));
 }

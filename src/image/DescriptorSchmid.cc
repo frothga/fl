@@ -39,6 +39,8 @@ DescriptorSchmid::initialize (int scaleCount)
     DescriptorSchmidScale * d = new DescriptorSchmidScale (scale);
     descriptors.push_back (d);
   }
+
+  dimension = descriptors[0]->dimension;
 }
 
 DescriptorSchmid::~DescriptorSchmid ()
@@ -85,6 +87,8 @@ DescriptorSchmid::findScale (float sigma)
 void
 DescriptorSchmid::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   int scaleCount;
   stream.read ((char *) &scaleCount, sizeof (scaleCount));
   stream.read ((char *) &scaleStep, sizeof (scaleStep));
@@ -95,10 +99,7 @@ DescriptorSchmid::read (std::istream & stream)
 void
 DescriptorSchmid::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   int scaleCount = descriptors.size ();
   stream.write ((char *) &scaleCount, sizeof (scaleCount));

@@ -67,6 +67,8 @@ DescriptorTextonScale::initialize ()
   {
 	responses[i].format = &GrayFloat;
   }
+
+  dimension = 2 * bankSize;
 }
 
 void
@@ -324,6 +326,8 @@ DescriptorTextonScale::patch (const Vector<float> & value)
 void
 DescriptorTextonScale::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &angles,        sizeof (angles));
   stream.read ((char *) &firstScale,    sizeof (firstScale));
   stream.read ((char *) &lastScale,     sizeof (lastScale));
@@ -336,10 +340,7 @@ DescriptorTextonScale::read (std::istream & stream)
 void
 DescriptorTextonScale::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   stream.write ((char *) &angles,        sizeof (angles));
   stream.write ((char *) &firstScale,    sizeof (firstScale));

@@ -10,12 +10,14 @@ using namespace std;
 
 DescriptorContrast::DescriptorContrast (float supportRadial, int supportPixel)
 {
+  dimension           = 1;
   this->supportRadial = supportRadial;
   this->supportPixel  = supportPixel;
 }
 
 DescriptorContrast::DescriptorContrast (istream & stream)
 {
+  dimension = 1;
   read (stream);
 }
 
@@ -82,15 +84,11 @@ DescriptorContrast::comparison ()
   return new MetricEuclidean;
 }
 
-int
-DescriptorContrast::dimension ()
-{
-  return 1;
-}
-
 void
 DescriptorContrast::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &supportRadial, sizeof (supportRadial));
   stream.read ((char *) &supportPixel,  sizeof (supportPixel));
 }
@@ -98,10 +96,7 @@ DescriptorContrast::read (std::istream & stream)
 void
 DescriptorContrast::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   stream.write ((char *) &supportRadial, sizeof (supportRadial));
   stream.write ((char *) &supportPixel,  sizeof (supportPixel));

@@ -43,6 +43,7 @@ killRadius (float limit, Image & image)
 void
 DescriptorOrientation::initialize (float supportRadial, int supportPixel, float kernelSize)
 {
+  dimension = 1;
   this->supportRadial = supportRadial;
   this->supportPixel  = supportPixel;
   this->kernelSize    = kernelSize;
@@ -91,6 +92,8 @@ DescriptorOrientation::patch (const Vector<float> & value)
 void
 DescriptorOrientation::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &supportRadial, sizeof (supportRadial));
   stream.read ((char *) &supportPixel,  sizeof (supportPixel));
   stream.read ((char *) &kernelSize,    sizeof (kernelSize));
@@ -101,10 +104,7 @@ DescriptorOrientation::read (std::istream & stream)
 void
 DescriptorOrientation::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   stream.write ((char *) &supportRadial, sizeof (supportRadial));
   stream.write ((char *) &supportPixel,  sizeof (supportPixel));

@@ -11,6 +11,7 @@ DescriptorPatch::DescriptorPatch (int width, float supportRadial)
 {
   this->width = width;
   this->supportRadial = supportRadial;
+  dimension = width * width;
 }
 
 DescriptorPatch::DescriptorPatch (std::istream & stream)
@@ -57,26 +58,21 @@ DescriptorPatch::comparison ()
   return new NormalizedCorrelation;
 }
 
-int
-DescriptorPatch::dimension ()
-{
-  return width * width;
-}
-
 void
 DescriptorPatch::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &width, sizeof (width));
   stream.read ((char *) &supportRadial, sizeof (supportRadial));
+  dimension = width * width;
 }
 
 void
 DescriptorPatch::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
+
   stream.write ((char *) &width, sizeof (width));
   stream.write ((char *) &supportRadial, sizeof (supportRadial));
 }

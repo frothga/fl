@@ -47,11 +47,13 @@ DescriptorColorHistogram3D::~DescriptorColorHistogram3D ()
 void
 DescriptorColorHistogram3D::initialize ()
 {
+  monochrome = false;
+
   histogram = new float[width * width * height];
   valid     = new bool [width * width * height];
 
   memset (valid, 0, width * width * height * sizeof (bool));
-  validCount = 0;
+  dimension = 0;
   bool * vi = valid;
   for (int u = 0; u < width; u++)
   {
@@ -81,7 +83,7 @@ DescriptorColorHistogram3D::initialize ()
 		if (yf >= yl  &&  yf <= yh)
 		{
 		  *vi = true;
-		  validCount++;
+		  dimension++;
 		}
 
 		vi++;
@@ -89,7 +91,7 @@ DescriptorColorHistogram3D::initialize ()
 	}
   }
 
-  //cerr << validCount << " / " << width * width * height << endl;
+  //cerr << dimension << " / " << width * width * height << endl;
 }
 
 void
@@ -165,7 +167,7 @@ DescriptorColorHistogram3D::add (const Image & image, const int x, const int y)
 Vector<float>
 DescriptorColorHistogram3D::finish ()
 {
-  Vector<float> result (validCount);
+  Vector<float> result (dimension);
   int i = 0;
   bool *  vi = valid;
   float * hi = histogram;
@@ -318,21 +320,11 @@ DescriptorColorHistogram3D::comparison ()
   return new ChiSquared;
 }
 
-bool
-DescriptorColorHistogram3D::isMonochrome ()
-{
-  return false;
-}
-
-int
-DescriptorColorHistogram3D::dimension ()
-{
-  return validCount;
-}
-
 void
 DescriptorColorHistogram3D::read (std::istream & stream)
 {
+  Descriptor::read (stream);
+
   stream.read ((char *) &width,         sizeof (width));
   stream.read ((char *) &height,        sizeof (height));
   stream.read ((char *) &supportRadial, sizeof (supportRadial));
@@ -343,10 +335,7 @@ DescriptorColorHistogram3D::read (std::istream & stream)
 void
 DescriptorColorHistogram3D::write (std::ostream & stream, bool withName)
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
+  Descriptor::write (stream, withName);
 
   stream.write ((char *) &width,         sizeof (width));
   stream.write ((char *) &height,        sizeof (height));
