@@ -37,6 +37,7 @@ namespace fl
 	VideoIn & operator >> (Image & image);  ///< Extract next image frame.  image may end up attached to a buffer used internally by the video device or library, so it may be freed unexpectedly.  However, this clss guarantees that the memory will not be freed before the next call to a method of this class.
 	bool good () const;  ///< Indicates that the stream is open and the last read (if any) succeeded.
 	void setTimestampMode (bool frames = false);  ///< Changes image.timestamp from presentation time to frame number.
+	void get (const std::string & name, double & value);  ///< Retrieve values of stream attributes (such as duration in seconds).
 
 	VideoInFile * file;
   };
@@ -70,6 +71,7 @@ namespace fl
 	virtual void readNext (Image & image) = 0;  ///< Reads the next frame and stores it in image.  image may end up attached to a buffer used internally by the video device or library, so it may be freed unexpectedly.  However, this clss guarantees that the memory will not be freed before the next call to a method of this class.
 	virtual bool good () const = 0;  ///< Indicates that the stream is open and the last read (if any) succeeded.
 	virtual void setTimestampMode (bool frames = false) = 0;  ///< Changes image.timestamp from presentation time to frame number.
+	virtual void get (const std::string & name, double & value) = 0;  ///< Retrieve values of stream attributes (such as duration in seconds).
   };
 
   class VideoOutFile
@@ -117,6 +119,7 @@ namespace fl
 	virtual void readNext (Image & image);
 	virtual bool good () const;
 	virtual void setTimestampMode (bool frames = false);
+	virtual void get (const std::string & name, double & value);
 
 	// private ...
 	void open (const std::string & fileName);
@@ -135,6 +138,7 @@ namespace fl
 	int gotPicture;  ///< indicates that picture contains a full image
 	int state;  ///< state == 0 means good; anything else means we can't read more frames
 	bool timestampMode;  ///< Indicates that image.timestamp should be frame number rather than presentation time.
+	double expectedSkew;  ///< Compensates for difference between PTS and DTS when seeking.  Units = frames.
 
 	const PixelFormat * hint;
 	std::string fileName;
