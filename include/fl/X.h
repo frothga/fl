@@ -149,8 +149,9 @@ namespace fl
   {
   public:
 	void getGeometry (int & x, int & y, int & width, int & height, int & border, int & depth) const;
-	void getSize (int & width, int & height) const;  // Convenience function associated wtih getGeometry().
+	void getSize (int & width, int & height) const;  // Convenience function associated with getGeometry().
 	void putImage (const fl::GC & gc, const XImage * image, int toX = 0, int toY = 0, int fromX = 0, int fromY = 0, int width = 0, int height = 0);  // width == 0 or height == 0 means use appropriate value from image structure.
+	Image getImage (int x = 0, int y = 0, int width = 0, int height = 0) const;  // Duplicates indicatd region into resulting Image object.  width == 0 or height == 0 means use max area possible.
 	void copyArea (const fl::GC & gc, const fl::Drawable & source, int toX = 0, int toY = 0, int fromX = 0, int fromY = 0, int width = 0, int height = 0);  // width == 0 or height == 0 means use appropriate value from source Drawable
   };
 
@@ -166,6 +167,7 @@ namespace fl
 	void selectInput (long eventMask);
 	void map ();
 	void unmap ();
+	void resize (int width, int height);
 	void setColormap (fl::Colormap & colormap);
 	void setWMProtocols (const std::vector<Atom> & protocols);
 	void setWMName (const std::string name);
