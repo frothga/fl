@@ -22,21 +22,21 @@ using namespace fl;
 
 
 PixelFormatGrayChar   fl::GrayChar;
-PixelFormatGrayFloat  fl::GrayFloat       (1,   0);
-PixelFormatGrayFloat  fl::GrayFloatBiased (0.5, 0.5);
-PixelFormatGrayDouble fl::GrayDouble       (1,   0);
-PixelFormatGrayDouble fl::GrayDoubleBiased (0.5, 0.5);
+PixelFormatGrayFloat  fl::GrayFloat;
+PixelFormatGrayDouble fl::GrayDouble;
 PixelFormatRGBAChar   fl::RGBAChar;
 PixelFormatRGBABits   fl::BGRChar (3, 0xFF, 0xFF00, 0xFF0000, 0x0);
 PixelFormatRGBABits   fl::ABGRChar (4, 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
 PixelFormatRGBAFloat  fl::RGBAFloat;
+PixelFormatYVYUChar   fl::YVYUChar;
+PixelFormatYVYUChar   fl::VYUYChar;
 
 
 // Color->gray conversion factors
 // Make these user modfiable if at some point it turns out to be useful.
 // First used: (54 183 19) / 256, same as linear sRGB below
 // Linear sRGB to Y: 0.2126 0.7152 0.0722
-// NTSC, PAL, and JPEG: 0.299 0.587 0.114, produces a non-linear gray-value, appropriate for non-linear sRGB, which is our assumed RGB format
+// NTSC, PAL, and JPEG: 0.2989 0.5866 0.1145, produces a non-linear gray-value, appropriate for non-linear sRGB, which is our assumed RGB format
 #define redWeight    76
 #define greenWeight 150
 #define blueWeight   29
@@ -120,6 +120,13 @@ Pixel::Pixel ()
   pixel = & data;
 }
 
+Pixel::Pixel (unsigned int rgba)
+{
+  format = & RGBAChar;
+  pixel = & data;
+  format->setRGBA (pixel, rgba);
+}
+
 Pixel::Pixel (const Pixel & that)
 {
   format = that.format;
@@ -186,6 +193,24 @@ Pixel::operator = (const Pixel & that)
   return *this;
 }
 
+Pixel &
+Pixel::operator += (const Pixel & that)
+{
+  float thisValue[4];
+  format->getRGBA (pixel, thisValue);
+  float thatValue[4];
+  that.format->getRGBA (that.pixel, thatValue);
+
+  thisValue[0] += thatValue[0];
+  thisValue[1] += thatValue[1];
+  thisValue[2] += thatValue[2];
+  thisValue[3] += thatValue[3];
+
+  format->setRGBA (pixel, thisValue);
+
+  return *this;
+}
+
 Pixel
 Pixel::operator + (const Pixel & that) const
 {
@@ -234,6 +259,22 @@ Pixel::operator * (float scalar) const
   result.data.rgbafloat[1] = values[1] * scalar;
   result.data.rgbafloat[2] = values[2] * scalar;
   result.data.rgbafloat[4] = values[3] * scalar;
+
+  return result;
+}
+
+Pixel
+Pixel::operator / (float scalar) const
+{
+  Pixel result;
+
+  float values[4];
+  format->getRGBA (pixel, values);
+
+  result.data.rgbafloat[0] = values[0] / scalar;
+  result.data.rgbafloat[1] = values[1] / scalar;
+  result.data.rgbafloat[2] = values[2] / scalar;
+  result.data.rgbafloat[4] = values[3] / scalar;
 
   return result;
 }
@@ -387,6 +428,23 @@ PixelFormat::getXYZ (void * pixel, float values[]) const
   values[3] = rgbValues[3];
 }
 
+unsigned char
+PixelFormat::getGray (void * pixel) const
+{
+  unsigned int rgba = getRGBA (pixel);
+  unsigned int r = (rgba & 0xFF0000) >> 8;
+  unsigned int g =  rgba & 0xFF00;
+  unsigned int b = (rgba & 0xFF)     << 8;
+  return ((redWeight * r + greenWeight * g + blueWeight * b) / totalWeight) >> 8;
+}
+
+void
+PixelFormat::getGray (void * pixel, float * value) const
+{
+  *value = getGray (pixel) / 255.0f;
+  linearize (*value);
+}
+
 void
 PixelFormat::setRGBA (void * pixel, float values[]) const
 {
@@ -422,9 +480,10 @@ PixelFormat::setXYZ (void * pixel, float values[]) const
 
 PixelFormatGrayChar::PixelFormatGrayChar ()
 {
-  depth = 1;
-  precedence = 0;
+  depth      = 1;
+  precedence = 0;  // Below everything
   monochrome = true;
+  hasAlpha   = false;
 }
 
 void
@@ -432,16 +491,12 @@ PixelFormatGrayChar::fromGrayFloat (const Image & image, Image & result) const
 {
   result.buffer.grow (result.width * result.height * depth);
 
-  const PixelFormatGrayFloat * thatFormat = (PixelFormatGrayFloat *) image.format;
-  float scale = thatFormat->scale;
-  float bias  = thatFormat->bias;
-
   float * fromPixel = (float *) image.buffer;
   unsigned char * toPixel = (unsigned char *) result.buffer;
   unsigned char * end = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	float p = min (max (*fromPixel++ * scale + bias, 0.0f), 1.0f);
+	float p = min (max (*fromPixel++, 0.0f), 1.0f);
 	delinearize (p);
 	*toPixel++ = (unsigned char) (p * 255);
   }
@@ -452,16 +507,12 @@ PixelFormatGrayChar::fromGrayDouble (const Image & image, Image & result) const
 {
   result.buffer.grow (result.width * result.height * depth);
 
-  const PixelFormatGrayDouble * thatFormat = (PixelFormatGrayDouble *) image.format;
-  double scale = thatFormat->scale;
-  double bias  = thatFormat->bias;
-
   double * fromPixel = (double *) image.buffer;
   unsigned char * toPixel = (unsigned char *) result.buffer;
   unsigned char * end = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	double p = min (max (*fromPixel++ * scale + bias, 0.0), 1.0);
+	double p = min (max (*fromPixel++, 0.0), 1.0);
 	delinearize (p);
 	*toPixel++ = (unsigned char) (p * 255);
   }
@@ -551,6 +602,23 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
   }
 }
 
+void
+PixelFormatGrayChar::fromAny (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  unsigned char * dest = (unsigned char *) result.buffer;
+  unsigned char * end = dest + result.buffer.size ();
+  unsigned char * source = (unsigned char *) image.buffer;
+  const PixelFormat * sourceFormat = image.format;
+  int sourceDepth = sourceFormat->depth;
+  while (dest < end)
+  {
+	*dest++ = sourceFormat->getGray (source);
+	source += sourceDepth;
+  }
+}
+
 unsigned int
 PixelFormatGrayChar::getRGBA (void * pixel) const
 {
@@ -566,6 +634,19 @@ PixelFormatGrayChar::getXYZ (void * pixel, float values[]) const
   values[2] = 0;
 
   linearize (values[1]);
+}
+
+unsigned char
+PixelFormatGrayChar::getGray (void * pixel) const
+{
+  return *((unsigned char *) pixel);
+}
+
+void
+PixelFormatGrayChar::getGray (void * pixel, float * value) const
+{
+  *value = *((unsigned char *) pixel) / 255.0f;
+  linearize (*value);
 }
 
 void
@@ -590,14 +671,12 @@ PixelFormatGrayChar::setXYZ (void * pixel, float values[]) const
 
 // class PixelFormatGrayFloat -------------------------------------------------
 
-PixelFormatGrayFloat::PixelFormatGrayFloat (float scale, float bias)
+PixelFormatGrayFloat::PixelFormatGrayFloat ()
 {
   depth       = 4;
-  precedence  = 2;
+  precedence  = 3;  // Above all integer formats and below GrayDouble
   monochrome  = true;
-
-  this->scale = scale;
-  this->bias  = bias;
+  hasAlpha    = false;
 }
 
 void
@@ -612,28 +691,7 @@ PixelFormatGrayFloat::fromGrayChar (const Image & image, Image & result) const
   {
 	float v = *fromPixel++ / 255.0f;
 	linearize (v);
-	*toPixel++ = (v - bias) / scale;
-  }
-}
-
-void
-PixelFormatGrayFloat::fromGrayFloat (const Image & image, Image & result) const
-{
-  result.buffer.grow (result.width * result.height * depth);
-
-  // Determine linear transformation between our range and their range.
-  const PixelFormatGrayFloat * thatFormat = (PixelFormatGrayFloat *) image.format;
-  float thatBias  = thatFormat->bias;
-  float thatScale = thatFormat->scale;
-  float ratio     = thatScale / scale;
-  float shift     = (thatBias - bias) / scale;
-
-  float * fromPixel = (float *) image.buffer;
-  float * toPixel = (float *) result.buffer;
-  float * end = toPixel + result.width * result.height;
-  while (toPixel < end)
-  {
-	*toPixel++ = *fromPixel++ * ratio + shift;
+	*toPixel++ = v;
   }
 }
 
@@ -642,19 +700,12 @@ PixelFormatGrayFloat::fromGrayDouble (const Image & image, Image & result) const
 {
   result.buffer.grow (result.width * result.height * depth);
 
-  // Determine linear transformation between our range and their range.
-  const PixelFormatGrayDouble * thatFormat = (PixelFormatGrayDouble *) image.format;
-  float thatBias  = thatFormat->bias;
-  float thatScale = thatFormat->scale;
-  float ratio     = thatScale / scale;
-  float shift     = (thatBias - bias) / scale;
-
   double * fromPixel = (double *) image.buffer;
   float * toPixel = (float *) result.buffer;
   float * end = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	*toPixel++ = (float) *fromPixel++ * ratio + shift;
+	*toPixel++ = (float) *fromPixel++;
   }
 }
 
@@ -675,7 +726,7 @@ PixelFormatGrayFloat::fromRGBAChar (const Image & image, Image & result) const
 	linearize (r);
 	linearize (g);
 	linearize (b);
-	*toPixel++ = (redToY * r + greenToY * g + blueToY * b - bias) / scale;
+	*toPixel++ = redToY * r + greenToY * g + blueToY * b;
   }
 }
 
@@ -709,7 +760,7 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 	  linearize (fr); \
 	  linearize (fg); \
 	  linearize (fb); \
-	  *toPixel++ = (redToY * fr + greenToY * fg + blueToY * fb - bias) / scale; \
+	  *toPixel++ = redToY * fr + greenToY * fg + blueToY * fb; \
 	} \
   }
 
@@ -741,7 +792,7 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 		linearize (fr);
 		linearize (fg);
 		linearize (fb);
-		*toPixel++ = (redToY * fr + greenToY * fg + blueToY * fb - bias) / scale;
+		*toPixel++ = redToY * fr + greenToY * fg + blueToY * fb;
 	  }
 	  break;
 	}
@@ -751,21 +802,27 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
   }
 }
 
-bool
-PixelFormatGrayFloat::operator == (const PixelFormat & that) const
+void
+PixelFormatGrayFloat::fromAny (const Image & image, Image & result) const
 {
-  if (const PixelFormatGrayFloat * other = dynamic_cast<const PixelFormatGrayFloat *> (& that))
+  result.buffer.grow (result.width * result.height * depth);
+
+  float * dest = (float *) result.buffer;
+  float * end = dest + result.width * result.height;
+  unsigned char * source = (unsigned char *) image.buffer;
+  const PixelFormat * sourceFormat = image.format;
+  int sourceDepth = sourceFormat->depth;
+  while (dest < end)
   {
-	return    scale == other->scale
-	       && bias  == other->bias;
+	sourceFormat->getGray (source, dest++);
+	source += sourceDepth;
   }
-  return false;
 }
 
 unsigned int
 PixelFormatGrayFloat::getRGBA (void * pixel) const
 {
-  float v = min (max (*((float *) pixel) * scale + bias, 0.0f), 1.0f);
+  float v = min (max (*((float *) pixel), 0.0f), 1.0f);
   delinearize (v);
   unsigned int t = (unsigned int) (v * 255);
   return 0xFF000000 | (t << 16) | (t << 8) | t;
@@ -774,7 +831,7 @@ PixelFormatGrayFloat::getRGBA (void * pixel) const
 void
 PixelFormatGrayFloat::getRGBA (void * pixel, float values[]) const
 {
-  float i = *((float *) pixel) * scale + bias;
+  float i = *((float *) pixel);
   values[0] = i;
   values[1] = i;
   values[2] = i;
@@ -785,8 +842,22 @@ void
 PixelFormatGrayFloat::getXYZ (void * pixel, float values[]) const
 {
   values[0] = 0;
-  values[1] = *((float *) pixel) * scale + bias;
+  values[1] = *((float *) pixel);
   values[2] = 0;
+}
+
+unsigned char
+PixelFormatGrayFloat::getGray (void * pixel) const
+{
+  float v = min (max (*((float *) pixel), 0.0f), 1.0f);
+  delinearize (v);
+  return (unsigned char) (v * 255);
+}
+
+void
+PixelFormatGrayFloat::getGray (void * pixel, float * value) const
+{
+  *value = *((float *) pixel);
 }
 
 void
@@ -798,32 +869,30 @@ PixelFormatGrayFloat::setRGBA (void * pixel, unsigned int rgba) const
   linearize (r);
   linearize (g);
   linearize (b);
-  *((float *) pixel) = (redToY * r + greenToY * g + blueToY * b - bias) / scale;
+  *((float *) pixel) = redToY * r + greenToY * g + blueToY * b;
 }
 
 void
 PixelFormatGrayFloat::setRGBA (void * pixel, float values[]) const
 {
-  *((float *) pixel) = (redToY * values[0] + greenToY * values[1] + blueToY * values[2] - bias) / scale;
+  *((float *) pixel) = redToY * values[0] + greenToY * values[1] + blueToY * values[2];
 }
 
 void
 PixelFormatGrayFloat::setXYZ (void * pixel, float values[]) const
 {
-  *((float *) pixel) = (values[1] - bias) / scale;
+  *((float *) pixel) = values[1];
 }
 
 
 // class PixelFormatGrayDouble ------------------------------------------------
 
-PixelFormatGrayDouble::PixelFormatGrayDouble (double scale, double bias)
+PixelFormatGrayDouble::PixelFormatGrayDouble ()
 {
   depth       = 8;
-  precedence  = 3;
+  precedence  = 4;  // above all integer formats and above GrayFloat
   monochrome  = true;
-
-  this->scale = scale;
-  this->bias  = bias;
+  hasAlpha    = false;
 }
 
 void
@@ -838,7 +907,7 @@ PixelFormatGrayDouble::fromGrayChar (const Image & image, Image & result) const
   {
 	double v = *fromPixel++ / 255.0;
 	linearize (v);
-	*toPixel++ = (v - bias) / scale;
+	*toPixel++ = v;
   }
 }
 
@@ -847,40 +916,12 @@ PixelFormatGrayDouble::fromGrayFloat (const Image & image, Image & result) const
 {
   result.buffer.grow (result.width * result.height * depth);
 
-  // Determine linear transformation between our range and their range.
-  const PixelFormatGrayFloat * thatFormat = (PixelFormatGrayFloat *) image.format;
-  double thatBias  = thatFormat->bias;
-  double thatScale = thatFormat->scale;
-  double ratio     = thatScale / scale;
-  double shift     = (thatBias - bias) / scale;
-
   float * fromPixel = (float *) image.buffer;
   double * toPixel = (double *) result.buffer;
   double * end = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	*toPixel++ = *fromPixel++ * ratio + shift;
-  }
-}
-
-void
-PixelFormatGrayDouble::fromGrayDouble (const Image & image, Image & result) const
-{
-  result.buffer.grow (result.width * result.height * depth);
-
-  // Determine linear transformation between our range and their range.
-  const PixelFormatGrayDouble * thatFormat = (PixelFormatGrayDouble *) image.format;
-  double thatBias  = thatFormat->bias;
-  double thatScale = thatFormat->scale;
-  double ratio     = thatScale / scale;
-  double shift     = (thatBias - bias) / scale;
-
-  double * fromPixel = (double *) image.buffer;
-  double * toPixel = (double *) result.buffer;
-  double * end = toPixel + result.width * result.height;
-  while (toPixel < end)
-  {
-	*toPixel++ = *fromPixel++ * ratio + shift;
+	*toPixel++ = *fromPixel++;
   }
 }
 
@@ -901,7 +942,7 @@ PixelFormatGrayDouble::fromRGBAChar (const Image & image, Image & result) const
 	linearize (r);
 	linearize (g);
 	linearize (b);
-	*toPixel++ = (redToY * r + greenToY * g + blueToY * b - bias) / scale;
+	*toPixel++ = redToY * r + greenToY * g + blueToY * b;
   }
 }
 
@@ -935,7 +976,7 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 	  linearize (fr); \
 	  linearize (fg); \
 	  linearize (fb); \
-	  *toPixel++ = (redToY * fr + greenToY * fg + blueToY * fb - bias) / scale; \
+	  *toPixel++ = redToY * fr + greenToY * fg + blueToY * fb; \
 	} \
   }
 
@@ -967,7 +1008,7 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 		linearize (fr);
 		linearize (fg);
 		linearize (fb);
-		*toPixel++ = (redToY * fr + greenToY * fg + blueToY * fb - bias) / scale;
+		*toPixel++ = redToY * fr + greenToY * fg + blueToY * fb;
 	  }
 	  break;
 	}
@@ -977,21 +1018,29 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
   }
 }
 
-bool
-PixelFormatGrayDouble::operator == (const PixelFormat & that) const
+void
+PixelFormatGrayDouble::fromAny (const Image & image, Image & result) const
 {
-  if (const PixelFormatGrayDouble * other = dynamic_cast<const PixelFormatGrayDouble *> (& that))
+  result.buffer.grow (result.width * result.height * depth);
+
+  double * dest = (double *) result.buffer;
+  double * end = dest + result.width * result.height;
+  unsigned char * source = (unsigned char *) image.buffer;
+  const PixelFormat * sourceFormat = image.format;
+  int sourceDepth = sourceFormat->depth;
+  while (dest < end)
   {
-	return    scale == other->scale
-	       && bias  == other->bias;
+	float value;
+	sourceFormat->getGray (source, &value);
+	*dest++ = value;
+	source += sourceDepth;
   }
-  return false;
 }
 
 unsigned int
 PixelFormatGrayDouble::getRGBA (void * pixel) const
 {
-  double v = min (max (*((double *) pixel) * scale + bias, 0.0), 1.0);
+  double v = min (max (*((double *) pixel), 0.0), 1.0);
   delinearize (v);
   unsigned int t = (unsigned int) (v * 255);
   return 0xFF000000 | (t << 16) | (t << 8) | t;
@@ -1000,7 +1049,7 @@ PixelFormatGrayDouble::getRGBA (void * pixel) const
 void
 PixelFormatGrayDouble::getRGBA (void * pixel, float values[]) const
 {
-  float i = *((double *) pixel) * scale + bias;
+  float i = *((double *) pixel);
   values[0] = i;
   values[1] = i;
   values[2] = i;
@@ -1011,8 +1060,22 @@ void
 PixelFormatGrayDouble::getXYZ (void * pixel, float values[]) const
 {
   values[0] = 0;
-  values[1] = *((double *) pixel) * scale + bias;
+  values[1] = *((double *) pixel);
   values[2] = 0;
+}
+
+unsigned char
+PixelFormatGrayDouble::getGray (void * pixel) const
+{
+  double v = min (max (*((double *) pixel), 0.0), 1.0);
+  delinearize (v);
+  return (unsigned char) (v * 255);
+}
+
+void
+PixelFormatGrayDouble::getGray (void * pixel, float * value) const
+{
+  *value = *((double *) pixel);
 }
 
 void
@@ -1024,19 +1087,19 @@ PixelFormatGrayDouble::setRGBA (void * pixel, unsigned int rgba) const
   linearize (r);
   linearize (g);
   linearize (b);
-  *((double *) pixel) = (redToY * r + greenToY * g + blueToY * b - bias) / scale;
+  *((double *) pixel) = redToY * r + greenToY * g + blueToY * b;
 }
 
 void
 PixelFormatGrayDouble::setRGBA (void * pixel, float values[]) const
 {
-  *((double *) pixel) = (redToY * values[0] + greenToY * values[1] + blueToY * values[2] - bias) / scale;
+  *((double *) pixel) = redToY * values[0] + greenToY * values[1] + blueToY * values[2];
 }
 
 void
 PixelFormatGrayDouble::setXYZ (void * pixel, float values[]) const
 {
-  *((double *) pixel) = (values[1] - bias) / scale;
+  *((double *) pixel) = values[1];
 }
 
 
@@ -1044,9 +1107,10 @@ PixelFormatGrayDouble::setXYZ (void * pixel, float values[]) const
 
 PixelFormatRGBAChar::PixelFormatRGBAChar ()
 {
-  depth = 4;
-  precedence = 1;
+  depth      = 4;
+  precedence = 2;  // Above GrayChar and below all floating point formats
   monochrome = false;
+  hasAlpha   = true;
 }
 
 void
@@ -1069,16 +1133,12 @@ PixelFormatRGBAChar::fromGrayFloat (const Image & image, Image & result) const
 {
   result.buffer.grow (result.width * result.height * depth);
 
-  const PixelFormatGrayFloat * thatFormat = (PixelFormatGrayFloat *) image.format;
-  float scale = thatFormat->scale;
-  float bias  = thatFormat->bias;
-
   float * fromPixel = (float *) image.buffer;
   unsigned int * toPixel = (unsigned int *) result.buffer;
   unsigned int * end = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	float v = min (max (*fromPixel++ * scale + bias, 0.0f), 1.0f);
+	float v = min (max (*fromPixel++, 0.0f), 1.0f);
 	delinearize (v);
 	unsigned int t = (unsigned int) (v * 255);
 	*toPixel++ = 0xFF000000 | (t << 16) | (t << 8) | t;
@@ -1090,16 +1150,12 @@ PixelFormatRGBAChar::fromGrayDouble (const Image & image, Image & result) const
 {
   result.buffer.grow (result.width * result.height * depth);
 
-  const PixelFormatGrayDouble * thatFormat = (PixelFormatGrayDouble *) image.format;
-  double scale = thatFormat->scale;
-  double bias  = thatFormat->bias;
-
   double * fromPixel = (double *) image.buffer;
   unsigned int * toPixel = (unsigned int *) result.buffer;
   unsigned int * end = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	double v = min (max (*fromPixel++ * scale + bias, 0.0), 1.0);
+	double v = min (max (*fromPixel++, 0.0), 1.0);
 	delinearize (v);
 	unsigned int t = (unsigned int) (v * 255);
 	*toPixel++ = 0xFF000000 | (t << 16) | (t << 8) | t;
@@ -1289,8 +1345,9 @@ PixelFormatRGBABits::PixelFormatRGBABits (int depth, unsigned int redMask, unsig
   this->blueMask  = blueMask;
   this->alphaMask = alphaMask;
 
-  precedence = 1;
+  precedence = 2;  // on par with RGBAChar
   monochrome = false;
+  hasAlpha   = true;
 }
 
 // fromGrayChar () produces a bogus alpha channel!  Fix it.
@@ -1339,7 +1396,7 @@ PixelFormatRGBABits::fromGrayChar (const Image & image, Image & result) const
   unsigned toSize * end       = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
-	fromSize v = min (max (*fromPixel++ * scale + bias, (fromSize) 0.0), (fromSize) 1.0); \
+	fromSize v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
 	delinearize (v); \
 	unsigned int t = (unsigned int) (v * (255 << 8)); \
 	*toPixel++ =   ((redShift   > 0 ? t << redShift   : t >> -redShift)   & redMask) \
@@ -1356,7 +1413,7 @@ PixelFormatRGBABits::fromGrayChar (const Image & image, Image & result) const
   unsigned char * end       = toPixel + result.width * result.height * 3; \
   while (toPixel < end) \
   { \
-	fromSize v = min (max (*fromPixel++ * scale + bias, (fromSize) 0.0), (fromSize) 1.0); \
+	fromSize v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
 	delinearize (v); \
 	unsigned int t = (unsigned int) (v * (255 << 8)); \
 	t =   ((redShift   > 0 ? t << redShift   : t >> -redShift)   & redMask) \
@@ -1373,10 +1430,6 @@ void
 PixelFormatRGBABits::fromGrayFloat (const Image & image, Image & result) const
 {
   result.buffer.grow (result.width * result.height * depth);
-
-  const PixelFormatGrayFloat * thatFormat = (PixelFormatGrayFloat *) image.format;
-  float scale = thatFormat->scale;
-  float bias  = thatFormat->bias;
 
   int redShift;
   int greenShift;
@@ -1409,10 +1462,6 @@ void
 PixelFormatRGBABits::fromGrayDouble (const Image & image, Image & result) const
 {
   result.buffer.grow (result.width * result.height * depth);
-
-  const PixelFormatGrayDouble * thatFormat = (PixelFormatGrayDouble *) image.format;
-  double scale = thatFormat->scale;
-  double bias  = thatFormat->bias;
 
   int redShift;
   int greenShift;
@@ -1707,9 +1756,10 @@ PixelFormatRGBABits::setRGBA (void * pixel, unsigned int rgba) const
 
 PixelFormatRGBAFloat::PixelFormatRGBAFloat ()
 {
-  depth = 4 * sizeof (float);
-  precedence = 4;
+  depth      = 4 * sizeof (float);
+  precedence = 5;  // Above everything
   monochrome = false;
+  hasAlpha   = true;
 }
 
 unsigned int
@@ -1725,6 +1775,7 @@ PixelFormatRGBAFloat::getRGBA (void * pixel) const
   delinearize (rgbaValues[0]);
   delinearize (rgbaValues[1]);
   delinearize (rgbaValues[2]);
+  // assume alpha is already linear
   unsigned int r = ((unsigned int) (rgbaValues[0] * 255)) << 16;
   unsigned int g = ((unsigned int) (rgbaValues[1] * 255)) <<  8;
   unsigned int b = ((unsigned int) (rgbaValues[2] * 255));
@@ -1766,4 +1817,153 @@ PixelFormatRGBAFloat::setRGBA (void * pixel, float values[]) const
   ((float *) pixel)[1] = values[1];
   ((float *) pixel)[2] = values[2];
   ((float *) pixel)[3] = values[3];
+}
+
+
+// class PixelFormatYVYUChar --------------------------------------------------
+
+// Notes...
+// YUV <-> RGB conversion matrices are specified by the standards in terms of
+// non-linear RGB.  IE: even though the conversion matrices are linear ops,
+// they work on non-linear inputs.  Therefore, even though YUV is essentially
+// non-linear, it should not be linearized until after it is converted into
+// RGB.  The matrices output non-linear RGB.
+
+PixelFormatYVYUChar::PixelFormatYVYUChar ()
+{
+  depth      = 2;
+  precedence = 1;  // above GrayChar and below RGBAChar
+  monochrome = false;
+  hasAlpha   = false;
+}
+
+unsigned int
+PixelFormatYVYUChar::getRGBA (void * pixel) const
+{
+  int y;
+  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  {
+	((short *) pixel)--;  // Move backward in memory 16 bits.
+	y = (*((unsigned int *) pixel) & 0xFF000000) >> 8;
+  }
+  else  // on 32-bit word boundary
+  {
+	y = (*((unsigned int *) pixel) & 0xFF00) << 8;
+  }
+  int u = ((unsigned char *) pixel)[0] - 128;
+  int v = ((unsigned char *) pixel)[2] - 128;
+
+  // R = Y           +1.4022*V
+  // G = Y -0.3456*U -0.7145*V
+  // B = Y +1.7710*U
+  // The coefficients below are in fixed-point with decimal between bits 15 and 16.
+  // Figure out a more elegant way to express these constants letting the
+  // compiler do the work!
+  unsigned int r = min (max (y               + 0x166F7 * v, 0), 0xFFFFFF);
+  unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v, 0), 0xFFFFFF);
+  unsigned int b = min (max (y + 0x1C560 * u,               0), 0xFFFFFF);
+
+  return 0xFF000000 | (r & 0xFF0000) | ((g >> 8) & 0xFF00) | (b >> 16);
+}
+
+unsigned char
+PixelFormatYVYUChar::getGray (void * pixel) const
+{
+  return ((unsigned char *) pixel)[1];
+}
+
+void
+PixelFormatYVYUChar::setRGBA (void * pixel, unsigned int rgba) const
+{
+  int r = (rgba & 0xFF0000) >> 16;
+  int g = (rgba &   0xFF00) >> 8;
+  int b =  rgba &     0xFF;
+
+  // Y =  0.2989*R +0.5866*G +0.1145*B
+  // U = -0.1687*R -0.3312*G +0.5000*B
+  // V =  0.5000*R -0.4183*G -0.0816*B
+  unsigned int y = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b,            0), 0xFFFFFF) & 0xFF0000;
+  unsigned int u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000, 0), 0xFFFFFF) >> 16;
+  unsigned int v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000, 0), 0xFFFFFF) & 0xFF0000;
+
+  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  {
+	((short *) pixel)--;  // Move backward in memory 16 bits.
+	*((unsigned int *) pixel) = (y << 8) | v | (*((unsigned int *) pixel) & 0xFF00) | u;
+  }
+  else  // on 32-bit word boundary
+  {
+	*((unsigned int *) pixel) = (*((unsigned int *) pixel) & 0xFF000000) | v | (y >> 8) | u;
+  }
+}
+
+
+// class PixelFormatVYUYChar --------------------------------------------------
+
+PixelFormatVYUYChar::PixelFormatVYUYChar ()
+{
+  depth      = 2;
+  precedence = 1;  // same as YVYU
+  monochrome = false;
+  hasAlpha   = false;
+}
+
+unsigned int
+PixelFormatVYUYChar::getRGBA (void * pixel) const
+{
+  int y;
+  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  {
+	((short *) pixel)--;  // Move backward in memory 16 bits.
+	y = *((unsigned int *) pixel) & 0xFF0000;
+  }
+  else  // on 32-bit word boundary
+  {
+	y = (*((unsigned int *) pixel) & 0xFF) << 16;
+  }
+  int u = ((unsigned char *) pixel)[1] - 128;
+  int v = ((unsigned char *) pixel)[3] - 128;
+
+  // R = Y           +1.4022*V
+  // G = Y -0.3456*U -0.7145*V
+  // B = Y +1.7710*U
+  // The coefficients below are in fixed-point with decimal between bits 15 and 16.
+  // Figure out a more elegant way to express these constants letting the
+  // compiler do the work!
+  unsigned int r = min (max (y               + 0x166F7 * v, 0), 0xFFFFFF);
+  unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v, 0), 0xFFFFFF);
+  unsigned int b = min (max (y + 0x1C560 * u,               0), 0xFFFFFF);
+
+  return 0xFF000000 | (r & 0xFF0000) | ((g >> 8) & 0xFF00) | (b >> 16);
+}
+
+unsigned char
+PixelFormatVYUYChar::getGray (void * pixel) const
+{
+  return (unsigned char *) pixel;
+}
+
+void
+PixelFormatVYUYChar::setRGBA (void * pixel, unsigned int rgba) const
+{
+  int r = (rgba & 0xFF0000) >> 16;
+  int g = (rgba &   0xFF00) >> 8;
+  int b =  rgba &     0xFF;
+
+  // Y =  0.2989*R +0.5866*G +0.1145*B
+  // U = -0.1687*R -0.3312*G +0.5000*B
+  // V =  0.5000*R -0.4183*G -0.0816*B
+  unsigned int y =  min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b,            0), 0xFFFFFF) & 0xFF0000;
+  unsigned int u = (min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000, 0), 0xFFFFFF) & 0xFF0000) >> 8;
+  unsigned int v = (min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000, 0), 0xFFFFFF) & 0xFF0000) << 8;
+
+  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  {
+	((short *) pixel)--;  // Move backward in memory 16 bits.
+	*((unsigned int *) pixel) = v | y | u | (*((unsigned int *) pixel) & 0xFF);
+  }
+  else  // on 32-bit word boundary
+  {
+	*((unsigned int *) pixel) = v | (*((unsigned int *) pixel) & 0xFF0000) | u | (y >> 16);
+  }
 }
