@@ -11,20 +11,12 @@ namespace fl
 {
   // class SearchableNumeric<T> -----------------------------------------------
 
-  SearchableNumeric<float>::SearchableNumeric (float perturbation)
+  template<class T>
+  SearchableNumeric<T>::SearchableNumeric (T perturbation)
   {
 	if (perturbation == -1)
 	{
-	  perturbation = sqrtf (FLT_EPSILON);
-	}
-	this->perturbation = perturbation;
-  }
-
-  SearchableNumeric<double>::SearchableNumeric (double perturbation)
-  {
-	if (perturbation == -1)
-	{
-	  perturbation = sqrt (DBL_EPSILON);
+	  perturbation = sizeof (T) == sizeof (float) ? sqrtf (FLT_EPSILON) : sqrt (DBL_EPSILON);
 	}
 	this->perturbation = perturbation;
   }
