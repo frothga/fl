@@ -111,7 +111,9 @@ namespace fl
 	int patience;
   };
 
-  /// LM based on QR decomposition.  Translated from MINPACK
+  /**
+	 LM based on QR decomposition.  Translated from MINPACK.
+  **/
   class LevenbergMarquardt : public Search
   {
   public:
@@ -124,40 +126,9 @@ namespace fl
 	int maxIterations;
   };
 
-  /*
-  // LM based on normal equations and Bunch-Kaufman decomposition.
-  // Modified from MINPACK.
-  class LevenbergMarquardtBK : public Search
-  {
-  public:
-	LevenbergMarquardtBK (double toleranceF = -1, double toleranceX = -1, int maxIterations = 200);  ///< toleranceF/X == -1 means use sqrt (machine precision)
-
-	virtual void search (Searchable & searchable, Vector<double> & point);
-
-	double toleranceF;
-	double toleranceX;
-	int maxIterations;
-  };
-  */
-
-  /*
-  // LM that uses MINPACK directly.
-  class LevenbergMarquardtMinpack : public Search
-  {
-  public:
-	LevenbergMarquardtMinpack (double toleranceF = -1, double toleranceX = -1, int maxIterations = 200);  ///< toleranceF/X == -1 means use sqrt (machine precision)
-
-	virtual void search (Searchable & searchable, Vector<double> & point);
-
-	static void fcn (const int & m, const int & n, double x[], double fvec[], int & info);  ///< FORTRAN callback
-
-	double toleranceF;
-	double toleranceX;
-	int maxIterations;
-  };
-  */
-
-  // Sparsified version of LevenbergMarquardtBK
+  /**
+	 LM based on Bunch-Kaufman decomposition with sparse implementation.
+  **/
   class LevenbergMarquardtSparseBK : public Search
   {
   public:
@@ -170,23 +141,6 @@ namespace fl
 	int maxIterations;
 	int maxPivot;  ///< Farthest from diagonal to permit a pivot
   };
-
-  /*
-  // Similar to LevenbergMarquardtSparseBK, but uses sparse Cholesky
-  // decomposition instead.  Works OK, but not as numerically stable as BK,
-  // and not significantly more efficient either.
-  class LevenbergMarquardtSparseCholesky : public Search
-  {
-  public:
-	LevenbergMarquardtSparseCholesky (double toleranceF = -1, double toleranceX = -1, int maxIterations = 200);  ///< toleranceF/X == -1 means use sqrt (machine precision)
-
-	virtual void search (Searchable & searchable, Vector<double> & point);
-
-	double toleranceF;
-	double toleranceX;
-	int maxIterations;
-  };
-  */
 }
 
 
