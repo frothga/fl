@@ -86,9 +86,21 @@ namespace fl
 
   template <class T>
   void
-  MatrixPacked<T>::clear ()
+  MatrixPacked<T>::clear (const T scalar)
   {
-	data.clear ();
+	if (scalar == (T) 0)
+	{
+	  data.clear ();
+	}
+	else
+	{
+	  T * i = (T *) data;
+	  T * end = i + (rows_ + 1) * rows_ / 2;
+	  while (i < end)
+	  {
+		*i++ = scalar;
+	  }
+	}	  
   }
 
   template <class T>

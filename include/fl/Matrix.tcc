@@ -45,7 +45,7 @@ namespace fl
 
   template<class T>
   void
-  MatrixAbstract<T>::clear ()
+  MatrixAbstract<T>::clear (const T scalar)
   {
 	int h = rows ();
 	int w = columns ();
@@ -53,7 +53,7 @@ namespace fl
 	{
 	  for (int r = 0; r < h; r++)
 	  {
-		(*this) (r, c) = (T) 0;
+		(*this)(r,c) = scalar;
 	  }
 	}
   }
@@ -180,7 +180,7 @@ namespace fl
 	int last = std::min (rows (), columns ());
 	for (int i = 0; i < last; i++)
 	{
-	  (*this) (i, i) = scalar;
+	  (*this)(i,i) = scalar;
 	}
   }
 
@@ -554,9 +554,21 @@ namespace fl
 
   template<class T>
   void
-  Matrix<T>::clear ()
+  Matrix<T>::clear (const T scalar)
   {
-	data.clear ();
+	if (scalar == (T) 0)
+	{
+	  data.clear ();
+	}
+	else
+	{
+	  T * i = (T *) data;
+	  T * end = i + rows_ * columns_;
+	  while (i < end)
+	  {
+		*i++ = scalar;
+	  }
+	}	  
   }
 
   template<class T>
@@ -905,9 +917,9 @@ namespace fl
 
   template<class T>
   void
-  MatrixTranspose<T>::clear ()
+  MatrixTranspose<T>::clear (const T scalar)
   {
-	wrapped->clear ();
+	wrapped->clear (scalar);
   }
 
   template<class T>
@@ -994,13 +1006,13 @@ namespace fl
 
   template<class T>
   void
-  MatrixRegion<T>::clear ()
+  MatrixRegion<T>::clear (const T scalar)
   {
 	for (int r = firstRow + rows_ - 1; r >= firstRow; r--)
 	{
 	  for (int c = firstColumn + columns_ - 1; c >= firstColumn; c--)
 	  {
-		(*wrapped) (r, c) = (T) 0;
+		(*wrapped)(r,c) = scalar;
 	  }
 	}
   }

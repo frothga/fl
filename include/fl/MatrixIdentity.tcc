@@ -64,9 +64,9 @@ namespace fl
 
   template <class T>
   void
-  MatrixIdentity<T>::clear ()
+  MatrixIdentity<T>::clear (const T scalar)
   {
-	value = 0;
+	value = scalar;
   }
 
   template <class T>

@@ -102,9 +102,21 @@ namespace fl
 
   template <class T>
   void
-  MatrixDiagonal<T>::clear ()
+  MatrixDiagonal<T>::clear (const T scalar)
   {
-	data.clear ();
+	if (scalar == (T) 0)
+	{
+	  data.clear ();
+	}
+	else
+	{
+	  T * i = (T *) data;
+	  T * end = i + std::min (rows_, columns_);
+	  while (i < end)
+	  {
+		*i++ = scalar;
+	  }
+	}	  
   }
 
   template <class T>

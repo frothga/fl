@@ -115,7 +115,7 @@ namespace fl
 
   template<class T>
   void
-  MatrixSparse<T>::clear ()
+  MatrixSparse<T>::clear (const T scalar)
   {
 	typename std::vector< std::map<int,T> >::iterator i = data->begin ();
 	while (i < data->end ())
