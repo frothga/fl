@@ -96,10 +96,10 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 	Point pbl = S * bl;
 	Point pbr = S * br;
 
-	sourceL = (int) rint (ptl.x <? ptr.x <? pbl.x <? pbr.x >? 0);
-	sourceR = (int) rint (ptl.x >? ptr.x >? pbl.x >? pbr.x <? I_x.width - 1);
-	sourceT = (int) rint (ptl.y <? ptr.y <? pbl.y <? pbr.y >? 0);
-	sourceB = (int) rint (ptl.y >? ptr.y >? pbl.y >? pbr.y <? I_x.height - 1);
+	sourceL = (int) rint (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0f));
+	sourceR = (int) rint (min (max (ptl.x, ptr.x, pbl.x, pbr.x), I_x.width - 1.0f));
+	sourceT = (int) rint (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0f));
+	sourceB = (int) rint (min (max (ptl.y, ptr.y, pbl.y, pbr.y), I_x.height - 1.0f));
 
 	R.region (0, 0, 1, 2) *= width / (2 * supportRadial);
 	R(0,2) += center;
@@ -134,8 +134,8 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
   }
 
   // Second, gather up the gradient histogram that constitutes the SIFT key.
-  float histogram[width][width][angles];
-  memset (histogram, 0, sizeof (histogram));
+  Vector<float> result (width * width * angles);
+  result.clear ();
   const float binLimit = width - 0.5f;
   for (int y = sourceT; y <= sourceB; y++)
   {
@@ -175,14 +175,14 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 		  if (yl >= 0)
 		  {
 			float yweight = (1.0f - yf) * xweight;
-			histogram[xl][yl][al] += (1.0f - af) * yweight;
-			histogram[xl][yl][ah] +=         af  * yweight;
+			result[((xl * width) + yl) * angles + al] += (1.0f - af) * yweight;
+			result[((xl * width) + yl) * angles + ah] +=         af  * yweight;
 		  }
 		  if (yh < width)
 		  {
 			float yweight = yf * xweight;
-			histogram[xl][yh][al] += (1.0f - af) * yweight;
-			histogram[xl][yh][ah] +=         af  * yweight;
+			result[((xl * width) + yh) * angles + al] += (1.0f - af) * yweight;
+			result[((xl * width) + yh) * angles + ah] +=         af  * yweight;
 		  }
 		}
 		if (xh < width)
@@ -191,22 +191,20 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 		  if (yl >= 0)
 		  {
 			float yweight = (1.0f - yf) * xweight;
-			histogram[xh][yl][al] += (1.0f - af) * yweight;
-			histogram[xh][yl][ah] +=         af  * yweight;
+			result[((xh * width) + yl) * angles + al] += (1.0f - af) * yweight;
+			result[((xh * width) + yl) * angles + ah] +=         af  * yweight;
 		  }
 		  if (yh < width)
 		  {
 			float yweight = yf * xweight;
-			histogram[xh][yh][al] += (1.0f - af) * yweight;
-			histogram[xh][yh][ah] +=         af  * yweight;
+			result[((xh * width) + yh) * angles + al] += (1.0f - af) * yweight;
+			result[((xh * width) + yh) * angles + ah] +=         af  * yweight;
 		  }
 		}
 	  }
 	}
   }
 
-  Vector<float> result (&histogram[0][0][0], width * width * angles);
-  result.copyFrom (result);  // force creation of a new buffer (one that won't evaporate at the end of this method)
   result.normalize ();
   bool changed = false;
   for (int i = 0; i < result.rows (); i++)
