@@ -16,8 +16,8 @@ DescriptorSIFT::DescriptorSIFT (int width, int angles)
   this->width = width;
   this->angles = angles;
 
-  supportRadial = 6;
-  supportPixel = 32;
+  supportRadial = 3 * width / 2.0f;  // Causes each bin to cover 3 sigmas.
+  supportPixel = (int) ceilf (2 * supportRadial);  // Causes drawn off patch to hold 2 pixels per sigma.
   sigmaWeight = width / 2.0;
   maxValue = 0.2f;
 
@@ -34,55 +34,8 @@ DescriptorSIFT::computeGradient (const Image & image)
   lastImage = &image;
 
   ImageOf<float> work = image * GrayFloat;
-
-  I_x.format = &GrayFloat;
-  I_y.format = &GrayFloat;
-  I_x.resize (image.width, image.height);
-  I_y.resize (image.width, image.height);
-
-  // Compute all of I_x
-  int lastX = image.width - 1;
-  int penX  = lastX - 1;  // "pen" as in "penultimate"
-  for (int y = 0; y < image.height; y++)
-  {
-	I_x(0,    y) = 2.0f * (work(1,    y) - work(0,   y));
-	I_x(lastX,y) = 2.0f * (work(lastX,y) - work(penX,y));
-
-	float * p = & work(2,y);
-	float * m = & work(0,y);
-	float * c = & I_x (1,y);
-	float * end = c + (image.width - 2);
-	while (c < end)
-	{
-	  *c++ = *p++ - *m++;
-	}
-  }
-
-  // Compute top and bottom rows of I_y
-  int lastY = image.height - 1;
-  int penY  = lastY - 1;
-  float * pt = & work(0,1);
-  float * mt = & work(0,0);
-  float * pb = & work(0,lastY);
-  float * mb = & work(0,penY);
-  float * ct = & I_y (0,0);
-  float * cb = & I_y (0,lastY);
-  float * end = ct + image.width;
-  while (ct < end)
-  {
-	*ct++ = 2.0f * (*pt++ - *mt++);
-	*cb++ = 2.0f * (*pb++ - *mb++);
-  }
-
-  // Compute everything else in I_y
-  float * p = & work(0,2);
-  float * m = & work(0,0);
-  float * c = & I_y (0,1);
-  end = &I_y(lastX,penY) + 1;
-  while (c < end)
-  {
-	*c++ = *p++ - *m++;
-  }
+  I_x = work * FiniteDifferenceX ();
+  I_y = work * FiniteDifferenceY ();
 }
 
 Vector<float>
@@ -110,15 +63,35 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
   {
 	computeGradient (image);
 
-	sourceL = (int) rint (point.x - supportRadial);
-	sourceR = (int) rint (point.x + supportRadial);
-	sourceT = (int) rint (point.y - supportRadial);
-	sourceB = (int) rint (point.y + supportRadial);
+	// Project the patch into the gradient image in order to find the window
+	// for scanning pixels there.
 
-	sourceL = max (sourceL, 0);
-	sourceR = min (sourceR, image.width - 1);
-	sourceT = max (sourceT, 0);
-	sourceB = min (sourceB, image.height - 1);
+	Vector<double> tl (3);
+	tl[0] = -supportRadial;
+	tl[1] = supportRadial;
+	tl[2] = 1;
+	Vector<double> tr (3);
+	tr[0] = supportRadial;
+	tr[1] = supportRadial;
+	tr[2] = 1;
+	Vector<double> bl (3);
+	bl[0] = -supportRadial;
+	bl[1] = -supportRadial;
+	bl[2] = 1;
+	Vector<double> br (3);
+	br[0] = supportRadial;
+	br[1] = -supportRadial;
+	br[2] = 1;
+
+	Point ptl = S * tl;
+	Point ptr = S * tr;
+	Point pbl = S * bl;
+	Point pbr = S * br;
+
+	sourceL = (int) rint (ptl.x <? ptr.x <? pbl.x <? pbr.x >? 0);
+	sourceR = (int) rint (ptl.x >? ptr.x >? pbl.x >? pbr.x <? I_x.width - 1);
+	sourceT = (int) rint (ptl.y <? ptr.y <? pbl.y <? pbr.y >? 0);
+	sourceB = (int) rint (ptl.y >? ptr.y >? pbl.y >? pbr.y <? I_x.height - 1);
 
 	R.region (0, 0, 1, 2) *= width / (2 * supportRadial);
 	R(0,2) += center;
@@ -166,7 +139,7 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 		float dx = I_x(x,y);
 		float dy = I_y(x,y);
 		float angle = atan2 (dy, dx) + angleOffset;
-		mod2pi (angle);
+		angle = mod2pi (angle);
 		angle *= angles / (2 * PI);
 		float xc = q.x - center;
 		float yc = q.y - center;
@@ -253,6 +226,12 @@ DescriptorSIFT::patch (const Vector<float> & value)
 
   result.clear ();
   return result;
+}
+
+Comparison *
+DescriptorSIFT::comparison ()
+{
+  return new MetricEuclidean;
 }
 
 void
