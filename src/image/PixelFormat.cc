@@ -406,10 +406,10 @@ PixelFormat::getGray (void * pixel) const
 }
 
 void
-PixelFormat::getGray (void * pixel, float * gray) const
+PixelFormat::getGray (void * pixel, float & gray) const
 {
-  *gray = getGray (pixel) / 255.0f;
-  linearize (*gray);
+  gray = getGray (pixel) / 255.0f;
+  linearize (gray);
 }
 
 unsigned char
@@ -476,13 +476,12 @@ PixelFormat::setGray (void * pixel, unsigned char gray) const
 }
 
 void
-PixelFormat::setGray (void * pixel, float * gray) const
+PixelFormat::setGray (void * pixel, float gray) const
 {
-  float v = *gray;
-  v = min (v, 1.0f);
-  v = max (v, 0.0f);
-  delinearize (v);
-  unsigned int iv = (unsigned int) (v * 255);
+  gray = min (gray, 1.0f);
+  gray = max (gray, 0.0f);
+  delinearize (gray);
+  unsigned int iv = (unsigned int) (gray * 255);
   unsigned int rgba = 0xFF000000 | (iv << 16) | (iv << 8) | iv;
   setRGBA (pixel, rgba);
 }
@@ -703,10 +702,10 @@ PixelFormatGrayChar::getGray (void * pixel) const
 }
 
 void
-PixelFormatGrayChar::getGray (void * pixel, float * gray) const
+PixelFormatGrayChar::getGray (void * pixel, float & gray) const
 {
-  *gray = *((unsigned char *) pixel) / 255.0f;
-  linearize (*gray);
+  gray = *((unsigned char *) pixel) / 255.0f;
+  linearize (gray);
 }
 
 void
@@ -735,11 +734,11 @@ PixelFormatGrayChar::setGray (void * pixel, unsigned char gray) const
 }
 
 void
-PixelFormatGrayChar::setGray (void * pixel, float * gray) const
+PixelFormatGrayChar::setGray (void * pixel, float gray) const
 {
-  register float v = min (max (*gray, 0.0f), 1.0f);
-  delinearize (v);
-  *((unsigned char *) pixel) = (unsigned int) rint (255 * v);
+  gray = min (max (gray, 0.0f), 1.0f);
+  delinearize (gray);
+  *((unsigned char *) pixel) = (unsigned int) rint (255 * gray);
 }
 
 
@@ -927,7 +926,7 @@ PixelFormatGrayFloat::fromAny (const Image & image, Image & result) const
   int sourceDepth = sourceFormat->depth;
   while (dest < end)
   {
-	sourceFormat->getGray (source, dest++);
+	sourceFormat->getGray (source, *dest++);
 	source += sourceDepth;
   }
 }
@@ -968,9 +967,9 @@ PixelFormatGrayFloat::getGray (void * pixel) const
 }
 
 void
-PixelFormatGrayFloat::getGray (void * pixel, float * gray) const
+PixelFormatGrayFloat::getGray (void * pixel, float & gray) const
 {
-  *gray = *((float *) pixel);
+  gray = *((float *) pixel);
 }
 
 void
@@ -1006,9 +1005,9 @@ PixelFormatGrayFloat::setGray  (void * pixel, unsigned char gray) const
 }
 
 void
-PixelFormatGrayFloat::setGray  (void * pixel, float * gray) const
+PixelFormatGrayFloat::setGray  (void * pixel, float gray) const
 {
-  *((float *) pixel) = *gray;
+  *((float *) pixel) = gray;
 }
 
 
@@ -1197,7 +1196,7 @@ PixelFormatGrayDouble::fromAny (const Image & image, Image & result) const
   while (dest < end)
   {
 	float value;
-	sourceFormat->getGray (source, &value);
+	sourceFormat->getGray (source, value);
 	*dest++ = value;
 	source += sourceDepth;
   }
@@ -1239,9 +1238,9 @@ PixelFormatGrayDouble::getGray (void * pixel) const
 }
 
 void
-PixelFormatGrayDouble::getGray (void * pixel, float * gray) const
+PixelFormatGrayDouble::getGray (void * pixel, float & gray) const
 {
-  *gray = *((double *) pixel);
+  gray = *((double *) pixel);
 }
 
 void
@@ -1277,9 +1276,9 @@ PixelFormatGrayDouble::setGray  (void * pixel, unsigned char gray) const
 }
 
 void
-PixelFormatGrayDouble::setGray  (void * pixel, float * gray) const
+PixelFormatGrayDouble::setGray  (void * pixel, float gray) const
 {
-  *((double *) pixel) = *gray;
+  *((double *) pixel) = gray;
 }
 
 
