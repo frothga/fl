@@ -35,8 +35,8 @@ namespace fl
 	char * getChar (const std::string & name, const char * defaultValue = "") const;
 	int getInt (const std::string & name, int defaultValue = 0) const;
 	float getFloat (const std::string & name, float defaultValue = 0) const;
-	void getStringList (const std::string & name, std::vector<std::string> & result, const std::vector<std::string> * defaultValue = 0) const;  ///< parses the value into its comma-separated elements
-	void getIntList (const std::string & name, std::vector<int> & result, const std::vector<int> * defaultValue = 0) const;  ///< Separates the value into its comma-delimited components and interprets them as integers.
+	void getStringList (const std::string & name, std::vector<std::string> & result, const char * defaultValue = "") const;  ///< parses the value into its comma-separated elements
+	void getIntList (const std::string & name, std::vector<int> & result, const char * defaultValue = "") const;  ///< Separates the value into its comma-delimited components and interprets them as integers.
 
 	std::vector<std::string> names;
 	std::vector<std::string> values;
