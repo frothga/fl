@@ -163,9 +163,9 @@ public:
 	map<int,double> & Ck = (*data)[column];
 	map<int,double>::reverse_iterator j = Ck.rbegin ();
 	map<int,double>::reverse_iterator CkEnd = Ck.rend ();
-	if (j->first != column)  // This should never happen.
+	if (j == CkEnd  ||  j->first != column)
 	{
-	  return;
+	  throw "SparseBK::updateRank1: diagonal element is zero";
 	}
 	double alpha = j->second;
 	j++;
@@ -218,12 +218,12 @@ public:
 	map<int,double>::reverse_iterator CkEnd  = Ck.rend ();
 	map<int,double>::reverse_iterator Ck1End = Ck1.rend ();
 
-	double d11 = 0;
-	if (jk->first == column)
+	if (jk == CkEnd  ||  jk1 == Ck1End  ||  jk->first != column  ||  jk1->first != column - 1)
 	{
-	  d11 = jk->second;
-	  jk++;
+	  throw "SparseBK::updateRank2: diagonal element is zero";
 	}
+
+	double d11 = (jk++)->second;
 
 	double d12 = 0;
 	if (jk->first == column - 1)
@@ -232,12 +232,7 @@ public:
 	  jk++;
 	}
 
-	double d22 = 0;
-	if (jk1->first == column - 1)
-	{
-	  d22 = jk1->second;
-	  jk1++;
-	}
+	double d22 = (jk1++)->second;
 
 	double temp = d12;
 	d12 = d11 * d22 / d12 - d12;
@@ -388,7 +383,7 @@ public:
 	double result = 0;
 	map<int,double> & C = (*data)[column];
 	map<int,double>::iterator i = C.begin ();
-	while (i->first <= lastRow  &&  i != C.end ())
+	while (i != C.end ()  &&  i->first <= lastRow)
 	{
 	  result += x[i->first] * i->second;
 	  i++;
@@ -576,7 +571,7 @@ factorize (const int maxPivot, SparseBK & A, Vector<int> & pivots)
 	A.colmax (k, imax, colmax);
 
 	int kp;
-	if (max (absakk, colmax) == 0)
+	if (! (max (absakk, colmax) > 0))
 	{
 	  throw -k;
 	  // kp = k;
@@ -889,7 +884,7 @@ lmpar (const SparseBK & fjac, const Vector<double> & diag, const Vector<double> 
   }
   double dxnorm = enorm (dx);
   double fp = dxnorm - delta;
-//cerr << "fp=" << fp << " " << dxnorm << " " << delta << endl;
+cerr << "fp=" << fp << " " << dxnorm << " " << delta << endl;
   if (fp <= 0.1 * delta)
   {
 	par = 0;
@@ -952,7 +947,7 @@ lmpar (const SparseBK & fjac, const Vector<double> & diag, const Vector<double> 
 	double oldFp = fp;
 	fp = dxnorm - delta;
 
-//cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << delta << endl;
+cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << delta << endl;
 	// If the function is small enough, accept the current value
 	// of par.  Also test for the exceptional cases where parl
 	// is zero or the number of iterations has reached 10.
@@ -1136,7 +1131,7 @@ LevenbergMarquardtSparseBK::search (Searchable & searchable, Vector<double> & po
 		double temp = fnorm1 / fnorm;
 		actred = 1 - temp * temp;
 	  }
-//cerr << "actred=" << actred << " " << fnorm1 << " " << fnorm << endl;
+cerr << "actred=" << actred << " " << fnorm1 << " " << fnorm << endl;
 
 	  // compute the scaled predicted reduction and the scaled directional derivative
 	  double temp1 = (fjac * p).frob (2) / fnorm;
@@ -1196,7 +1191,7 @@ LevenbergMarquardtSparseBK::search (Searchable & searchable, Vector<double> & po
 
 		fnorm = fnorm1;
 	  }
-//cerr << "ratio=" << ratio << endl;
+cerr << "ratio=" << ratio << endl;
 
 	  // tests for convergence
 	  if (   fabs (actred) <= toleranceF
