@@ -47,7 +47,7 @@ install-doc:
 install: all install-headers install-libs install-bin #install-doc
 
 tar: clean
-	tar -czvf $(NS).tgz -C .. $(notdir $(SOURCE_DIR)) --exclude=*.tgz --exclude=CVS --no-anchored
+	tar -czvf $(NS).tgz -C .. $(notdir $(SOURCE_DIR)) --exclude=*.tgz --exclude=ideas --exclude=CVS --no-anchored
 
 # If you prefer to place the library in a different namespace,
 # set OLDNS and NS in Config appropriately, then do "make changens".
