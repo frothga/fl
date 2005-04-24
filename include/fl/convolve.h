@@ -484,7 +484,12 @@ namespace fl
 
 	void setPeg (float centerX = NAN, float centerY = NAN, int width = -1, int height = -1);
 	void setWindow (float centerX, float centerY, int width = -1, int height = -1);  ///< Set up viewport so its center hits a specified point in what would otherwise be the resulting image.
-	void prepareResult (const Image & image, Image & result, Matrix3x3<float> & H);  ///< Subroutine of filter ().  Finalizes parameters that control fit between source and destination images.
+	void twistCorner (const double inx, const double iny, double & l, double & r, double & t, double & b);  ///< Subroutine of prepare.
+	void clip (const double dx0, const double dy0, const double dx1, const double dy1,
+			   const double sx0, const double sy0, const double sx1, const double sy1,
+			   const bool open,
+			   double & dLo, double & dHi, bool & openHi, bool & openLo);
+	void prepareResult (const Image & image, int & w, int & h, Matrix3x3<double> & H, int & lo, int & hi);  ///< Subroutine of filter ().  Finalizes parameters that control fit between source and destination images.
 	Transform operator * (const Transform & that) const;
 
 	Matrix3x3<double> A;  ///< Maps coordinates from input image to output image.
