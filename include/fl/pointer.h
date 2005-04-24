@@ -188,6 +188,15 @@ namespace fl
 	  return (T *) memory;
 	}
 
+	bool operator == (const Pointer & that) const
+	{
+	  return memory == that.memory;
+	}
+	bool operator != (const Pointer & that) const
+	{
+	  return memory != that.memory;
+	}
+
 	// Functions mainly for internal use
 
 	void detach ()
