@@ -475,25 +475,21 @@ namespace fl
   {
   public:
 	Transform (const Matrix<double> & A, bool inverse = false);  ///< Prefer double format for better inversion (when needed).
-	Transform (const Matrix<double> & A, const double scale);  ///< Assumes A is inverse.  Divides first two columns by scale before using A.  Just a convenience method.
+	Transform (const Matrix<double> & IA, const double scale);  ///< Divides first two columns by scale before using IA.  Just a convenience method.
 	Transform (double angle);
 	Transform (double scaleX, double scaleY);
 	void initialize (const Matrix<double> & A, bool inverse = false);  ///< A should be at least 2x2
 
 	virtual Image filter (const Image & image);
 
-	void setPeg (float centerX = -1, float centerY = -1, int width = -1, int height = -1);  ///< Set up viewport (of resulting image) so its center hits at a specified point in source image.  centerX == -1 means use center of original image.  centerY == -1 is similar.  width == -1 means use width of original image.  height == -1 is similar.
+	void setPeg (float centerX = NAN, float centerY = NAN, int width = -1, int height = -1);
 	void setWindow (float centerX, float centerY, int width = -1, int height = -1);  ///< Set up viewport so its center hits a specified point in what would otherwise be the resulting image.
 	void prepareResult (const Image & image, Image & result, Matrix3x3<float> & H);  ///< Subroutine of filter ().  Finalizes parameters that control fit between source and destination images.
 	Transform operator * (const Transform & that) const;
 
-	//Matrix3x3<float> A;  ///< Maps coordinates from input image to output image.
-	//Matrix3x3<float> IA;  ///< Inverse of A.  Maps coordinates from output image back to input image.
-	//bool inverse;  ///< Indicates whether the matrix given to the constructor was A or IA.
-
-	Matrix2x2<float> IA;  ///< Inverse of A.  Maps coordinates from output image back to input image.
-	float translateX;
-	float translateY;
+	Matrix3x3<double> A;  ///< Maps coordinates from input image to output image.
+	Matrix3x3<double> IA;  ///< Inverse of A.  Maps coordinates from output image back to input image.
+	bool inverse;  ///< Indicates whether the matrix given to the constructor was A or IA.
 
 	bool peg;  ///< Indicates that (centerX, centerY) refers to source image rather than resulting image.
 	bool defaultViewport;  ///< Indicates that viewport parameters are calculated rather than provided by user.
