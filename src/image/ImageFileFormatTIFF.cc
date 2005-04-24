@@ -35,117 +35,94 @@ ImageFileFormatTIFF::read (const std::string & fileName, Image & image) const
   ok &= TIFFGetField (tif, TIFFTAG_IMAGELENGTH, &h);
 
   uint16 samplesPerPixel;
-  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &samplesPerPixel);
+  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLESPERPIXEL, &samplesPerPixel);
   uint16 bitsPerSample;
   ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_BITSPERSAMPLE, &bitsPerSample);
-  uint16 format;
-  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &format);
-
+  uint16 sampleFormat;
+  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
   uint16 photometric;
   ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PHOTOMETRIC, &photometric);
   uint16 orientation;
   ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_ORIENTATION, &orientation);
   uint16 planarConfig;
   ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PLANARCONFIG, &planarConfig);
-
-  /*  Attempt to find sufficient information to indicate presence of alpha channel.
-  uint32 depth;
-  ok &= TIFFGetField (tif, TIFFTAG_IMAGEDEPTH, &depth);
   uint16 extra;
   uint16 * extraFormat;
-  ok &= TIFFGetField (tif, TIFFTAG_EXTRASAMPLES, &extra, &extraFormat);
-
-  cerr << "ok = " << ok << endl;
-  cerr << "w, h = " << w << " " << h << endl;
-  cerr << "samples, bits, format = "  << samplesPerPixel << " " << bitsPerSample << " " << format << endl;
-  cerr << "photometric = " << photometric << endl;
-  cerr << "orientation = " << orientation << endl;
-  cerr << "planar = " << planarConfig << endl;
-
-  cerr << "depth = " << depth << endl;
-  cerr << "extra = " << extra << endl;
-  */
+  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_EXTRASAMPLES, &extra, &extraFormat);
 
   if (! ok)
   {
 	throw "Unable to get needed tag values.";
   }
-
-
-  // Hack just for reading Steve's tiffs and Spidy tiffs.  Assumes an alpha
-  // channel and RGB values.
-  if (bitsPerSample == 8)
+  if (photometric > 2)
   {
-	image.format = &ABGRChar;
-	image.resize (w, h);
-	ImageOf<unsigned int> wrap = image;
+	throw "Can't handle color palettes, transparency masks, etc.";
+	// But we should handle the YCbCr and L*a*b* color spaces.
+  }
+  if (planarConfig != PLANARCONFIG_CONTIG)
+  {
+	throw "Can't handle planar formats";
+  }
+  if (extra > 1)
+  {
+	throw "No PixelFormats currently support more than one channel beyond three colors.";
+  }
 
-	int size = TIFFScanlineSize (tif) / 4;
-	unsigned int * buffer = new unsigned int[size];
-	for (int y = 0; y < h; y++)
-	{
-	  TIFFReadScanline (tif, buffer, y);
-	  for (int x = 0; x < w; x++)
+  PixelFormat * format = 0;
+  switch (bitsPerSample)
+  {
+	case 8:
+	  switch (samplesPerPixel)
 	  {
-		wrap(x,y) = buffer[x];
+		case 1:
+		  format = &GrayChar;
+		  break;
+		case 3:
+		  format = &BGRChar;
+		  break;
+		case 4:
+		  format = &ABGRChar;
 	  }
-	}
-	delete buffer;
-  }
-  else if (bitsPerSample == 16)
-  {
-	image.format = &RGBAChar;
-	image.resize (w, h);
-
-	int size = TIFFScanlineSize (tif);
-	size /= 2;
-	unsigned short * buffer = new unsigned short[size];
-	for (int y = 0; y < h; y++)
-	{
-	  TIFFReadScanline (tif, buffer, y);
-	  for (int x = 0; x < w; x++)
+	  break;
+	case 16:
+	  switch (samplesPerPixel)
 	  {
-		unsigned int r = buffer[x * 4 + 0] >> 8;
-		unsigned int g = buffer[x * 4 + 1] >> 8;
-		unsigned int b = buffer[x * 4 + 2] >> 8;
-		unsigned int a = buffer[x * 4 + 3] >> 8;
-		image.setRGBA (x, y, (a << 24) | (r << 16) | (g << 8) | b);
+		case 3:
+		  format = &RGBShort;  // misnamed format
+		  break;
+		case 4:
+		  format = &RGBAShort;  // misnamed format
 	  }
-	}
-	delete buffer;
+	  break;
+	case 32:
+	  if (sampleFormat == SAMPLEFORMAT_IEEEFP)
+	  {
+		switch (samplesPerPixel)
+		{
+		  case 1:
+			format = &GrayFloat;
+			break;
+		  case 4:
+			format = &RGBAFloat;
+		}
+	  }
   }
-  else
+  if (! format)
   {
-	throw "Unimplemented bitsPerSample.";
+	throw "No PixelFormat available that matches file contents";
   }
-
-
-  // Reader code that works, but loses alpha
-  /*
-  image.format = &ABGRChar;
+  image.format = format;
   image.resize (w, h);
-  if (! TIFFReadRGBAImage (tif, w, h, image.buffer, 0))
-  {
-	throw "TIFFReadRGBAImage failed.";
-  }
-  */
 
+  unsigned char * buffer = image.buffer;
+  int stride = image.format->depth * w;
+  for (int y = 0; y < h; y++)
+  {
+	TIFFReadScanline (tif, buffer, y);
+	buffer += stride;
+  }
 
   TIFFClose(tif);
-
-  /*
-  ImageOf<unsigned int> bogus (image);
-  for (int y = 0; y < image.height; y++)
-  {
-	for (int x = 0; x < image.width; x++)
-	{
-	  if (((bogus (x, y) >> 24) & 0xFF) != 0xff)
-	  {
-		cerr << x << " " << y << " " << hex << bogus (x, y) << dec << endl;
-	  }
-	}
-  }
-  */
 }
 
 void
@@ -159,19 +136,25 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
 {
   if (image.format->monochrome)
   {
-	if (*image.format != GrayChar)
+	if (*image.format != GrayChar  &&  *image.format != GrayFloat  &&  *image.format != GrayDouble)
 	{
-	  Image temp = image * GrayChar;
-	  write (fileName, temp);
+	  write (fileName, image * GrayChar);
 	  return;
 	}
   }
-  else
+  else if (image.format->hasAlpha)
   {
-	if (*image.format != RGBAChar)
+	if (*image.format != ABGRChar  &&  *image.format != RGBAShort  &&  *image.format != RGBAFloat)
 	{
-	  Image temp = image * RGBAChar;
-	  write (fileName, temp);
+	  write (fileName, image * ABGRChar);
+	  return;
+	}
+  }
+  else  // Three color channels
+  {
+	if (*image.format != BGRChar  &&  *image.format != RGBShort)
+	{
+	  write (fileName, image * BGRChar);
 	  return;
 	}
   }
@@ -181,54 +164,80 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
 
   TIFFSetField (tif, TIFFTAG_IMAGEWIDTH, image.width);
   TIFFSetField (tif, TIFFTAG_IMAGELENGTH, image.height);
-  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
-  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
   TIFFSetField (tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
   TIFFSetField (tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 
-  if (*image.format == GrayChar)
+  if (image.format->monochrome)
   {
 	TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 1);
 	TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
+
+	if (*image.format == GrayChar)
+	{
+	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
+	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	}
+	else if (*image.format == GrayFloat)
+	{
+	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 32);
+	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
+	}
+	else if (*image.format == GrayDouble)
+	{
+	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 64);
+	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
+	}
   }
-  else  // format == RGBAChar
+  else if (image.format->hasAlpha)
   {
 	TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 4);
 	TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
+
+	if (*image.format == ABGRChar)
+	{
+	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
+	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	}
+	else if (*image.format == RGBAShort)
+	{
+	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 16);
+	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	}
+	else  // RGBAFloat
+	{
+	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 32);
+	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
+	}
+  }
+  else  // 3 color channels
+  {
+	TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 3);
+	TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
+
+	if (*image.format == BGRChar)
+	{
+	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
+	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	}
+	else  // RGBShort
+	{
+	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 16);
+	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	}
   }
 
-  /*
-                  tsize_t linebytes = sampleperpixel * width;     // length in memory of one
-                  row of pixel in the image. 
+  TIFFSetField (tif, TIFFTAG_COMPRESSION, COMPRESSION_LZW);
 
-                  unsigned char *buf = NULL;        // buffer used to store the row of pixel
-                  information for writing to file
-                  //    Allocating memory to store the pixels of current row
-                  if (TIFFScanlineSize(out)linebytes)
-                      buf =(unsigned char *)_TIFFmalloc(linebytes);
-                  else
-                      buf = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(out));
+  unsigned char * buffer = image.buffer;
+  int stride = image.format->depth * image.width;
+  TIFFSetField (tif, TIFFTAG_ROWSPERSTRIP, (int) ceil (8.0 * 1024 / stride));  // Manual recommends 8K strips
+  for (int y = 0; y < image.height; y++)
+  {
+	TIFFWriteScanline (tif, buffer, y, 0);
+	buffer += stride;
+  }
 
-                  // We set the strip size of the file to be size of one row of pixels
-                  TIFFSetField(out, TIFFTAG_ROWSPERSTRIP,
-                  TIFFDefaultStripSize(out, width*sampleperpixel));
-
-                  //Now writing image to the file one strip at a time
-                  for (uint32 row = 0; row < h; row++)
-                  {
-                      memcpy(buf, &image[(h-row-1)*linebytes], linebytes);    // check the
-                  index here, and figure out why not using h*linebytes
-                      if (TIFFWriteScanline(out, buf, row, 0) < 0)
-                      break;
-                  }
-
-         Finally we close the output file, and destroy the buffer 
-
-                  (void) TIFFClose(out); 
-
-                  if (buf)
-                      _TIFFfree(buf);
-  */
+  TIFFClose (tif);
 }
 
 void
@@ -247,28 +256,13 @@ ImageFileFormatTIFF::isIn (std::istream & stream) const
   string magic = "    ";  // 4 spaces
   getMagic (stream, magic);
 
-  if (magic.substr (0, 2) == "II"  &&  magic[2] == '\x2A'  &&  magic[3] == '\x00')
-  {
-	return true;
-  }
-  if (magic.substr (0, 2) == "MM"  &&  magic[2] == '\x00'  &&  magic[3] == '\x2A')
-  {
-	return true;
-  }
-
+  bool result = magic.substr (0, 2) == "II"  ||  magic.substr (0, 2) == "MM";  // endian indicator
   // Apparently, some implementation don't store the magic number 42 according
   // to the endian indicated by the first two bytes, so we have to handle the
   // wrong order as well.
-  if (magic.substr (0, 2) == "II"  &&  magic[2] == '\x00'  &&  magic[3] == '\x2A')
-  {
-	return true;
-  }
-  if (magic.substr (0, 2) == "MM"  &&  magic[2] == '\x2A'  &&  magic[3] == '\x00')
-  {
-	return true;
-  }
+  result &= (magic[2] == '\x00'  ||  magic[2] == '\x2A')  &&  (magic[3] == '\x2A'  ||  magic[3] == '\x00');
 
-  return false;
+  return result;
 }
 
 bool
