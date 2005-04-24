@@ -17,6 +17,10 @@ for details.
 #include "fl/color.h"
 
 
+// Temporarily include imagecache.h until it is put permanently in descriptor.h
+#include "fl/imagecache.h"
+
+
 using namespace fl;
 using namespace std;
 
@@ -67,12 +71,27 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
   const float center = (width - 1) / 2.0f;
   const float sigma2 = 2.0f * sigmaWeight * sigmaWeight;
 
-  Matrix<double> R = point.rectification ();  // Later, minor changes to R will allow it to function as the rectification from image to histogram bins.
-  Matrix<double> S = ! R;
-  S(2,0) = 0;
-  S(2,1) = 0;
-  S(2,2) = 1;
-  
+  // Find or generate gray image at appropriate blur level
+  const float scaleTolerance = pow (2.0f, -1.0f / 6);  // TODO: parameterize "6", should be 2 * octaveSteps
+  ImageCache::shared.add (image);
+  PyramidImage * entry = ImageCache::shared.get (ImageCache::monochrome, point.scale);
+  if (! entry  ||  scaleTolerance > (entry->scale > point.scale ? point.scale / entry->scale : entry->scale / point.scale))
+  {
+	entry = ImageCache::shared.getLE (ImageCache::monochrome, point.scale);
+	if (! entry)  // No smaller image exists, which means base level image (scale == 0.5) does not exist.
+	{
+	  entry = ImageCache::shared.add (image * GrayFloat, ImageCache::monochrome);
+	}
+  }
+  float octave = (float) image.width / entry->width;
+  PointAffine p = point;
+  p.x = (p.x + 0.5f) / octave - 0.5f;
+  p.y = (p.y + 0.5f) / octave - 0.5f;
+  p.scale /= octave;
+
+  Matrix<double> R = p.rectification ();  // Later, minor changes to R will allow it to function as the rectification from image to histogram bins.
+  Matrix<double> S = p.projection ();
+
   int sourceT;
   int sourceL;
   int sourceB;
@@ -81,7 +100,27 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 
   if (point.A(0,0) == 1.0f  &&  point.A(0,1) == 0.0f  &&  point.A(1,0) == 0.0f  &&  point.A(1,1) == 1.0f)  // No shape change, so we can work in context of original image.
   {
-	computeGradient (image);
+	// Find or generate derivative images
+	PyramidImage * entryX = ImageCache::shared.get (ImageCache::gradientX, entry->scale);
+	if (! entryX  ||  entryX->scale != entry->scale)
+	{
+	  I_x = (*entry) * FiniteDifferenceX ();
+	  ImageCache::shared.add (I_x, ImageCache::gradientX, entry->scale);
+	}
+	else
+	{
+	  I_x = *entryX;
+	}
+	PyramidImage * entryY = ImageCache::shared.get (ImageCache::gradientY, entry->scale);
+	if (! entryY  ||  entryY->scale != entry->scale)
+	{
+	  I_y = (*entry) * FiniteDifferenceY ();
+	  ImageCache::shared.add (I_y, ImageCache::gradientY, entry->scale);
+	}
+	else
+	{
+	  I_y = *entryY;
+	}
 
 	// Project the patch into the gradient image in order to find the window
 	// for scanning pixels there.
@@ -125,7 +164,22 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 	double scale = supportPixel / supportRadial;
 	Transform t (S, scale);
 	t.setWindow (0, 0, patchSize, patchSize);
-	Image patch = image * GrayFloat * t;
+	Image patch = (*entry) * t;
+
+
+	// ensure standard blur level
+	/*
+	double currentBlur = scale * 0.5 / point.scale;
+	currentBlur = max (currentBlur, 0.5);
+	double targetBlur = scale;
+	if (currentBlur < targetBlur)
+	{
+	  Gaussian1D blur (sqrt (targetBlur * targetBlur - currentBlur * currentBlur), Boost, GrayFloat, Horizontal);
+	  patch *= blur;
+	  blur.direction = Vertical;
+	  patch *= blur;
+	}
+	*/
 
 	lastBuffer = 0;
 	computeGradient (patch);
