@@ -26,6 +26,12 @@ using namespace fl;
 
 // class TransformGauss ------------------------------------------------------------
 
+/**
+   Generate Gaussian kernel and associated parameters.
+   \todo This class does not handle full 8-DOF homographies.  To do so, it
+   must rescale the kernel based on position in the image.  This method
+   assumes a fixed-size kernel.
+ **/
 void
 TransformGauss::prepareG ()
 {
@@ -35,7 +41,7 @@ TransformGauss::prepareG ()
   const float C = 1.0 / (2.0 * PI * sigma2);
 
   // Calculate size and shape of Gaussian
-  Matrix2x2<float> S = IA * ~IA * sigma2;
+  Matrix2x2<float> S = IA.region (0, 0, 1, 1) * ~IA.region (0, 0, 1, 1) * sigma2;
   sigmaX = sqrt (S(0,0));  // Distance of one standard deviation ("Z") from origin along x-axis in source image
   sigmaY = sqrt (S(1,1));  // ditto for y-axis
   Gshw = (int) ceil (sigmaX * 3);  // Desired size of kernel in source pixels
@@ -78,12 +84,16 @@ TransformGauss::filter (const Image & image)
 	prepareG ();
   }
 
-  Matrix3x3<float> H;  // homography from destination image to source image
+  Matrix3x3<double> H;  // homography from destination image to source image
+  int w;
+  int h;
+  int lo;
+  int hi;
+  prepareResult (image, w, h, H, lo, hi);
 
   if (*image.format == GrayFloat)
   {
-	ImageOf<float> result (GrayFloat);
-	prepareResult (image, result, H);
+	ImageOf<float> result (w, h, GrayFloat);
 	ImageOf<float> that (image);
 	for (int toY = 0; toY < result.height; toY++)
 	{
@@ -138,8 +148,7 @@ TransformGauss::filter (const Image & image)
   }
   else if (*image.format == GrayDouble)
   {
-	ImageOf<double> result (GrayDouble);
-	prepareResult (image, result, H);
+	ImageOf<double> result (w, h, GrayDouble);
 	ImageOf<double> that (image);
 	for (int toY = 0; toY < result.height; toY++)
 	{
@@ -198,8 +207,7 @@ TransformGauss::filter (const Image & image)
   }
   else
   {
-	Image result (*image.format);
-	prepareResult (image, result, H);
+	Image result (w, h, *image.format);
 	for (int toY = 0; toY < result.height; toY++)
 	{
 	  for (int toX = 0; toX < result.width; toX++)
