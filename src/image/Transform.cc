@@ -8,7 +8,6 @@ for details.
 
 
 #include "fl/convolve.h"
-#include "fl/pi.h"
 #include "fl/lapackd.h"
 
 
@@ -23,21 +22,21 @@ Transform::Transform (const Matrix<double> & A, bool inverse)
   initialize (A, inverse);
 }
 
-Transform::Transform (const Matrix<double> & A, const double scale)
+Transform::Transform (const Matrix<double> & IA, const double scale)
 {
   Matrix<double> temp (3, 3);
   temp.identity ();
-  int r = min (2, A.rows () - 1);
-  int c = min (2, A.columns () - 1);
-  temp.region (0, 0) = A.region (0, 0, r, c);
-  temp.region (0, 0, 1, 1) /= scale;
+  int r = min (2, IA.rows () - 1);
+  int c = min (2, IA.columns () - 1);
+  temp.region (0, 0) = IA.region (0, 0, r, c);
+  temp.region (0, 0, 2, 1) /= scale;
 
   initialize (temp, true);
 }
 
 Transform::Transform (double angle)
 {
-  Matrix2x2<double> temp;
+  Matrix<double> temp (2, 2);
   temp(0,0) = cos (angle);
   temp(1,0) = sin (angle);
   temp(0,1) = -temp(1,0);
@@ -48,7 +47,7 @@ Transform::Transform (double angle)
 
 Transform::Transform (double scaleX, double scaleY)
 {
-  Matrix2x2<double> temp;
+  Matrix<double> temp (2, 2);
   temp(0,0) = scaleX;
   temp(0,1) = 0;
   temp(1,0) = 0;
@@ -57,60 +56,31 @@ Transform::Transform (double scaleX, double scaleY)
   initialize (temp, false);
 }
 
-/**
-   \todo Store full homography rather than separating into translation
-   and deformation components.  The only thing preventing this before was
-   some programs depending on a hack for scaling.  No program does this
-   any more.
- **/
 void
 Transform::initialize (const Matrix<double> & A, bool inverse)
 {
+  Matrix3x3<double> temp;
+  temp.identity ();
+  int r = min (2, A.rows () - 1);
+  int c = min (2, A.columns () - 1);
+  temp.region (0, 0) = A.region (0, 0, r, c);
+  temp /= temp(2,2);
+
+  this->inverse = inverse;
   if (inverse)
   {
-	IA = MatrixRegion<double> (A, 0, 0, 1, 1);
+	IA      =  temp;
+	this->A = !temp;
+	this->A /= this->A(2,2);
   }
   else
   {
-	// Use Matrix2x2's inversion method.
-	IA = ! Matrix2x2<double> (MatrixRegion<double> (A, 0, 0, 1, 1));
+	this->A =  temp;
+	IA      = !temp;
+	IA /= IA(2,2);
   }
 
   defaultViewport = true;
-
-  if (A.columns () >= 3)
-  {
-	if (inverse)
-	{
-	  // "scale" is a special hack to accomodate "S" matrices that have been
-	  // scaled as a whole.  These matrices have the form
-	  //   [ R  T ]
-	  //   [ 0  1 ]
-	  // before scaling.  Afterward, they have the form
-	  //   [ R/s T/s ]
-	  //   [ 0   1/s ]
-	  // However, the intention is that only R is scaled, so T must be
-	  // unscaled.
-	  double scale = 1.0;
-	  if (A.rows () >= 3)
-	  {
-		scale = A(2,2);
-	  }
-
-	  translateX = A(0,2) / scale;
-	  translateY = A(1,2) / scale;
-	}
-	else
-	{
-	  translateX = - (IA(0,0) * A(0,2) + IA(0,1) * A(1,2));
-	  translateY = - (IA(1,0) * A(0,2) + IA(1,1) * A(1,2));
-	}
-  }
-  else
-  {
-	translateX = 0;
-	translateY = 0;
-  }
 }
 
 Image
@@ -283,6 +253,14 @@ Transform::filter (const Image & image)
   */
 }
 
+/**
+   Set up viewport (of resulting image) so its center hits at a specified
+   point in source image.
+   \param centerX If NAN, then use center of original image.
+   \param centerY If NAN, then use center of original image.
+   \param width   If <= 0, then use width of original image.
+   \param height  If <= 0, then use width of original image.
+**/
 void
 Transform::setPeg (float centerX, float centerY, int width, int height)
 {
@@ -310,10 +288,14 @@ Transform::setWindow (float centerX, float centerY, int width, int height)
 Transform
 Transform::operator * (const Transform & that) const
 {
-  Transform result (that.IA * IA, true);  // same as !(A * that.A)
-  result.translateX = that.IA(0,0) * translateX + that.IA(0,1) * translateY + that.translateX;
-  result.translateY = that.IA(1,0) * translateX + that.IA(1,1) * translateY + that.translateY;
-  return result;
+  if (! inverse  &&  ! that.inverse)
+  {
+	return Transform (A * that.A, false);
+  }
+  else
+  {
+	return Transform (that.IA * IA, true);
+  }
 }
 
 void
@@ -328,15 +310,12 @@ Transform::prepareResult (const Image & image, Image & result, Matrix3x3<float> 
 	float t = INFINITY;
 	float b = -INFINITY;
 
-	// Remove this code and just use A
-	Matrix2x2<float> A = !IA;
-	float itX = -(A(0,0) * translateX + A(0,1) * translateY);
-	float itY = -(A(1,0) * translateX + A(1,1) * translateY);
-
     #define twistCorner(inx,iny) \
 	{ \
-	  float outx = A(0,0) * inx + A(0,1) * iny + itX; \
-	  float outy = A(1,0) * inx + A(1,1) * iny + itY; \
+	  float outz =  A(2,0) * inx + A(2,1) * iny + A(2,2); \
+	  if (outz <= 0.0f) throw "Negative scale factor.  Image too large or homography too distorting."; \
+	  float outx = (A(0,0) * inx + A(0,1) * iny + A(0,2)) / outz; \
+	  float outy = (A(1,0) * inx + A(1,1) * iny + A(1,2)) / outz; \
 	  l = min (l, outx); \
 	  r = max (r, outx); \
 	  t = min (t, outy); \
@@ -349,33 +328,27 @@ Transform::prepareResult (const Image & image, Image & result, Matrix3x3<float> 
 	twistCorner ((image.width - 0.5), (image.height - 0.5)); // Bottom right corner
 
 	peg = false;
-	centerX = (l + r) / 2.0;
-	centerY = (t + b) / 2.0;
+	centerX = (l + r) / 2.0f;
+	centerY = (t + b) / 2.0f;
 	width = (int) ceil (r - l);
 	height = (int) ceil (b - t);
   }
 
-  int w = width < 0 ? image.width : width;
-  int h = height < 0 ? image.height : height;
+  int w = width  <= 0 ? image.width  : width;
+  int h = height <= 0 ? image.height : height;
   result.resize (w, h);
 
-  Vector<float> cd (2);
+  Vector<double> cd (3);
+  cd[2] = 1.0f;
   if (peg)
   {
-	// Just use A in this section
-
 	// Use cd as temporary storage for source image center.
-	cd[0] = centerX < 0 ? (image.width - 1)  / 2.0 : centerX;
-	cd[1] = centerY < 0 ? (image.height - 1) / 2.0 : centerY;
+	cd[0] = isnan (centerX) ? (image.width - 1)  / 2.0 : centerX;
+	cd[1] = isnan (centerY) ? (image.height - 1) / 2.0 : centerY;
 
 	// Transform center of source image into a point in virtual destination image.
-	Matrix2x2<float> A = !IA;
-	float itX = -(A(0,0) * translateX + A(0,1) * translateY);
-	float itY = -(A(1,0) * translateX + A(1,1) * translateY);
-
-	float tx = A(0,0) * cd[0] + A(0,1) * cd[1] + itX;
-	cd[1]    = A(1,0) * cd[0] + A(1,1) * cd[1] + itY;
-	cd[0] = tx;
+	cd = A * cd;
+	cd /= cd[2];
   }
   else
   {
@@ -388,11 +361,6 @@ Transform::prepareResult (const Image & image, Image & result, Matrix3x3<float> 
   cd[1] -= (result.height - 1) / 2.0;
 
   // Use cd to construct C
-  C.region (0, 0, 1, 1) = IA;
-  C.region (0, 2, 1, 2) = IA * cd;
-  C(0,2) += translateX;
-  C(1,2) += translateY;
-  C(2,0) = 0;
-  C(2,1) = 0;
-  C(2,2) = 1;
+  C = IA;  // currently different types, so deep copy.  Should use copyFrom() for final version
+  C.region (0, 2, 2, 2) = IA * cd;
 }
