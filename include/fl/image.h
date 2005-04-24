@@ -59,6 +59,8 @@ namespace fl
 	Image operator * (double factor);  ///< Creates an image containing this images's pixels scaled by factor.  Ie: factor == 1 -> no change; factor == 2 -> bright spots are twice as bright, and dark spots (negative values relative to bias) are twice as dark.
 	Image & operator *= (double factor);  ///< Scales each pixel by factor.
 	Image & operator += (double value);  ///< Adds value to each pixel
+	bool operator == (const Image & that) const;  ///< Determines if both images have exactly the same metadata and buffer.  This is a strong, but not perfect, indicator that no change has occurred to the contents between the construction of the respective objects.
+	bool operator != (const Image & that) const;  ///< Negated form of operator ==.
 
 	Pixel         operator () (int x, int y) const;  ///< Returns a Pixel object that wraps (x,y).
 	unsigned int  getRGBA  (int x, int y) const;  ///< The "RGB" functions are intended for abstract access to the buffer.  They perform conversion to whatever the buffer's format is.
@@ -162,7 +164,9 @@ namespace fl
        1) The bitmasks are necessarily machine words.
        2) The order of channels is actually arbitrary.
 	 TODO:
-	 * Finish thinking about the naming convention and then actually apply it.
+	 * None of the format names below actually follow the above convention.
+	   Instead, thay are in little-endian machine word order.  Need to
+	   completely revamp the names to match the convention.
 	 * Fix code to work on both endians (right now it is just little endian).
 	 * think about adding arbitrary information channels besides alpha
        (eg: depth).  alpha gets special treatment because it has a specific,
@@ -326,6 +330,36 @@ namespace fl
 	unsigned int alphaMask;
   };
 
+  /**
+	 Note: This class follows the official naming scheme.  IE: First short
+	 in memory is red, next short is green, then blue, then alpha.
+  **/
+  class PixelFormatRGBAShort : public PixelFormat
+  {
+  public:
+	PixelFormatRGBAShort ();
+
+	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
+  };
+
+  /**
+	 Note: This class follows the official naming scheme.  IE: First short
+	 in memory is red, next short is green, then blue.
+  **/
+  class PixelFormatRGBShort : public PixelFormat
+  {
+  public:
+	PixelFormatRGBShort ();
+
+	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
+  };
+
+  /**
+	 Note: This class follows the official naming scheme.  IE: First float
+	 in memory is red, next float is green, then blue, then alpha.
+  **/
   class PixelFormatRGBAFloat : public PixelFormat
   {
   public:
@@ -393,8 +427,11 @@ namespace fl
   extern PixelFormatGrayFloat  GrayFloat;
   extern PixelFormatGrayDouble GrayDouble;
   extern PixelFormatRGBAChar   RGBAChar;
+  extern PixelFormatRGBABits   RGBChar;  ///< Compact 3 byte format with red in MSB.
   extern PixelFormatRGBABits   BGRChar;  ///< Compact 3 byte format with red in LSB.  For talking to libjpeg and GL.
   extern PixelFormatRGBABits   ABGRChar;  ///< Similar to BGRChar, but assumes an alpha channel comes first.  For talking to libtiff.
+  extern PixelFormatRGBAShort  RGBAShort;
+  extern PixelFormatRGBAShort  RGBShort;
   extern PixelFormatRGBAFloat  RGBAFloat;
   extern PixelFormatYVYUChar   YVYUChar;
   extern PixelFormatVYUYChar   VYUYChar;
@@ -574,6 +611,22 @@ namespace fl
 	height    = that.height;
 	timestamp = that.timestamp;
 	return *this;
+  }
+
+  inline bool
+  Image::operator == (const Image & that) const
+  {
+	return    buffer    == that.buffer
+	       && format    == that.format
+	       && width     == that.width
+	       && height    == that.height
+	       && timestamp == that.timestamp;
+  }
+
+  inline bool
+  Image::operator != (const Image & that) const
+  {
+	return ! (*this == that);
   }
 
   inline Pixel
