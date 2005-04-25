@@ -43,6 +43,7 @@ using namespace fl;
 
 
 PixelFormatGrayChar   fl::GrayChar;
+PixelFormatGrayShort  fl::GrayShort;
 PixelFormatGrayFloat  fl::GrayFloat;
 PixelFormatGrayDouble fl::GrayDouble;
 PixelFormatRGBAChar   fl::RGBAChar;
@@ -439,7 +440,8 @@ PixelFormat::getGray (void * pixel, float & gray) const
 unsigned char
 PixelFormat::getAlpha (void * pixel) const
 {
-  if (hasAlpha) return getRGBA (pixel) >> 24;
+  // Presumably, the derived PixelFormat does not have an alpha channel,
+  // so pretend that it is set to full opacity.
   return 0xFF;
 }
 
@@ -514,10 +516,8 @@ PixelFormat::setGray (void * pixel, float gray) const
 void
 PixelFormat::setAlpha (void * pixel, unsigned char alpha) const
 {
-  // Do nothing.
-  // Could getRGBA(), replace alpha value, and then setRGBA().  However,
-  // a better plan is simply to let clases that actually have an alpha
-  // channel override this method.
+  // Presumably, the derived PixelFormat does not have an alpha channel,
+  // so just ignore this request.
 }
 
 
@@ -767,12 +767,184 @@ PixelFormatGrayChar::setGray (void * pixel, float gray) const
 }
 
 
+// class PixelFormatGrayShort -------------------------------------------------
+
+PixelFormatGrayShort::PixelFormatGrayShort ()
+{
+  depth      = 2;
+  precedence = 2;  // Above GrayChar and YVYU, but below everything else
+  monochrome = true;
+  hasAlpha   = false;
+}
+
+Image
+PixelFormatGrayShort::filter (const Image & image)
+{
+  Image result (*this);
+
+  if (*image.format == *this)
+  {
+	result = image;
+	return result;
+  }
+
+  result.width     = image.width;
+  result.height    = image.height;
+  result.timestamp = image.timestamp;
+
+  if (typeid (*image.format) == typeid (PixelFormatGrayChar))
+  {
+	fromGrayChar (image, result);
+  }
+  else if (typeid (*image.format) == typeid (PixelFormatGrayFloat))
+  {
+	fromGrayFloat (image, result);
+  }
+  else if (typeid (*image.format) == typeid (PixelFormatGrayDouble))
+  {
+	fromGrayDouble (image, result);
+  }
+  else
+  {
+	fromAny (image, result);
+  }
+
+  return result;
+}
+
+void
+PixelFormatGrayShort::fromGrayChar (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  unsigned char * fromPixel = (unsigned char *) image.buffer;
+  unsigned short * toPixel = (unsigned short *) result.buffer;
+  unsigned short * end = toPixel + result.width * result.height;
+  while (toPixel < end)
+  {
+	*toPixel++ = *fromPixel++ << 8;
+  }
+}
+
+void
+PixelFormatGrayShort::fromGrayFloat (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  float * fromPixel = (float *) image.buffer;
+  unsigned short * toPixel = (unsigned short *) result.buffer;
+  unsigned short * end = toPixel + result.width * result.height;
+  while (toPixel < end)
+  {
+	float p = min (max (*fromPixel++, 0.0f), 1.0f);
+	delinearize (p);
+	*toPixel++ = (unsigned short) (p * 65535);
+  }
+}
+
+void
+PixelFormatGrayShort::fromGrayDouble (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  double * fromPixel = (double *) image.buffer;
+  unsigned short * toPixel = (unsigned short *) result.buffer;
+  unsigned short * end = toPixel + result.width * result.height;
+  while (toPixel < end)
+  {
+	double p = min (max (*fromPixel++, 0.0), 1.0);
+	delinearize (p);
+	*toPixel++ = (unsigned short) (p * 65535);
+  }
+}
+
+void
+PixelFormatGrayShort::fromAny (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  unsigned short * dest = (unsigned short *) result.buffer;
+  unsigned short * end = dest + result.width * result.height;
+  unsigned char * source = (unsigned char *) image.buffer;
+  const PixelFormat * sourceFormat = image.format;
+  const int sourceDepth = sourceFormat->depth;
+  while (dest < end)
+  {
+	*dest++ = sourceFormat->getGray (source) << 8;
+	source += sourceDepth;
+  }
+}
+
+unsigned int
+PixelFormatGrayShort::getRGBA (void * pixel) const
+{
+  unsigned int t = *((unsigned short *) pixel) & 0xFF00;
+  return 0xFF000000 | (t << 8) | t | (t >> 8);
+}
+
+void
+PixelFormatGrayShort::getXYZ (void * pixel, float values[]) const
+{
+  values[0] = 0;
+  values[1] = *((unsigned short *) pixel) / 65535.0f;
+  values[2] = 0;
+
+  linearize (values[1]);
+}
+
+unsigned char
+PixelFormatGrayShort::getGray (void * pixel) const
+{
+  return *((unsigned short *) pixel) >> 8;
+}
+
+void
+PixelFormatGrayShort::getGray (void * pixel, float & gray) const
+{
+  gray = *((unsigned short *) pixel) / 65535.0f;
+  linearize (gray);
+}
+
+void
+PixelFormatGrayShort::setRGBA (void * pixel, unsigned int rgba) const
+{
+  unsigned int r = (rgba &   0xFF0000) >> 8;
+  unsigned int g =  rgba &     0xFF00;
+  unsigned int b = (rgba &       0xFF) << 8;
+
+  *((unsigned short *) pixel) = (r * redWeight + g * greenWeight + b * blueWeight) / totalWeight;
+}
+
+void
+PixelFormatGrayShort::setXYZ (void * pixel, float values[]) const
+{
+  // Convert Y value to non-linear form
+  float v = min (max (values[1], 0.0f), 1.0f);
+  delinearize (v);
+  *((unsigned short *) pixel) = (unsigned short) rint (65535 * v);
+}
+
+void
+PixelFormatGrayShort::setGray (void * pixel, unsigned char gray) const
+{
+  *((unsigned short *) pixel) = gray << 8;
+}
+
+void
+PixelFormatGrayShort::setGray (void * pixel, float gray) const
+{
+  gray = min (max (gray, 0.0f), 1.0f);
+  delinearize (gray);
+  *((unsigned short *) pixel) = (unsigned short) rint (65535 * gray);
+}
+
+
 // class PixelFormatGrayFloat -------------------------------------------------
 
 PixelFormatGrayFloat::PixelFormatGrayFloat ()
 {
   depth       = 4;
-  precedence  = 3;  // Above all integer formats and below GrayDouble
+  precedence  = 4;  // Above all integer formats and below GrayDouble
   monochrome  = true;
   hasAlpha    = false;
 }
@@ -795,6 +967,10 @@ PixelFormatGrayFloat::filter (const Image & image)
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
   {
 	fromGrayChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayShort))
+  {
+	fromGrayShort (image, result);
   }
   else if (typeid (* image.format) == typeid (PixelFormatGrayDouble))
   {
@@ -827,6 +1003,22 @@ PixelFormatGrayFloat::fromGrayChar (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	float v = *fromPixel++ / 255.0f;
+	linearize (v);
+	*toPixel++ = v;
+  }
+}
+
+void
+PixelFormatGrayFloat::fromGrayShort (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  unsigned short * fromPixel = (unsigned short *) image.buffer;
+  float * toPixel = (float *) result.buffer;
+  float * end = toPixel + result.width * result.height;
+  while (toPixel < end)
+  {
+	float v = *fromPixel++ / 65535.0f;
 	linearize (v);
 	*toPixel++ = v;
   }
@@ -1041,7 +1233,7 @@ PixelFormatGrayFloat::setGray  (void * pixel, float gray) const
 PixelFormatGrayDouble::PixelFormatGrayDouble ()
 {
   depth       = 8;
-  precedence  = 5;  // above all integer formats and above GrayFloat
+  precedence  = 6;  // above all integer formats and above GrayFloat
   monochrome  = true;
   hasAlpha    = false;
 }
@@ -1312,7 +1504,7 @@ PixelFormatGrayDouble::setGray  (void * pixel, float gray) const
 PixelFormatRGBAChar::PixelFormatRGBAChar ()
 {
   depth      = 4;
-  precedence = 2;  // Above GrayChar and below all floating point formats
+  precedence = 3;  // Above GrayChar and below all floating point formats
   monochrome = false;
   hasAlpha   = true;
 }
@@ -1600,7 +1792,7 @@ PixelFormatRGBABits::PixelFormatRGBABits (int depth, unsigned int redMask, unsig
   this->blueMask  = blueMask;
   this->alphaMask = alphaMask;
 
-  precedence = 2;  // on par with RGBAChar
+  precedence = 3;  // on par with RGBAChar
   monochrome = false;
   hasAlpha   = alphaMask;
 }
@@ -2103,7 +2295,7 @@ PixelFormatRGBABits::setAlpha (void * pixel, unsigned char alpha) const
 PixelFormatRGBAShort::PixelFormatRGBAShort ()
 {
   depth = 8;
-  precedence = 4;  // Above RGBAChar and GrayFloat.  Slightly below GrayDouble.
+  precedence = 5;  // Above RGBAChar and GrayFloat.  Slightly below GrayDouble.
   monochrome = false;
   hasAlpha = true;
 }
@@ -2119,6 +2311,12 @@ PixelFormatRGBAShort::getRGBA (void * pixel) const
   return rgba;
 }
 
+unsigned char
+PixelFormatRGBAShort::getAlpha (void * pixel) const
+{
+  return ((unsigned char *) pixel)[7];
+}
+
 void
 PixelFormatRGBAShort::setRGBA (void * pixel, unsigned int rgba) const
 {
@@ -2132,13 +2330,20 @@ PixelFormatRGBAShort::setRGBA (void * pixel, unsigned int rgba) const
   ((unsigned char *) pixel)[7] = (rgba & 0xFF000000) >> 24;
 }
 
+void
+PixelFormatRGBAShort::setAlpha (void * pixel, unsigned char alpha) const
+{
+  ((unsigned char *) pixel)[6] = 0;
+  ((unsigned char *) pixel)[7] = alpha;
+}
+
 
 // class PixelFormatRGBShort -------------------------------------------------
 
 PixelFormatRGBShort::PixelFormatRGBShort ()
 {
   depth = 6;
-  precedence = 4;  // Above RGBAChar and GrayFloat.  Slightly below GrayDouble.
+  precedence = 5;  // Above RGBAChar and GrayFloat.  Slightly below GrayDouble.
   monochrome = false;
   hasAlpha = false;
 }
@@ -2170,7 +2375,7 @@ PixelFormatRGBShort::setRGBA (void * pixel, unsigned int rgba) const
 PixelFormatRGBAFloat::PixelFormatRGBAFloat ()
 {
   depth      = 4 * sizeof (float);
-  precedence = 6;  // Above everything
+  precedence = 7;  // Above everything
   monochrome = false;
   hasAlpha   = true;
 }
@@ -2257,7 +2462,7 @@ PixelFormatRGBAFloat::setAlpha (void * pixel, unsigned char alpha) const
 PixelFormatYVYUChar::PixelFormatYVYUChar ()
 {
   depth      = 2;
-  precedence = 1;  // above GrayChar and below RGBAChar
+  precedence = 1;  // above GrayChar and below GrayShort
   monochrome = false;
   hasAlpha   = false;
 }
@@ -2547,7 +2752,7 @@ const float twothirds = 2.0f / 3.0f;
 PixelFormatHLSFloat::PixelFormatHLSFloat ()
 {
   depth      = 3 * sizeof (float);
-  precedence = 6;  // on par with RGBAFloat
+  precedence = 7;  // on par with RGBAFloat
   monochrome = false;
   hasAlpha   = false;
 }
