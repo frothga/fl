@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
+
+
+4/2005 Revised by Fred Rothganger
 */
 
 
@@ -234,6 +237,27 @@ namespace fl
 	virtual void          setGray (void * pixel, float gray) const;
   };
 
+  class PixelFormatGrayShort : public PixelFormat
+  {
+  public:
+	PixelFormatGrayShort ();
+
+	virtual Image filter (const Image & image);
+	void fromGrayChar   (const Image & image, Image & result) const;
+	void fromGrayFloat  (const Image & image, Image & result) const;
+	void fromGrayDouble (const Image & image, Image & result) const;
+	void fromAny        (const Image & image, Image & result) const;
+
+	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual void          getXYZ  (void * pixel, float values[]) const;
+	virtual unsigned char getGray (void * pixel) const;
+	virtual void          getGray (void * pixel, float & gray) const;
+	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
+	virtual void          setXYZ  (void * pixel, float values[]) const;
+	virtual void          setGray (void * pixel, unsigned char gray) const;
+	virtual void          setGray (void * pixel, float gray) const;
+  };
+
   class PixelFormatGrayFloat : public PixelFormat
   {
   public:
@@ -241,6 +265,7 @@ namespace fl
 
 	virtual Image filter (const Image & image);
 	void fromGrayChar   (const Image & image, Image & result) const;
+	void fromGrayShort  (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
 	void fromRGBAChar   (const Image & image, Image & result) const;
 	void fromRGBABits   (const Image & image, Image & result) const;
@@ -340,7 +365,9 @@ namespace fl
 	PixelFormatRGBAShort ();
 
 	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual unsigned char getAlpha (void * pixel) const;
 	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
+	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
   };
 
   /**
@@ -424,6 +451,7 @@ namespace fl
   };
 
   extern PixelFormatGrayChar   GrayChar;
+  extern PixelFormatGrayShort  GrayShort;
   extern PixelFormatGrayFloat  GrayFloat;
   extern PixelFormatGrayDouble GrayDouble;
   extern PixelFormatRGBAChar   RGBAChar;
