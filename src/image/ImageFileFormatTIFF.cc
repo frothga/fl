@@ -87,6 +87,9 @@ ImageFileFormatTIFF::read (const std::string & fileName, Image & image) const
 	case 16:
 	  switch (samplesPerPixel)
 	  {
+		case 1:
+		  format = &GrayShort;
+		  break;
 		case 3:
 		  format = &RGBShort;  // misnamed format
 		  break;
@@ -136,7 +139,7 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
 {
   if (image.format->monochrome)
   {
-	if (*image.format != GrayChar  &&  *image.format != GrayFloat  &&  *image.format != GrayDouble)
+	if (*image.format != GrayChar  &&  *image.format != GrayShort  &&  *image.format != GrayFloat  &&  *image.format != GrayDouble)
 	{
 	  write (fileName, image * GrayChar);
 	  return;
@@ -175,6 +178,11 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
 	if (*image.format == GrayChar)
 	{
 	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
+	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	}
+	else if (*image.format == GrayShort)
+	{
+	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 16);
 	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
 	}
 	else if (*image.format == GrayFloat)
