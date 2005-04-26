@@ -398,7 +398,6 @@ PixelFormat::getXYZ (void * pixel, float values[]) const
   values[0] = 0.4124f * rgbValues[0] + 0.3576f * rgbValues[1] + 0.1805f * rgbValues[2];
   values[1] = 0.2126f * rgbValues[0] + 0.7152f * rgbValues[1] + 0.0722f * rgbValues[2];
   values[2] = 0.0193f * rgbValues[0] + 0.1192f * rgbValues[1] + 0.9505f * rgbValues[2];
-  values[3] = rgbValues[3];
 }
 
 /**
@@ -470,7 +469,7 @@ PixelFormat::setXYZ (void * pixel, float values[]) const
   rgbValues[0] =  3.2406f * values[0] - 1.5372f * values[1] - 0.4986f * values[2];
   rgbValues[1] = -0.9689f * values[0] + 1.8758f * values[1] + 0.0415f * values[2];
   rgbValues[2] =  0.0557f * values[0] - 0.2040f * values[1] + 1.0570f * values[2];
-  rgbValues[3] = values[3];
+  rgbValues[3] = 1.0f;
 
   setRGBA (pixel, rgbValues);
 }
