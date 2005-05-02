@@ -348,7 +348,7 @@ VideoInFileFFMPEG::close ()
   state = -12;
 }
 
-PixelFormatRGBABits RGB24 (3, 0xFF0000, 0xFF00, 0xFF, 0x0);
+PixelFormatRGBABits BGR24 (3, 0xFF0000, 0xFF00, 0xFF, 0x0);
 
 void
 VideoInFileFFMPEG::extractImage (Image & image)
@@ -366,7 +366,7 @@ VideoInFileFFMPEG::extractImage (Image & image)
 	}
 	else
 	{
-	  image.format = &YVYUChar;
+	  image.format = &UYVYChar;
 	  image.resize (cc->width, cc->height);
 	  ImageOf<unsigned int> that (image);
 	  that.width /= 2;
@@ -405,7 +405,7 @@ VideoInFileFFMPEG::extractImage (Image & image)
 	}
 	else
 	{
-	  image.format = &YVYUChar;
+	  image.format = &UYVYChar;
 	  image.resize (cc->width, cc->height);
 	  ImageOf<unsigned int> that (image);
 	  that.width /= 2;
@@ -433,11 +433,19 @@ VideoInFileFFMPEG::extractImage (Image & image)
   }
   else if (cc->pix_fmt == PIX_FMT_YUV422)
   {
-	image.attach (picture.data[0], cc->width, cc->height, YVYUChar);
+	image.attach (picture.data[0], cc->width, cc->height, YUYVChar);
+  }
+  else if (cc->pix_fmt == PIX_FMT_UYVY422)
+  {
+	image.attach (picture.data[0], cc->width, cc->height, UYVYChar);
+  }
+  else if (cc->pix_fmt == PIX_FMT_RGB24)
+  {
+	image.attach (picture.data[0], cc->width, cc->height, RGBChar);
   }
   else if (cc->pix_fmt == PIX_FMT_BGR24)
   {
-	image.attach (picture.data[0], cc->width, cc->height, RGB24);
+	image.attach (picture.data[0], cc->width, cc->height, BGR24);
   }
   else
   {
@@ -626,25 +634,30 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   // First get image into a format that FFMPEG understands...
   Image sourceImage;
   int sourceFormat;
-  if (*image.format == BGRChar)
+  if (*image.format == RGBChar)
   {
 	sourceFormat = PIX_FMT_RGB24;
 	sourceImage = image;
   }
-  else if (*image.format == YVYUChar  ||  image.format->monochrome)
+  else if (*image.format == UYVYChar)
   {
-	sourceFormat = PIX_FMT_YUV422;
-	sourceImage = image * VYUYChar;
+	sourceFormat = PIX_FMT_UYVY422;
+	sourceImage = image;
   }
-  else if (*image.format == VYUYChar)
+  else if (*image.format == YUYVChar)
   {
 	sourceFormat = PIX_FMT_YUV422;
 	sourceImage = image;
   }
+  else if (image.format->monochrome)
+  {
+	sourceFormat = PIX_FMT_GRAY8;
+	sourceImage = image * GrayChar;
+  }
   else
   {
-	sourceFormat = PIX_FMT_RGBA32;
-	sourceImage = image * RGBAChar;
+	sourceFormat = PIX_FMT_RGB24;
+	sourceImage = image * RGBChar;
   }
 
   // ...then let FFMPEG convert it.
