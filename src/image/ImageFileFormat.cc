@@ -42,21 +42,21 @@ ImageFileFormat::~ImageFileFormat ()
 void
 ImageFileFormat::read (const std::string & fileName, Image & image) const
 {
-  ifstream ifs (fileName.c_str ());
+  ifstream ifs (fileName.c_str (), ios::binary);
   read (ifs, image);
 }
 
 void
 ImageFileFormat::write (const std::string & fileName, const Image & image) const
 {
-  ofstream ofs (fileName.c_str ());
+  ofstream ofs (fileName.c_str (), ios::binary);
   write (ofs, image);
 }
 
 ImageFileFormat *
 ImageFileFormat::find (const std::string & fileName)
 {
-  ifstream ifs (fileName.c_str ());
+  ifstream ifs (fileName.c_str (), ios::binary);
   ImageFileFormat * result = find (ifs);
   if (! result)
   {
