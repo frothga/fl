@@ -1546,6 +1546,610 @@ PixelFormatGrayDouble::setGray  (void * pixel, float gray) const
 }
 
 
+// class PixelFormatRGBABits --------------------------------------------------
+
+PixelFormatRGBABits::PixelFormatRGBABits (int depth, unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask)
+{
+  this->depth     = depth;
+  this->redMask   = redMask;
+  this->greenMask = greenMask;
+  this->blueMask  = blueMask;
+  this->alphaMask = alphaMask;
+
+  precedence = 3;  // on par with RGBAChar
+  monochrome = false;
+  hasAlpha   = alphaMask;
+}
+
+Image
+PixelFormatRGBABits::filter (const Image & image)
+{
+  Image result (*this);
+
+  if (*image.format == *this)
+  {
+	result = image;
+	return result;
+  }
+
+  result.width     = image.width;
+  result.height    = image.height;
+  result.timestamp = image.timestamp;
+
+  if (typeid (* image.format) == typeid (PixelFormatGrayChar))
+  {
+	fromGrayChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
+  {
+	fromGrayFloat (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayDouble))
+  {
+	fromGrayDouble (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBAChar))
+  {
+	fromRGBAChar (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
+  {
+	fromRGBABits (image, result);
+  }
+  else
+  {
+	fromAny (image, result);
+  }
+
+  return result;
+}
+
+#define Bits2Bits(fromSize,toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
+{ \
+  unsigned fromSize * fromPixel = (unsigned fromSize *) image.buffer; \
+  unsigned toSize *   toPixel   = (unsigned toSize *)   result.buffer; \
+  unsigned toSize *   end       = toPixel + result.width * result.height; \
+  while (toPixel < end) \
+  { \
+    unsigned int r = *fromPixel & fromRed; \
+	unsigned int g = *fromPixel & fromGreen; \
+	unsigned int b = *fromPixel & fromBlue; \
+	unsigned int a = *fromPixel & fromAlpha; \
+    fromPixel++; \
+	*toPixel++ =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
+		         | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
+		         | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
+		         | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+  } \
+}
+
+#define OddBits2Bits(toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
+{ \
+  unsigned char *   fromPixel = (unsigned char *)   image.buffer; \
+  unsigned toSize * toPixel   = (unsigned toSize *) result.buffer; \
+  unsigned toSize * end       = toPixel + result.width * result.height; \
+  while (toPixel < end) \
+  { \
+    Int2Char t; \
+    t.piece0 = *fromPixel++; \
+    t.piece1 = *fromPixel++; \
+    t.piece2 = *fromPixel++; \
+    unsigned int r = t.all & fromRed; \
+	unsigned int g = t.all & fromGreen; \
+	unsigned int b = t.all & fromBlue; \
+	unsigned int a = t.all & fromAlpha; \
+	*toPixel++ =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
+		         | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
+		         | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
+		         | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+  } \
+}
+
+#define Bits2OddBits(fromSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
+{ \
+  unsigned fromSize * fromPixel = (unsigned fromSize *) image.buffer; \
+  unsigned char *     toPixel   = (unsigned char *)     result.buffer; \
+  unsigned char *     end       = toPixel + result.width * result.height * 3; \
+  while (toPixel < end) \
+  { \
+    unsigned int r = *fromPixel & fromRed; \
+	unsigned int g = *fromPixel & fromGreen; \
+	unsigned int b = *fromPixel & fromBlue; \
+	unsigned int a = *fromPixel & fromAlpha; \
+    fromPixel++; \
+    Int2Char t; \
+	t.all =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
+		    | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
+		    | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
+		    | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+    *toPixel++ = t.piece0; \
+    *toPixel++ = t.piece1; \
+    *toPixel++ = t.piece2; \
+  } \
+}
+
+#define OddBits2OddBits(fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
+{ \
+  unsigned char * fromPixel = (unsigned char *) image.buffer; \
+  unsigned char * toPixel   = (unsigned char *) result.buffer; \
+  unsigned char * end       = toPixel + result.width * result.height * 3; \
+  while (toPixel < end) \
+  { \
+    Int2Char t; \
+    t.piece0 = *fromPixel++; \
+    t.piece1 = *fromPixel++; \
+    t.piece2 = *fromPixel++; \
+    unsigned int r = t.all & fromRed; \
+	unsigned int g = t.all & fromGreen; \
+	unsigned int b = t.all & fromBlue; \
+	unsigned int a = t.all & fromAlpha; \
+	t.all =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
+		    | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
+		    | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
+		    | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+    *toPixel++ = t.piece0; \
+    *toPixel++ = t.piece1; \
+    *toPixel++ = t.piece2; \
+  } \
+}
+
+// fromGrayChar () produces a bogus alpha channel!  Fix it.
+void
+PixelFormatRGBABits::fromGrayChar (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  int redShift;
+  int greenShift;
+  int blueShift;
+  int alphaShift;
+  shift (0xFF, 0xFF, 0xFF, 0xFF, redShift, greenShift, blueShift, alphaShift);
+  redShift *= -1;
+  greenShift *= -1;
+  blueShift *= -1;
+  alphaShift *= -1;
+
+  switch (depth)
+  {
+    case 1:
+	  Bits2Bits (char, char, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
+	  break;
+    case 2:
+	  Bits2Bits (char, short, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
+	  break;
+    case 3:
+	  Bits2OddBits (char, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
+	  break;
+    case 4:
+    default:
+	  Bits2Bits (char, int, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
+  }
+}
+
+#define GrayFloat2Bits(fromSize,toSize) \
+{ \
+  fromSize *        fromPixel = (fromSize *)        image.buffer; \
+  unsigned toSize * toPixel   = (unsigned toSize *) result.buffer; \
+  unsigned toSize * end       = toPixel + result.width * result.height; \
+  while (toPixel < end) \
+  { \
+	fromSize v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
+	delinearize (v); \
+	unsigned int t = (unsigned int) (v * (255 << 8)); \
+	*toPixel++ =   ((redShift   > 0 ? t << redShift   : t >> -redShift)   & redMask) \
+	             | ((greenShift > 0 ? t << greenShift : t >> -greenShift) & greenMask) \
+                 | ((blueShift  > 0 ? t << blueShift  : t >> -blueShift)  & blueMask) \
+                 | alphaMask; \
+  } \
+}
+
+#define GrayFloat2OddBits(fromSize) \
+{ \
+  fromSize *      fromPixel = (fromSize *)      image.buffer; \
+  unsigned char * toPixel   = (unsigned char *) result.buffer; \
+  unsigned char * end       = toPixel + result.width * result.height * 3; \
+  while (toPixel < end) \
+  { \
+	fromSize v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
+	delinearize (v); \
+	Int2Char t; \
+	t.all = (unsigned int) (v * (255 << 8)); \
+	t.all =   ((redShift   > 0 ? t.all << redShift   : t.all >> -redShift)   & redMask) \
+	        | ((greenShift > 0 ? t.all << greenShift : t.all >> -greenShift) & greenMask) \
+            | ((blueShift  > 0 ? t.all << blueShift  : t.all >> -blueShift)  & blueMask) \
+            | alphaMask; \
+    *toPixel++ = t.piece0; \
+    *toPixel++ = t.piece1; \
+    *toPixel++ = t.piece2; \
+  } \
+}
+
+void
+PixelFormatRGBABits::fromGrayFloat (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  int redShift;
+  int greenShift;
+  int blueShift;
+  int alphaShift;
+  shift (0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, redShift, greenShift, blueShift, alphaShift);
+  redShift *= -1;
+  greenShift *= -1;
+  blueShift *= -1;
+  alphaShift *= -1;
+
+  switch (depth)
+  {
+    case 1:
+	  GrayFloat2Bits (float, char);
+	  break;
+    case 2:
+	  GrayFloat2Bits (float, short);
+	  break;
+    case 3:
+	  GrayFloat2OddBits (float);
+	  break;
+    case 4:
+    default:
+	  GrayFloat2Bits (float, int);
+  }
+}
+
+void
+PixelFormatRGBABits::fromGrayDouble (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  int redShift;
+  int greenShift;
+  int blueShift;
+  int alphaShift;
+  shift (0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, redShift, greenShift, blueShift, alphaShift);
+  redShift *= -1;
+  greenShift *= -1;
+  blueShift *= -1;
+  alphaShift *= -1;
+
+  switch (depth)
+  {
+    case 1:
+	  GrayFloat2Bits (double, char);
+	  break;
+    case 2:
+	  GrayFloat2Bits (double, short);
+	  break;
+    case 3:
+	  GrayFloat2OddBits (double);
+	  break;
+    case 4:
+    default:
+	  GrayFloat2Bits (double, int);
+  }
+}
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#  define RGBAredMask   0xFF
+#  define RGBAgreenMask 0xFF00
+#  define RGBAblueMask  0xFF0000
+#  define RGBAalphaMask 0xFF000000
+#else
+#  define RGBAredMask   0xFF000000
+#  define RGBAgreenMask 0xFF0000
+#  define RGBAblueMask  0xFF00
+#  define RGBAalphaMask 0xFF
+#endif
+
+void
+PixelFormatRGBABits::fromRGBAChar (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  int redShift;
+  int greenShift;
+  int blueShift;
+  int alphaShift;
+  PixelFormatRGBAChar::shift (redMask, greenMask, blueMask, alphaMask, redShift, greenShift, blueShift, alphaShift);
+
+  switch (depth)
+  {
+    case 1:
+	  Bits2Bits (int, char, RGBAredMask, RGBAgreenMask, RGBAblueMask, RGBAalphaMask, redMask, greenMask, blueMask, alphaMask);
+	  break;
+    case 2:
+	  Bits2Bits (int, short, RGBAredMask, RGBAgreenMask, RGBAblueMask, RGBAalphaMask, redMask, greenMask, blueMask, alphaMask);
+	  break;
+    case 3:
+	  Bits2OddBits (int, RGBAredMask, RGBAgreenMask, RGBAblueMask, RGBAalphaMask, redMask, greenMask, blueMask, alphaMask);
+	  break;
+    case 4:
+    default:
+	  Bits2Bits (int, int, RGBAredMask, RGBAgreenMask, RGBAblueMask, RGBAalphaMask, redMask, greenMask, blueMask, alphaMask);
+  }
+}
+
+void
+PixelFormatRGBABits::fromRGBABits (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  PixelFormatRGBABits * that = (PixelFormatRGBABits *) image.format;
+
+  int redShift;
+  int greenShift;
+  int blueShift;
+  int alphaShift;
+  that->shift (redMask, greenMask, blueMask, alphaMask, redShift, greenShift, blueShift, alphaShift);
+
+  switch (depth)
+  {
+    case 1:
+	  switch (that->depth)
+	  {
+	    case 1:
+		  Bits2Bits (char, char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 2:
+		  Bits2Bits (short, char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 3:
+		  OddBits2Bits (char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 4:
+	    default:
+		  Bits2Bits (int, char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+	  }
+	  break;
+    case 2:
+	  switch (that->depth)
+	  {
+	    case 1:
+		  Bits2Bits (char, short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 2:
+		  Bits2Bits (short, short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 3:
+		  OddBits2Bits (short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 4:
+	    default:
+		  Bits2Bits (int, short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+	  }
+	  break;
+    case 3:
+	  switch (that->depth)
+	  {
+	    case 1:
+		  Bits2OddBits (char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 2:
+		  Bits2OddBits (short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 3:
+		  OddBits2OddBits (that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 4:
+	    default:
+		  Bits2OddBits (int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+	  }
+	  break;
+    case 4:
+    default:
+	  switch (that->depth)
+	  {
+	    case 1:
+		  Bits2Bits (char, int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 2:
+		  Bits2Bits (short, int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 3:
+		  OddBits2Bits (int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  break;
+	    case 4:
+	    default:
+		  Bits2Bits (int, int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+	  }
+	  break;
+  }
+}
+
+bool
+PixelFormatRGBABits::operator == (const PixelFormat & that) const
+{
+  if (depth != that.depth)
+  {
+	return false;
+  }
+  if (const PixelFormatRGBABits * other = dynamic_cast<const PixelFormatRGBABits *> (& that))
+  {
+	return    redMask   == other->redMask
+	       && greenMask == other->greenMask
+	       && blueMask  == other->blueMask
+	       && alphaMask == other->alphaMask;
+  }
+  if (const PixelFormatRGBAChar * other = dynamic_cast<const PixelFormatRGBAChar *> (& that))
+  {
+	return    redMask   == RGBAredMask
+	       && greenMask == RGBAgreenMask
+	       && blueMask  == RGBAblueMask
+	       && alphaMask == RGBAalphaMask;
+  }
+  if (const PixelFormatGrayChar * other = dynamic_cast<const PixelFormatGrayChar *> (& that))
+  {
+	return    redMask   == 0xFF
+	       && greenMask == 0xFF
+	       && blueMask  == 0xFF;
+  }
+  if (const PixelFormatGrayShort * other = dynamic_cast<const PixelFormatGrayShort *> (& that))
+  {
+	return    redMask   == 0xFFFF
+	       && greenMask == 0xFFFF
+	       && blueMask  == 0xFFFF;
+  }
+  return false;
+}
+
+void
+PixelFormatRGBABits::shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift) const
+{
+  unsigned int t;
+
+  redShift = 0;
+  while (redMask >>= 1) {redShift++;}
+  t = this->redMask;
+  while (t >>= 1) {redShift--;}
+
+  greenShift = 0;
+  while (greenMask >>= 1) {greenShift++;}
+  t = this->greenMask;
+  while (t >>= 1) {greenShift--;}
+
+  blueShift = 0;
+  while (blueMask >>= 1) {blueShift++;}
+  t = this->blueMask;
+  while (t >>= 1) {blueShift--;}
+
+  alphaShift = 0;
+  while (alphaMask >>= 1) {alphaShift++;}
+  t = this->alphaMask;
+  while (t >>= 1) {alphaShift--;}
+}
+
+unsigned int
+PixelFormatRGBABits::getRGBA (void * pixel) const
+{
+  int redShift;
+  int greenShift;
+  int blueShift;
+  int alphaShift;
+  shift (0xFF000000, 0xFF0000, 0xFF00, 0xFF, redShift, greenShift, blueShift, alphaShift);
+
+  Int2Char value;
+
+  switch (depth)
+  {
+    case 1:
+	  value.all = *((unsigned char *) pixel);
+	  break;
+    case 2:
+	  value.all = *((unsigned short *) pixel);
+	  break;
+    case 3:
+	  value.piece0 = ((unsigned char *) pixel)[0];
+	  value.piece1 = ((unsigned char *) pixel)[1];
+	  value.piece2 = ((unsigned char *) pixel)[2];
+	  break;
+    case 4:
+    default:
+	  value.all = *((unsigned int *) pixel);
+	  break;
+  }
+
+  unsigned int r = value.all & redMask;
+  unsigned int g = value.all & greenMask;
+  unsigned int b = value.all & blueMask;
+  unsigned int a = value.all & alphaMask;
+
+  return   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & 0xFF000000)
+		 | ((greenShift > 0 ? g << greenShift : g >> -greenShift) &   0xFF0000)
+		 | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  &     0xFF00)
+		 | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) &       0xFF);
+}
+
+unsigned char
+PixelFormatRGBABits::getAlpha (void * pixel) const
+{
+  Int2Char value;
+  switch (depth)
+  {
+    case 1:
+	  value.all = *((unsigned char *) pixel);
+	  break;
+    case 2:
+	  value.all = *((unsigned short *) pixel);
+	  break;
+    case 3:
+	  value.piece0 = ((unsigned char *) pixel)[0];
+	  value.piece1 = ((unsigned char *) pixel)[1];
+	  value.piece2 = ((unsigned char *) pixel)[2];
+	  break;
+    case 4:
+    default:
+	  value.all = *((unsigned int *) pixel);
+	  break;
+  }
+  unsigned int a = value.all & alphaMask;
+
+  int shift = 7;
+  unsigned int mask = alphaMask;
+  while (mask >>= 1) {shift--;}
+
+  return (shift > 0 ? a << shift : a >> -shift) & 0xFF;
+}
+
+void
+PixelFormatRGBABits::setRGBA (void * pixel, unsigned int rgba) const
+{
+  unsigned int r = rgba & 0xFF000000;
+  unsigned int g = rgba &   0xFF0000;
+  unsigned int b = rgba &     0xFF00;
+  unsigned int a = rgba &       0xFF;
+
+  int redShift;
+  int greenShift;
+  int blueShift;
+  int alphaShift;
+  shift (0xFF000000, 0xFF0000, 0xFF00, 0xFF, redShift, greenShift, blueShift, alphaShift);
+  // The shifts must be negated, since we are going from the rgba format
+  // into our own, rather than the other way around, as the above call might
+  // suggest.  The negation is handled by switching the shifts below.
+
+  Int2Char value;
+  value.all =   ((redShift   > 0 ? r >> redShift   : r << -redShift)   & redMask)
+	          | ((greenShift > 0 ? g >> greenShift : g << -greenShift) & greenMask)
+              | ((blueShift  > 0 ? b >> blueShift  : b << -blueShift)  & blueMask)
+              | ((alphaShift > 0 ? a >> alphaShift : a << -alphaShift) & alphaMask);
+
+  switch (depth)
+  {
+    case 1:
+	  *((unsigned char *) pixel) = value.all;
+	  break;
+    case 2:
+	  *((unsigned short *) pixel) = value.all;
+	  break;
+    case 3:
+	  ((unsigned char *) pixel)[0] = value.piece0;
+	  ((unsigned char *) pixel)[1] = value.piece1;
+	  ((unsigned char *) pixel)[2] = value.piece2;
+	  break;
+    case 4:
+    default:
+	  *((unsigned int *) pixel) = value.all;
+	  break;
+  }
+}
+
+void
+PixelFormatRGBABits::setAlpha (void * pixel, unsigned char alpha) const
+{
+  // There's no need to be careful about number of bytes in a pixel,
+  // because the bit masking below will safely preserve data outside the
+  // current pixel.
+
+  int shift = -7;
+  unsigned int mask = alphaMask;
+  while (mask >>= 1) {shift++;}
+
+  unsigned int a = alpha;
+  a = (shift > 0 ? a << shift : a >> -shift) & alphaMask;
+
+  * (unsigned int *) pixel = a | ((* (unsigned int *) pixel) & ~alphaMask);
+}
+
+
 // class PixelFormatRGBAChar ---------------------------------------------------
 
 PixelFormatRGBAChar::PixelFormatRGBAChar ()
@@ -1673,109 +2277,6 @@ PixelFormatRGBAChar::fromRGBChar (const Image & image, Image & result) const
 	*toPixel++ = 0xFF;
   }
 }
-
-
-#define Bits2Bits(fromSize,toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
-{ \
-  unsigned fromSize * fromPixel = (unsigned fromSize *) image.buffer; \
-  unsigned toSize *   toPixel   = (unsigned toSize *)   result.buffer; \
-  unsigned toSize *   end       = toPixel + result.width * result.height; \
-  while (toPixel < end) \
-  { \
-    unsigned int r = *fromPixel & fromRed; \
-	unsigned int g = *fromPixel & fromGreen; \
-	unsigned int b = *fromPixel & fromBlue; \
-	unsigned int a = *fromPixel & fromAlpha; \
-    fromPixel++; \
-	*toPixel++ =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-		         | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-		         | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-		         | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
-  } \
-}
-
-#define OddBits2Bits(toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
-{ \
-  unsigned char *   fromPixel = (unsigned char *)   image.buffer; \
-  unsigned toSize * toPixel   = (unsigned toSize *) result.buffer; \
-  unsigned toSize * end       = toPixel + result.width * result.height; \
-  while (toPixel < end) \
-  { \
-    Int2Char t; \
-    t.piece0 = *fromPixel++; \
-    t.piece1 = *fromPixel++; \
-    t.piece2 = *fromPixel++; \
-    unsigned int r = t.all & fromRed; \
-	unsigned int g = t.all & fromGreen; \
-	unsigned int b = t.all & fromBlue; \
-	unsigned int a = t.all & fromAlpha; \
-	*toPixel++ =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-		         | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-		         | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-		         | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
-  } \
-}
-
-#define Bits2OddBits(fromSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
-{ \
-  unsigned fromSize * fromPixel = (unsigned fromSize *) image.buffer; \
-  unsigned char *     toPixel   = (unsigned char *)     result.buffer; \
-  unsigned char *     end       = toPixel + result.width * result.height * 3; \
-  while (toPixel < end) \
-  { \
-    unsigned int r = *fromPixel & fromRed; \
-	unsigned int g = *fromPixel & fromGreen; \
-	unsigned int b = *fromPixel & fromBlue; \
-	unsigned int a = *fromPixel & fromAlpha; \
-    fromPixel++; \
-    Int2Char t; \
-	t.all =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-		    | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-		    | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-		    | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
-    *toPixel++ = t.piece0; \
-    *toPixel++ = t.piece1; \
-    *toPixel++ = t.piece2; \
-  } \
-}
-
-#define OddBits2OddBits(fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
-{ \
-  unsigned char * fromPixel = (unsigned char *) image.buffer; \
-  unsigned char * toPixel   = (unsigned char *) result.buffer; \
-  unsigned char * end       = toPixel + result.width * result.height * 3; \
-  while (toPixel < end) \
-  { \
-    Int2Char t; \
-    t.piece0 = *fromPixel++; \
-    t.piece1 = *fromPixel++; \
-    t.piece2 = *fromPixel++; \
-    unsigned int r = t.all & fromRed; \
-	unsigned int g = t.all & fromGreen; \
-	unsigned int b = t.all & fromBlue; \
-	unsigned int a = t.all & fromAlpha; \
-	t.all =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-		    | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-		    | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-		    | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
-    *toPixel++ = t.piece0; \
-    *toPixel++ = t.piece1; \
-    *toPixel++ = t.piece2; \
-  } \
-}
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-#  define RGBAredMask   0xFF
-#  define RGBAgreenMask 0xFF00
-#  define RGBAblueMask  0xFF0000
-#  define RGBAalphaMask 0xFF000000
-#else
-#  define RGBAredMask   0xFF000000
-#  define RGBAgreenMask 0xFF0000
-#  define RGBAblueMask  0xFF00
-#  define RGBAalphaMask 0xFF
-#endif
-
 
 void
 PixelFormatRGBAChar::fromRGBABits (const Image & image, Image & result) const
@@ -2099,509 +2600,6 @@ PixelFormatRGBChar::setRGBA  (void * pixel, unsigned int rgba) const
   ((unsigned char *) pixel)[2] = rgba >>= 8;
   ((unsigned char *) pixel)[1] = rgba >>= 8;
   ((unsigned char *) pixel)[0] = rgba >>  8;
-}
-
-
-// class PixelFormatRGBABits --------------------------------------------------
-
-PixelFormatRGBABits::PixelFormatRGBABits (int depth, unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask)
-{
-  this->depth     = depth;
-  this->redMask   = redMask;
-  this->greenMask = greenMask;
-  this->blueMask  = blueMask;
-  this->alphaMask = alphaMask;
-
-  precedence = 3;  // on par with RGBAChar
-  monochrome = false;
-  hasAlpha   = alphaMask;
-}
-
-Image
-PixelFormatRGBABits::filter (const Image & image)
-{
-  Image result (*this);
-
-  if (*image.format == *this)
-  {
-	result = image;
-	return result;
-  }
-
-  result.width     = image.width;
-  result.height    = image.height;
-  result.timestamp = image.timestamp;
-
-  if (typeid (* image.format) == typeid (PixelFormatGrayChar))
-  {
-	fromGrayChar (image, result);
-  }
-  else if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
-  {
-	fromGrayFloat (image, result);
-  }
-  else if (typeid (* image.format) == typeid (PixelFormatGrayDouble))
-  {
-	fromGrayDouble (image, result);
-  }
-  else if (typeid (* image.format) == typeid (PixelFormatRGBAChar))
-  {
-	fromRGBAChar (image, result);
-  }
-  else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
-  {
-	fromRGBABits (image, result);
-  }
-  else
-  {
-	fromAny (image, result);
-  }
-
-  return result;
-}
-
-// fromGrayChar () produces a bogus alpha channel!  Fix it.
-void
-PixelFormatRGBABits::fromGrayChar (const Image & image, Image & result) const
-{
-  result.buffer.grow (result.width * result.height * depth);
-
-  int redShift;
-  int greenShift;
-  int blueShift;
-  int alphaShift;
-  shift (0xFF, 0xFF, 0xFF, 0xFF, redShift, greenShift, blueShift, alphaShift);
-  redShift *= -1;
-  greenShift *= -1;
-  blueShift *= -1;
-  alphaShift *= -1;
-
-  switch (depth)
-  {
-    case 1:
-	  Bits2Bits (char, char, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
-	  break;
-    case 2:
-	  Bits2Bits (char, short, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
-	  break;
-    case 3:
-	  Bits2OddBits (char, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
-	  break;
-    case 4:
-    default:
-	  Bits2Bits (char, int, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
-  }
-}
-
-#define GrayFloat2Bits(fromSize,toSize) \
-{ \
-  fromSize *        fromPixel = (fromSize *)        image.buffer; \
-  unsigned toSize * toPixel   = (unsigned toSize *) result.buffer; \
-  unsigned toSize * end       = toPixel + result.width * result.height; \
-  while (toPixel < end) \
-  { \
-	fromSize v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
-	delinearize (v); \
-	unsigned int t = (unsigned int) (v * (255 << 8)); \
-	*toPixel++ =   ((redShift   > 0 ? t << redShift   : t >> -redShift)   & redMask) \
-	             | ((greenShift > 0 ? t << greenShift : t >> -greenShift) & greenMask) \
-                 | ((blueShift  > 0 ? t << blueShift  : t >> -blueShift)  & blueMask) \
-                 | alphaMask; \
-  } \
-}
-
-#define GrayFloat2OddBits(fromSize) \
-{ \
-  fromSize *      fromPixel = (fromSize *)      image.buffer; \
-  unsigned char * toPixel   = (unsigned char *) result.buffer; \
-  unsigned char * end       = toPixel + result.width * result.height * 3; \
-  while (toPixel < end) \
-  { \
-	fromSize v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
-	delinearize (v); \
-	Int2Char t; \
-	t.all = (unsigned int) (v * (255 << 8)); \
-	t.all =   ((redShift   > 0 ? t.all << redShift   : t.all >> -redShift)   & redMask) \
-	        | ((greenShift > 0 ? t.all << greenShift : t.all >> -greenShift) & greenMask) \
-            | ((blueShift  > 0 ? t.all << blueShift  : t.all >> -blueShift)  & blueMask) \
-            | alphaMask; \
-    *toPixel++ = t.piece0; \
-    *toPixel++ = t.piece1; \
-    *toPixel++ = t.piece2; \
-  } \
-}
-
-void
-PixelFormatRGBABits::fromGrayFloat (const Image & image, Image & result) const
-{
-  result.buffer.grow (result.width * result.height * depth);
-
-  int redShift;
-  int greenShift;
-  int blueShift;
-  int alphaShift;
-  shift (0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, redShift, greenShift, blueShift, alphaShift);
-  redShift *= -1;
-  greenShift *= -1;
-  blueShift *= -1;
-  alphaShift *= -1;
-
-  switch (depth)
-  {
-    case 1:
-	  GrayFloat2Bits (float, char);
-	  break;
-    case 2:
-	  GrayFloat2Bits (float, short);
-	  break;
-    case 3:
-	  GrayFloat2OddBits (float);
-	  break;
-    case 4:
-    default:
-	  GrayFloat2Bits (float, int);
-  }
-}
-
-void
-PixelFormatRGBABits::fromGrayDouble (const Image & image, Image & result) const
-{
-  result.buffer.grow (result.width * result.height * depth);
-
-  int redShift;
-  int greenShift;
-  int blueShift;
-  int alphaShift;
-  shift (0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, redShift, greenShift, blueShift, alphaShift);
-  redShift *= -1;
-  greenShift *= -1;
-  blueShift *= -1;
-  alphaShift *= -1;
-
-  switch (depth)
-  {
-    case 1:
-	  GrayFloat2Bits (double, char);
-	  break;
-    case 2:
-	  GrayFloat2Bits (double, short);
-	  break;
-    case 3:
-	  GrayFloat2OddBits (double);
-	  break;
-    case 4:
-    default:
-	  GrayFloat2Bits (double, int);
-  }
-}
-
-void
-PixelFormatRGBABits::fromRGBAChar (const Image & image, Image & result) const
-{
-  result.buffer.grow (result.width * result.height * depth);
-
-  int redShift;
-  int greenShift;
-  int blueShift;
-  int alphaShift;
-  PixelFormatRGBAChar::shift (redMask, greenMask, blueMask, alphaMask, redShift, greenShift, blueShift, alphaShift);
-
-  switch (depth)
-  {
-    case 1:
-	  Bits2Bits (int, char, RGBAredMask, RGBAgreenMask, RGBAblueMask, RGBAalphaMask, redMask, greenMask, blueMask, alphaMask);
-	  break;
-    case 2:
-	  Bits2Bits (int, short, RGBAredMask, RGBAgreenMask, RGBAblueMask, RGBAalphaMask, redMask, greenMask, blueMask, alphaMask);
-	  break;
-    case 3:
-	  Bits2OddBits (int, RGBAredMask, RGBAgreenMask, RGBAblueMask, RGBAalphaMask, redMask, greenMask, blueMask, alphaMask);
-	  break;
-    case 4:
-    default:
-	  Bits2Bits (int, int, RGBAredMask, RGBAgreenMask, RGBAblueMask, RGBAalphaMask, redMask, greenMask, blueMask, alphaMask);
-  }
-}
-
-void
-PixelFormatRGBABits::fromRGBABits (const Image & image, Image & result) const
-{
-  result.buffer.grow (result.width * result.height * depth);
-
-  PixelFormatRGBABits * that = (PixelFormatRGBABits *) image.format;
-
-  int redShift;
-  int greenShift;
-  int blueShift;
-  int alphaShift;
-  that->shift (redMask, greenMask, blueMask, alphaMask, redShift, greenShift, blueShift, alphaShift);
-
-  switch (depth)
-  {
-    case 1:
-	  switch (that->depth)
-	  {
-	    case 1:
-		  Bits2Bits (char, char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 2:
-		  Bits2Bits (short, char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 3:
-		  OddBits2Bits (char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 4:
-	    default:
-		  Bits2Bits (int, char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-	  }
-	  break;
-    case 2:
-	  switch (that->depth)
-	  {
-	    case 1:
-		  Bits2Bits (char, short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 2:
-		  Bits2Bits (short, short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 3:
-		  OddBits2Bits (short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 4:
-	    default:
-		  Bits2Bits (int, short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-	  }
-	  break;
-    case 3:
-	  switch (that->depth)
-	  {
-	    case 1:
-		  Bits2OddBits (char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 2:
-		  Bits2OddBits (short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 3:
-		  OddBits2OddBits (that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 4:
-	    default:
-		  Bits2OddBits (int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-	  }
-	  break;
-    case 4:
-    default:
-	  switch (that->depth)
-	  {
-	    case 1:
-		  Bits2Bits (char, int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 2:
-		  Bits2Bits (short, int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 3:
-		  OddBits2Bits (int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-		  break;
-	    case 4:
-	    default:
-		  Bits2Bits (int, int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
-	  }
-	  break;
-  }
-}
-
-bool
-PixelFormatRGBABits::operator == (const PixelFormat & that) const
-{
-  if (depth != that.depth)
-  {
-	return false;
-  }
-  if (const PixelFormatRGBABits * other = dynamic_cast<const PixelFormatRGBABits *> (& that))
-  {
-	return    redMask   == other->redMask
-	       && greenMask == other->greenMask
-	       && blueMask  == other->blueMask
-	       && alphaMask == other->alphaMask;
-  }
-  if (const PixelFormatRGBAChar * other = dynamic_cast<const PixelFormatRGBAChar *> (& that))
-  {
-	return    redMask   == RGBAredMask
-	       && greenMask == RGBAgreenMask
-	       && blueMask  == RGBAblueMask
-	       && alphaMask == RGBAalphaMask;
-  }
-  if (const PixelFormatGrayChar * other = dynamic_cast<const PixelFormatGrayChar *> (& that))
-  {
-	return    redMask   == 0xFF
-	       && greenMask == 0xFF
-	       && blueMask  == 0xFF;
-  }
-  if (const PixelFormatGrayShort * other = dynamic_cast<const PixelFormatGrayShort *> (& that))
-  {
-	return    redMask   == 0xFFFF
-	       && greenMask == 0xFFFF
-	       && blueMask  == 0xFFFF;
-  }
-  return false;
-}
-
-void
-PixelFormatRGBABits::shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift) const
-{
-  unsigned int t;
-
-  redShift = 0;
-  while (redMask >>= 1) {redShift++;}
-  t = this->redMask;
-  while (t >>= 1) {redShift--;}
-
-  greenShift = 0;
-  while (greenMask >>= 1) {greenShift++;}
-  t = this->greenMask;
-  while (t >>= 1) {greenShift--;}
-
-  blueShift = 0;
-  while (blueMask >>= 1) {blueShift++;}
-  t = this->blueMask;
-  while (t >>= 1) {blueShift--;}
-
-  alphaShift = 0;
-  while (alphaMask >>= 1) {alphaShift++;}
-  t = this->alphaMask;
-  while (t >>= 1) {alphaShift--;}
-}
-
-unsigned int
-PixelFormatRGBABits::getRGBA (void * pixel) const
-{
-  int redShift;
-  int greenShift;
-  int blueShift;
-  int alphaShift;
-  shift (0xFF000000, 0xFF0000, 0xFF00, 0xFF, redShift, greenShift, blueShift, alphaShift);
-
-  Int2Char value;
-
-  switch (depth)
-  {
-    case 1:
-	  value.all = *((unsigned char *) pixel);
-	  break;
-    case 2:
-	  value.all = *((unsigned short *) pixel);
-	  break;
-    case 3:
-	  value.piece0 = ((unsigned char *) pixel)[0];
-	  value.piece1 = ((unsigned char *) pixel)[1];
-	  value.piece2 = ((unsigned char *) pixel)[2];
-	  break;
-    case 4:
-    default:
-	  value.all = *((unsigned int *) pixel);
-	  break;
-  }
-
-  unsigned int r = value.all & redMask;
-  unsigned int g = value.all & greenMask;
-  unsigned int b = value.all & blueMask;
-  unsigned int a = value.all & alphaMask;
-
-  return   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & 0xFF000000)
-		 | ((greenShift > 0 ? g << greenShift : g >> -greenShift) &   0xFF0000)
-		 | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  &     0xFF00)
-		 | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) &       0xFF);
-}
-
-unsigned char
-PixelFormatRGBABits::getAlpha (void * pixel) const
-{
-  Int2Char value;
-  switch (depth)
-  {
-    case 1:
-	  value.all = *((unsigned char *) pixel);
-	  break;
-    case 2:
-	  value.all = *((unsigned short *) pixel);
-	  break;
-    case 3:
-	  value.piece0 = ((unsigned char *) pixel)[0];
-	  value.piece1 = ((unsigned char *) pixel)[1];
-	  value.piece2 = ((unsigned char *) pixel)[2];
-	  break;
-    case 4:
-    default:
-	  value.all = *((unsigned int *) pixel);
-	  break;
-  }
-  unsigned int a = value.all & alphaMask;
-
-  int shift = 7;
-  unsigned int mask = alphaMask;
-  while (mask >>= 1) {shift--;}
-
-  return (shift > 0 ? a << shift : a >> -shift) & 0xFF;
-}
-
-void
-PixelFormatRGBABits::setRGBA (void * pixel, unsigned int rgba) const
-{
-  unsigned int r = rgba & 0xFF000000;
-  unsigned int g = rgba &   0xFF0000;
-  unsigned int b = rgba &     0xFF00;
-  unsigned int a = rgba &       0xFF;
-
-  int redShift;
-  int greenShift;
-  int blueShift;
-  int alphaShift;
-  shift (0xFF000000, 0xFF0000, 0xFF00, 0xFF, redShift, greenShift, blueShift, alphaShift);
-  // The shifts must be negated, since we are going from the rgba format
-  // into our own, rather than the other way around, as the above call might
-  // suggest.  The negation is handled by switching the shifts below.
-
-  Int2Char value;
-  value.all =   ((redShift   > 0 ? r >> redShift   : r << -redShift)   & redMask)
-	          | ((greenShift > 0 ? g >> greenShift : g << -greenShift) & greenMask)
-              | ((blueShift  > 0 ? b >> blueShift  : b << -blueShift)  & blueMask)
-              | ((alphaShift > 0 ? a >> alphaShift : a << -alphaShift) & alphaMask);
-
-  switch (depth)
-  {
-    case 1:
-	  *((unsigned char *) pixel) = value.all;
-	  break;
-    case 2:
-	  *((unsigned short *) pixel) = value.all;
-	  break;
-    case 3:
-	  ((unsigned char *) pixel)[0] = value.piece0;
-	  ((unsigned char *) pixel)[1] = value.piece1;
-	  ((unsigned char *) pixel)[2] = value.piece2;
-	  break;
-    case 4:
-    default:
-	  *((unsigned int *) pixel) = value.all;
-	  break;
-  }
-}
-
-void
-PixelFormatRGBABits::setAlpha (void * pixel, unsigned char alpha) const
-{
-  // There's no need to be careful about number of bytes in a pixel,
-  // because the bit masking below will safely preserve data outside the
-  // current pixel.
-
-  int shift = -7;
-  unsigned int mask = alphaMask;
-  while (mask >>= 1) {shift++;}
-
-  unsigned int a = alpha;
-  a = (shift > 0 ? a << shift : a >> -shift) & alphaMask;
-
-  * (unsigned int *) pixel = a | ((* (unsigned int *) pixel) & ~alphaMask);
 }
 
 
