@@ -66,13 +66,13 @@ namespace fl
 	bool operator != (const Image & that) const;  ///< Negated form of operator ==.
 
 	Pixel         operator () (int x, int y) const;  ///< Returns a Pixel object that wraps (x,y).
-	unsigned int  getRGBA  (int x, int y) const;  ///< The "RGB" functions are intended for abstract access to the buffer.  They perform conversion to whatever the buffer's format is.
+	unsigned int  getRGBA  (int x, int y) const;
 	void          getRGBA  (int x, int y, float values[]) const;
 	unsigned int  getYUV   (int x, int y) const;
 	unsigned char getGray  (int x, int y) const;
 	void          getGray  (int x, int y, float & gray) const;
 	unsigned char getAlpha (int x, int y) const;
-	void          setRGBA  (int x, int y, unsigned int rgba);  ///< The "rgb" format is always 24-bit RGB, 8 bits per field.  Blue is in the least significant byte, then green, then red.
+	void          setRGBA  (int x, int y, unsigned int rgba);
 	void          setRGBA  (int x, int y, float values[]);
 	void          setYUV   (int x, int y, unsigned int yuv);
 	void          setGray  (int x, int y, unsigned char gray);
@@ -159,18 +159,22 @@ namespace fl
 	 gamma = 2.2 as per sRGB spec), and all floating point values are linear.
 	 We can add parameters to the formats if we need to distinguish more color
 	 spaces.
-	 Naming convention: <color space><basic C type for one channel>
+	 Naming convention for PixelFormats
+	   = <color space><basic C type for one channel>
        Color space names refer to sequence of channels (usually bytes) in
        memory, rather than in machine words (eg: registers in the processor).
        The leftmost letter in a name refers to the lowest numbered address.
-       The "Bits" formats also follow this convention with two exceptions:
-       1) The bitmasks are necessarily machine words.
-       2) The order of channels is actually arbitrary.
+	   If a channel is larger than one byte, then the bytes are laid out
+	   within the channel according to the standard for the machine.
+	 Naming convention for accessor methods
+	   The data is in machine words, so names describe sequence
+	   within machine words.  Accessors guarantee that the order in the
+	   machine word will be the same, regardless of endian.  (This implies
+	   that the implementation of an accessor changes with endian.)
+	   The leftmost letter refers to the most significant byte in the word.
+	   Some accessors take arrays, and since arrays are memory blocks they
+	   follow the memory order convention.
 	 TODO:
-	 * None of the format names below actually follow the above convention.
-	   Instead, thay are in little-endian machine word order.  Need to
-	   completely revamp the names to match the convention.
-	 * Fix code to work on both endians (right now it is just little endian).
 	 * think about adding arbitrary information channels besides alpha
        (eg: depth).  alpha gets special treatment because it has a specific,
        well-defined effect on how pixels are combined.
@@ -188,7 +192,7 @@ namespace fl
 	  return ! operator == (that);
 	}
 
-	virtual unsigned int  getRGBA  (void * pixel) const = 0;  ///< Return value is always assumed to be non-linear sRGB.  Same for other RGB methods below.
+	virtual unsigned int  getRGBA  (void * pixel) const = 0;  ///< Return value is always assumed to be non-linear sRGB.  Same for other integer RGB methods below.
 	virtual void          getRGBA  (void * pixel, float values[]) const;  ///< "values" must have at least four elements.  Each returned value is in [0,1].
 	virtual void          getXYZ   (void * pixel, float values[]) const;
 	virtual unsigned int  getYUV   (void * pixel) const;
@@ -227,6 +231,8 @@ namespace fl
 	void fromRGBABits   (const Image & image, Image & result) const;
 	void fromAny        (const Image & image, Image & result) const;
 
+	virtual bool operator == (const PixelFormat & that) const;
+
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getXYZ  (void * pixel, float values[]) const;
 	virtual unsigned char getGray (void * pixel) const;
@@ -247,6 +253,8 @@ namespace fl
 	void fromGrayFloat  (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
 	void fromAny        (const Image & image, Image & result) const;
+
+	virtual bool operator == (const PixelFormat & that) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getXYZ  (void * pixel, float values[]) const;
@@ -316,6 +324,7 @@ namespace fl
 	void fromGrayChar   (const Image & image, Image & result) const;
 	void fromGrayFloat  (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
+	void fromRGBChar    (const Image & image, Image & result) const;
 	void fromRGBABits   (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
@@ -328,6 +337,36 @@ namespace fl
 	static void shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift);  ///< Shifts are set to move bits from this format to the one indicated by the masks.
   };
 
+  class PixelFormatRGBChar : public PixelFormat
+  {
+  public:
+	PixelFormatRGBChar ();
+
+	virtual Image filter (const Image & image);
+	void fromGrayChar   (const Image & image, Image & result) const;
+	void fromGrayShort  (const Image & image, Image & result) const;
+	void fromGrayFloat  (const Image & image, Image & result) const;
+	void fromGrayDouble (const Image & image, Image & result) const;
+	void fromRGBAChar   (const Image & image, Image & result) const;
+	void fromRGBABits   (const Image & image, Image & result) const;
+
+	virtual bool operator == (const PixelFormat & that) const;
+
+	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
+
+	static void shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift);  ///< Shifts are set to move bits from this format to the one indicated by the masks.
+  };
+
+  /**
+	 Allows construction of arbitrary RGBA formats.  Mainly used to support
+	 X windows interface.  This class is named "RGBA", but this just
+	 indicates what channels are supported.  The order of the
+	 channels is actually arbitrary.  Bitmasks define the position of each
+	 channel, and are by nature in terms of machine words.  Therefore,
+	 a particular set of bitmasks will have different meanings on different
+	 endian machines.
+  **/
   class PixelFormatRGBABits : public PixelFormat
   {
   public:
@@ -355,10 +394,6 @@ namespace fl
 	unsigned int alphaMask;
   };
 
-  /**
-	 Note: This class follows the official naming scheme.  IE: First short
-	 in memory is red, next short is green, then blue, then alpha.
-  **/
   class PixelFormatRGBAShort : public PixelFormat
   {
   public:
@@ -370,10 +405,6 @@ namespace fl
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
   };
 
-  /**
-	 Note: This class follows the official naming scheme.  IE: First short
-	 in memory is red, next short is green, then blue.
-  **/
   class PixelFormatRGBShort : public PixelFormat
   {
   public:
@@ -383,10 +414,6 @@ namespace fl
 	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
   };
 
-  /**
-	 Note: This class follows the official naming scheme.  IE: First float
-	 in memory is red, next float is green, then blue, then alpha.
-  **/
   class PixelFormatRGBAFloat : public PixelFormat
   {
   public:
@@ -402,17 +429,17 @@ namespace fl
 
   /**
 	 Assumes that pixel pairs are 32-bit word aligned.  So, if the pixel
-	 address falls in the center of a 32-bit word it must refer to the "YV"
+	 address falls in the center of a 32-bit word it must refer to the "VY"
 	 portion of the pair.  Likewise, an address that falls on a 32-bit boundary
-	 refers to the "YU" portion.
+	 refers to the "UY" portion.
   **/
-  class PixelFormatYVYUChar : public PixelFormat
+  class PixelFormatUYVYChar : public PixelFormat
   {
   public:
-	PixelFormatYVYUChar ();
+	PixelFormatUYVYChar ();
 
 	virtual Image filter (const Image & image);
-	void fromVYUYChar (const Image & image, Image & result) const;
+	void fromYUYVChar (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual unsigned int  getYUV  (void * pixel) const;
@@ -421,14 +448,14 @@ namespace fl
 	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
   };
 
-  // Same as YVYU, but with different ordering within the word
-  class PixelFormatVYUYChar : public PixelFormat
+  /// Same as UYVY, but with different ordering within the dwords
+  class PixelFormatYUYVChar : public PixelFormat
   {
   public:
-	PixelFormatVYUYChar ();
+	PixelFormatYUYVChar ();
 
 	virtual Image filter (const Image & image);
-	void fromYVYUChar (const Image & image, Image & result) const;
+	void fromUYVYChar (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual unsigned int  getYUV  (void * pixel) const;
@@ -455,14 +482,12 @@ namespace fl
   extern PixelFormatGrayFloat  GrayFloat;
   extern PixelFormatGrayDouble GrayDouble;
   extern PixelFormatRGBAChar   RGBAChar;
-  extern PixelFormatRGBABits   RGBChar;  ///< Compact 3 byte format with red in MSB.
-  extern PixelFormatRGBABits   BGRChar;  ///< Compact 3 byte format with red in LSB.  For talking to libjpeg and GL.
-  extern PixelFormatRGBABits   ABGRChar;  ///< Similar to BGRChar, but assumes an alpha channel comes first.  For talking to libtiff.
   extern PixelFormatRGBAShort  RGBAShort;
-  extern PixelFormatRGBAShort  RGBShort;
   extern PixelFormatRGBAFloat  RGBAFloat;
-  extern PixelFormatYVYUChar   YVYUChar;
-  extern PixelFormatVYUYChar   VYUYChar;
+  extern PixelFormatRGBChar    RGBChar;
+  extern PixelFormatRGBShort   RGBShort;
+  extern PixelFormatUYVYChar   UYVYChar;
+  extern PixelFormatYUYVChar   YUYVChar;
   extern PixelFormatHLSFloat   HLSFloat;
 
   // Naming convention for RGBBits (other than BGRChar):
