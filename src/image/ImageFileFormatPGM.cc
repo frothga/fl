@@ -78,7 +78,7 @@ ImageFileFormatPGM::read (std::istream & stream, Image & image) const
 		}
 		else if (token == "P6")
 		{
-		  image.format = &RGBAChar;
+		  image.format = &RGBChar;
 		}
 		else
 		{
@@ -102,56 +102,41 @@ ImageFileFormatPGM::read (std::istream & stream, Image & image) const
   {
 	throw "Unable to finish reading image: stream bad.";
   }
-  if (*image.format == GrayChar)
-  {
-	image.buffer.grow (image.width * image.height);
-	stream.read ((char *) image.buffer, image.width * image.height);
-  }
-  else if (*image.format == RGBAChar)
-  {
-	image.buffer.grow (image.width * image.height * RGBAChar.depth);
-	for (int i = 0; i < image.width * image.height; i++)
-	{
-	  unsigned char c[3];
-	  stream.read ((char *) c, 3);
-	  ((unsigned int *) image.buffer)[i] = 0xFF000000 | (c[0] << 16) | (c[1] << 8) | c[2];
-	}
-  }
+  int size = image.width * image.height * image.format->depth;
+  image.buffer.grow (size);
+  stream.read ((char *) image.buffer, size);
 }
 
 void
 ImageFileFormatPGM::write (std::ostream & stream, const Image & image) const
 {
-  if (image.format->monochrome  &&  *image.format != GrayChar)
+  if (image.format->monochrome)
   {
-	Image temp = image * GrayChar;
-	write (stream, temp);
-	return;
+	if (*image.format != GrayChar)
+	{
+	  write (stream, image * GrayChar);
+	  return;
+	}
+  }
+  else  // color format
+  {
+	if (*image.format != RGBChar)
+	{
+	  write (stream, image * RGBChar);
+	  return;
+	}
   }
 
   if (*image.format == GrayChar)
   {
 	stream << "P5" << endl;
-	stream << image.width << " " << image.height << " 255" << endl;
-	stream.write ((char *) image.buffer, image.width * image.height);
   }
-  else  // some color format
+  else  // RGBChar
   {
 	stream << "P6" << endl;
-	stream << image.width << " " << image.height << " 255" << endl;
-	for (int y = 0; y < image.height; y++)
-	{
-	  for (int x = 0; x < image.width; x++)
-	  {
-		unsigned int rgb = image.getRGBA (x, y);
-		unsigned char c[3];
-		c[0] = (rgb & 0xFF0000) >> 16;
-		c[1] = (rgb & 0xFF00) >> 8;
-		c[2] =  rgb & 0xFF;
-		stream.write ((char *) c, 3);
-	  }
-	}
   }
+  stream << image.width << " " << image.height << " 255" << endl;
+  stream.write ((char *) image.buffer, image.width * image.height * image.format->depth);
 }
 
 bool
