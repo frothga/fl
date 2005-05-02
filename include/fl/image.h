@@ -276,6 +276,7 @@ namespace fl
 	void fromGrayShort  (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
 	void fromRGBAChar   (const Image & image, Image & result) const;
+	void fromRGBChar    (const Image & image, Image & result) const;
 	void fromRGBABits   (const Image & image, Image & result) const;
 	void fromAny        (const Image & image, Image & result) const;
 
@@ -300,6 +301,7 @@ namespace fl
 	void fromGrayChar  (const Image & image, Image & result) const;
 	void fromGrayFloat (const Image & image, Image & result) const;
 	void fromRGBAChar  (const Image & image, Image & result) const;
+	void fromRGBChar   (const Image & image, Image & result) const;
 	void fromRGBABits  (const Image & image, Image & result) const;
 	void fromAny       (const Image & image, Image & result) const;
 

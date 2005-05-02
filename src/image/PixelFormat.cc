@@ -1027,6 +1027,10 @@ PixelFormatGrayFloat::filter (const Image & image)
   {
 	fromRGBAChar (image, result);
   }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBChar))
+  {
+	fromRGBChar (image, result);
+  }
   else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
   {
 	fromRGBABits (image, result);
@@ -1099,6 +1103,26 @@ PixelFormatGrayFloat::fromRGBAChar (const Image & image, Image & result) const
 	float g = *fromPixel++ / 255.0f;
 	float b = *fromPixel++ / 255.0f;
     fromPixel++;
+	linearize (r);
+	linearize (g);
+	linearize (b);
+	*toPixel++ = redToY * r + greenToY * g + blueToY * b;
+  }
+}
+
+void
+PixelFormatGrayFloat::fromRGBChar (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  unsigned char * fromPixel = (unsigned char *) image.buffer;
+  float *         toPixel   = (float *)         result.buffer;
+  float *         end       = toPixel + result.width * result.height;
+  while (toPixel < end)
+  {
+	float r = *fromPixel++ / 255.0f;
+	float g = *fromPixel++ / 255.0f;
+	float b = *fromPixel++ / 255.0f;
 	linearize (r);
 	linearize (g);
 	linearize (b);
@@ -1312,6 +1336,10 @@ PixelFormatGrayDouble::filter (const Image & image)
   {
 	fromRGBAChar (image, result);
   }
+  else if (typeid (* image.format) == typeid (PixelFormatRGBChar))
+  {
+	fromRGBChar (image, result);
+  }
   else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
   {
 	fromRGBABits (image, result);
@@ -1368,6 +1396,26 @@ PixelFormatGrayDouble::fromRGBAChar (const Image & image, Image & result) const
 	double g = *fromPixel++ / 255.0;
 	double b = *fromPixel++ / 255.0;
     fromPixel++;
+	linearize (r);
+	linearize (g);
+	linearize (b);
+	*toPixel++ = redToY * r + greenToY * g + blueToY * b;
+  }
+}
+
+void
+PixelFormatGrayDouble::fromRGBChar (const Image & image, Image & result) const
+{
+  result.buffer.grow (result.width * result.height * depth);
+
+  unsigned char * fromPixel = (unsigned char *) image.buffer;
+  double *        toPixel   = (double *)        result.buffer;
+  double *        end       = toPixel + result.width * result.height;
+  while (toPixel < end)
+  {
+	double r = *fromPixel++ / 255.0;
+	double g = *fromPixel++ / 255.0;
+	double b = *fromPixel++ / 255.0;
 	linearize (r);
 	linearize (g);
 	linearize (b);
