@@ -90,6 +90,12 @@ union Int2Char
   };
 };
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#  define endianAdjustFromPixel
+#else
+#  define endianAdjustFromPixel fromPixel--;
+#endif
+
 
 // Gamma functions ------------------------------------------------------------
 
@@ -569,7 +575,7 @@ PixelFormatGrayChar::filter (const Image & image)
   {
 	fromRGBAChar (image, result);
   }
-  else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
+  else if (dynamic_cast<const PixelFormatRGBABits *> (image.format))
   {
 	fromRGBABits (image, result);
   }
@@ -624,10 +630,10 @@ PixelFormatGrayChar::fromRGBAChar (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	unsigned int t;
-	t  = *fromPixel++ * (redWeight   << 8);
-	t += *fromPixel++ * (greenWeight << 8);
-	t += *fromPixel++ * (blueWeight  << 8);
-	fromPixel++;
+	t  = fromPixel[0] * (redWeight   << 8);
+	t += fromPixel[1] * (greenWeight << 8);
+	t += fromPixel[2] * (blueWeight  << 8);
+	fromPixel += 4;
 	*toPixel++ = t / (totalWeight << 8);
   }
 }
@@ -674,17 +680,16 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
     case 3:
 	{
 	  unsigned char * fromPixel = (unsigned char *) image.buffer;
+	  endianAdjustFromPixel
 	  unsigned char * toPixel   = (unsigned char *) result.buffer;
 	  unsigned char * end       = toPixel + result.width * result.height;
 	  while (toPixel < end)
 	  {
-		Int2Char t;
-		t.piece0 = *fromPixel++;
-		t.piece1 = *fromPixel++;
-		t.piece2 = *fromPixel++;
-		unsigned int r = t.all & that->redMask;
-		unsigned int g = t.all & that->greenMask;
-		unsigned int b = t.all & that->blueMask;
+		unsigned int t = * (unsigned int *) fromPixel;
+		fromPixel += 3;
+		unsigned int r = t & that->redMask;
+		unsigned int g = t & that->greenMask;
+		unsigned int b = t & that->blueMask;
 		*toPixel++ = (  (redShift   > 0 ? r << redShift   : r >> -redShift)   * redWeight
 					  + (greenShift > 0 ? g << greenShift : g >> -greenShift) * greenWeight
 					  + (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  * blueWeight
@@ -1099,10 +1104,10 @@ PixelFormatGrayFloat::fromRGBAChar (const Image & image, Image & result) const
   float *         end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	float r = *fromPixel++ / 255.0f;
-	float g = *fromPixel++ / 255.0f;
-	float b = *fromPixel++ / 255.0f;
-    fromPixel++;
+	float r = fromPixel[0] / 255.0f;
+	float g = fromPixel[1] / 255.0f;
+	float b = fromPixel[2] / 255.0f;
+    fromPixel += 4;
 	linearize (r);
 	linearize (g);
 	linearize (b);
@@ -1120,9 +1125,10 @@ PixelFormatGrayFloat::fromRGBChar (const Image & image, Image & result) const
   float *         end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	float r = *fromPixel++ / 255.0f;
-	float g = *fromPixel++ / 255.0f;
-	float b = *fromPixel++ / 255.0f;
+	float r = fromPixel[0] / 255.0f;
+	float g = fromPixel[1] / 255.0f;
+	float b = fromPixel[2] / 255.0f;
+	fromPixel += 3;
 	linearize (r);
 	linearize (g);
 	linearize (b);
@@ -1175,17 +1181,16 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
     case 3:
 	{
 	  unsigned char * fromPixel = (unsigned char *) image.buffer;
+	  endianAdjustFromPixel
 	  float *         toPixel   = (float *)         result.buffer;
 	  float *         end       = toPixel + result.width * result.height;
 	  while (toPixel < end)
 	  {
-		Int2Char t;
-		t.piece0 = *fromPixel++;
-		t.piece1 = *fromPixel++;
-		t.piece2 = *fromPixel++;
-		unsigned int r = t.all & that->redMask;
-		unsigned int g = t.all & that->greenMask;
-		unsigned int b = t.all & that->blueMask;
+		unsigned int t = * (unsigned int *) fromPixel;
+		fromPixel += 3;
+		unsigned int r = t & that->redMask;
+		unsigned int g = t & that->greenMask;
+		unsigned int b = t & that->blueMask;
 		float fr = (redShift   > 0 ? r << redShift   : r >> -redShift)   / 255.0f;
 		float fg = (greenShift > 0 ? g << greenShift : g >> -greenShift) / 255.0f;
 		float fb = (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  / 255.0f;
@@ -1392,10 +1397,10 @@ PixelFormatGrayDouble::fromRGBAChar (const Image & image, Image & result) const
   double *        end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	double r = *fromPixel++ / 255.0;
-	double g = *fromPixel++ / 255.0;
-	double b = *fromPixel++ / 255.0;
-    fromPixel++;
+	double r = fromPixel[0] / 255.0;
+	double g = fromPixel[1] / 255.0;
+	double b = fromPixel[2] / 255.0;
+    fromPixel += 4;
 	linearize (r);
 	linearize (g);
 	linearize (b);
@@ -1413,9 +1418,10 @@ PixelFormatGrayDouble::fromRGBChar (const Image & image, Image & result) const
   double *        end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	double r = *fromPixel++ / 255.0;
-	double g = *fromPixel++ / 255.0;
-	double b = *fromPixel++ / 255.0;
+	double r = fromPixel[0] / 255.0;
+	double g = fromPixel[1] / 255.0;
+	double b = fromPixel[2] / 255.0;
+	fromPixel += 3;
 	linearize (r);
 	linearize (g);
 	linearize (b);
@@ -1468,17 +1474,16 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
     case 3:
 	{
 	  unsigned char * fromPixel = (unsigned char *) image.buffer;
+	  endianAdjustFromPixel
 	  double *        toPixel   = (double *)        result.buffer;
 	  double *        end       = toPixel + result.width * result.height;
 	  while (toPixel < end)
 	  {
-		Int2Char t;
-		t.piece0 = *fromPixel++;
-		t.piece1 = *fromPixel++;
-		t.piece2 = *fromPixel++;
-		unsigned int r = t.all & that->redMask;
-		unsigned int g = t.all & that->greenMask;
-		unsigned int b = t.all & that->blueMask;
+		unsigned int t = * (unsigned int *) fromPixel;
+		fromPixel += 3;
+		unsigned int r = t & that->redMask;
+		unsigned int g = t & that->greenMask;
+		unsigned int b = t & that->blueMask;
 		double fr = (redShift   > 0 ? r << redShift   : r >> -redShift)   / 255.0;
 		double fg = (greenShift > 0 ? g << greenShift : g >> -greenShift) / 255.0;
 		double fb = (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  / 255.0;
@@ -1670,18 +1675,17 @@ PixelFormatRGBABits::filter (const Image & image)
 #define OddBits2Bits(toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
   unsigned char *   fromPixel = (unsigned char *)   image.buffer; \
+  endianAdjustFromPixel \
   unsigned toSize * toPixel   = (unsigned toSize *) result.buffer; \
   unsigned toSize * end       = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
-    Int2Char t; \
-    t.piece0 = *fromPixel++; \
-    t.piece1 = *fromPixel++; \
-    t.piece2 = *fromPixel++; \
-    unsigned int r = t.all & fromRed; \
-	unsigned int g = t.all & fromGreen; \
-	unsigned int b = t.all & fromBlue; \
-	unsigned int a = t.all & fromAlpha; \
+    unsigned int t = * (unsigned int *) fromPixel; \
+    fromPixel += 3; \
+    unsigned int r = t & fromRed; \
+	unsigned int g = t & fromGreen; \
+	unsigned int b = t & fromBlue; \
+	unsigned int a = t & fromAlpha; \
 	*toPixel++ =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
 		         | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
 		         | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
@@ -1706,23 +1710,24 @@ PixelFormatRGBABits::filter (const Image & image)
 		    | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
 		    | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
 		    | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
-    *toPixel++ = t.piece0; \
-    *toPixel++ = t.piece1; \
-    *toPixel++ = t.piece2; \
+    toPixel[0] = t.piece0; \
+    toPixel[1] = t.piece1; \
+    toPixel[2] = t.piece2; \
+    toPixel += 3; \
   } \
 }
 
 #define OddBits2OddBits(fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
   unsigned char * fromPixel = (unsigned char *) image.buffer; \
+  endianAdjustFromPixel \
   unsigned char * toPixel   = (unsigned char *) result.buffer; \
   unsigned char * end       = toPixel + result.width * result.height * 3; \
   while (toPixel < end) \
   { \
     Int2Char t; \
-    t.piece0 = *fromPixel++; \
-    t.piece1 = *fromPixel++; \
-    t.piece2 = *fromPixel++; \
+    t.all = * (unsigned int *) fromPixel; \
+    fromPixel += 3; \
     unsigned int r = t.all & fromRed; \
 	unsigned int g = t.all & fromGreen; \
 	unsigned int b = t.all & fromBlue; \
@@ -1731,9 +1736,10 @@ PixelFormatRGBABits::filter (const Image & image)
 		    | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
 		    | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
 		    | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
-    *toPixel++ = t.piece0; \
-    *toPixel++ = t.piece1; \
-    *toPixel++ = t.piece2; \
+    toPixel[0] = t.piece0; \
+    toPixel[1] = t.piece1; \
+    toPixel[2] = t.piece2; \
+    toPixel += 3; \
   } \
 }
 
@@ -1769,9 +1775,10 @@ PixelFormatRGBABits::filter (const Image & image)
 	        | ((greenShift > 0 ? t.all << greenShift : t.all >> -greenShift) & greenMask) \
             | ((blueShift  > 0 ? t.all << blueShift  : t.all >> -blueShift)  & blueMask) \
             | alphaMask; \
-    *toPixel++ = t.piece0; \
-    *toPixel++ = t.piece1; \
-    *toPixel++ = t.piece2; \
+    toPixel[0] = t.piece0; \
+    toPixel[1] = t.piece1; \
+    toPixel[2] = t.piece2; \
+    toPixel += 3; \
   } \
 }
 
@@ -2212,10 +2219,11 @@ PixelFormatRGBAChar::fromGrayChar (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	unsigned char t = *fromPixel++;
-	*toPixel++ = t;
-	*toPixel++ = t;
-	*toPixel++ = t;
-	*toPixel++ = 0xFF;
+	toPixel[0] = t;
+	toPixel[1] = t;
+	toPixel[2] = t;
+	toPixel[3] = 0xFF;
+	toPixel += 4;
   }
 }
 
@@ -2232,10 +2240,11 @@ PixelFormatRGBAChar::fromGrayFloat (const Image & image, Image & result) const
 	float v = min (max (*fromPixel++, 0.0f), 1.0f);
 	delinearize (v);
 	unsigned char t = (unsigned char) (v * 255);
-	*toPixel++ = t;
-	*toPixel++ = t;
-	*toPixel++ = t;
-	*toPixel++ = 0xFF;
+	toPixel[0] = t;
+	toPixel[1] = t;
+	toPixel[2] = t;
+	toPixel[3] = 0xFF;
+	toPixel += 4;
   }
 }
 
@@ -2252,10 +2261,11 @@ PixelFormatRGBAChar::fromGrayDouble (const Image & image, Image & result) const
 	float v = min (max (*fromPixel++, 0.0), 1.0);
 	delinearize (v);
 	unsigned char t = (unsigned char) (v * 255);
-	*toPixel++ = t;
-	*toPixel++ = t;
-	*toPixel++ = t;
-	*toPixel++ = 0xFF;
+	toPixel[0] = t;
+	toPixel[1] = t;
+	toPixel[2] = t;
+	toPixel[3] = 0xFF;
+	toPixel += 4;
   }
 }
 
@@ -2269,10 +2279,12 @@ PixelFormatRGBAChar::fromRGBChar (const Image & image, Image & result) const
   unsigned char * end = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
-	*toPixel++ = *fromPixel++;
-	*toPixel++ = *fromPixel++;
-	*toPixel++ = *fromPixel++;
-	*toPixel++ = 0xFF;
+	toPixel[0] = fromPixel[0];
+	toPixel[1] = fromPixel[1];
+	toPixel[2] = fromPixel[2];
+	toPixel[3] = 0xFF;
+	toPixel += 4;
+	fromPixel += 3;
   }
 }
 
@@ -2378,9 +2390,10 @@ PixelFormatRGBChar::fromGrayChar (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	unsigned char t = *fromPixel++;
-	*toPixel++ = t;
-	*toPixel++ = t;
-	*toPixel++ = t;
+	toPixel[0] = t;
+	toPixel[1] = t;
+	toPixel[2] = t;
+	toPixel += 3;
   }
 }
 
@@ -2395,9 +2408,10 @@ PixelFormatRGBChar::fromGrayShort (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	unsigned char t = *fromPixel++ >> 8;
-	*toPixel++ = t;
-	*toPixel++ = t;
-	*toPixel++ = t;
+	toPixel[0] = t;
+	toPixel[1] = t;
+	toPixel[2] = t;
+	toPixel += 3;
   }
 }
 
@@ -2414,9 +2428,10 @@ PixelFormatRGBChar::fromGrayFloat (const Image & image, Image & result) const
 	float v = min (max (*fromPixel++, 0.0f), 1.0f);
 	delinearize (v);
 	unsigned char t = (unsigned char) (v * 255);
-	*toPixel++ = t;
-	*toPixel++ = t;
-	*toPixel++ = t;
+	toPixel[0] = t;
+	toPixel[1] = t;
+	toPixel[2] = t;
+	toPixel += 3;
   }
 }
 
@@ -2433,9 +2448,10 @@ PixelFormatRGBChar::fromGrayDouble (const Image & image, Image & result) const
 	double v = min (max (*fromPixel++, 0.0), 1.0);
 	delinearize (v);
 	unsigned char t = (unsigned char) (v * 255);
-	*toPixel++ = t;
-	*toPixel++ = t;
-	*toPixel++ = t;
+	toPixel[0] = t;
+	toPixel[1] = t;
+	toPixel[2] = t;
+	toPixel += 3;
   }
 }
 
@@ -2449,10 +2465,11 @@ PixelFormatRGBChar::fromRGBAChar (const Image & image, Image & result) const
   unsigned char * end = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
-	*toPixel++ = *fromPixel++;
-	*toPixel++ = *fromPixel++;
-	*toPixel++ = *fromPixel++;
-	fromPixel++;
+	toPixel[0] = fromPixel[0];
+	toPixel[1] = fromPixel[1];
+	toPixel[2] = fromPixel[2];
+	toPixel += 3;
+	fromPixel += 4;
   }
 }
 
