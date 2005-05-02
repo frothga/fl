@@ -315,49 +315,6 @@ namespace fl
 	virtual void          setGray (void * pixel, float gray) const;
   };
 
-  class PixelFormatRGBAChar : public PixelFormat
-  {
-  public:
-	PixelFormatRGBAChar ();
-
-	virtual Image filter (const Image & image);
-	void fromGrayChar   (const Image & image, Image & result) const;
-	void fromGrayFloat  (const Image & image, Image & result) const;
-	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBChar    (const Image & image, Image & result) const;
-	void fromRGBABits   (const Image & image, Image & result) const;
-
-	virtual bool operator == (const PixelFormat & that) const;
-
-	virtual unsigned int  getRGBA  (void * pixel) const;
-	virtual unsigned char getAlpha (void * pixel) const;
-	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
-	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
-
-	static void shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift);  ///< Shifts are set to move bits from this format to the one indicated by the masks.
-  };
-
-  class PixelFormatRGBChar : public PixelFormat
-  {
-  public:
-	PixelFormatRGBChar ();
-
-	virtual Image filter (const Image & image);
-	void fromGrayChar   (const Image & image, Image & result) const;
-	void fromGrayShort  (const Image & image, Image & result) const;
-	void fromGrayFloat  (const Image & image, Image & result) const;
-	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBAChar   (const Image & image, Image & result) const;
-	void fromRGBABits   (const Image & image, Image & result) const;
-
-	virtual bool operator == (const PixelFormat & that) const;
-
-	virtual unsigned int  getRGBA  (void * pixel) const;
-	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
-
-	static void shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift);  ///< Shifts are set to move bits from this format to the one indicated by the masks.
-  };
-
   /**
 	 Allows construction of arbitrary RGBA formats.  Mainly used to support
 	 X windows interface.  This class is named "RGBA", but this just
@@ -376,7 +333,6 @@ namespace fl
 	void fromGrayChar   (const Image & image, Image & result) const;
 	void fromGrayFloat  (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBAChar   (const Image & image, Image & result) const;
 	void fromRGBABits   (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
@@ -392,6 +348,39 @@ namespace fl
 	unsigned int greenMask;
 	unsigned int blueMask;
 	unsigned int alphaMask;
+  };
+
+  class PixelFormatRGBAChar : public PixelFormatRGBABits
+  {
+  public:
+	PixelFormatRGBAChar ();
+
+	virtual Image filter (const Image & image);
+	void fromGrayChar   (const Image & image, Image & result) const;
+	void fromGrayFloat  (const Image & image, Image & result) const;
+	void fromGrayDouble (const Image & image, Image & result) const;
+	void fromRGBChar    (const Image & image, Image & result) const;
+
+	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual unsigned char getAlpha (void * pixel) const;
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
+	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
+  };
+
+  class PixelFormatRGBChar : public PixelFormatRGBABits
+  {
+  public:
+	PixelFormatRGBChar ();
+
+	virtual Image filter (const Image & image);
+	void fromGrayChar   (const Image & image, Image & result) const;
+	void fromGrayShort  (const Image & image, Image & result) const;
+	void fromGrayFloat  (const Image & image, Image & result) const;
+	void fromGrayDouble (const Image & image, Image & result) const;
+	void fromRGBAChar   (const Image & image, Image & result) const;
+
+	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
   };
 
   class PixelFormatRGBAShort : public PixelFormat
@@ -490,7 +479,7 @@ namespace fl
   extern PixelFormatYUYVChar   YUYVChar;
   extern PixelFormatHLSFloat   HLSFloat;
 
-  // Naming convention for RGBBits (other than BGRChar):
+  // Naming convention for RGBABits:
   // R<red bits>G<green bits>B<blue bits>
   // EG: R5G5B5 would be a 15 bit RGB format.
 
