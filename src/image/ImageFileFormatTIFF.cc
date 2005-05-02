@@ -78,10 +78,10 @@ ImageFileFormatTIFF::read (const std::string & fileName, Image & image) const
 		  format = &GrayChar;
 		  break;
 		case 3:
-		  format = &BGRChar;
+		  format = &RGBChar;
 		  break;
 		case 4:
-		  format = &ABGRChar;
+		  format = &RGBAChar;
 	  }
 	  break;
 	case 16:
@@ -91,10 +91,10 @@ ImageFileFormatTIFF::read (const std::string & fileName, Image & image) const
 		  format = &GrayShort;
 		  break;
 		case 3:
-		  format = &RGBShort;  // misnamed format
+		  format = &RGBShort;
 		  break;
 		case 4:
-		  format = &RGBAShort;  // misnamed format
+		  format = &RGBAShort;
 	  }
 	  break;
 	case 32:
@@ -147,17 +147,17 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
   }
   else if (image.format->hasAlpha)
   {
-	if (*image.format != ABGRChar  &&  *image.format != RGBAShort  &&  *image.format != RGBAFloat)
+	if (*image.format != RGBAChar  &&  *image.format != RGBAShort  &&  *image.format != RGBAFloat)
 	{
-	  write (fileName, image * ABGRChar);
+	  write (fileName, image * RGBAChar);
 	  return;
 	}
   }
   else  // Three color channels
   {
-	if (*image.format != BGRChar  &&  *image.format != RGBShort)
+	if (*image.format != RGBChar  &&  *image.format != RGBShort)
 	{
-	  write (fileName, image * BGRChar);
+	  write (fileName, image * RGBChar);
 	  return;
 	}
   }
@@ -201,7 +201,7 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
 	TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 4);
 	TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
 
-	if (*image.format == ABGRChar)
+	if (*image.format == RGBAChar)
 	{
 	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
 	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
@@ -222,7 +222,7 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
 	TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 3);
 	TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
 
-	if (*image.format == BGRChar)
+	if (*image.format == RGBChar)
 	{
 	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
 	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);

@@ -153,7 +153,7 @@ ImageFileFormatJPEG::read (std::istream & stream, Image & image) const
   }
   else
   {
-	image.format = &BGRChar;
+	image.format = &RGBChar;
   }
   image.resize (cinfo.output_width, cinfo.output_height);
 
@@ -172,9 +172,9 @@ ImageFileFormatJPEG::read (std::istream & stream, Image & image) const
 void
 ImageFileFormatJPEG::write (std::ostream & stream, const Image & image) const
 {
-  if (*image.format != BGRChar)
+  if (*image.format != RGBChar)
   {
-	Image temp = image * BGRChar;
+	Image temp = image * RGBChar;
 	write (stream, temp);
 	return;
   }
