@@ -33,7 +33,17 @@ for details.
 static inline unsigned int
 bswap (unsigned int x)
 {
+# ifdef _MSC_VER
+  // Could probably make the MS version more efficient by taking advantage of the calling convention to avoid redundant loads/saves.
+  __asm
+  {
+	mov   eax, x
+	bswap eax
+	mov   x, eax
+  }
+# else
   __asm ("bswap %0" : "=r" (x) : "0" (x));
+# endif
   return x;
 }
 
