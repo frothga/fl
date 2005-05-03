@@ -455,6 +455,21 @@ namespace fl
 	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
   };
 
+  /**
+	 YUV 444 format (1394 mode 0 format 0)
+   **/
+  class PixelFormatUYVChar : public PixelFormat
+  {
+  public:
+	PixelFormatUYVChar ();
+
+	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual unsigned int  getYUV  (void * pixel) const;
+	virtual unsigned char getGray (void * pixel) const;
+	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
+	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
+  };
+
   class PixelFormatHLSFloat : public PixelFormat
   {
   public:
@@ -477,8 +492,10 @@ namespace fl
   extern PixelFormatRGBAFloat  RGBAFloat;
   extern PixelFormatRGBChar    RGBChar;
   extern PixelFormatRGBShort   RGBShort;
+  extern PixelFormatRGBABits   BGRChar;
   extern PixelFormatUYVYChar   UYVYChar;
   extern PixelFormatYUYVChar   YUYVChar;
+  extern PixelFormatUYVChar    UYVChar;
   extern PixelFormatHLSFloat   HLSFloat;
 
   // Naming convention for RGBABits:

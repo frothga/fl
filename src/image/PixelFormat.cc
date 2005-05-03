@@ -63,7 +63,16 @@ PixelFormatRGBChar    fl::RGBChar;
 PixelFormatRGBShort   fl::RGBShort;
 PixelFormatUYVYChar   fl::UYVYChar;
 PixelFormatYUYVChar   fl::YUYVChar;
+PixelFormatUYVChar    fl::UYVChar;
 PixelFormatHLSFloat   fl::HLSFloat;
+
+// These "bits" formats must be endian independent.
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+PixelFormatRGBABits   fl::BGRChar (3, 0xFF0000, 0xFF00, 0xFF, 0x0);
+#else
+PixelFormatRGBABits   fl::BGRChar (3, 0xFF, 0xFF00, 0xFF0000, 0x0);
+#endif
+
 
 
 // Color->gray conversion factors
@@ -2952,6 +2961,67 @@ PixelFormatYUYVChar::setYUV (void * pixel, unsigned int yuv) const
 	((unsigned char *) pixel)[1] = (yuv & 0xFF00) >>  8;
 	((unsigned char *) pixel)[3] =  yuv &   0xFF;
   }
+}
+
+
+// class PixelFormatUYVChar ---------------------------------------------------
+
+PixelFormatUYVChar::PixelFormatUYVChar ()
+{
+  depth      = 3;
+  precedence = 1;  // same as UYVY
+  monochrome = false;
+  hasAlpha   = false;
+}
+
+unsigned int
+PixelFormatUYVChar::getRGBA (void * pixel) const
+{
+  int u = ((unsigned char *) pixel)[0] - 128;
+  int y = ((unsigned char *) pixel)[1] << 16;
+  int v = ((unsigned char *) pixel)[2] - 128;
+
+  unsigned int r = min (max (y               + 0x166F7 * v, 0), 0xFFFFFF);
+  unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v, 0), 0xFFFFFF);
+  unsigned int b = min (max (y + 0x1C560 * u,               0), 0xFFFFFF);
+
+  return ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF;
+}
+
+unsigned int
+PixelFormatUYVChar::getYUV (void * pixel) const
+{
+  return (((unsigned char *) pixel)[1] << 16) | (((unsigned char *) pixel)[0] << 8) | ((unsigned char *) pixel)[2];
+}
+
+unsigned char
+PixelFormatUYVChar::getGray (void * pixel) const
+{
+  return ((unsigned char *) pixel)[1];
+}
+
+void
+PixelFormatUYVChar::setRGBA (void * pixel, unsigned int rgba) const
+{
+  int r = (rgba & 0xFF000000) >> 24;
+  int g = (rgba &   0xFF0000) >> 16;
+  int b = (rgba &     0xFF00) >>  8;
+
+  unsigned char y = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b,            0), 0xFFFFFF) >> 16;
+  unsigned char u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000, 0), 0xFFFFFF) >> 16;
+  unsigned char v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000, 0), 0xFFFFFF) >> 16;
+
+  ((unsigned char *) pixel)[0] = u;
+  ((unsigned char *) pixel)[1] = y;
+  ((unsigned char *) pixel)[2] = v;
+}
+
+void
+PixelFormatUYVChar::setYUV (void * pixel, unsigned int yuv) const
+{
+  ((unsigned char *) pixel)[0] = (yuv & 0xFF00) >>  8;
+  ((unsigned char *) pixel)[1] =  yuv           >> 16;
+  ((unsigned char *) pixel)[2] =  yuv &   0xFF;
 }
 
 
