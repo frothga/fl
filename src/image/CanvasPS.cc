@@ -81,9 +81,9 @@ CanvasPS::drawDone ()
 inline void
 CanvasPS::expandColor (unsigned int color)
 {
-  int r = (color >> 16) & 0xFF;
-  int g = (color >> 8)  & 0xFF;
-  int b =  color        & 0xFF;
+  int r = (color >> 24) & 0xFF;
+  int g = (color >> 16) & 0xFF;
+  int b = (color >> 8 ) & 0xFF;
   psf << (float) r / 255 << " " << (float) g / 255 << " " << (float) b / 255;
 }
 
