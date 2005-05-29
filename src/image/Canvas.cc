@@ -140,7 +140,7 @@ Canvas::drawImage (const Image & image, Point & p, float width, float height)
 }
 
 void
-Canvas::drawText (const std::string & text, const Point & point, float size, float angle, unsigned int color)
+Canvas::drawText (const std::string & text, const Point & point, unsigned int color, float angle)
 {
   throw "drawText not implemented for this type of Canvas";
 }
@@ -165,6 +165,12 @@ Canvas::setLineWidth (float width)
 
 void
 Canvas::setPointSize (float radius)
+{
+  // Do nothing
+}
+
+void
+Canvas::setFont (const string & name, float size)
 {
   // Do nothing
 }
