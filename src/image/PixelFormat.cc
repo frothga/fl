@@ -228,22 +228,34 @@ Pixel::getXYZ (float values[]) const
   format->getXYZ (pixel, values);
 }
 
+unsigned char
+Pixel::getAlpha () const
+{
+  return format->getAlpha (pixel);
+}
+
 void
-Pixel::setRGBA (unsigned int rgba) const
+Pixel::setRGBA (unsigned int rgba)
 {
   format->setRGBA (pixel, rgba);
 }
 
 void
-Pixel::setRGBA (float values[]) const
+Pixel::setRGBA (float values[])
 {
   format->setRGBA (pixel, values);
 }
 
 void
-Pixel::setXYZ (float values[]) const
+Pixel::setXYZ (float values[])
 {
   format->setXYZ (pixel, values);
+}
+
+void
+Pixel::setAlpha (unsigned char alpha)
+{
+  format->setAlpha (pixel, alpha);
 }
 
 Pixel &
