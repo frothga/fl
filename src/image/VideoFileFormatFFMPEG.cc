@@ -348,8 +348,6 @@ VideoInFileFFMPEG::close ()
   state = -12;
 }
 
-PixelFormatRGBABits BGR24 (3, 0xFF0000, 0xFF00, 0xFF, 0x0);
-
 void
 VideoInFileFFMPEG::extractImage (Image & image)
 {
@@ -445,7 +443,7 @@ VideoInFileFFMPEG::extractImage (Image & image)
   }
   else if (cc->pix_fmt == PIX_FMT_BGR24)
   {
-	image.attach (picture.data[0], cc->width, cc->height, BGR24);
+	image.attach (picture.data[0], cc->width, cc->height, BGRChar);
   }
   else
   {
