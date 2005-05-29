@@ -8,7 +8,8 @@ for details.
 
 
 #include "fl/image.h"
-
+#include "fl/string.h"
+#include "fl/math.h"
 
 #include <tiffio.h>
 
