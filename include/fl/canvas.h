@@ -18,10 +18,14 @@ for details.
 #include "fl/matrix.h"
 #include "fl/image.h"
 #include "fl/pi.h"
+#include "fl/color.h"
 
 #include <vector>
 #include <string>
 #include <fstream>
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 
 namespace fl
@@ -38,19 +42,19 @@ namespace fl
 	virtual void drawDone ();  ///< Do any final steps to output the drawing.  After this, the effect of draw commands is undefined.
 
 	// Drawing functions are the primary interface
-	virtual void drawPoint (const Point & p, unsigned int color = 0xFFFFFF);
-	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = 0xFFFFFF);
-	virtual void drawLine (const Point & a, const Point & b, unsigned int color = 0xFFFFFF);  ///< Draws a line thru a and b
-	virtual void drawLine (float a, float b, float c, unsigned int color = 0xFFFFFF);  ///< Draws the set ax + by + c = 0
-	virtual void drawRay (const Point & p, float angle, unsigned int color = 0xFFFFFF);
-	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = 0xFFFFFF);
-	virtual void drawParallelogram (const Matrix<double> & S, float radius = 1.0f, unsigned int color = 0xFFFFFF);  ///< S projects a unit square centered at the origin into the image.  radius scales up the unit square.
-	virtual void drawParallelogram (const PointAffine & p, float radius = 1.0f, unsigned int color = 0xFFFFFF);  ///< Determines an S based on the shape and position of p, then calls drawParallelogram (S, ...).
-	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = 0xFFFFFF);
-	virtual void drawCircle (const Point & center, float radius, unsigned int color = 0xFFFFFF, float startAngle = 0, float endAngle = 2 * PI);
-	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1.0f, unsigned int color = 0xFFFFFF, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
-	virtual void drawEllipse (const Matrix<double> & S, float radius = 1.0f, unsigned int color = 0xFFFFFF);  ///< S projects a unit circle centered at the origin into the image.  radius scales up the unit circle.  This is a convenience function for marking affine-adapted patches.
-	virtual void drawText (const std::string & text, const Point & point, float size = 10, float angle = 0, unsigned int color = 0xFFFFFF);
+	virtual void drawPoint (const Point & p, unsigned int color = WHITE);
+	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = WHITE);
+	virtual void drawLine (const Point & a, const Point & b, unsigned int color = WHITE);  ///< Draws a line thru a and b
+	virtual void drawLine (float a, float b, float c, unsigned int color = WHITE);  ///< Draws the set ax + by + c = 0
+	virtual void drawRay (const Point & p, float angle, unsigned int color = WHITE);
+	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
+	virtual void drawParallelogram (const Matrix<double> & S, float radius = 1.0f, unsigned int color = WHITE);  ///< S projects a unit square centered at the origin into the image.  radius scales up the unit square.
+	virtual void drawParallelogram (const PointAffine & p, float radius = 1.0f, unsigned int color = WHITE);  ///< Determines an S based on the shape and position of p, then calls drawParallelogram (S, ...).
+	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = WHITE);
+	virtual void drawCircle (const Point & center, float radius, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI);
+	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1.0f, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
+	virtual void drawEllipse (const Matrix<double> & S, float radius = 1.0f, unsigned int color = WHITE);  ///< S projects a unit circle centered at the origin into the image.  radius scales up the unit circle.  This is a convenience function for marking affine-adapted patches.
+	virtual void drawText (const std::string & text, const Point & point, unsigned int color = WHITE, float angle = 0);
 	virtual void drawImage (const Image & image, Point & p, float width = -1, float height = -1);  ///< width or height == -1 means size is same number of units as pixels in image
 
 	// State information
@@ -58,6 +62,7 @@ namespace fl
 	virtual void setScale (float x, float y);  ///< Multiply all coordinates by a factor.  Scaling is done before translation.
 	virtual void setLineWidth (float width);  ///< Width of pen for stroking lines, in native units.
 	virtual void setPointSize (float radius);  ///< Set distance away from position of point that marker may extend.
+	virtual void setFont (const std::string & name, float size);  ///< Select the type face and size for drawText().
   };
 
 
@@ -72,18 +77,20 @@ namespace fl
 	void initialize ();
 	virtual ~CanvasImage ();
 
-	virtual void drawPoint (const Point & p, unsigned int color = 0xFFFFFF);
-	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = 0xFFFFFF);
-	virtual void drawLine (float a, float b, float c, unsigned int color = 0xFFFFFF);
-	virtual void drawRay (const Point & p, float angle, unsigned int color = 0xFFFFFF);
-	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = 0xFFFFFF);
-	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = 0xFFFFFF);
-	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1, unsigned int color = 0xFFFFFF, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
+	virtual void drawPoint (const Point & p, unsigned int color = WHITE);
+	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = WHITE);
+	virtual void drawLine (float a, float b, float c, unsigned int color = WHITE);
+	virtual void drawRay (const Point & p, float angle, unsigned int color = WHITE);
+	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
+	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = WHITE);
+	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
+	virtual void drawText (const std::string & text, const Point & point, unsigned int color = WHITE, float angle = 0);
 
 	virtual void setTranslation (float x, float y);
 	virtual void setScale (float x, float y);
 	virtual void setLineWidth (float width);
 	virtual void setPointSize (float radius);
+	virtual void setFont (const std::string & name, float size);
 
 	Point trans (const Point & p);
 	void pen (const Point & p, unsigned int color);
@@ -95,6 +102,16 @@ namespace fl
 	float lineWidth;
 	ImageOf<unsigned char> penTip;
 	float pointRadius;
+	FT_Face face;
+
+	// Static interface for Freetype and font management
+
+	static void initFontLibrary ();  ///< One-time initialization of the Freetype2 library.
+	static void scanFontDirectory (const std::string & path);  ///< Identify all font files in a given directory and register the Postscript names in the map.  Can be called after initFontLibrary() to add fonts not in the hard-coded default font path.
+	static void addFontFile (const std::string & path);  ///< If path points to valid font file, then add its Postscript name to the map.
+
+	static FT_Library library;
+	static std::map<std::string, std::string> fontMap;  ///< Maps from font name to font file
   };
 
   /**
@@ -107,11 +124,11 @@ namespace fl
 	virtual ~CanvasPS ();
 	virtual void drawDone ();
 
-	virtual void drawPoint (const Point & p, unsigned int color = 0);
-	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = 0);
-	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = 0);
-	virtual void drawCircle (const Point & center, float radius, unsigned int color = 0, float startAngle = 0, float endAngle = 2 * PI);
-	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1, unsigned int color = 0, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
+	virtual void drawPoint (const Point & p, unsigned int color = BLACK);
+	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = BLACK);
+	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = BLACK);
+	virtual void drawCircle (const Point & center, float radius, unsigned int color = BLACK, float startAngle = 0, float endAngle = 2 * PI);
+	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1, unsigned int color = BLACK, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
 	virtual void drawImage (const Image & image, Point & p, float width = -1, float height = -1);
 
 	virtual void setTranslation (float x, float y);
