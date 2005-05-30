@@ -543,12 +543,14 @@ namespace fl
 	Pixel (const Pixel & that);
 	Pixel (const PixelFormat & format, void * pixel);
 
-	unsigned int getRGBA () const;
-	void         getRGBA (float values[]) const;
-	void         getXYZ  (float values[]) const;
-	void         setRGBA (unsigned int rgba) const;
-	void         setRGBA (float values[]) const;
-	void         setXYZ  (float values[]) const;
+	unsigned int  getRGBA  () const;
+	void          getRGBA  (float values[]) const;
+	void          getXYZ   (float values[]) const;
+	unsigned char getAlpha () const;
+	void          setRGBA  (unsigned int rgba);
+	void          setRGBA  (float values[]);
+	void          setXYZ   (float values[]);
+	void          setAlpha (unsigned char alpha);
 
 	Pixel & operator = (const Pixel & that);  ///< Set self to have color contained in that.
 	Pixel & operator += (const Pixel & that);  ///< Set self to sum of respective color channels.
@@ -556,7 +558,7 @@ namespace fl
 	Pixel operator * (const Pixel & that) const;  ///< Multiply respective color channels.
 	Pixel operator * (float scalar) const;  ///< Scale each channel.
 	Pixel operator / (float scalar) const;  ///< Scale each channel.
-	Pixel operator << (const Pixel & that);  ///< Alpha blend that into this.  The alpha value the governs the blending comes from that.
+	Pixel operator << (const Pixel & that);  ///< Alpha blend that into this.  The alpha value that governs the blending comes from that.
 
 	const PixelFormat * format;
 	void * pixel;  ///< always points to target data: either the union below or some point in an Image buffer
