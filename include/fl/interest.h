@@ -121,7 +121,7 @@ namespace fl
 	std::vector<float> scales;  ///< Scale levels associated with the entries in pyramid
 	float firstScale;
 	float lastScale;
-	int steps;  ///< Number scale steps between octaves.
+	int steps;  ///< Number of scale steps between octaves.
 	int crop;  ///< Number of pixels from border to ignore maxima.
 	bool storePyramid;  ///< Indicates that blurred/resampled images should be stored rather than thrown away.
 	float thresholdEdge;  ///< Gives smallest permissible ratio of det(H) / trace(H)^2, where H is the Hessian of the DoG function on intensity.
