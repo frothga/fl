@@ -12,8 +12,15 @@ for details.
 
 #include "fl/canvas.h"
 #include "fl/lapackd.h"
+#include "fl/string.h"
 
 #include <algorithm>
+
+#ifdef WIN32
+#  include <windows.h>
+#else
+#  include <dirent.h>
+#endif
 
 
 using namespace fl;
@@ -59,6 +66,9 @@ inRange (float angle, const float & startAngle, const float & endAngle)
 // Most of the implementations here are hacks based on float.  They could be
 // made more efficient for changing to Bresenhem-like approaches.
 
+FT_Library CanvasImage::library = 0;
+map<string, string> CanvasImage::fontMap;
+
 CanvasImage::CanvasImage (const PixelFormat & format)
 : Image (format)
 {
@@ -87,6 +97,8 @@ CanvasImage::initialize ()
 
   setLineWidth (1);
   setPointSize (2);
+
+  face = 0;
 }
 
 CanvasImage::~CanvasImage ()
@@ -120,15 +132,12 @@ CanvasImage::pen (const Point & p, unsigned int color)
 	int yl = max (0,                 -py);
 	int yh = min (penTip.height - 1, (height - 1) - py);
 
+	Pixel C (color);
 	for (int x = xl; x <= xh; x++)
 	{
 	  for (int y = yl; y <= yh; y++)
 	  {
-		unsigned int c = penTip (x, y);
-		c <<= 24;
-		c |= color & 0xFFFFFF;
-		Pixel C;
-		C.setRGBA (c);
+		C.setAlpha (penTip (x, y));
 		Pixel p = (*this) (px + x, py + y);
 		p = p << C;
 	  }
@@ -476,6 +485,82 @@ CanvasImage::drawEllipse (const Point & center, const Matrix2x2<double> & shape,
   }
 }
 
+/**
+   \todo Take into account current transformation when computing matrix.
+   Also, CanvasImage and CanvasPS should be interchangeable in all regards.
+   However, not sure that is the case right now.
+ **/
+void
+CanvasImage::drawText (const string & text, const Point & point, unsigned int color, float angle)
+{
+  if (face == 0)
+  {
+	setFont ("Helvetica", 12);
+  }
+
+  FT_Matrix matrix;
+  matrix.xx = (FT_Fixed) ( cos (angle) * 0x10000L);
+  matrix.xy = (FT_Fixed) ( sin (angle) * 0x10000L);
+  matrix.yx = (FT_Fixed) (-sin (angle) * 0x10000L);
+  matrix.yy = (FT_Fixed) ( cos (angle) * 0x10000L);
+
+  FT_GlyphSlot slot = face->glyph;
+
+  Point pen = point;
+  Pixel C (color);
+  for (int i = 0; i < text.size (); i++)
+  {
+    FT_Set_Transform (face, &matrix, 0);
+
+	FT_Error error = FT_Load_Char (face, text[i], FT_LOAD_RENDER);
+    if (error) continue;
+
+	FT_Bitmap & bitmap = slot->bitmap;
+	int left = (int) rint (pen.x + slot->bitmap_left);
+	int top  = (int) rint (pen.y - slot->bitmap_top);
+
+	switch (bitmap.pixel_mode)
+	{
+	  case FT_PIXEL_MODE_MONO:
+	  {
+		for (int y = 0; y < bitmap.rows; y++)
+		{
+		  unsigned char * alpha = bitmap.buffer + bitmap.pitch * y;
+		  int x = 0;
+		  while (x < bitmap.width)
+		  {
+			unsigned char mask = 0x80;
+			while (mask  &&  x < bitmap.width)
+			{
+			  if (*alpha & mask) setRGBA (left + x, top + y, color);
+			  mask >>= 1;
+			  x++;
+			}
+			alpha++;
+		  }
+		}
+		break;
+	  }
+	  default:  // Assume gray
+	  {
+		for (int y = 0; y < bitmap.rows; y++)
+		{
+		  unsigned char * alpha = bitmap.buffer + bitmap.pitch * y;
+		  for (int x = 0; x < bitmap.width; x++)
+		  {
+			C.setAlpha (*alpha++);
+			Pixel p = (*this) (left + x, top + y);
+			p = p << C;
+		  }
+		}
+	  }
+	}
+
+    pen.x += slot->advance.x / 64.0f;
+    pen.y -= slot->advance.y / 64.0f;
+  }
+}
+
 void
 CanvasImage::setTranslation (float x, float y)
 {
@@ -521,4 +606,202 @@ void
 CanvasImage::setPointSize (float radius)
 {
   pointRadius = radius;
+}
+
+void
+CanvasImage::setFont (const std::string & name, float size)
+{
+  initFontLibrary ();
+  if (fontMap.size () < 1) throw "No fonts";
+
+  // Attempt direct match
+  string queryName = name;
+  lowercase (queryName);
+  map<string, string>::iterator it = fontMap.find (queryName);
+  // Fallback 1: Attempt substring match
+  if (it == fontMap.end ())
+  {
+	int bestLength = INT_MAX;
+	map<string, string>::iterator bestEntry = fontMap.end ();
+	for (it = fontMap.begin (); it != fontMap.end (); it++)
+	{
+	  if (it->first.find (queryName) != string::npos  &&  it->first.size () < bestLength)
+	  {
+		bestLength = it->first.size ();
+		bestEntry = it;
+	  }
+	}
+	it = bestEntry;
+  }
+  // Fallback 2: Use font substitution table
+  if (it == fontMap.end ())
+  {
+	// Not yet implemented
+  }
+  // Fallback 3: Use courier (substring match)
+  if (it == fontMap.end ())
+  {
+	int bestLength = INT_MAX;
+	map<string, string>::iterator bestEntry = fontMap.end ();
+	for (it = fontMap.begin (); it != fontMap.end (); it++)
+	{
+	  if (it->first.find ("courier") != string::npos  &&  it->first.size () < bestLength)
+	  {
+		bestLength = it->first.size ();
+		bestEntry = it;
+	  }
+	}
+	it = bestEntry;
+  }
+  // Fallback 4: Take anything
+  if (it == fontMap.end ())
+  {
+	it = fontMap.begin ();
+  }
+  cerr << "got " << it->first << endl;
+
+  if (face)
+  {
+	FT_Done_Face (face);
+  }
+  FT_Error error = FT_New_Face (library, it->second.c_str (), 0, &face);
+  if (error  ||  face == 0) throw "Can't load font";
+
+  error = 1;
+  if (face->face_flags & FT_FACE_FLAG_SCALABLE)
+  {
+	error = FT_Set_Char_Size (face,
+							  (int) rint (size * 64),
+							  0,
+							  96,  // estimated pixels per inch of image
+							  0);
+  }
+  else if (face->face_flags & FT_FACE_FLAG_FIXED_SIZES)
+  {
+	// Enumerate fixed sizes to find one closest to requested size
+	FT_Bitmap_Size * bestSize = 0;
+	float bestDistance = INFINITY;
+	for (int i = 0; i < face->num_fixed_sizes; i++)
+	{
+	  FT_Bitmap_Size & bs = face->available_sizes[i];
+	  float distance = fabs (bs.size / 64.0f - size);
+	  if (distance < bestDistance)
+	  {
+		bestDistance = distance;
+		bestSize = &bs;
+	  }
+	}
+
+	if (bestSize)
+	{
+	  error = FT_Set_Pixel_Sizes (face, 0, (int) rint (bestSize->y_ppem / 64.0f));
+	}
+  }
+  if (error) throw "Requested font size is not available";
+}
+
+void
+CanvasImage::initFontLibrary ()
+{
+  if (library != 0) return;
+
+  FT_Error error = FT_Init_FreeType (&library);
+  if (error) throw error;
+
+  // Scan default list of likely font directories...
+# ifdef WIN32
+  scanFontDirectory ("/WINDOWS/Fonts");
+# else
+  scanFontDirectory ("/cygdrive/c/WINDOWS/Fonts");
+  scanFontDirectory ("/usr/X11R6/lib/X11/fonts/TTF");
+  scanFontDirectory ("/usr/X11R6/lib/X11/fonts/Type1");
+  // Do these once scanFontDirectory looks for "fonts.dir".  Otherwise, takes too long.
+  //scanFontDirectory ("/usr/X11R6/lib/X11/fonts/100dpi");
+  //scanFontDirectory ("/usr/X11R6/lib/X11/fonts/75dpi");
+# endif
+}
+
+void
+CanvasImage::addFontFile (const string & path)
+{
+  // Probe file to see if it is a font
+  FT_Face face;
+  FT_Error error = FT_New_Face (library, path.c_str (), 0, &face);
+  if (error  ||  face == 0) return;  // not a valid font file
+
+  // Determine Postscript name
+  const char * name = FT_Get_Postscript_Name (face);
+  string postscriptName;
+  if (name)
+  {
+	postscriptName = name;
+  }
+  else
+  {
+	const char * name  = face->family_name;
+	const char * style = face->style_name;
+
+	// Strip spaces
+	const char * c = name;
+	while (*c != 0)
+	{
+	  if (*c != ' ') postscriptName += *c;
+	  c++;
+	}
+
+	if (style)
+	{
+	  postscriptName += "-";
+	  postscriptName += style;
+	}
+  }
+
+  lowercase (postscriptName);
+  fontMap.insert (make_pair (postscriptName, path));
+  cerr << ".";
+}
+
+void
+CanvasImage::scanFontDirectory (const string & path)
+{
+  cerr << "Scanning " << path;
+
+# ifdef WIN32
+
+  WIN32_FIND_DATA fd;
+  HANDLE hFind = ::FindFirstFile ((path + "/*.*").c_str (), &fd);
+  if (hFind == INVALID_HANDLE_VALUE)
+  {
+	return;
+  }
+
+  do
+  {
+	if (! (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+	{
+	  addFontFile (path + "/" + fd.cFileName);
+	}
+  }
+  while (::FindNextFile (hFind, &fd));
+
+  ::FindClose (hFind);
+
+# else
+
+  DIR * dirh = opendir (path.c_str ());
+  if (! dirh)
+  {
+	return;
+  }
+
+  struct dirent * dirp = readdir (dirh);
+  while (dirp != NULL)
+  {
+	addFontFile (path + "/" + dirp->d_name);
+	dirp = readdir (dirh);
+  }
+
+# endif
+
+  cerr << endl;
 }
