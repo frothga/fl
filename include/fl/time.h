@@ -17,12 +17,10 @@ for details.
 #include <ostream>
 
 #ifdef WIN32
-  #include <time.h>
-  #include <sys/timeb.h>
-  #include <sys/types.h>
+#  include <windows.h>
 #else
-  #include <sys/time.h>
-  #include <unistd.h>
+#  include <sys/time.h>
+#  include <unistd.h>
 #endif
 
 namespace fl
@@ -30,15 +28,21 @@ namespace fl
   inline double
   getTimestamp ()
   {
-	#ifdef WIN32
-	  struct __timeb64 t;
-	  _ftime64 (&t);
-	  return t.time + (double) t.millitm / 1e3;
-	#else
-	  struct timeval t;
-	  gettimeofday (&t, NULL);
-	  return t.tv_sec + (double) t.tv_usec / 1e6;
-	#endif
+#   ifdef WIN32
+
+	LARGE_INTEGER frequency;
+	LARGE_INTEGER count;
+	QueryPerformanceFrequency (&frequency);
+	QueryPerformanceCounter (&count);
+	return (double) count.QuadPart / frequency.QuadPart;
+
+#   else
+
+	struct timeval t;
+	gettimeofday (&t, NULL);
+	return t.tv_sec + (double) t.tv_usec / 1e6;
+
+#   endif
   }
 
   /**
@@ -65,9 +69,10 @@ namespace fl
 	}
 
 	/**
-	   Restarts the accumulation of time.  If this stopwatch is already
-	   running, then this method throws away all time since that last
-	   start, but retains any time accumulated before that start.
+	   Sets the beginning point for measuring a period of time.  If this
+	   stopwatch is already running, then this method throws away all time
+	   since that most recent start, but retains any time accumulated before
+	   that start.
 	 **/
 	void start ()
 	{
@@ -75,7 +80,8 @@ namespace fl
 	}
 
 	/**
-	   Updates total time and then effectively calls start()
+	   Adds the current time period to total time, and then pauses the timer.
+	   You must call start() to begin measuring an additional time period.
 	**/
 	void stop ()
 	{
