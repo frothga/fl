@@ -16,16 +16,19 @@ for details.
 
 #include <math.h>
 
-#define PI 3.1415926535897932384626433832795029
+#define PI     3.1415926535897932384626433832795029
+#define PIf    3.1415926535897932384626433832795029f
+#define TWOPI  6.283185307179586476925286766559
+#define TWOPIf 6.283185307179586476925286766559f
 
 
 inline double
 mod2pi (double a)
 {
-  a = fmod (a, 2.0 * PI);
+  a = fmod (a, TWOPI);
   if (a < 0)
   {
-	a += 2.0 * PI;
+	a += TWOPI;
   }
   return a;
 }
@@ -33,10 +36,10 @@ mod2pi (double a)
 inline float
 mod2pi (float a)
 {
-  a = fmodf (a, (float) (2 * PI));
+  a = fmodf (a, TWOPIf);
   if (a < 0)
   {
-	a += (float) (2 * PI);
+	a += TWOPIf;
   }
   return a;
 }
