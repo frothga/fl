@@ -78,6 +78,7 @@ namespace fl
 	PointInterest ();
 	PointInterest (const Point & p);
 	PointInterest (std::istream & stream);
+	virtual ~PointInterest ();
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = false);
@@ -88,8 +89,9 @@ namespace fl
 	enum DetectorType
 	{
 	  Unknown,
-	  Harris,
-	  Laplacian
+	  Corner,
+	  Blob,
+	  MSER
 	};
 	DetectorType detector;  ///< which interest point detector found this point?
 
@@ -120,7 +122,25 @@ namespace fl
 	   Mikolajczyk's paper "An affine invariant interest point detector".
 	**/
 	Matrix2x2<double> A;
-	float angle;  ///< characteristic angle; generally the direction of the gradient
+	float angle;  ///< characteristic angle; generally the direction of the gradient.
+  };
+
+  class PointMSER : public PointAffine
+  {
+  public:
+	PointMSER ();
+	PointMSER (const Point & p);
+	PointMSER (const PointInterest & p);
+	PointMSER (const PointAffine & p);
+	PointMSER (int index, unsigned char threshold, bool sign = true);
+	PointMSER (std::istream & stream);
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream, bool withName = false);
+
+	int index;  ///< of a pixel actually inside the region.  The (x,y) value inherited from PointAffine may not satisfy this property.  index translates to a pixel value as (index % width, index / width).
+	unsigned char threshold;  ///< gray-level value
+	bool sign;  ///< true means threshold is upper bound on intensity (ie: this is an MSER+); false means lower bound (MSER-)
   };
 
 
