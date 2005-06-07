@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
+
+
+5/2005 Fred Rothganger -- Changed interface to return a collection of pointers.
 */
 
 
@@ -12,7 +15,7 @@ for details.
 #include <math.h>
 
 // Include for debugging
-#include "fl/time.h"
+//#include "fl/time.h"
 
 
 using namespace std;
@@ -30,7 +33,7 @@ InterestHarris::InterestHarris (int neighborhood, int maxPoints, float threshold
 }
 
 void
-InterestHarris::run (const Image & image, multiset<PointInterest> & result)
+InterestHarris::run (const Image & image, InterestPointSet & result)
 {
   int offset = filter.offset;
 
@@ -38,7 +41,7 @@ InterestHarris::run (const Image & image, multiset<PointInterest> & result)
   i *= nms;
   float threshold = nms.average * thresholdFactor;
 
-  result.clear ();
+  multiset<PointInterest> sorted;
 
   for (int y = 0; y < i.height; y++)
   {
@@ -51,13 +54,15 @@ InterestHarris::run (const Image & image, multiset<PointInterest> & result)
 		p.x = x + offset;
 		p.y = y + offset;
 		p.weight = pixel;
-		p.detector = PointInterest::Harris;
-		result.insert (p);
-		if (result.size () > maxPoints)
+		p.detector = PointInterest::Corner;
+		sorted.insert (p);
+		if (sorted.size () > maxPoints)
 		{
-		  result.erase (result.begin ());
+		  sorted.erase (sorted.begin ());
 		}
 	  }
 	}
   }
+
+  result.add (sorted);
 }

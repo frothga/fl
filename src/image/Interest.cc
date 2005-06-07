@@ -4,6 +4,10 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
+
+
+5/2005 Fred Rothganger -- Revised interface.  Created InterestPointSet class
+       to manage collections of pointers to InterestPoints.
 */
 
 
@@ -14,14 +18,37 @@ using namespace std;
 using namespace fl;
 
 
-// class InterestOperator -----------------------------------------------------
+// class InterestPointSet -----------------------------------------------------
+
+InterestPointSet::InterestPointSet ()
+{
+  ownPoints = true;
+}
+
+InterestPointSet::~InterestPointSet ()
+{
+  if (ownPoints)
+  {
+	iterator i = begin ();
+	while (i < end ())
+	{
+	  delete *i++;
+	}
+  }
+}
 
 void
-InterestOperator::run (const Image & image, vector<PointInterest> & result)
+InterestPointSet::add (const multiset<PointInterest> & points)
 {
-  multiset<PointInterest> temp;
-  run (image, temp);
-  result.clear ();
-  result.insert (result.end (), temp.begin (), temp.end ());
+  int rsize = size ();
+  resize (rsize + points.size ());
+  PointInterest ** r = & at (rsize);
+  multiset<PointInterest>::iterator s = points.begin ();
+  while (s != points.end ())
+  {
+	*r++ = new PointInterest (*s++);
+  }
+
+  ownPoints = true;  // WARNING: Don't mix owned and non-owned points!
 }
 

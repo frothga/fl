@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
+
+
+5/2005 Fred Rothganger -- Changed interface to return a collection of pointers.
 */
 
 
@@ -67,15 +70,15 @@ InterestHarrisLaplacian::InterestHarrisLaplacian (int maxPoints, float threshold
 }
 
 void
-InterestHarrisLaplacian::run (const Image & image, std::multiset<PointInterest> & result)
+InterestHarrisLaplacian::run (const Image & image, InterestPointSet & result)
 {
   ImageOf<float> work = image * GrayFloat;
-  result.clear ();
+  multiset<PointInterest> sorted;
 
   for (int i = 0; i < filters.size (); i++)
   {
 cerr << "filter " << i;
-double startTime = getTimestamp ();
+Stopwatch timer;
 
     int offset = filters[i].offset;
 
@@ -102,7 +105,7 @@ double startTime = getTimestamp ();
 	  for (int x = 0; x < filtered.width; x++)
 	  {
 		float pixel = filtered (x, y);
-		if (pixel > threshold  &&  (result.size () < maxPoints  ||  pixel > result.begin ()->weight))
+		if (pixel > threshold  &&  (sorted.size () < maxPoints  ||  pixel > sorted.begin ()->weight))
 		{
 		  PointInterest p;
 		  p.x = x + offset;
@@ -130,16 +133,18 @@ double startTime = getTimestamp ();
 		  if (p.scale > 0)
 		  {
 			p.weight = pixel;
-			p.detector = PointInterest::Harris;
-			result.insert (p);
-			if (result.size () > maxPoints)
+			p.detector = PointInterest::Corner;
+			sorted.insert (p);
+			if (sorted.size () > maxPoints)
 			{
-			  result.erase (result.begin ());
+			  sorted.erase (sorted.begin ());
 			}
 		  }
 		}
 	  }
 	}
-cerr << " " << getTimestamp () - startTime << endl;
+cerr << " " << timer << endl;
   }
+
+  result.add (sorted);
 }

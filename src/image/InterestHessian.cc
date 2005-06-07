@@ -7,6 +7,7 @@ for details.
 
 
 12/2004 Revised by Fred Rothganger
+5/2005 Fred Rothganger -- Changed interface to return a collection of pointers.
 */
 
 
@@ -100,10 +101,10 @@ InterestHessian::InterestHessian (int maxPoints, float thresholdFactor, float ne
 }
 
 void
-InterestHessian::run (const Image & image, std::multiset<PointInterest> & result)
+InterestHessian::run (const Image & image, InterestPointSet & result)
 {
   ImageOf<float> work = image * GrayFloat;
-  result.clear ();
+  multiset<PointInterest> sorted;
 
   AbsoluteValue abs;
   float lastThreshold = 0.2f;  // some reasonable default, in case no good threshold is found before we need this variable.
@@ -111,7 +112,7 @@ InterestHessian::run (const Image & image, std::multiset<PointInterest> & result
   for (int i = 0; i < filters.size (); i++)
   {
 cerr << "filter " << i;
-double startTime = getTimestamp ();
+Stopwatch timer;
 
     int offset = filters[i].offset;
 
@@ -154,7 +155,7 @@ int added = 0;
 	  for (int x = 0; x < filtered.width; x++)
 	  {
 		float pixel = filtered (x, y);
-		if (pixel > threshold  &&  (result.size () < maxPoints  ||  pixel > result.begin ()->weight))
+		if (pixel > threshold  &&  (sorted.size () < maxPoints  ||  pixel > sorted.begin ()->weight))
 		{
 		  PointInterest p;
 		  p.x = x + offset;
@@ -183,16 +184,18 @@ int added = 0;
 		  {
 added++;
 			p.weight = pixel;
-			p.detector = PointInterest::Laplacian;
-			result.insert (p);
-			if (result.size () > maxPoints)
+			p.detector = PointInterest::Blob;
+			sorted.insert (p);
+			if (sorted.size () > maxPoints)
 			{
-			  result.erase (result.begin ());
+			  sorted.erase (sorted.begin ());
 			}
 		  }
 		}
 	  }
 	}
-cerr << " " << added << " " << getTimestamp () - startTime << endl;
+cerr << " " << added << " " << timer << endl;
   }
+
+  result.add (sorted);
 }
