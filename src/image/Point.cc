@@ -157,6 +157,10 @@ PointInterest::PointInterest (std::istream & stream)
   read (stream);
 }
 
+PointInterest::~PointInterest ()
+{
+}
+
 void
 PointInterest::read (std::istream & stream)
 {
@@ -211,7 +215,7 @@ PointAffine::PointAffine (const Matrix<double> & S)
   scale = sqrt (S(0,0) * S(1,1) - S(1,0) * S(0,1));
   A = S;  // takes upper-left 2x2 region
   A /= scale;
-  angle = 0;  // make not attempt to separate rotation from rest of transformation
+  angle = 0;  // do not attempt to separate rotation from rest of transformation
 }
 
 Matrix<double>
@@ -271,4 +275,66 @@ PointAffine::write (std::ostream & stream, bool withName)
   PointInterest::write (stream);
   A.write (stream, false);
   stream.write ((char *) &angle, sizeof (angle));
+}
+
+
+// class PointMSER ------------------------------------------------------------
+
+PointMSER::PointMSER ()
+{
+  index = -1;
+  threshold = 0;
+  sign = true;
+}
+
+PointMSER::PointMSER (const Point & p)
+{
+  index = -1;
+  threshold = 0;
+  sign = true;
+}
+
+PointMSER::PointMSER (const PointInterest & p)
+{
+  index = -1;
+  threshold = 0;
+  sign = true;
+}
+
+PointMSER::PointMSER (const PointAffine & p)
+: PointAffine (p)
+{
+  index = -1;
+  threshold = 0;
+  sign = true;
+}
+
+PointMSER::PointMSER (int index, unsigned char threshold, bool sign)
+{
+  this->index     = index;
+  this->threshold = threshold;
+  this->sign      = sign;
+}
+
+PointMSER::PointMSER (std::istream & stream)
+{
+  read (stream);
+}
+
+void
+PointMSER::read (std::istream & stream)
+{
+  PointAffine::read (stream);
+  stream.read ((char *) &index,     sizeof (index));
+  stream.read ((char *) &threshold, sizeof (threshold));
+  stream.read ((char *) &sign,      sizeof (sign));
+}
+
+void
+PointMSER::write (std::ostream & stream, bool withName)
+{
+  PointAffine::write (stream);
+  stream.write ((char *) &index,     sizeof (index));
+  stream.write ((char *) &threshold, sizeof (threshold));
+  stream.write ((char *) &sign,      sizeof (sign));
 }
