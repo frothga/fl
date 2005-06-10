@@ -172,8 +172,15 @@ namespace fl
 	  int sizes[256];  ///< History of sizes for all gray-levels
 	  float rates[256];  ///< History of changes rates w.r.t. gray-level.  Calculated from sizes[].
 
+	  // Info for generating elliptical regions
 	  Node * head;  ///< Start of LIFO linked list of pixels.  IE: points to most recently added pixels.
-	  Node * heads[256];  ///< History of composition of region at each gray-level.  Used to compute affine parameters.
+	  Node * heads[256];  ///< History of composition of region at each gray-level.
+	  unsigned char oldLevel;  ///< Gray-level of most recent ellipse
+	  float x;  ///< Center of most recent ellipse.
+	  float y;  ///< Center of most recent ellipse.
+	  float xx;  ///< Covariance of most recent ellipse.
+	  float xy;  ///< Covariance of most recent ellipse.
+	  float yy;  ///< Covariance of most recent ellipse.
 	};
 
 	struct Node
