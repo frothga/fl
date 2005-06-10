@@ -56,12 +56,59 @@ findSet (InterestMSER::Node * n)
   return n;
 }
 
+/*
+static inline bool
+integrity (InterestMSER::Root * root, unsigned char level)
+{
+  InterestMSER::Node * n = root->head;
+  int size = root->size;
+  // coded only for MSER+
+  for (int l = level - 1; l >= root->level; l--)
+  {
+	InterestMSER::Node * end = root->heads[l];
+	int count = 0;
+	while (n != end)
+	{
+	  count++;
+	  n = n->next;
+	  if (! n)
+	  {
+		cerr << root << " hit unexpected null pointer" << endl;
+		return false;
+	  }
+	}
+	int expectedCount = size - root->sizes[l];
+	size = root->sizes[l];
+	if (count != expectedCount)
+	{
+	  cerr << root << " " << l+1 << " = " << count << " " << expectedCount << endl;
+	  return false;
+	}
+  }
+
+  int count = 0;
+  while (n)
+  {
+	count++;
+	n = n->next;
+  }
+  if (count != size)
+  {
+	cerr << root << " " << (int) root->level << " = " << count << " " << size << endl;
+	return false;
+  }
+  return true;
+}
+*/
+
 static inline void
 merge (InterestMSER::Node * grow, InterestMSER::Node * destroy)
 {
   grow->root->size += destroy->root->size;
   destroy->parent = grow;
 
+  assert (destroy->next == 0);
+  assert (grow->root->head);
   destroy->next = grow->root->head;
   grow->root->head = destroy->root->head;
 
@@ -142,9 +189,11 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
 	  r->size = 1;
 	  r->head = i;
 	  r->level = level;
+	  r->oldLevel = 0;
 
 	  i->root = r;
 	  i->parent = i;
+	  // i->next == 0 by construction ("nodes" is zeroed)
 	}
 
 	l++;
@@ -191,63 +240,109 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
 			// Got an MSER!  Now record it and generate shape matrix and scale.
 
 			Node * head = r->heads[c];
-			Node * tail = findSet (head);
+			Node * representative = findSet (head);
+			Node * tail;
+			float oldWeight;
+			if (r->oldLevel)
+			{
+			  tail = r->heads[r->oldLevel];
+			  oldWeight = r->sizes[r->oldLevel];
+			}
+			else
+			{
+			  tail = 0;
+			  oldWeight = 0;
+			}
 
-			PointMSER * m = new PointMSER (tail - nodes, level, sign);
-			m->detector = PointInterest::MSER;
-
-			int count = r->sizes[c];
+			float totalWeight = r->sizes[c];
+			float newWeight = totalWeight - oldWeight;
 
 			// Find centroid
 			float x = 0;
 			float y = 0;
 			Node * n = head;
-			while (n)
+			while (n != tail)
 			{
 			  int index = n - nodes;
 			  x += index % width;
 			  y += index / width;
 			  n = n->next;
 			}
-			m->x = x / count;
-			m->y = y / count;
+			x /= newWeight;  // "average x"
+			y /= newWeight;
 
 			// Find covariance
 			double xx = 0;
 			double xy = 0;
 			double yy = 0;
 			n = head;
-			while (n)
+			while (n != tail)
 			{
 			  int index = n - nodes;
-			  x = index % width - m->x;
-			  y = index / width - m->y;
-			  xx += x * x;
-			  xy += x * y;
-			  yy += y * y;
+			  float dx = index % width - x;
+			  float dy = index / width - y;
+			  xx += dx * dx;
+			  xy += dx * dy;
+			  yy += dy * dy;
 			  n = n->next;
 			}
-			xx /= count;
-			xy /= count;
-			yy /= count;
+			xx /= newWeight;
+			xy /= newWeight;
+			yy /= newWeight;
 
-			// Update affine part of point
-			//   Determine scale
-			m->scale = sqrt (xx * yy - xy * xy);
-			if (m->scale < minScale)
+			// Merge covariance with previous one, if it exists
+			if (oldWeight)
 			{
-			  delete m;
+			  // Find new average position
+			  newWeight /= totalWeight;
+			  oldWeight /= totalWeight;
+			  float cx = x * newWeight + r->x * oldWeight;
+			  float cy = y * newWeight + r->y * oldWeight;
+
+			  // Offsets
+			  float nx = x - cx;
+			  float ny = y - cy;
+			  float ox = r->x - cx;
+			  float oy = r->y - cy;
+
+			  // Update
+			  r->x = cx;
+			  r->y = cy;
+			  r->xx = (xx + nx * nx) * newWeight + (r->xx + ox * ox) * oldWeight;
+			  r->xy = (xy + nx * ny) * newWeight + (r->xy + ox * oy) * oldWeight;
+			  r->yy = (yy + ny * ny) * newWeight + (r->yy + oy * oy) * oldWeight;
 			}
 			else
 			{
+			  r->x = x;
+			  r->y = y;
+			  r->xx = xx;
+			  r->xy = xy;
+			  r->yy = yy;
+			}
+			r->oldLevel = c;
+
+			// Update affine part of point
+			//   Determine scale
+			float scale = sqrt (r->xx * r->yy - r->xy * r->xy);
+			if (scale >= minScale)
+			{
+			  PointMSER * m = new PointMSER (representative - nodes, level, sign);
+			  m->x        = r->x;
+			  m->y        = r->y;
+			  m->weight   = r->size;  // size and scale are closely correlated
+			  m->scale    = scale;
+			  m->detector = PointInterest::MSER;
+
 			  // Cholesky decomposition (square root matrix) of covariance
-			  double l11 = sqrt (xx);
-			  double l12 = xy / l11;
-			  double l22 = sqrt (yy - l12 * l12);
-			  m->A(0,0) = l11 / m->scale;
-			  m->A(1,0) = l12 / m->scale;
+			  double l11 = sqrt (r->xx);
+			  double l12 = r->xy / l11;
+			  double l22 = sqrt (r->yy - l12 * l12);
+			  m->A(0,0) = l11 / scale;
+			  m->A(1,0) = l12 / scale;
 			  // A(0,1) == 0 due to PointAffine constructor
-			  m->A(1,1) = l22 / m->scale;
+			  m->A(1,1) = l22 / scale;
+
 			  regions.push_back (m);
 			}
 		  }
