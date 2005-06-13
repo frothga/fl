@@ -152,7 +152,7 @@ namespace fl
   class InterestMSER : public InterestOperator
   {
   public:
-	InterestMSER (int delta = 1);
+	InterestMSER (int delta = 1, int neighbors = 1);
 
 	virtual void run (const Image & image, InterestPointSet & result);
 
@@ -175,12 +175,13 @@ namespace fl
 	  // Info for generating elliptical regions
 	  Node * head;  ///< Start of LIFO linked list of pixels.  IE: points to most recently added pixels.
 	  Node * heads[256];  ///< History of composition of region at each gray-level.
-	  unsigned char oldLevel;  ///< Gray-level of most recent ellipse
-	  float x;  ///< Center of most recent ellipse.
-	  float y;  ///< Center of most recent ellipse.
-	  float xx;  ///< Covariance of most recent ellipse.
-	  float xy;  ///< Covariance of most recent ellipse.
-	  float yy;  ///< Covariance of most recent ellipse.
+	  Node * tail;  ///< Head of most recent ellipse.  Indicates stopping point when generating next Gaussian.
+	  int tailSize;  ///< Number of pixels in most recent Gaussian.
+	  float x;  ///< Center of most recent Gaussian.
+	  float y;  ///< Center of most recent Gaussian.
+	  float xx;  ///< Covariance of most recent Gaussian.
+	  float xy;  ///< Covariance of most recent Gaussian.
+	  float yy;  ///< Covariance of most recent Gaussian.
 	};
 
 	struct Node
@@ -193,6 +194,7 @@ namespace fl
 	void addGrayLevel (unsigned char level, bool sign, int * lists[], Node * nodes, const int width, const int height, Root * roots, std::vector<PointMSER *> & regions);
 
 	int delta;  ///< Amount of gray-level distance above and below current gray-level to check when computing rate of change in region size.
+	int neighbors;  ///< Number of rate values on either side of a candidate local minimum which must exceed its value.
 	float minScale;  ///< Smallest scale region to admit into resulting list of interest points.  Guards against long skinny structures and structures with too few pixels to be worth noting.
   };
 }
