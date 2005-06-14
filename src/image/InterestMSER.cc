@@ -9,11 +9,6 @@ Created 5/31/2005
 #include <math.h>
 
 
-// For testing only
-#include "fl/slideshow.h"
-#include <assert.h>
-
-
 using namespace std;
 using namespace fl;
 
@@ -27,19 +22,77 @@ InterestMSER::InterestMSER (int delta, int neighbors)
   minScale = 1.0;
 }
 
+inline void
+InterestMSER::clear (Root * head)
+{
+  Root * r = head->next;
+  while (r != head)
+  {
+	r = r->next;
+	delete r->previous;
+  }
+  head->next = head;
+  head->previous = head;
+}
+
+inline void
+InterestMSER::move (Root * root, Root & head)
+{
+  root->next->previous = root->previous;
+  root->previous->next = root->next;
+  root->next = head.next;
+  root->previous = &head;
+  head.next->previous = root;
+  head.next = root;
+}
+
+inline void
+InterestMSER::releaseAll (Root * head)
+{
+  if (head->next == head) return;  // guard against empty list
+  head->next->previous = &deleted;
+  head->previous->next = deleted.next;
+  deleted.next->previous = head->previous;
+  deleted.next = head->next;
+  head->next = head;
+  head->previous = head;
+}
+
+inline void
+InterestMSER::merge (Node * grow, Node * destroy)
+{
+  grow->root->size += destroy->root->size;
+  destroy->parent = grow;
+
+  if (destroy->root->tail)
+  {
+	destroy->root->tail->next = grow->root->head;
+	destroy->root->tail->root = destroy->root;
+	grow->root->head = destroy->root->head;
+	move (destroy->root, subsumed);
+  }
+  else
+  {
+	destroy->next = grow->root->head;
+	grow->root->head = destroy->root->head;
+	move (destroy->root, deleted);
+  }
+  destroy->root = 0;
+}
+
 /**
    Find parent, with path compression.  In CLR ch. 22, this is presented as
    a recursive function.  However, recursion is not necessary, and managing
    a private stack is more efficient.  This is also safe, since it can be
    shown that the stack depth won't exceed the number of gray-levels, due to
    the fact that pixels are added in image sequence.
- **/
-static inline InterestMSER::Node *
-findSet (InterestMSER::Node * n)
+**/
+inline InterestMSER::Node *
+InterestMSER::findSet (Node * n)
 {
   if (n->parent == n) return n;  // early out
 
-  InterestMSER::Node * path[256];
+  Node * path[256];
   register int sp = 0;
   do
   {
@@ -55,93 +108,18 @@ findSet (InterestMSER::Node * n)
   return n;
 }
 
-/*
-static inline bool
-integrity (InterestMSER::Root * root, unsigned char level)
-{
-  InterestMSER::Node * n = root->head;
-  int size = root->size;
-  // coded only for MSER+
-  for (int l = level - 1; l >= root->level; l--)
-  {
-	InterestMSER::Node * end = root->heads[l];
-	int count = 0;
-	while (n != end)
-	{
-	  count++;
-	  n = n->next;
-	  if (! n)
-	  {
-		cerr << root << " hit unexpected null pointer" << endl;
-		return false;
-	  }
-	}
-	int expectedCount = size - root->sizes[l];
-	size = root->sizes[l];
-	if (count != expectedCount)
-	{
-	  cerr << root << " " << l+1 << " = " << count << " " << expectedCount << endl;
-	  return false;
-	}
-  }
-
-  int count = 0;
-  while (n)
-  {
-	count++;
-	n = n->next;
-  }
-  if (count != size)
-  {
-	cerr << root << " " << (int) root->level << " = " << count << " " << size << endl;
-	return false;
-  }
-  return true;
-}
-*/
-
-static inline void
-merge (InterestMSER::Node * grow, InterestMSER::Node * destroy)
-{
-  grow->root->size += destroy->root->size;
-  destroy->parent = grow;
-
-  if (destroy->root->tail)
-  {
-	destroy->root->tail->next = grow->root->head;
-	destroy->root->tail->root = destroy->root;
-	grow->root->head = destroy->root->head;
-	// this creates a memory leak.  Temporary just for testing...
-	destroy->root->previous->next = destroy->root->next;
-	destroy->root->next->previous = destroy->root->previous;
-  }
-  else
-  {
-	destroy->next = grow->root->head;
-	grow->root->head = destroy->root->head;
-	destroy->root->previous->next = destroy->root->next;
-	destroy->root->next->previous = destroy->root->previous;
-	delete destroy->root;
-  }
-  destroy->root = 0;
-}
-
 /**
    Combine a given pixel i with a given neighbor n.  If i is already in
    a set, then join the sets.
- **/
-static inline void
-join (InterestMSER::Node * i, InterestMSER::Node * n)
+**/
+inline void
+InterestMSER::join (Node * i, Node * n)
 {
   if (n->parent)
   {
-	InterestMSER::Node * r = findSet (n);
+	Node * r = findSet (n);
 	if (i->parent)
 	{
-	  assert (i->parent->parent == i->parent);
-	  assert (i->parent->root);
-	  assert (r->root);
-
 	  if (i->parent == r) return;  // already a member of r, so don't join again!
 	  if (i->parent->root->size > r->root->size)
 	  {
@@ -164,11 +142,8 @@ join (InterestMSER::Node * i, InterestMSER::Node * n)
 }
 
 inline void
-InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node * nodes, const int width, const int height, Root * roots, vector<PointMSER *> & regions)
+InterestMSER::addGrayLevel (unsigned char level, bool sign, vector<PointMSER *> & regions)
 {
-  int oldsize = regions.size ();
-  cerr << "addGrayLevel: " << (int) level << " " << sign;
-
   int lastX = width - 1;
   int lastY = height - 1;
 
@@ -189,11 +164,21 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
 
 	if (! i->parent)
 	{
-	  Root * r = new Root;
-	  r->next = roots->next;
+	  Root * r;
+	  if (deleted.next == &deleted)
+	  {
+		r = new Root;
+	  }
+	  else
+	  {
+		r = deleted.next;
+		r->next->previous = &deleted;
+		deleted.next = r->next;
+	  }
+	  r->next = roots.next;
 	  r->next->previous = r;
-	  r->previous = roots;
-	  roots->next = r;
+	  r->previous = &roots;
+	  roots.next = r;
 
 	  r->size = 1;
 	  r->level = level;
@@ -210,8 +195,8 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
   }
 
   // Update all histories
-  Root * r = roots->next;
-  while (r != roots)
+  Root * r = roots.next;
+  while (r != &roots)
   {
 	r->sizes[level] = r->size;
 	r->heads[level] = r->head;
@@ -224,8 +209,8 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
   int b = c + delta;
   if (a >= 0  &&  b <= 255)
   {
-	r = roots->next;
-	while (r != roots)
+	r = roots.next;
+	while (r != &roots)
 	{
 	  if (sign ? r->level <= a : r->level >= b)
 	  {
@@ -244,8 +229,8 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
 	  a = c - neighbors;
 	  b = c + neighbors;
 
-	  r = roots->next;
-	  while (r != roots)
+	  r = roots.next;
+	  while (r != &roots)
 	  {
 		bool localMinimum = sign ? r->level <= firstLevel : r->level >= firstLevel;
 		localMinimum &= r->sizes[c] > r->tailSize;
@@ -269,12 +254,12 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
 
 		  Node * head = r->heads[c];
 		  Node * representative = findSet (head);
-		  //Node * tail = r->tail;
 		  int newWeight = r->sizes[c];
 		  float totalWeight = newWeight;
 
 		  Root * otherGaussians = 0;  // a singly-linked list
-		  Root * next = r->next;  // for reconnecting r to roots
+		  Root * next     = r->next;  // for reconnecting r to roots
+		  Root * previous = r->previous;
 
 		  // Find mean
 		  float cx = 0;
@@ -286,6 +271,8 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
 			{
 			  Root * og = n->root;
 			  newWeight -= og->tailSize;
+			  og->next->previous = og->previous;
+			  og->previous->next = og->next;
 			  og->next = otherGaussians;
 			  otherGaussians = og;
 			}
@@ -363,13 +350,19 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
 			if (og == r)  // r will always be the last added to otherGaussians
 			{
 			  og = og->next;
-			  r->next = next;
+			  r->next     = next;
+			  r->previous = previous;
+			  next->previous = r;
+			  previous->next = r;
 			}
 			while (og)
 			{
-			  Root * next = og->next;
-			  delete og;
-			  og = next;
+			  Root * nextOG = og->next;
+			  og->next = deleted.next;
+			  og->previous = &deleted;
+			  deleted.next->previous = og;
+			  deleted.next = og;
+			  og = nextOG;
 			}
 		  }
 		  r->x  = x;
@@ -377,9 +370,6 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
 		  r->xx = xx;
 		  r->xy = xy;
 		  r->yy = yy;
-		  assert (! isnan (r->xx));
-		  assert (! isnan (r->xy));
-		  assert (! isnan (r->yy));
 		  r->tail     = head;
 		  r->tailSize = r->sizes[c];  // same as totalWeight, but avoid round trip int->float->int
 		  head->root = r;  // representative->root also points to r, but has a different job
@@ -387,7 +377,7 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
 
 		  // Update affine part of point
 		  //   Determine scale
-		  float scale = sqrt (sqrt (r->xx * r->yy - r->xy * r->xy));  // two sqrt() calls is probably more efficient than 1 pow() call
+		  float scale = sqrt (sqrt (r->xx * r->yy - r->xy * r->xy));  // two sqrt() calls are probably more efficient than 1 pow(0.25, x) call
 		  if (scale >= minScale)
 		  {
 			PointMSER * m = new PointMSER (representative - nodes, level, sign);
@@ -415,21 +405,6 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, int * lists[], Node 
 	  }
 	}
   }
-
-  cerr << " " << regions.size () - oldsize << endl;
-}
-
-static inline void
-clear (InterestMSER::Root * roots)
-{
-  InterestMSER::Root * r = roots->next;
-  while (r != roots)
-  {
-	r = r->next;
-	delete r->previous;
-  }
-  roots->next = roots;
-  roots->previous = roots;
 }
 
 void
@@ -441,12 +416,15 @@ InterestMSER::run (const Image & image, InterestPointSet & result)
 	return;
   }
 
+  width  = image.width;
+  height = image.height;
+  int imageSize = width * height;
+
   // Separate image into gray levels
   //   Pass 1 -- Determine size of each gray-level list
   int listSizes[257];  // includes a 0 at the end to help set up stop points
   memset (listSizes, 0, 257 * sizeof (int));
   unsigned char * start = (unsigned char *) image.buffer;
-  int imageSize = image.width * image.height;
   unsigned char * end = start + imageSize;
   unsigned char * pixel = start;
   while (pixel < end)
@@ -454,7 +432,6 @@ InterestMSER::run (const Image & image, InterestPointSet & result)
 	listSizes[*pixel++]++;
   }
   ImageOf<int> sorted (image.width, image.height, RGBAChar);  // not really RGBAChar, but it gives us the right size pixels
-  int * lists[257];  // start points of list for each gray-level; includes a stop point at the end
   int * l = &sorted(0,0);
   for (int i = 0; i <= 256; i++)
   {
@@ -471,33 +448,38 @@ InterestMSER::run (const Image & image, InterestPointSet & result)
 	*(ls[*pixel++])++ = i++;
   }
 
+  // Prepare structures for MSER passes
+  nodes = new Node[imageSize];
+  roots.next        = &roots;
+  roots.previous    = &roots;
+  subsumed.next     = &subsumed;
+  subsumed.previous = &subsumed;
+  deleted.next      = &deleted;
+  deleted.previous  = &deleted;
+
   // MSER+
   vector<PointMSER *> regions;
-  Node * nodes = new Node[imageSize];
   memset (nodes, 0, imageSize * sizeof (Node));
-  Root * roots = new Root;
-  roots->next = roots;
-  roots->previous = roots;
   for (int i = 0; i < 256; i++)
   {
-	addGrayLevel ((unsigned char) i, true, lists, nodes, image.width, image.height, roots, regions);
+	addGrayLevel ((unsigned char) i, true, regions);
   }
 
   // MSER-
   memset (nodes, 0, imageSize * sizeof (Node));
-  clear (roots);
+  releaseAll (&roots);
+  releaseAll (&subsumed);
   for (int i = 255; i >= 0; i--)
   {
-	addGrayLevel ((unsigned char) i, false, lists, nodes, image.width, image.height, roots, regions);
+	addGrayLevel ((unsigned char) i, false, regions);
   }
 
-  vector<PointMSER *>::iterator it = regions.begin ();
-  while (it != regions.end ())
-  {
-	result.push_back (*it++);
-  }
-
-  clear (roots);
-  delete roots;
+  // Destroy structures
   delete nodes;
+  clear (&roots);
+  clear (&subsumed);
+  clear (&deleted);
+
+  // Store final result
+  result.insert (result.end (), regions.begin (), regions.end ());
 }
