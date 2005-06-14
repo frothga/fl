@@ -152,15 +152,28 @@ namespace fl
   class InterestMSER : public InterestOperator
   {
   public:
-	InterestMSER (int delta = 1, int neighbors = 1);
+	InterestMSER (int delta = 5, int neighbors = 1);
 
 	virtual void run (const Image & image, InterestPointSet & result);
+
+	// Parameters
+	int delta;  ///< Amount of gray-level distance above and below current gray-level to check when computing rate of change in region size.
+	int neighbors;  ///< Number of rate values on either side of a candidate local minimum which must exceed its value.
+	float minScale;  ///< Smallest scale region to admit into resulting list of interest points.  Guards against long skinny structures and structures with too few pixels to be worth noting.
+
+	// Working data and subroutines of run().  All structures are created
+	// and destroyed by run(), not the constructor/destructor of this class
+	// as a whole.
+	// Note: storing working data here keeps objects of this
+	// class from being thread safe.  IE: an instance can only process one
+	// image on one thread.
+
+	struct Node;
 
 	/**
 	   Structure to track meta-data associated with a region (tree) in the
 	   union-find algorithm.
-	 **/
-	struct Node;
+	**/
 	struct Root
 	{
 	  Root * next;
@@ -172,7 +185,7 @@ namespace fl
 	  int sizes[256];  ///< History of sizes for all gray-levels
 	  float rates[256];  ///< History of changes rates w.r.t. gray-level.  Calculated from sizes[].
 
-	  // Info for generating elliptical regions
+	  // Info for generating Gaussians
 	  Node * head;  ///< Start of LIFO linked list of pixels.  IE: points to most recently added pixels.
 	  Node * heads[256];  ///< History of composition of region at each gray-level.
 	  Node * tail;  ///< Head of most recent ellipse.  Indicates stopping point when generating next Gaussian.
@@ -184,6 +197,9 @@ namespace fl
 	  float yy;  ///< Covariance of most recent Gaussian.
 	};
 
+	/**
+	   Structure for keeping track of the state of one pixel.
+	**/
 	struct Node
 	{
 	  Node * parent;
@@ -191,11 +207,22 @@ namespace fl
 	  Root * root;  ///< If this is a root node, then this points to the associated metadata;
 	};
 
-	void addGrayLevel (unsigned char level, bool sign, int * lists[], Node * nodes, const int width, const int height, Root * roots, std::vector<PointMSER *> & regions);
+	Node * nodes;  ///< An image of union-find nodes, one per pixel in input image.
+	Root roots;  ///< meta-data for active regions
+	Root subsumed;  ///< Root objects subsumed but not yet deleted
+	Root deleted;  ///< Root objects available for re-use
 
-	int delta;  ///< Amount of gray-level distance above and below current gray-level to check when computing rate of change in region size.
-	int neighbors;  ///< Number of rate values on either side of a candidate local minimum which must exceed its value.
-	float minScale;  ///< Smallest scale region to admit into resulting list of interest points.  Guards against long skinny structures and structures with too few pixels to be worth noting.
+	int width;  ///< of input image
+	int height;  ///< of input image
+	int * lists[257];  ///< start of array of pixel indices for each gray-level; includes a stop point at the end
+
+	void clear (Root * head);  ///< deletes all Root structures in the given list
+	void move (Root * root, Root & head);  ///< moves a single Root structure to the give list.
+	void releaseAll (Root * head);  ///< moves all Root structures in the given list to the "deleted" list, where they can be re-used.
+	void merge (Node * grow, Node * destroy);  ///< Make necessary structural adjustments to combine one region into another.
+	Node * findSet (Node * n);
+	void join (Node * i, Node * n);
+	void addGrayLevel (unsigned char level, bool sign, std::vector<PointMSER *> & regions);
   };
 }
 
