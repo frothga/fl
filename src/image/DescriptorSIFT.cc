@@ -307,7 +307,7 @@ DescriptorSIFT::patch (Canvas * canvas, const Vector<float> & value, int size)
 		double radius = (size / 2.0) * (*length++ / maxValue);
 		tip.x = center.x + cos (angle) * radius;
 		tip.y = center.y + sin (angle) * radius;
-		canvas->drawSegment (center, tip, black);
+		canvas->drawSegment (center, tip, BLACK);
 	  }
 	}
   }
@@ -318,7 +318,7 @@ DescriptorSIFT::patch (const Vector<float> & value)
 {
   const int size = 16;  // size of one cell
   CanvasImage result (width * size, width * size, GrayChar);
-  result.clear (white);
+  result.clear (WHITE);
   patch (&result, value, size);
   return result;
 }
@@ -334,8 +334,8 @@ DescriptorSIFT::patch (const string & fileName, const Vector<float> & value)
   result.setLineWidth (0);  // hairline
   for (int i = 0; i <= width; i++)
   {
-	result.drawSegment (Point (i * size, 0), Point (i * size, edge), black);
-	result.drawSegment (Point (0, i * size), Point (edge, i * size), black);
+	result.drawSegment (Point (i * size, 0), Point (i * size, edge), BLACK);
+	result.drawSegment (Point (0, i * size), Point (edge, i * size), BLACK);
   }
 }
 
