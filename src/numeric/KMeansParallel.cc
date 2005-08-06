@@ -4,6 +4,10 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
+
+
+4/2005 Fred Rothganger -- Change file modes to binary for compatibility with
+       MSVC.
 */
 
 
@@ -65,7 +69,7 @@ KMeansParallel::run (const std::vector<Vector<float> > & data)
     // cost of losing everything in a crash).
 	if (clusterFileName.size ())
 	{
-	  ofstream target (clusterFileName.c_str ());
+	  ofstream target (clusterFileName.c_str (), ios::binary);
 	  write (target);
 	}
 	else
@@ -418,7 +422,7 @@ cerr << "  expecting: " << size << " " << ctime (&mtime);
 cerr << "  checking NFS: " << stats.st_size << " " << ctime (&stats.st_mtime);
 		}
 		while (stats.st_size != size  ||  stats.st_mtime < mtime);
-		ifstream target (clusterFileName.c_str ());
+		ifstream target (clusterFileName.c_str (), ios::binary);
         if (! target.good ())
 		{
 		  cerr << "Unable to reopen cluster file " << clusterFileName << endl;
@@ -455,7 +459,7 @@ cerr << "perform maximization" << endl;
         if (! clusters.size ())  // Catch the very special case that we jumped in during maximization
 		{
 		  cerr << "  need to read cluster file" << endl;
-		  ifstream target (clusterFileName.c_str ());
+		  ifstream target (clusterFileName.c_str (), ios::binary);
 		  if (! target.good ())
 		  {
 			cerr << "Unable to reopen cluster file " << clusterFileName << endl;

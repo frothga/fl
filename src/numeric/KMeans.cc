@@ -166,7 +166,7 @@ KMeans::run (const std::vector<Vector<float> > & data)
     // cost of losing everything in a crash).
 	if (clusterFileName.size ())
 	{
-	  ofstream target (clusterFileName.c_str ());
+	  ofstream target (clusterFileName.c_str (), ios::binary);
 	  write (target);
 	}
 
