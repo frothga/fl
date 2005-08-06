@@ -43,6 +43,9 @@ main (int argc, char * argv[])
 
 	  stripm ();
 
+	  fclose (stdin);
+	  fclose (stdout);
+
 	  char command[1024];
 	  sprintf (command, "mv %s %s", outname, argv[i]);
 	  system (command);
