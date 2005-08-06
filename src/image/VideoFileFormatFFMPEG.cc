@@ -51,7 +51,7 @@ VideoInFileFFMPEG::seekFrame (int frame)
 	return;
   }
 
-  seekTime ((double) frame * stream->r_frame_rate_base / stream->r_frame_rate);
+  seekTime ((double) frame * stream->r_frame_rate.den / stream->r_frame_rate.num);  // = frame / r_frame_rate
 }
 
 /**
@@ -67,7 +67,7 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	return;
   }
 
-  int targetFrame = (int) floor (timestamp * stream->r_frame_rate / stream->r_frame_rate_base + 1e-6);  // floor() because any timestamp should equate to the frame visible at that time.
+  int targetFrame = (int) floor (timestamp * stream->r_frame_rate.num / stream->r_frame_rate.den + 1e-6);  // floor() because any timestamp should equate to the frame visible at that time.
   while (cc->frame_number != targetFrame)
   {
 	if (! seekLinear  &&  (cc->frame_number > targetFrame  ||  cc->frame_number < targetFrame - 12))  // 12 is arbitrary, but based on the typical size of a GOP in mpeg
@@ -75,7 +75,7 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	  // Use seek to position at or before the frame
 	  int64_t targetDTS = (int64_t) rint
 	  (
-	    (timestamp - (double) expectedSkew * cc->frame_rate_base / cc->frame_rate)
+	    (timestamp - (double) expectedSkew * cc->time_base.num / cc->time_base.den)
 		* stream->time_base.den / stream->time_base.num  // this is counterintuitive, but time_base is apparently defined as the amount to *divide* seconds by to get stream units
 	  );
 	  if (fc->start_time != AV_NOPTS_VALUE)
@@ -129,12 +129,12 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	  {
 		PTS -= fc->start_time;
 	  }
-	  double decodeFrame = ((double) PTS / AV_TIME_BASE) * stream->r_frame_rate / stream->r_frame_rate_base;
+	  double decodeFrame = ((double) PTS / AV_TIME_BASE) * stream->r_frame_rate.num / stream->r_frame_rate.den;
 	  double skew = 0;
 	  if (packet.pts != AV_NOPTS_VALUE)
 	  {
 		PTS = packet.pts - packet.dts;
-		skew = ((double) PTS / AV_TIME_BASE) * cc->frame_rate / cc->frame_rate_base;
+		skew = ((double) PTS / AV_TIME_BASE) * cc->time_base.den / cc->time_base.num;
 	  }
 	  cc->frame_number = (int) rint (decodeFrame + skew);  // rint() because PTS should be exactly on some frame's timestamp, and we want to compensate for numerical error.
 	  //cerr << "frame_number = " << cc->frame_number << " " << decodeFrame << " " << skew << endl;
@@ -323,7 +323,8 @@ VideoInFileFFMPEG::open (const string & fileName)
   if (codec->id == CODEC_ID_MPEG2VIDEO)
   {
 	cerr << "Warning: hacking frame rate to 24000/1001.  Should verify telecine first." << endl;
-	stream->r_frame_rate = 24000;
+	stream->r_frame_rate.num = 24000;
+	stream->r_frame_rate.den = 1001;
   }
 }
 
@@ -456,7 +457,7 @@ VideoInFileFFMPEG::extractImage (Image & image)
   }
   else
   {
-	image.timestamp = (double) (cc->frame_number - 1) * stream->r_frame_rate_base / stream->r_frame_rate;
+	image.timestamp = (double) (cc->frame_number - 1) * stream->r_frame_rate.den / stream->r_frame_rate.num;
   }
   gotPicture = 0;
 }
@@ -510,9 +511,29 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
   // Set codec parameters.
   AVCodecContext & cc = stream->codec;
   cc.codec_type = codec->type;
-  cc.codec_id   = (CodecID) codec->id;
+  cc.codec_id   = codec->id;
   cc.gop_size     = 12; // default = 50; industry standard is 12
-  //cc.max_b_frames = 2;  // default = 0; when nonzero, FFMPEG crashes sometimes
+  if (codec->id == CODEC_ID_MPEG2VIDEO)
+  {
+	cc.max_b_frames = 2;
+  }
+  if (   ! strcmp (fc->oformat->name, "mp4")
+	  || ! strcmp (fc->oformat->name, "mov")
+	  || ! strcmp (fc->oformat->name, "3gp"))
+  {
+	cc.flags |= CODEC_FLAG_GLOBAL_HEADER;
+  }
+  if (codec->supported_framerates)
+  {
+	const AVRational & fr = codec->supported_framerates[0];
+	cc.time_base.num = fr.den;
+	cc.time_base.den = fr.num;
+  }
+  else  // any framerate is ok, so pick our favorite default
+  {
+	cc.time_base.num = 1;
+	cc.time_base.den = 24;
+  }
 
   state = av_set_parameters (fc, 0);
   if (state < 0)
@@ -609,6 +630,38 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 
   stream->codec.width = image.width;
   stream->codec.height = image.height;
+  if (stream->codec.pix_fmt == PIX_FMT_NONE)
+  {
+	enum PixelFormat best = PIX_FMT_YUV420P;  // FFMPEG's default
+	if (codec->pix_fmts)  // options are available, so enumerate and find best match for image.format
+	{
+	  best = codec->pix_fmts[0];
+	  const enum PixelFormat * p = codec->pix_fmts;
+	  while (*p != -1)
+	  {
+		switch (*p)
+		{
+		  case PIX_FMT_RGB24:
+			if (*image.format == RGBChar) best = *p;
+			break;
+		  case PIX_FMT_BGR24:
+			if (*image.format == BGRChar) best = *p;
+			break;
+		  case PIX_FMT_YUV422:
+			if (*image.format == YUYVChar) best = *p;
+			break;
+		  case PIX_FMT_UYVY422:
+			if (*image.format == UYVYChar) best = *p;
+			break;
+		  case PIX_FMT_GRAY8:
+			if (*image.format == GrayChar) best = *p;
+			break;
+		}
+		p++;
+	  }
+	}
+	stream->codec.pix_fmt = best;
+  }
 
   if (needHeader)
   {
@@ -689,7 +742,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	{
 	  AVPacket packet;
 	  av_init_packet (&packet);
-	  packet.pts = stream->codec.coded_frame->pts;
+	  packet.pts = av_rescale_q (stream->codec.coded_frame->pts, stream->codec.time_base, stream->time_base);
 	  if (stream->codec.coded_frame->key_frame)
 	  {
 		packet.flags |= PKT_FLAG_KEY;
@@ -724,7 +777,31 @@ VideoOutFileFFMPEG::set (const std::string & name, double value)
   {
 	if (name == "framerate")
 	{
-	  stream->codec.frame_rate = (int) rint (value * stream->codec.frame_rate_base);
+	  if (codec  &&  codec->supported_framerates)
+	  {
+		// Restricted set of framerates, so select closest one
+		const AVRational * fr = codec->supported_framerates;
+		const AVRational * bestRate = fr;
+		double bestDistance = INFINITY;
+		while (fr->den)
+		{
+		  double rate = (double) fr->den / fr->num;
+		  double distance = fabs (value - rate);
+		  if (distance < bestDistance)
+		  {
+			bestDistance = distance;
+			bestRate = fr;
+		  }
+		  fr++;
+		}
+		stream->codec.time_base.num = bestRate->den;
+		stream->codec.time_base.den = bestRate->num;
+	  }
+	  else  // arbitrary framerate is acceptable
+	  {
+		stream->codec.time_base.num = AV_TIME_BASE;
+		stream->codec.time_base.den = (int) rint (value * AV_TIME_BASE);
+	  }
 	}
 	else if (name == "bitrate")
 	{
