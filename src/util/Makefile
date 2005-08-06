@@ -6,6 +6,7 @@
 #
 #
 # 12/2004 Revised by Fred Rothganger
+#  4/2005 Fred Rothganger -- Add psnr and xv
 
 
 SOURCE_DIR := ../..
