@@ -44,6 +44,7 @@ main (int argc, char * argv[])
 
 	  addm ();
 
+	  fclose (stdin);
 	  fclose (stdout);
 
 	  char command[1024];
