@@ -11,7 +11,7 @@ for details.
 #define BLOCKCOUNT 65536
 
 
-#include </home/rothgang/i686/include/fl/time.h>
+#include <fl/time.h>
 
 #include <iostream>
 
