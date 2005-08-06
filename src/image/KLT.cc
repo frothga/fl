@@ -170,9 +170,23 @@ KLT::track (Point & point)
   point0 -= offset;
   Point point1 = point0;
 
+  int highestLevel = pyramid0.size () - 1;
+  int lowestLevel;
+  if (PointInterest * p = dynamic_cast<PointInterest *> (&point))
+  {
+	lowestLevel = (int) rint (log (p->scale / windowRadius) / log (pyramidRatio));
+	lowestLevel = max (lowestLevel, 0);
+	lowestLevel = min (lowestLevel, highestLevel);
+  }
+  else
+  {
+	lowestLevel = 0;
+  }
+
   float error = 0;
-  bool overiterated = false;
-  for (int level = pyramid0.size () - 1; level >= 0; level--)
+  int code = 0;
+  int level;
+  for (level = highestLevel; level >= lowestLevel; level--)
   {
 	point0 += offset;
 	point1 += offset;
@@ -184,36 +198,32 @@ KLT::track (Point & point)
 	{
 	  error = track (point0, level, point1);
 	}
-	catch (int code)
+	catch (int exceptionCode)
 	{
-	  if (code == 3)
+	  code = exceptionCode;
+	  if (code != 3)  // All codes besides 3 are fatal and call for immediate termination.
 	  {
-		overiterated = true;
-	  }
-	  else  // All other codes are fatal and call for immediate termination.
-	  {
-		// To fulfill the guarantee that we return the best estimate of
-		// location, we must move the point into the scale of the original
-		// image.
-		point0 += offset;
-		point1 += offset;
-		point0 *= powf (pyramidRatio, level);
-		point1 *= powf (pyramidRatio, level);
-		point0 -= offset;
-		point1 -= offset;
-		throw code;
+		level--;  // to guarantee that level is alwyas 1 less than last level processed by this loop
+		break;
 	  }
 	}
+  }
+
+  if (level >= 0)
+  {
+	// To fulfill the guarantee that we return the best estimate of
+	// location, we must move the point into the scale of the original
+	// image.
+	point1 += offset;
+	point1 *= powf (pyramidRatio, level + 1);
+	point1 -= offset;
   }
 
   point = point1;
 
   // The more serious exceptions should be listed here first.
   // Not sure whether overiterated > undercorrelated or vice-versa.
-  if (overiterated)
-  {
-	throw 3;
-  }
+  if (code) throw code;
   if (error > maxError)
   {
 	throw 5;
