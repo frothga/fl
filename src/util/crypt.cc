@@ -7,8 +7,13 @@ for details.
 */
 
 
+#ifdef __CYGWIN__
+#include <crypt.h>
+#else
 #define _XOPEN_SOURCE
 #include <unistd.h>
+#endif
+
 #include <time.h>
 #include <stdio.h>
 
