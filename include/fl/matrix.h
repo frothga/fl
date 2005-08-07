@@ -260,7 +260,7 @@ namespace fl
 	  int h = that.rows ();
 	  int w = that.columns ();
 	  resize (h, w);
-	  T * i = (T *) data;
+	  T * i = (T *) this->data;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)

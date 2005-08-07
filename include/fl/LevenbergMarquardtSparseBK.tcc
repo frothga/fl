@@ -37,7 +37,7 @@ namespace fl
 	// of a previous search.
 	void colmax (const int column, int & row, T & value) const
 	{
-	  std::map<int,T> & C = (*data)[column];
+	  std::map<int,T> & C = (*this->data)[column];
 	  typename std::map<int,T>::iterator i;
 	  for (i = C.begin (); i != C.end ()  &&  i->first < column; i++)
 	  {
@@ -52,8 +52,8 @@ namespace fl
 
 	void swap (const int row1, const int column1, const int row2, const int column2)
 	{
-	  std::map<int,T> & C1 = (*data)[column1];
-	  std::map<int,T> & C2 = (*data)[column2];
+	  std::map<int,T> & C1 = (*this->data)[column1];
+	  std::map<int,T> & C2 = (*this->data)[column2];
 	  std::pair< typename std::map<int,T>::iterator, bool > r1 = C1.insert (std::make_pair (row1, (T) 0));
 	  std::pair< typename std::map<int,T>::iterator, bool > r2 = C2.insert (std::make_pair (row2, (T) 0));
 	  if (r1.second)  // this(row1,column1) == 0
@@ -85,8 +85,8 @@ namespace fl
 
 	void swap (const int column1, const int column2, const int lastRow)
 	{
-	  std::map<int,T> & C1 = (*data)[column1];
-	  std::map<int,T> & C2 = (*data)[column2];
+	  std::map<int,T> & C1 = (*this->data)[column1];
+	  std::map<int,T> & C2 = (*this->data)[column2];
 	  typename std::map<int,T>::iterator i1 = C1.begin ();
 	  typename std::map<int,T>::iterator i2 = C2.begin ();
 	  // Assume that there is always another element in each column beyond lastRow.
@@ -119,7 +119,7 @@ namespace fl
 
 	void updateRank1 (const int column)
 	{
-	  std::map<int,T> & Ck = (*data)[column];
+	  std::map<int,T> & Ck = (*this->data)[column];
 	  typename std::map<int,T>::reverse_iterator j = Ck.rbegin ();
 	  typename std::map<int,T>::reverse_iterator CkEnd = Ck.rend ();
 	  if (j == CkEnd  ||  j->first != column)
@@ -132,7 +132,7 @@ namespace fl
 	  {
 		T temp = - j->second / alpha;
 
-		std::map<int,T> & Cj = (*data)[j->first];
+		std::map<int,T> & Cj = (*this->data)[j->first];
 		typename std::map<int,T>::reverse_iterator ij = Cj.rbegin ();
 		typename std::map<int,T>::reverse_iterator ik = j;
 		typename std::map<int,T>::reverse_iterator CjEnd = Cj.rend ();
@@ -170,8 +170,8 @@ namespace fl
 
 	void updateRank2 (const int column)
 	{
-	  std::map<int,T> & Ck  = (*data)[column];
-	  std::map<int,T> & Ck1 = (*data)[column - 1];
+	  std::map<int,T> & Ck  = (*this->data)[column];
+	  std::map<int,T> & Ck1 = (*this->data)[column - 1];
 	  typename std::map<int,T>::reverse_iterator jk  = Ck.rbegin ();
 	  typename std::map<int,T>::reverse_iterator jk1 = Ck1.rbegin ();
 	  typename std::map<int,T>::reverse_iterator CkEnd  = Ck.rend ();
@@ -226,7 +226,7 @@ namespace fl
 		T wk1 = (d11 * Ajk1 - Ajk)  / d12;
 		T wk  = (d22 * Ajk  - Ajk1) / d12;
 
-		std::map<int,T> & Cj = (*data)[j];
+		std::map<int,T> & Cj = (*this->data)[j];
 		typename std::map<int,T>::reverse_iterator ij = Cj.rbegin ();
 		typename std::map<int,T>::reverse_iterator ik = jk;
 		typename std::map<int,T>::reverse_iterator ik1 = jk1;
@@ -328,7 +328,7 @@ namespace fl
 	  {
 		return;
 	  }
-	  std::map<int,T> & C = (*data)[column];
+	  std::map<int,T> & C = (*this->data)[column];
 	  typename std::map<int,T>::iterator i = C.begin ();
 	  while (i->first <= lastRow  &&  i != C.end ())
 	  {
@@ -340,7 +340,7 @@ namespace fl
 	T dot (const int column, const int lastRow, const Vector<T> & x) const
 	{
 	  T result = (T) 0;
-	  std::map<int,T> & C = (*data)[column];
+	  std::map<int,T> & C = (*this->data)[column];
 	  typename std::map<int,T>::iterator i = C.begin ();
 	  while (i != C.end ()  &&  i->first <= lastRow)
 	  {
@@ -353,7 +353,7 @@ namespace fl
 	// Return the upper triangular part of ~this * this in a new matrix.
 	SparseBK transposeSquare () const
 	{
-	  int n = data->size ();
+	  int n = this->data->size ();
 	  SparseBK result (n, n);
 
 	  for (int c = 0; c < n; c++)
@@ -363,8 +363,8 @@ namespace fl
 		for (int r = 0; r <= c; r++)
 		{
 		  T t = (T) 0;
-		  std::map<int,T> & C1 = (*data)[r];
-		  std::map<int,T> & C2 = (*data)[c];
+		  std::map<int,T> & C1 = (*this->data)[r];
+		  std::map<int,T> & C2 = (*this->data)[c];
 		  typename std::map<int,T>::iterator i1 = C1.begin ();
 		  typename std::map<int,T>::iterator i2 = C2.begin ();
 		  while (i1 != C1.end ()  &&  i2 != C2.end ())
@@ -396,13 +396,13 @@ namespace fl
 
 	Vector<T> transposeMult (const Vector<T> & x) const
 	{
-	  int n = data->size ();
+	  int n = this->data->size ();
 	  Vector<T> result (n);
 
 	  for (int c = 0; c < n; c++)
 	  {
 		result[c] = 0;
-		std::map<int,T> & C = (*data)[c];
+		std::map<int,T> & C = (*this->data)[c];
 		typename std::map<int,T>::iterator i = C.begin ();
 		while (i != C.end ())
 		{
@@ -416,14 +416,14 @@ namespace fl
 
 	Vector<T> operator * (const Vector<T> & x) const
 	{
-	  int n = data->size ();
+	  int n = this->data->size ();
 
-	  Vector<T> result (rows_);
+	  Vector<T> result (this->rows_);
 	  result.clear ();
 
 	  for (int c = 0; c < n; c++)
 	  {
-		std::map<int,T> & C = (*data)[c];
+		std::map<int,T> & C = (*this->data)[c];
 		typename std::map<int,T>::iterator i = C.begin ();
 		while (i != C.end ())
 		{
@@ -464,13 +464,13 @@ namespace fl
 
 	void addDiagonal (const T alpha, const Vector<T> & x)
 	{
-	  int n = data->size ();
+	  int n = this->data->size ();
 
 	  for (int j = 0; j < n; j++)
 	  {
 		T value = alpha * x[j] * x[j];
 
-		std::map<int,T> & C = (*data)[j];
+		std::map<int,T> & C = (*this->data)[j];
 		typename std::map<int,T>::reverse_iterator i = C.rbegin ();
 		while (i->first > j)  // This should never happen.
 		{
@@ -490,7 +490,7 @@ namespace fl
 	T frob2 (const int column)
 	{
 	  T result = (T) 0;
-	  std::map<int,T> & C = (*data)[column];
+	  std::map<int,T> & C = (*this->data)[column];
 	  typename std::map<int,T>::iterator i = C.begin ();
 	  while (i != C.end ())
 	  {

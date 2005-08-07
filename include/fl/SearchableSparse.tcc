@@ -28,7 +28,7 @@ namespace fl
   {
 	MatrixSparse<bool> interaction = this->interaction ();
 
-	const int m = dimension ();  // == interaction.rows ()
+	const int m = this->dimension ();  // == interaction.rows ()
 	const int n = interaction.columns ();
 
 	parameters.resize (0, 0);
@@ -96,7 +96,7 @@ namespace fl
   void
   SearchableSparse<T>::jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue)
   {
-	const int m = dimension ();
+	const int m = this->dimension ();
 	const int n = point.rows ();
 
 	result.resize (m, n);
@@ -123,10 +123,10 @@ namespace fl
 	  {
 		int k = parmList[j];
 
-		T h = perturbation * std::fabs (point[k]);
+		T h = this->perturbation * std::fabs (point[k]);
 		if (h == 0)
 		{
-		  h = perturbation;
+		  h = this->perturbation;
 		}
 		p[k] = h;
 	  }
@@ -149,7 +149,7 @@ namespace fl
   void
   SearchableSparse<T>::jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue)
   {
-	const int m = dimension ();
+	const int m = this->dimension ();
 	const int n = point.rows ();
 
 	result.resize (m, n);
@@ -176,10 +176,10 @@ namespace fl
 	  {
 		int k = parmList[j];
 
-		T h = perturbation * std::fabs (point[k]);
+		T h = this->perturbation * std::fabs (point[k]);
 		if (h == 0)
 		{
-		  h = perturbation;
+		  h = this->perturbation;
 		}
 		p[k] = h;
 	  }

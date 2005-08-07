@@ -51,7 +51,7 @@ namespace fl
   void
   SearchableNumeric<T>::jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue)
   {
-	int m = dimension ();
+	int m = this->dimension ();
 	int n = point.rows ();
 
 	result.resize (m, n);
@@ -89,7 +89,7 @@ namespace fl
   void
   SearchableNumeric<T>::jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue)
   {
-	int m = dimension ();
+	int m = this->dimension ();
 	int n = point.rows ();
 
 	result.resize (m, n);

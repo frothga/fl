@@ -24,16 +24,16 @@ namespace fl
   template<class T>
   Vector<T>::Vector ()
   {
-	rows_ = 0;
-	columns_ = 0;
+	this->rows_ = 0;
+	this->columns_ = 0;
   }
 
   template<class T>
   Vector<T>::Vector (const int rows)
   {
-	rows_ = rows;
-	columns_ = 1;
-	data.grow (rows * sizeof (T));
+	this->rows_ = rows;
+	this->columns_ = 1;
+	this->data.grow (rows * sizeof (T));
   }
 
   template<class T>
@@ -51,7 +51,7 @@ namespace fl
 	  int h = that.rows ();
 	  int w = that.columns ();
 	  resize (h, w);
-	  T * i = (T *) data;
+	  T * i = (T *) this->data;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
@@ -67,46 +67,46 @@ namespace fl
   template<class T>
   Vector<T>::Vector (const Matrix<T> & that)
   {
-	data = that.data;
-	rows_ = that.rows_ * that.columns_;
-	columns_ = 1;
+	this->data = that.data;
+	this->rows_ = that.rows_ * that.columns_;
+	this->columns_ = 1;
   }
 
   template<class T>
   Vector<T>::Vector (std::istream & stream)
   {
-	read (stream);
+	this->read (stream);
   }
 
   template<class T>
   Vector<T>::Vector (T * that, const int rows)
   {
-	data.attach (that, rows * sizeof (T));
-	rows_ = rows;
-	columns_ = 1;
+	this->data.attach (that, rows * sizeof (T));
+	this->rows_ = rows;
+	this->columns_ = 1;
   }
 
   template<class T>
   Vector<T>::Vector (Pointer & that, const int rows)
   {
-	data = that;
-	columns_ = 1;
+	this->data = that;
+	this->columns_ = 1;
 	if (rows < 0)  // infer number from size of memory block and size of our data type
 	{
-	  int size = data.size ();
+	  int size = this->data.size ();
 	  if (size < 0)
 	  {
 		// Pointer does not know the size of memory block, so we pretend it is empty.  This is really an error condition.
-		rows_ = 0;
+		this->rows_ = 0;
 	  }
 	  else
 	  {
-		rows_ = size / sizeof (T);
+		this->rows_ = size / sizeof (T);
 	  }
 	}
 	else  // number of rows is given
 	{
-	  rows_ = rows;
+	  this->rows_ = rows;
 	}
   }
 
@@ -126,7 +126,7 @@ namespace fl
 	  int h = that.rows ();
 	  int w = that.columns ();
 	  resize (h, w);
-	  T * i = (T *) data;
+	  T * i = (T *) this->data;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
@@ -143,9 +143,9 @@ namespace fl
   Vector<T> &
   Vector<T>::operator = (const Matrix<T> & that)
   {
-	data = that.data;
-	rows_ = that.rows_ * that.columns_;
-	columns_ = 1;
+	this->data = that.data;
+	this->rows_ = that.rows_ * that.columns_;
+	this->columns_ = 1;
 	return *this;
   }
 
