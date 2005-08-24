@@ -1,3 +1,6 @@
+Contents
+--------
+
 This directory contains a collection of tools I have developed over the years.
 Some are scripts or simple executables, and others are C++ headers and
 libraries.
@@ -36,3 +39,23 @@ src
 		Image processing.
 	net
 		Stream interface to TCP sockets, plus some basic server infrastructure.
+
+
+Building under GNU systems
+--------------------------
+
+Unlike the typical library distribution, this one has no configure script.
+Instead, you must edit the file Config to point to all the external
+dependencies.  Typically, it is sufficient to set the value for
+LIBRARYNAME_DIR, as the other values will be derived from it.  After you
+have edited Config to your satisfaction, run "make" or "make install" at
+the command line.
+
+
+Building under Microsoft Visual Studio
+--------------------------------------
+
+Open the "fl.sln" solution file, and then build it.  :)  The external
+dependencies that normally come with a GNU style distribution are prebuilt
+and stored in the directory "mswin".  You will need to include this
+directory in your link path when building an application.
