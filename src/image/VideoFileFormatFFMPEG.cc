@@ -632,11 +632,11 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   stream->codec.height = image.height;
   if (stream->codec.pix_fmt == PIX_FMT_NONE)
   {
-	enum PixelFormat best = PIX_FMT_YUV420P;  // FFMPEG's default
+	enum ::PixelFormat best = PIX_FMT_YUV420P;  // FFMPEG's default
 	if (codec->pix_fmts)  // options are available, so enumerate and find best match for image.format
 	{
 	  best = codec->pix_fmts[0];
-	  const enum PixelFormat * p = codec->pix_fmts;
+	  const enum ::PixelFormat * p = codec->pix_fmts;
 	  while (*p != -1)
 	  {
 		switch (*p)

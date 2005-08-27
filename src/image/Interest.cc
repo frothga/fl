@@ -43,7 +43,7 @@ InterestPointSet::add (const multiset<PointInterest> & points)
   int rsize = size ();
   resize (rsize + points.size ());
   PointInterest ** r = & at (rsize);
-  multiset<PointInterest>::iterator s = points.begin ();
+  multiset<PointInterest>::const_iterator s = points.begin ();
   while (s != points.end ())
   {
 	*r++ = new PointInterest (*s++);
