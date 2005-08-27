@@ -17,7 +17,7 @@ using namespace fl;
 
 // class Descriptor -----------------------------------------------------------
 
-Factory<Descriptor>::productMap Factory<Descriptor>::products;
+template <> Factory<Descriptor>::productMap Factory<Descriptor>::products;
 
 Descriptor::Descriptor ()
 {

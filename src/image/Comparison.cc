@@ -21,7 +21,7 @@ using namespace std;
 
 // class Comparison -----------------------------------------------------------
 
-Factory<Comparison>::productMap Factory<Comparison>::products;
+template <> Factory<Comparison>::productMap Factory<Comparison>::products;
 
 Comparison::~Comparison ()
 {
