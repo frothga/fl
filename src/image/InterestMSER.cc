@@ -383,10 +383,10 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, vector<PointMSER *> 
 		  float scale = sqrt (sqrt (r->xx * r->yy - r->xy * r->xy));  // two sqrt() calls are probably more efficient than 1 pow(0.25, x) call
 		  if (scale >= minScale)
 		  {
-			PointMSER * m = new PointMSER (representative - nodes, level, sign);
+			PointMSER * m = new PointMSER (representative - nodes, c, sign);
 			m->x        = r->x;
 			m->y        = r->y;
-			m->weight   = r->size;  // size and scale are closely correlated
+			m->weight   = totalWeight;  // size and scale are closely correlated
 			m->scale    = scale;
 			m->detector = PointInterest::MSER;
 
