@@ -11,6 +11,8 @@ for details.
 Revisions Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
+
+09/2005 Fred Rothganger -- Add drawMSER.
 */
 
 
@@ -488,6 +490,65 @@ CanvasImage::drawEllipse (const Point & center, const Matrix2x2<double> & shape,
 	  p.y = tcenter.y + rot(1,0) * xt - rot(1,1) * j;
 	  pen (p, color);
 	}
+  }
+}
+
+/**
+   \todo One key optimization would be to make the "visited" image only
+   big enough to hold the actual region.
+ **/
+void
+CanvasImage::drawMSER (const PointMSER & point, const Image & image, unsigned int colorFill, unsigned int colorBorder)
+{
+  Image grayImage = image * GrayChar;
+  unsigned char * g = (unsigned char *) grayImage.buffer;
+
+  int width = image.width;
+  int height = image.height;
+  int lastX = width - 1;
+  int lastY = height - 1;
+
+  Image visited (width, height, GrayChar);
+  visited.clear ();
+  unsigned char * v = (unsigned char *) visited.buffer;
+
+  vector<int> frontier;
+  vector<int> newFrontier;
+  frontier.push_back (point.index);
+  v[point.index] = 1;
+
+  while (frontier.size ())
+  {
+	newFrontier.clear ();
+	newFrontier.reserve ((int) ceil (frontier.size () * 1.2));
+	for (int i = 0; i < frontier.size (); i++)
+	{
+	  int index = frontier[i];
+	  int x = index % width;
+	  int y = index / width;
+
+	  if (point.sign ? g[index] > point.threshold : g[index] < point.threshold)
+	  {
+		if (colorBorder & 0xFF) setRGBA (x, y, colorBorder);
+	  }
+	  else
+	  {
+		if (colorFill & 0xFF) setRGBA (x, y, colorFill);
+
+		#define visit(n) \
+		if (! v[n]) \
+		{ \
+		  v[n] = 1; \
+		  newFrontier.push_back (n); \
+		}
+
+		if (x > 0)     visit (index - 1);
+		if (x < lastX) visit (index + 1);
+		if (y > 0)     visit (index - width);
+		if (y < lastY) visit (index + width);
+	  }
+	}
+	swap (frontier, newFrontier);
   }
 }
 
