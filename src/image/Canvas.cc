@@ -137,6 +137,22 @@ Canvas::drawEllipse (const Matrix<double> & S, float radius, unsigned int color)
   drawEllipse (center, shape, radius, color);
 }
 
+/**
+   Paints the pixels inside the region with colorFill, and the pixels just
+   outside the region with colorBorder.
+   \param image The original image in which the MSER was found, preferably
+   converted to GrayChar.
+   \param colorFill If the alpha channel is zero, then the interior will not
+   be marked.
+   \param colorBorder If the alpha channel is zero, then the border will not
+   be marked.
+**/
+void
+Canvas::drawMSER (const PointMSER & p, const Image & image, unsigned int colorFill, unsigned int colorBorder)
+{
+  throw "drawMSER not implemented for this type of Canvas";
+}
+
 void
 Canvas::drawImage (const Image & image, Point & p, float width, float height)
 {
