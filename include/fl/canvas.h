@@ -9,6 +9,7 @@ for details.
 12/2004 Fred Rothganger -- Add drawEllipse method that takes an "S" matrix.
 05/2005 Fred Rothganger -- Change interface to drawText().  Add setFont().
         Use Freetype2 to implement text drawing.
+09/2005 Fred Rothganger -- Break dependency on Freetype2 include files.
 Revisions Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
@@ -28,9 +29,6 @@ the U.S. Government retains certain rights in this software.
 #include <vector>
 #include <string>
 #include <fstream>
-
-#include <ft2build.h>
-#include FT_FREETYPE_H
 
 
 namespace fl
@@ -109,7 +107,7 @@ namespace fl
 	float lineWidth;
 	ImageOf<unsigned char> penTip;
 	float pointRadius;
-	FT_Face face;
+	void * face;  ///< The currently selected font.  Actually an FT_FaceRec_ *.  Storing this as a void pointer is an ugly hack to avoid the dependency on the freetype includes in the client program.
 
 	// Static interface for Freetype and font management
 
@@ -117,7 +115,7 @@ namespace fl
 	static void scanFontDirectory (const std::string & path);  ///< Identify all font files in a given directory and register the Postscript names in the map.  Can be called after initFontLibrary() to add fonts not in the hard-coded default font path.
 	static void addFontFile (const std::string & path);  ///< If path points to valid font file, then add its Postscript name to the map.
 
-	static FT_Library library;
+	static void * library;  ///< Working memory for freetype.  Actually an FT_LibraryRec_ *.  Storing this as a void pointer is an ugly hack to avoid the dependency on the freetype include in the client program.
 	static std::map<std::string, std::string> fontMap;  ///< Maps from font name to font file
   };
 

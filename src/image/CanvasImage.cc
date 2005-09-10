@@ -8,7 +8,8 @@ for details.
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC.
 05/2005 Fred Rothganger -- Implement drawText() via Freetype2.
-09/2005 Fred Rothganger -- Add drawMSER.
+09/2005 Fred Rothganger -- Add drawMSER.  Break dependency of canvas.h on
+        Freetype2 include files.
 Revisions Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
@@ -21,6 +22,8 @@ the U.S. Government retains certain rights in this software.
 
 #include <algorithm>
 
+#include <ft2build.h>
+#include FT_FREETYPE_H
 #ifdef WIN32
 #  include <windows.h>
 #  undef min
@@ -73,7 +76,7 @@ inRange (float angle, const float & startAngle, const float & endAngle)
 // Most of the implementations here are hacks based on float.  They could be
 // made more efficient for changing to Bresenhem-like approaches.
 
-FT_Library CanvasImage::library = 0;
+void * CanvasImage::library = 0;
 map<string, string> CanvasImage::fontMap;
 
 CanvasImage::CanvasImage (const PixelFormat & format)
@@ -570,15 +573,15 @@ CanvasImage::drawText (const string & text, const Point & point, unsigned int co
   matrix.yx = (FT_Fixed) (-sin (angle) * 0x10000L);
   matrix.yy = (FT_Fixed) ( cos (angle) * 0x10000L);
 
-  FT_GlyphSlot slot = face->glyph;
+  FT_GlyphSlot slot = ((FT_Face) face)->glyph;
 
   Point pen = point;
   Pixel C (color);
   for (int i = 0; i < text.size (); i++)
   {
-    FT_Set_Transform (face, &matrix, 0);
+    FT_Set_Transform ((FT_Face) face, &matrix, 0);
 
-	FT_Error error = FT_Load_Char (face, text[i], FT_LOAD_RENDER);
+	FT_Error error = FT_Load_Char ((FT_Face) face, text[i], FT_LOAD_RENDER);
     if (error) continue;
 
 	FT_Bitmap & bitmap = slot->bitmap;
@@ -728,28 +731,28 @@ CanvasImage::setFont (const std::string & name, float size)
 
   if (face)
   {
-	FT_Done_Face (face);
+	FT_Done_Face ((FT_Face) face);
   }
-  FT_Error error = FT_New_Face (library, it->second.c_str (), 0, &face);
+  FT_Error error = FT_New_Face ((FT_Library) library, it->second.c_str (), 0, (FT_Face *) &face);
   if (error  ||  face == 0) throw "Can't load font";
 
   error = 1;
-  if (face->face_flags & FT_FACE_FLAG_SCALABLE)
+  if (((FT_Face) face)->face_flags & FT_FACE_FLAG_SCALABLE)
   {
-	error = FT_Set_Char_Size (face,
+	error = FT_Set_Char_Size ((FT_Face) face,
 							  (int) rint (size * 64),
 							  0,
 							  96,  // estimated pixels per inch of image
 							  0);
   }
-  else if (face->face_flags & FT_FACE_FLAG_FIXED_SIZES)
+  else if (((FT_Face) face)->face_flags & FT_FACE_FLAG_FIXED_SIZES)
   {
 	// Enumerate fixed sizes to find one closest to requested size
 	FT_Bitmap_Size * bestSize = 0;
 	float bestDistance = INFINITY;
-	for (int i = 0; i < face->num_fixed_sizes; i++)
+	for (int i = 0; i < ((FT_Face) face)->num_fixed_sizes; i++)
 	{
-	  FT_Bitmap_Size & bs = face->available_sizes[i];
+	  FT_Bitmap_Size & bs = ((FT_Face) face)->available_sizes[i];
 	  float distance = fabs (bs.size / 64.0f - size);
 	  if (distance < bestDistance)
 	  {
@@ -760,7 +763,7 @@ CanvasImage::setFont (const std::string & name, float size)
 
 	if (bestSize)
 	{
-	  error = FT_Set_Pixel_Sizes (face, 0, (int) rint (bestSize->y_ppem / 64.0f));
+	  error = FT_Set_Pixel_Sizes ((FT_Face) face, 0, (int) rint (bestSize->y_ppem / 64.0f));
 	}
   }
   if (error) throw "Requested font size is not available";
@@ -771,7 +774,7 @@ CanvasImage::initFontLibrary ()
 {
   if (library != 0) return;
 
-  FT_Error error = FT_Init_FreeType (&library);
+  FT_Error error = FT_Init_FreeType ((FT_Library *) &library);
   if (error) throw error;
 
   // Scan default list of likely font directories...
@@ -792,7 +795,7 @@ CanvasImage::addFontFile (const string & path)
 {
   // Probe file to see if it is a font
   FT_Face face;
-  FT_Error error = FT_New_Face (library, path.c_str (), 0, &face);
+  FT_Error error = FT_New_Face ((FT_Library) library, path.c_str (), 0, (FT_Face *) &face);
   if (error  ||  face == 0) return;  // not a valid font file
 
   // Determine Postscript name
