@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
+
+
+09/2005 Fred Rothganger -- Added dsygv_
 */
 
 
@@ -73,6 +76,19 @@ extern "C"
 			   const int &  ldvl,
 			   double       vr[],
 			   const int &  ldvr,
+			   double       work[],
+			   const int &  lwork,
+			   int &        info);
+
+  void dsygv_ (const int &  itype,
+			   const char & jobz,
+			   const char & uplo,
+			   const int &  n,
+			   double       a[],
+			   const int &  lda,
+			   double       b[],
+			   const int &  ldb,
+			   double       w[],
 			   double       work[],
 			   const int &  lwork,
 			   int &        info);
