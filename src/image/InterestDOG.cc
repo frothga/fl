@@ -6,12 +6,17 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Compilability fix for MSVC
+03/2005 Fred Rothganger -- Change cache mechanism
+05/2005 Fred Rothganger -- Changed interface to return a collection of pointers
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
 */
 
 
 #include "fl/interest.h"
-#include "fl/lapacks.h"
+#include "fl/lapack.h"
 
 #include <math.h>
 
@@ -32,7 +37,6 @@ InterestDOG::InterestDOG (float firstScale, float lastScale, int extraSteps)
   this->steps      = extraSteps;
 
   crop = (int) rint (Gaussian2D::cutoff);
-  storePyramid = false;
   thresholdEdge = 0.06f;
   thresholdPeak = 0.04f / steps;
 }
@@ -104,13 +108,12 @@ InterestDOG::fitQuadratic (vector< ImageOf<float> > & dogs, int s, int x, int y,
 }
 
 void
-InterestDOG::run (const Image & image, std::multiset<PointInterest> & result)
+InterestDOG::run (const Image & image, InterestPointSet & result)
 {
-  double startTime = getTimestamp ();
+  Stopwatch timer;
 
-  pyramid.clear ();
-  scales.clear ();
-  result.clear ();
+  ImageCache::shared.add (image);
+  multiset<PointInterest> sorted;
 
   ImageOf<float> work;
   work.copyFrom (image);
@@ -125,7 +128,7 @@ InterestDOG::run (const Image & image, std::multiset<PointInterest> & result)
 
   // Make a set of blurring kernels, one for each step of blurring while
   // processing one octave.  There are actually two more steps than a full
-  // octave in order to accomodate search of scale space maxima in DoG images.
+  // octave in order to accomodate search for scale space maxima in DoG images.
   vector<Gaussian1D> blurs;
   float scaleRatio = powf (2.0f, 1.0f / steps);
   float sigmaRatio = sqrtf (scaleRatio * scaleRatio - 1.0f);  // amount of blurring needed to go from current scale step to next scale step
@@ -154,13 +157,9 @@ InterestDOG::run (const Image & image, std::multiset<PointInterest> & result)
 	  blurred[i].copyFrom (work);
 	}
 	work = blurred[steps];
-	if (storePyramid)
+	for (int i = 1; i <= steps; i++)
 	{
-	  for (int i = 1; i <= steps; i++)
-	  {
-		pyramid.push_back (blurred[i]);
-		scales.push_back (octave * firstScale * powf (scaleRatio, i));
-	  }
+	  ImageCache::shared.add (blurred[i], ImageCache::monochrome, octave * firstScale * powf (scaleRatio, i));
 	}
 
 	// Build set of Difference-of-Gaussian images
@@ -225,8 +224,8 @@ InterestDOG::run (const Image & image, std::multiset<PointInterest> & result)
 			  p.x = (x + offset[1] + 0.5f) * octave - 0.5f;  // Coordinates all use center-of-pixel convention.  Must shift to left edge of pixel to properly overly images w/ different scales.
 			  p.y = (y + offset[2] + 0.5f) * octave - 0.5f;
 			  p.weight = peak;
-			  p.detector = PointInterest::Laplacian;
-			  result.insert (p);
+			  p.detector = PointInterest::Blob;
+			  sorted.insert (p);
 			}
 		  }
 		}
@@ -251,5 +250,7 @@ InterestDOG::run (const Image & image, std::multiset<PointInterest> & result)
 	octave *= 2.0f;
   }
 
-  cerr << "DoG time = " << getTimestamp () - startTime << endl;
+  result.add (sorted);
+
+  cerr << "DoG time = " << timer << endl;
 }
