@@ -6,7 +6,12 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Compilability fix for MSVC
+03/2005 Fred Rothganger -- Optimizations, thanks to removing "square" case.
+        Change cache mechanism.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
 */
 
 
@@ -15,10 +20,6 @@ for details.
 #include "fl/pi.h"
 #include "fl/lapackd.h"
 #include "fl/color.h"
-
-
-// Temporarily include imagecache.h until it is put permanently in descriptor.h
-#include "fl/imagecache.h"
 
 
 using namespace fl;
@@ -38,38 +39,74 @@ DescriptorSIFT::DescriptorSIFT (int width, int angles)
   sigmaWeight = width / 2.0;
   maxValue = 0.2f;
 
-  lastBuffer = 0;
+  init ();
 }
 
 DescriptorSIFT::DescriptorSIFT (istream & stream)
 {
-  lastBuffer = 0;
   read (stream);
 }
 
-void
-DescriptorSIFT::computeGradient (const Image & image)
+DescriptorSIFT::~DescriptorSIFT ()
 {
-  if (lastBuffer == (void *) image.buffer  &&  lastTime == image.timestamp)
+  map<int, ImageOf<float> *>::iterator it;
+  for (it = kernels.begin (); it != kernels.end (); it++)
   {
-	return;
+	delete it->second;
   }
-  lastBuffer = (void *) image.buffer;
-  lastTime = image.timestamp;
+}
 
-  ImageOf<float> work = image * GrayFloat;
-  I_x = work * FiniteDifferenceX ();
-  I_y = work * FiniteDifferenceY ();
+void
+DescriptorSIFT::init ()
+{
+  dimension = width * width * angles;
+  angleStep = 2.0f * PI / (angles + 1e-6);
+
+  map<int, ImageOf<float> *>::iterator it;
+  for (it = kernels.begin (); it != kernels.end (); it++)
+  {
+	delete it->second;
+  }
+  kernels.clear ();
+}
+
+float *
+DescriptorSIFT::getKernel (int size)
+{
+  map<int, ImageOf<float> *>::iterator it = kernels.find (size);
+  if (it == kernels.end ())
+  {
+	const float center = (width - 1) / 2.0f;
+	const float sigma2 = 2.0f * sigmaWeight * sigmaWeight;
+	const float keyScale = (float) width / size;
+	const float keyOffset = 0.5f * keyScale - 0.5f;
+
+	ImageOf<float> * G = new ImageOf<float> (size, size, GrayFloat);
+	it = kernels.insert (make_pair (size, G)).first;
+	float * g = & (*G)(0,0);
+
+	float qy = keyOffset;
+	for (int y = 0; y < size; y++)
+	{
+	  float qx = keyOffset;
+	  float yc = qy - center;
+	  for (int x = 0; x < size; x++)
+	  {
+		float xc = qx - center;
+		*g++ = expf (- (xc * xc + yc * yc) / sigma2);
+		qx += keyScale;
+	  }
+	  qy += keyScale;
+	}
+  }
+
+  return & (* it->second)(0,0);
 }
 
 Vector<float>
 DescriptorSIFT::value (const Image & image, const PointAffine & point)
 {
-  // First, prepeare the derivative images I_x and I_y, and prepare projection
-  // information between the derivative images and the bins.
-
-  const float center = (width - 1) / 2.0f;
-  const float sigma2 = 2.0f * sigmaWeight * sigmaWeight;
+  // First, grab the patch and prepeare the derivative images I_x and I_y.
 
   // Find or generate gray image at appropriate blur level
   const float scaleTolerance = pow (2.0f, -1.0f / 6);  // TODO: parameterize "6", should be 2 * octaveSteps
@@ -83,92 +120,33 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 	  entry = ImageCache::shared.add (image * GrayFloat, ImageCache::monochrome);
 	}
   }
-  float octave = (float) image.width / entry->width;
+  const float octave = (float) image.width / entry->width;
   PointAffine p = point;
   p.x = (p.x + 0.5f) / octave - 0.5f;
   p.y = (p.y + 0.5f) / octave - 0.5f;
   p.scale /= octave;
 
-  Matrix<double> R = p.rectification ();  // Later, minor changes to R will allow it to function as the rectification from image to histogram bins.
-  Matrix<double> S = p.projection ();
-
-  int sourceT;
-  int sourceL;
-  int sourceB;
-  int sourceR;
-  float angleOffset;
-
-  if (point.A(0,0) == 1.0f  &&  point.A(0,1) == 0.0f  &&  point.A(1,0) == 0.0f  &&  point.A(1,1) == 1.0f)  // No shape change, so we can work in context of original image.
+  Image patch;
+  if (entry->width == entry->height  &&  p.angle == 0  &&  fabs (2.0f * p.scale * supportRadial - entry->width) < 0.5)
   {
-	// Find or generate derivative images
-	PyramidImage * entryX = ImageCache::shared.get (ImageCache::gradientX, entry->scale);
-	if (! entryX  ||  entryX->scale != entry->scale)
-	{
-	  I_x = (*entry) * FiniteDifferenceX ();
-	  ImageCache::shared.add (I_x, ImageCache::gradientX, entry->scale);
-	}
-	else
-	{
-	  I_x = *entryX;
-	}
-	PyramidImage * entryY = ImageCache::shared.get (ImageCache::gradientY, entry->scale);
-	if (! entryY  ||  entryY->scale != entry->scale)
-	{
-	  I_y = (*entry) * FiniteDifferenceY ();
-	  ImageCache::shared.add (I_y, ImageCache::gradientY, entry->scale);
-	}
-	else
-	{
-	  I_y = *entryY;
-	}
-
-	// Project the patch into the gradient image in order to find the window
-	// for scanning pixels there.
-
-	Vector<double> tl (3);
-	tl[0] = -supportRadial;
-	tl[1] = supportRadial;
-	tl[2] = 1;
-	Vector<double> tr (3);
-	tr[0] = supportRadial;
-	tr[1] = supportRadial;
-	tr[2] = 1;
-	Vector<double> bl (3);
-	bl[0] = -supportRadial;
-	bl[1] = -supportRadial;
-	bl[2] = 1;
-	Vector<double> br (3);
-	br[0] = supportRadial;
-	br[1] = -supportRadial;
-	br[2] = 1;
-
-	Point ptl = S * tl;
-	Point ptr = S * tr;
-	Point pbl = S * bl;
-	Point pbr = S * br;
-
-	sourceL = (int) rint (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0f));
-	sourceR = (int) rint (min (max (ptl.x, ptr.x, pbl.x, pbr.x), I_x.width - 1.0f));
-	sourceT = (int) rint (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0f));
-	sourceB = (int) rint (min (max (ptl.y, ptr.y, pbl.y, pbr.y), I_x.height - 1.0f));
-
-	R.region (0, 0, 1, 2) *= width / (2 * supportRadial);
-	R(0,2) += center;
-	R(1,2) += center;
-
-	angleOffset = - point.angle;
+	// patch == entire image, so no need to transform
+	// Note that the test above should also verify that p is at the center
+	// of the image.  However, if the other tests pass, then this is almost
+	// certainly the case.
+	patch = (*entry);
   }
-  else  // Shape change, so we must compute a transformed patch
+  else
   {
 	int patchSize = 2 * supportPixel;
-	double scale = supportPixel / supportRadial;
-	Transform t (S, scale);
+	const double patchScale = supportPixel / supportRadial;
+	Transform t (p.projection (), patchScale);
 	t.setWindow (0, 0, patchSize, patchSize);
-	Image patch = (*entry) * t;
+	patch = (*entry) * t;
+  }
+  float * g = getKernel (patch.width);
 
-
-	// ensure standard blur level
-	/*
+  // ensure standard blur level
+  /*
 	double currentBlur = scale * 0.5 / point.scale;
 	currentBlur = max (currentBlur, 0.5);
 	double targetBlur = scale;
@@ -179,96 +157,102 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 	  blur.direction = Vertical;
 	  patch *= blur;
 	}
-	*/
+  */
 
-	lastBuffer = 0;
-	computeGradient (patch);
+  I_x = patch * fdX;
+  I_y = patch * fdY;
 
-	sourceT = 0;
-	sourceL = 0;
-	sourceB = patchSize - 1;
-	sourceR = sourceB;
+  const float keyScale = (float) width / patch.width;
+  const float keyOffset = 0.5f * keyScale - 0.5f;
 
-	R.clear ();
-	R(0,0) = (double) width / patchSize;
-	R(1,1) = R(0,0);
-	R(0,2) = 0.5 * R(0,0) - 0.5;
-	R(1,2) = R(0,2);
-	R(2,2) = 1;
-
-	angleOffset = 0;
-  }
+  const int rowStep = width * angles;
 
   // Second, gather up the gradient histogram that constitutes the SIFT key.
   Vector<float> result (width * width * angles);
   result.clear ();
-  const float binLimit = width - 0.5f;
-  for (int y = sourceT; y <= sourceB; y++)
+  float * r = & result[0];
+  float * dx = & I_x(0,0);
+  float * dy = & I_y(0,0);
+  float qy = keyOffset;
+  for (int y = 0; y < I_x.height; y++)
   {
-	for (int x = sourceL; x <= sourceR; x++)
+	float qx = keyOffset;
+
+	const int yl = (int) floorf (qy);
+	const int yh = yl + 1;
+	const float yf = qy - yl;
+	const float yf1 = 1.0f - yf;
+
+	// Variable naming scheme for pointers: r{row}{column}
+	// Below are base pointers for the rows...
+	float * const rl = r + yl * rowStep;
+	float * const rh = rl + rowStep;
+
+	for (int x = 0; x < I_x.width; x++)
 	{
-	  Point q = R * Point (x, y);
-	  if (q.x >= -0.5f  &&  q.x < binLimit  &&  q.y >= -0.5f  &&  q.y < binLimit)
+	  float angle = atan2 (*dy, *dx);
+	  if (angle < 0.0f) angle += TWOPIf;
+	  angle /= angleStep;
+	  const float weight = sqrtf (*dx * *dx + *dy * *dy) * *g++;
+	  dx++;
+	  dy++;
+
+	  const int xl = (int) floorf (qx);
+	  const int xh = xl + 1;
+	  const float xf = qx - xl;
+
+	  const int al = (int) floorf (angle);
+	  int ah = al + 1;
+	  if (ah >= angles)
 	  {
-		float dx = I_x(x,y);
-		float dy = I_y(x,y);
-		float angle = atan2 (dy, dx) + angleOffset;
-		angle = mod2pi (angle);
-		angle *= angles / (2 * PI);
-		float xc = q.x - center;
-		float yc = q.y - center;
-		float weight = sqrtf (dx * dx + dy * dy) * expf (- (xc * xc + yc * yc) / sigma2);
+		ah = 0;
+	  }
+	  const float af = angle - al;
+	  const float af1 = 1.0f - af;
 
-		int xl = (int) floorf (q.x);
-		int xh = xl + 1;
-		int yl = (int) floorf (q.y);
-		int yh = yl + 1;
-		int al = (int) floorf (angle);
-		int ah = al + 1;
-		if (ah >= angles)
+	  // Use trilinear method to distribute weight to 8 adjacent bins in histogram.
+	  int step = xl * angles;
+	  if (xl >= 0)
+	  {
+		const float xweight = (1.0f - xf) * weight;
+		if (yl >= 0)
 		{
-		  ah = 0;
+		  float yweight = yf1 * xweight;
+		  float * rll = rl + step;
+		  rll[al] += af1 * yweight;
+		  rll[ah] += af  * yweight;
 		}
-
-		float xf = q.x - xl;
-		float yf = q.y - yl;
-		float af = angle - al;
-
-		// Use trilinear method to distribute weight to 8 adjacent bins in histogram.
-		if (xl >= 0)
+		if (yh < width)
 		{
-		  float xweight = (1.0f - xf) * weight;
-		  if (yl >= 0)
-		  {
-			float yweight = (1.0f - yf) * xweight;
-			result[((xl * width) + yl) * angles + al] += (1.0f - af) * yweight;
-			result[((xl * width) + yl) * angles + ah] +=         af  * yweight;
-		  }
-		  if (yh < width)
-		  {
-			float yweight = yf * xweight;
-			result[((xl * width) + yh) * angles + al] += (1.0f - af) * yweight;
-			result[((xl * width) + yh) * angles + ah] +=         af  * yweight;
-		  }
-		}
-		if (xh < width)
-		{
-		  float xweight = xf * weight;
-		  if (yl >= 0)
-		  {
-			float yweight = (1.0f - yf) * xweight;
-			result[((xh * width) + yl) * angles + al] += (1.0f - af) * yweight;
-			result[((xh * width) + yl) * angles + ah] +=         af  * yweight;
-		  }
-		  if (yh < width)
-		  {
-			float yweight = yf * xweight;
-			result[((xh * width) + yh) * angles + al] += (1.0f - af) * yweight;
-			result[((xh * width) + yh) * angles + ah] +=         af  * yweight;
-		  }
+		  float yweight = yf * xweight;
+		  float * rhl = rh + step;
+		  rhl[al] += af1 * yweight;
+		  rhl[ah] += af  * yweight;
 		}
 	  }
+	  step += angles;
+	  if (xh < width)
+	  {
+		const float xweight = xf * weight;
+		if (yl >= 0)
+		{
+		  float yweight = yf1 * xweight;
+		  float * rlh = rl + step;
+		  rlh[al] += af1 * yweight;
+		  rlh[ah] += af  * yweight;
+		}
+		if (yh < width)
+		{
+		  float yweight = yf * xweight;
+		  float * rhh = rh + step;
+		  rhh[al] += af1 * yweight;
+		  rhh[ah] += af  * yweight;
+		}
+	  }
+
+	  qx += keyScale;
 	}
+	qy += keyScale;
   }
 
   result.normalize ();
@@ -295,12 +279,12 @@ DescriptorSIFT::patch (Canvas * canvas, const Vector<float> & value, int size)
   float * length = & value[0];
   Point center;
   Point tip;
-  for (int x = 0; x < width; x++)
+  for (int y = 0; y < width; y++)
   {
-	center.x = (x + 0.5f) * size;
-	for (int y = 0; y < width; y++)
+	center.y = (y + 0.5f) * size;
+	for (int x = 0; x < width; x++)
 	{
-	  center.y = (y + 0.5f) * size;
+	  center.x = (x + 0.5f) * size;
 	  for (int a = 0; a < angles; a++)
 	  {
 		double angle = a * 2 * PI / angles;
@@ -357,7 +341,7 @@ DescriptorSIFT::read (std::istream & stream)
   stream.read ((char *) &sigmaWeight,   sizeof (sigmaWeight));
   stream.read ((char *) &maxValue,      sizeof (maxValue));
 
-  dimension = width * width * angles;
+  init ();
 }
 
 void
