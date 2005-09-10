@@ -6,7 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Compilability fix for MSVC
+03/2005 Fred Rothganger -- Use closest image in scale pyramid.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
 */
 
 
@@ -68,32 +72,36 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
   float radius;
   if (point.A(0,0) == 1.0f  &&  point.A(0,1) == 0.0f  &&  point.A(1,0) == 0.0f  &&  point.A(1,1) == 1.0f)  // No shape change, so we can work in context of original image.
   {
-	computeGradient (image);
+	ImageCache::shared.add (image);
+	PyramidImage * entry = ImageCache::shared.get (ImageCache::monochrome, point.scale);
+	if (! entry) throw "Could not find cached image";
+	float octave = (float) image.width / entry->width;
+	PointAffine p = point;
+	p.x = (p.x + 0.5f) / octave - 0.5f;
+	p.y = (p.y + 0.5f) / octave - 0.5f;
+	p.scale /= octave;
 
-	radius = point.scale * supportRadial;
-	sourceL = (int) floorf (point.x - radius);
-	sourceR = (int) ceilf  (point.x + radius);
-	sourceT = (int) floorf (point.y - radius);
-	sourceB = (int) ceilf  (point.y + radius);
+	computeGradient (*entry);
+
+	radius = p.scale * supportRadial;
+	sourceL = (int) floorf (p.x - radius);
+	sourceR = (int) ceilf  (p.x + radius);
+	sourceT = (int) floorf (p.y - radius);
+	sourceB = (int) ceilf  (p.y + radius);
 
 	sourceL = max (sourceL, 0);
 	sourceR = min (sourceR, I_x.width - 1);
 	sourceT = max (sourceT, 0);
 	sourceB = min (sourceB, I_x.height - 1);
 
-	center = point;
-	sigma = point.scale;
+	center = p;
+	sigma = p.scale;
   }
   else  // Shape change, so we must compute a transformed patch
   {
-	Matrix<double> S = ! point.rectification ();
-	S(2,0) = 0;
-	S(2,1) = 0;
-	S(2,2) = 1;
-
 	int patchSize = 2 * supportPixel;
 	double scale = supportPixel / supportRadial;
-	Transform t (S, scale);
+	Transform t (point.projection (), scale);
 	t.setWindow (0, 0, patchSize, patchSize);
 	Image patch = image * t;
 	patch *= GrayFloat;
