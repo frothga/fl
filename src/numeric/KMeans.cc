@@ -6,8 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-4/2005 Fred Rothganger -- Change file modes to binary for compatibility with
-       MSVC.
+04/2005 Fred Rothganger -- Change file modes to binary for compatibility with
+        MSVC.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
 */
 
 
