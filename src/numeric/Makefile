@@ -5,13 +5,17 @@
 # for details.
 #
 #
-# 12/2004 Revised by Fred Rothganger
+# 12/2004 Fred Rothganger -- Clean MSVC intermediate files.
+# 06/2005 Fred Rothganger -- Added FT_INC to CPPFLAGS.
+# Revisions Copyright 2005 Sandia Corporation.
+# Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+# the U.S. Government retains certain rights in this software.
 
 
 SOURCE_DIR := ../..
 -include $(SOURCE_DIR)/Config
 
-
+CPPFLAGS += $(FT_INC)
 VPATH = $(SOURCE_LIB)
 
 
@@ -88,7 +92,7 @@ libflNumeric.a: $(MATRIX_DOUBLE_O) $(MATRIX_FLOAT_O) $(MATRIX_BOOL_O) $(MATRIX_I
 
 
 test: test.cc libflNumeric.a
-	g++ -o $@ $^ $(CPPFLAGS) $(CXXFLAGS) -L/home/rothgang/i386/lib -llapack -lblas -lg2c ../base/random.o
+	g++ -o $@ $^ $(CPPFLAGS) $(CXXFLAGS) $(LAPACK_LIB) ../base/random.o
 
 #CXXFLAGS = -g -O3 -march=pentiumpro
 #test: test.cc MatrixDouble.o LevenbergMarquardt.o VectorDouble.o MatrixInt.o MatrixSparseInt.o SearchableNumeric.o VectorInt.o MatrixSparseDouble.o
