@@ -6,7 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-4/2005 Revised by Fred Rothganger
+04/2005 Fred Rothganger -- Complete support for 8-DOF homographies.  Import
+        optimizations from 3D project.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
 */
 
 
