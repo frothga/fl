@@ -7,7 +7,8 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
-09/2005 Fred Rothganger -- Moved from lapacks.h into separate file.
+09/2005 Fred Rothganger -- Moved from lapacks.h into separate file.  Changed
+        1.0 in pinv() to 1.0f.
 */
 
 
@@ -133,7 +134,7 @@ namespace fl
 	{
 	  if (D[i] > tolerance)
 	  {
-		D[i] = 1.0 / D[i];
+		D[i] = 1.0f / D[i];
 	  }
 	  else
 	  {
