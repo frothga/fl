@@ -7,6 +7,8 @@
 #
 # 12/2004 Fred Rothganger -- Clean MSVC intermediate files.
 # 06/2005 Fred Rothganger -- Added FT_INC to CPPFLAGS.
+# 09/2005 Fred Rothganger -- Change lapack*.h to templated lapack.h and move
+#         implementations into separate files.
 # Revisions Copyright 2005 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
@@ -53,6 +55,24 @@ MATRIX_INT_O = \
 	VectorInt.o \
 	MatrixSparseInt.o
 
+LAPACK_DOUBLE_O = \
+	dsyev.o \
+	dspev.o \
+	dsygv.o \
+	dgeev.o \
+	dgelss.o \
+	dgesvd.o \
+	dgetri.o
+
+LAPACK_FLOAT_O = \
+	ssyev.o \
+	sspev.o \
+	ssygv.o \
+	sgeev.o \
+	sgelss.o \
+	sgesvd.o \
+	sgetri.o
+
 SEARCH_DOUBLE_O = \
 	SearchableNumericDouble.o \
 	SearchableSparseDouble.o \
@@ -87,7 +107,7 @@ REDUCE_O = \
 	PCA.o \
 	MDA.o
 
-libflNumeric.a: $(MATRIX_DOUBLE_O) $(MATRIX_FLOAT_O) $(MATRIX_BOOL_O) $(MATRIX_INT_O) $(MATRIX_COMPLEX_DOUBLE_O) $(SEARCH_DOUBLE_O) $(SEARCH_FLOAT_O) $(ROOTS_O) $(CLUSTER_O) $(NEURAL_O) $(REDUCE_O)
+libflNumeric.a: $(MATRIX_DOUBLE_O) $(MATRIX_FLOAT_O) $(MATRIX_BOOL_O) $(MATRIX_INT_O) $(MATRIX_COMPLEX_DOUBLE_O) $(LAPACK_DOUBLE_O) $(LAPACK_FLOAT_O) $(SEARCH_DOUBLE_O) $(SEARCH_FLOAT_O) $(ROOTS_O) $(CLUSTER_O) $(NEURAL_O) $(REDUCE_O)
 	ar rcsv $(SOURCE_LIB)/$@ $^
 
 
