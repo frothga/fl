@@ -137,8 +137,8 @@ namespace fl
 	  return ! ((*this) == B);
 	}
 
-	//virtual M<T> operator ! () const;  ///< Invert matrix (or create pseudo-inverse)
-	//virtual M<T> operator ~ () const;  ///< Transpose matrix
+	Matrix<T> operator ! () const;  ///< Invert matrix if square, otherwise create pseudo-inverse.  Can't be virtual, because this forces a link dependency on LAPACK for any matrix class that uses it to implement inversion.
+	//virtual M<T> operator ~ () const;  ///< Transpose matrix.  Not implemented here since small matrices could directly transpose their contents.
 
 	virtual Matrix<T> operator * (const MatrixAbstract & B) const;  ///< Multiply matrices: this * B
 	//virtual M<T> operator * (const T scalar) const;  ///< Multiply each element by scalar
@@ -221,6 +221,7 @@ namespace fl
 	virtual T dot (const Matrix & B) const;
 	virtual Matrix transposeSquare () const;  ///< Computes the upper triangular part of the symmetric matrix (~this * this).
 
+	Matrix operator ! () const;
 	virtual MatrixTranspose<T> operator ~ () const;
 	virtual Matrix operator * (const MatrixAbstract<T> & B) const;
 	virtual Matrix operator * (const Matrix & B) const;
@@ -591,6 +592,7 @@ namespace fl
 	virtual MatrixAbstract<T> * duplicate () const;
 	virtual void resize (const int rows = 3, const int columns = 3);
 
+	Matrix<T> operator ! () const;
 	virtual Matrix<T> operator * (const MatrixAbstract<T> & B) const;
 
 	virtual void read (std::istream & stream);

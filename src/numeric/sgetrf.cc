@@ -19,21 +19,21 @@ namespace fl
 {
   template<>
   Matrix<float>
-  operator ! (const Matrix<float> & A)
+  Matrix<float>::operator ! () const
   {
-	int m = A.rows ();
-	int n = A.columns ();
-	Matrix<float> tempA;
-	tempA.copyFrom (A);
+	if (rows_ != columns_) return pinv (*this);  // forces sgesvd to be linked as well
 
-	int * ipiv = (int *) malloc (std::min (m, n) * sizeof (int));
+	Matrix<float> tempA;
+	tempA.copyFrom (*this);
+
+	int * ipiv = (int *) malloc (rows_ * sizeof (int));
 
 	int info = 0;
 
-	sgetrf_ (m,
-			 n,
+	sgetrf_ (rows_,
+			 rows_,
 			 & tempA[0],
-			 m,
+			 rows_,
 			 ipiv,
 			 info);
 
@@ -42,9 +42,9 @@ namespace fl
 	  int lwork = -1;
 	  float optimalSize;
 
-	  sgetri_ (n,
+	  sgetri_ (rows_,
 			   & tempA[0],
-			   m,
+			   rows_,
 			   ipiv,
 			   & optimalSize,
 			   lwork,
@@ -53,9 +53,9 @@ namespace fl
 	  lwork = (int) optimalSize;
 	  float * work = (float *) malloc (lwork * sizeof (float));
 
-	  sgetri_ (n,
+	  sgetri_ (rows_,
 			   & tempA[0],
-			   m,
+			   rows_,
 			   ipiv,
 			   work,
 			   lwork,
@@ -72,6 +72,20 @@ namespace fl
 	}
 
 	return tempA;
+  }
+
+  template<>
+  Matrix<float>
+  MatrixAbstract<float>::operator ! () const
+  {
+	return ! Matrix<float> (*this);
+  }
+
+  template<>
+  Matrix<float>
+  Matrix3x3<float>::operator ! () const
+  {
+	return ! Matrix<float> (const_cast<float *> (&data[0][0]), 3, 3);
   }
 
   template<>
