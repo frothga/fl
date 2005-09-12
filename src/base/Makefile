@@ -5,7 +5,7 @@
 # for details.
 #
 #
-# 12/2004 Revised by Fred Rothganger
+# 12/2004 Fred Rothganger -- Clean MSVC intermediate files.
 
 
 SOURCE_DIR := ../..
