@@ -6,7 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Add template specializations for bool.
+08/2005 Fred Rothganger -- Compilability fix for GCC 3.4.4
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
 */
 
 
@@ -18,11 +22,12 @@ for details.
 using namespace fl;
 
 
-int MatrixAbstract<bool>::displayWidth = 1;
+template <> int MatrixAbstract<bool>::displayWidth = 1;
 
 template class MatrixAbstract<bool>;
 template class Matrix<bool>;
 template class MatrixTranspose<bool>;
 template class MatrixRegion<bool>;
 
-Factory<MatrixAbstract<bool> >::productMap Factory<MatrixAbstract<bool> >::products;
+template class Factory<MatrixAbstract<bool> >;
+template <> Factory<MatrixAbstract<bool> >::productMap Factory<MatrixAbstract<bool> >::products;
