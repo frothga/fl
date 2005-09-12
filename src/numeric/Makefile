@@ -62,7 +62,7 @@ LAPACK_DOUBLE_O = \
 	dgeev.o \
 	dgelss.o \
 	dgesvd.o \
-	dgetri.o
+	dgetrf.o
 
 LAPACK_FLOAT_O = \
 	ssyev.o \
@@ -71,7 +71,7 @@ LAPACK_FLOAT_O = \
 	sgeev.o \
 	sgelss.o \
 	sgesvd.o \
-	sgetri.o
+	sgetrf.o
 
 SEARCH_DOUBLE_O = \
 	SearchableNumericDouble.o \
