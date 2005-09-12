@@ -124,7 +124,35 @@
 				FileType="0">
 			</File>
 			<File
+				RelativePath=".\dgeev.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\dgelss.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\dgesvd.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\dgetrf.cc"
+				FileType="0">
+			</File>
+			<File
 				RelativePath=".\DimensionalityReduction.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\dspev.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\dsyev.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\dsygv.cc"
 				FileType="0">
 			</File>
 			<File
@@ -256,6 +284,34 @@
 				FileType="0">
 			</File>
 			<File
+				RelativePath=".\sgeev.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\sgelss.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\sgesvd.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\sgetrf.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\sspev.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\ssyev.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\ssygv.cc"
+				FileType="0">
+			</File>
+			<File
 				RelativePath=".\VectorBool.cc"
 				FileType="0">
 			</File>
@@ -292,16 +348,13 @@
 				RelativePath="..\..\include\fl\cluster.h">
 			</File>
 			<File
-				RelativePath="..\..\include\fl\lapackd.h">
+				RelativePath="..\..\include\fl\lapack.h">
 			</File>
 			<File
 				RelativePath="..\..\include\fl\lapackprotod.h">
 			</File>
 			<File
 				RelativePath="..\..\include\fl\lapackprotos.h">
-			</File>
-			<File
-				RelativePath="..\..\include\fl\lapacks.h">
 			</File>
 			<File
 				RelativePath="..\..\include\fl\LevenbergMarquardt.tcc"
