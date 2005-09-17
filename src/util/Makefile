@@ -5,8 +5,8 @@
 # for details.
 #
 #
-# 12/2004 Revised by Fred Rothganger
-#  4/2005 Fred Rothganger -- Add psnr and xv
+# 12/2004 Fred Rothganger -- Add .exe suffix for Cygwin
+# 04/2005 Fred Rothganger -- Add psnr and xv
 
 
 SOURCE_DIR := ../..
