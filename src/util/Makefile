@@ -7,6 +7,10 @@
 #
 # 12/2004 Fred Rothganger -- Add .exe suffix for Cygwin
 # 04/2005 Fred Rothganger -- Add psnr and xv
+# 09/2005 Fred Rothganger -- Link invert to FL_LIB due to new lapack.h
+# Revisions Copyright 2005 Sandia Corporation.
+# Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+# the U.S. Government retains certain rights in this software.
 
 
 SOURCE_DIR := ../..
@@ -30,7 +34,7 @@ crypt$(EXESUF): crypt.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $(SOURCE_BIN)/$@ -lcrypt
 
 invert$(EXESUF): invert.cc
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $(SOURCE_BIN)/$@ $(LAPACK_LIB)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $(SOURCE_BIN)/$@ $(FL_LIB) $(LAPACK_LIB)
 
 psnr$(EXESUF): psnr.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $(SOURCE_BIN)/$@ $(FL_LIB) $(MPEG_LIB) $(MPEG_INC)
