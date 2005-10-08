@@ -1,0 +1,17 @@
+Revision History:
+
+Version 1.2
+	* Limits DescriptorSIFT to only work with rectified patches drawn from the base image.  Testing shows that this is both faster and more repeatable than Lowe's method of working with an untransformed region of some level of the scale pyramid.
+	* Completes support for 8-DOF homography in Transform, and adds some manual loop optimizations.
+	* Completes support for TIFF image I/O built on top of libtiff.
+	* Reworks PixelFormat to be consistent between little and big endian.
+	* Modifies KLT to limit descent in scale pyramid for very large scale points.
+	* Implements CanvasImage::drawText() using the freetype2 library.
+	* Updates VideoFileFormatFFMPEG to work with the FFMPEG library as of 6/2005.
+	* Adds InterestMSER, which implements the famous region detection technique by Jiri Matas.
+
+Version 1.1
+	* Compilability fixes for MSVC and Cygwin.
+
+Version 1.0
+	* Original public release under UIUC/NCSA Open Source License.
