@@ -9,6 +9,7 @@ Version 1.2
 	* Implements CanvasImage::drawText() using the freetype2 library.
 	* Updates VideoFileFormatFFMPEG to work with the FFMPEG library as of 6/2005.
 	* Adds InterestMSER, which implements the famous region detection technique by Jiri Matas.
+	* Breaks LAPACK bridge into separate implementation files and allows destruction of the input matrices for greater efficiency.
 
 Version 1.1
 	* Compilability fixes for MSVC and Cygwin.
