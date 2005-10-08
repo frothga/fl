@@ -1,9 +1,820 @@
+NOTES
+-----
+
+10/5/05
+
+* Added gelsd(), supposedly a faster implementation of least squares than gelss.
+
+
+10/3/05
+
+* Finished going through all functions in lapack.h and modifying them where appropriate to destroy their input.  This is more consistent with LAPACK's m.o., and also with real world usage.  However, some functions still preserve input by copying the matrix, and some functions allow this behavior to be forced with a "copy" flag.  Spent the last week implementing this change.
+
+* It would be simple to add a Kalman filter class that takes Searchables as its state transition and sensor functions.  Could also write an Unscented Kalman filter.  (Name them Kalman and KalmanUnscented.)
+
+* Would like to add a Search for GaussNewton method.
+
+
+9/11/05
+
+* Separated LAPACK functions as planned.  Still need to remove "const" promise from certain parts of interface.
+
+* GCC still fails to emit an explicit template function instantiation.  Should test this under VC to see if it is just me, or if GCC is fundamentally screwy.
+
+
+9/10/05
+
+* Plan for LAPACK interface:
+	- Make function declarations templates and have only one lapack.h
+	- Move implementations into numeric lib.  Name each implementation file after the primary lapack function it calls.  Example: dspev.cc would call dspev_.  If there are multiple fl functions that call the same LAPACK functions (or a very small set of them) then they can be lumped together in the same file.  The reason for putting LAPACK calls in separate files is to avoid linking more of LAPACK than is actually called for.
+		dsyev -- syev abstract (should add dense) with and without evs
+		dspev -- syev packed
+		dsygv
+		dgeev -- geev abstract with and without evs, geev complex w/ evs
+		dgelss -- all gelss
+		dgesvd -- gesvd, pinv, rank
+		dgetri -- operator !, det
+	- Change interfaces of any functions that take concrete Matrix classes to destroy the passed matrix.  Functions taking MatrixAbstract must still copy the contents.
+	- In gelss(), don't pass back residual part of result.  Instead, allow the user to pass a pointer to a variable to receive the residual.  If the pointer is null, don't compute residual.
+
+
+9/6/05
+
+* Attempted to move font related functions from CanvasImage.cc into separate file.  However, this does not help, because the functions are virtual and thus forced to be linked when the vtable is emitted.  Conclusion: isolating members of a class is only possible if the members are not virtual.
+
+* My implementation of MSER does not produce the same # of regions or repeatability rate that Krystian reports.
+
+
+9/5/05
+
+* Add more constraints to InterestMSER to filter how many patches are returned.  Most of these are based on communications with Matas or inferred from interface documentation on his code.  However, added a maxRate constraint that I don't see in his stuff.  This limits the rate of change in size of a region.  All of Matas' constraints are illumination invariant, but this one isn't.  It should be used with caution and have a pretty high value.
+
+
+9/1/05
+
+* Add Sandia copyright notice to all files revised (roughly) after the turn of the year.  Basically, consider all modifications other than compilability fixes from the turn of the year as part of version 1.2.  Clarify revision histories to state explicitly (but tersely) the modification made.
+* Built an ESTSC release disk.  Expect to redo this one more time after getting instructions from Sandia legal department.
+
+
+8/27/05
+
+* Added a destructor to DescriptorSIFT2, since it creates "kernels" on the heap.
+
+
+8/22/05
+
+* Move TODO list to separate document and clean up.
+
+
+8/6/05
+
+* Clean up and check-in code in preparation for public release.
+* Fix compilation issues with GCC 3.4
+* There is a dependency between the numeric and image libraries caused by a reference to Comparison in cluster.h, thus requiring descriptor.h and a heap of other machinery from image.  Need to break this dependency somehow.
+
+
+6/6/05
+
+* MSER code is now producing reasonable regions.  However, it may be possible to run faster by saving old covariance matrices and updating them, rather than calculating from scratch for every point generated.
+
+
+6/5/05
+
+* Got through most bugs in key portion of MSER.
+
+
+6/4/05
+
+* Inspiration: why not try just a 4x4 gradient image as a descriptor?  Similar to both PCA-SIFT and SIFT, though probably not as descriptive as either one.
+
+
+6/2/05
+
+* Antonio sent me a Matlab file with a really interesting implementation of SIFT.  It reduces entirely to matrix multiplication:
+	sift = A*f(BC)
+	A = 16 by w^2 matrix of resampling weights (from patch to sift spatial layout)
+	B = w^2 by 2 matrix = image gradient
+	C = 2 by 8 matrix of direction vectors for 8 orientations
+	f() = zero out all negative values
+
+
+5/31/05
+
+* Begin writing MSER code
+
+
+5/29/05
+
+* Finish initial implementation of CanvasImage::drawText() based on freetype2.
+
+* Fix bug in KLT: It wasn't adjusting for non-completed levels correctly due to OBOBs in handling of "level" variable.
+
+* Update VideoFileFormatFFMPEG to latest version of FFMPEG.  That version changes how frame rates are represented, forcing several simple but sensitive changes to the code.
+
+
+5/28/05
+
+* Switched to hi-res timer for Windows version of getTimestamp().  There appears to be no bug in Stopwatch in tests on my computer with MSVC 2003.
+
+
+5/26/05
+
+* Learned, while at work, that pow() call is biggest bottleneck in converting gray char's to gray float image format.  Takes 1.6ms to convert 640x480 chars directly to floats, 3ms to do all parts of linearize() besides pow(), and 35ms to do full process.  Note that 35ms is longer than 1 frame period for 30fps!
+
+* Also learned at work that Stopwatch doesn't work right if getTimestamp() is converted to hi-res timers under Windows.  Not sure what the issue is.  Rather bizarre.
+
+
+5/22/05
+
+* Should name the "mingw" directory something like "windows" instead.  This will conceptually permit libraries built by other means.
+
+* Use freetype2 library to add drawText function to CanvasImage.
+
+* Should add some kind of configuration variables (defines or something) that allow user to disable use of each of the external libraries.  These libraries are:
+	lapack & blas
+	libtiff
+	libjpeg
+	ffmpeg
+	freetype2
+
+
+5/3/05
+
+* Created a new subdirectory fl/mingw which contains libs and include files for supporting libraries under Windows.  Will maintain Windows (via -mno-cygwin or mingw) builds of: libtiff, libjpeg, ffmpeg, and lapack.
+
+
+5/2/05
+
+* Added BGRChar and UYVChar.
+* Finished adjusting KLT to limit descent in pyramid based on scale of point.
+
+
+5/1/05
+
+* Checking gray converters:
+	PixelFormat::getGray -- dark
+	PixelFormatGrayChar::fromRGBAChar -- dark
+	PixelFormatGrayChar::fromRGBABits -- dark
+	PixelFormatGrayChar::setRGBA -- dark
+	PixelFormatGrayShort -- dark
+	PixelFormatGrayShort::setRGBA -- dark
+	PixelFormatGrayFloat::fromRGBAChar -- light
+	PixelFormatGrayFloat::fromRGBAbits -- dark
+	PixelFormatGrayFloat::setRGBA -- light
+	PixelFormatGrayFloat::getRGBA -- dark
+	PixelFormatGrayDouble::fromRGBAChar -- light
+	PixelFormatGrayDouble::fromRGBAbits -- dark
+	PixelFormatGrayDouble::setRGBA -- light
+	PixelFormatGrayDouble::getRGBA -- dark
+	PixelFormatRGBABits::fromGrayFloat -- dark
+	PixelFormatRGBABits::fromGrayDouble -- dark
+The dark version agrees with PaintShop Pro 7's conversion to gray.  The underlying issue is that the GrayFloat and GrayDouble formats have "fromRGBA*" functions which use the Y conversion weights rather than the non-linear integer weights.  This is actually more correct.  Solution is simply to be aware of the difference.
+
+
+4/30/05
+
+* Deepened implementation of RGBChar.  Simplified implementation of ImageFileFormatPGM thanks to RGBChar.
+
+* During testing, found that some grays come out differently between different converters.  Track down and see if this is a bug in new code.
+
+
+4/29/05
+
+* Completed initial pass of rationalizing PixelFormts.  Surprisingly, stuff appears to be working!  However, need thorough testing of every piece of modified code.  Also need to unit test ImageFileFormats and FFMPEG i/o.
+
+* Could make RGBChar and RGBAChar subclasses of RGBABits, since they act like Bits formats at various times.
+
+* Some places in Pixel.cc are using Int2Char when they could just directly read a word.
+
+
+4/25/05
+
+* Dependencies on formats (using memory order names):
+	JPEG -- RGB in char
+	TIFF -- RGB and RGBA in char, short, and float
+	PGM -- RGB in char
+	EPS -- GrayChar only
+	Matlab -- Gray* only
+	X windows -- arbitrary char format; uses bits for adaptive format
+	GL -- RGB in char
+Conclusion: rather than rename RGBAChar, rewrite it to store channels in correct order in memory.
+
+* Rationalize PixelFormat names.  Mapping from old name -> new name:
+	YVYUChar -> UYVYChar
+	VYUYChar -> YUYVChar
+	ABGRChar -> RGBAChar
+	RGBChar -> none
+	BGRChar -> RGBChar
+
+* Other PixelFormat actions:
+	remove all "bits" instances
+	remove alpha channel from get/setXYZ() -- done today
+	create true RGBChar (not a bits format)
+	leave get/setRGBA() as is.  This will require change to color.h and any user-specified color values, since alpha will now occupy LSB.
+
+
+4/24/05
+
+* Begin analysis of actions necessary to rationalize PixelFormats
+
+
+4/23/05
+
+* Rolled back CVS repository to 3/6/05 and redid the copyright notices.  This time, files that I modifed after 11/21 simply say "12/2004 Revisions by Fred Rothganger" rather than a claim of copyright.  That way, the modified files are noted, and it shouldn't offend any IP officials.  (Plan to ask for an LGPL release of changes since the turn of the year.)  Reapplied changes to convolve.h, Transform.cc, and DescriptorSIFT.cc.
+
+* Added GrayShort to support TIFF.
+* Current precedence table for PixelFormats
+	0 -- GrayChar (1 byte)
+	1 -- YVYUChar, VYUYChar (4 bytes)
+	2 -- GrayShort (2 bytes)
+	3 -- RGBAChar, RGBABits (4 bytes)
+	4 -- GrayFloat (4 bytes)
+	5 -- RGBAShort, RGBShort (8,6 bytes)
+	6 -- GrayDouble (8 bytes)
+	7 -- RGBAFloat, HLSFloat (16,12 bytes)
+
+
+4/15/05
+
+* Finished TIFF read and write.  Code has been partially completed (with functional read) for a long time.  Plan for support under Win32 for both TIFF and JPEG is to make MinGW builds of the respective libraries.  Then FL will require those two libs plus LAPACK/BLAS.
+
+* At work this week, did a lot of bug hunting on the seek problem.  It appears to be a special case in the video data that causes FFMPEG to return a ridiculous PTS, and then FL goes into an infinite loop trying.  There may be other seek bugs as well.  Not sure whether the fix needs to be in FL or FFMPEG.  However, something that helps is to not seek backwards when target PTS is negative.
+
+* Also at work, studied read/write of timestamps:  It is possible to write PTS to a file simply by setting it on the AVPicture that is about to be encoded.  However, determining timestamp from PTS during readback is tricky because PTS is not always on every frame, even in variable rate video.
+
+* Must add ios::binary to any file open that assumes binary.  This is a platform compatibility issue.
+
+
+3/20/05
+
+* Based on talk with John Feddema and Ray Schaum, need to reverse self-copyright notices.  However, not sure what to put on files that I've modified.  Need to look into this further.  In the meantime, at least should put UIUC notices at top of files.
+
+* In Transform.cc, adding pre-calculation of the range of rows where don't need to calculate bounds due to it being entirely inside image.
+
+
+3/19/05
+
+* Continuing to work on porting 3d/align.cc code into Transform.cc.
+
+
+3/13/05
+
+* Finished revising Transform.cc to use 8-DOF homographies everywhere, which simplifies code a little.  This has been on the "todo list" for a long time, and some support was already present in the class.  TransformGauss.cc needs more attention, because it generates a fixed-size kernel, while a variable-sized one is needed if the extra 2 degrees of freedom (variable scaling) are used.  Will wait to do that.
+* Plan is to port optimizations from 3d/align.cc into Transform.cc.  This should make SIFT faster, since it uses Transform.  Have already converted Transform to use double for pixel location calculations, so align.cc could use Transform directly now.  This would enable the tracking of full 8-DOF homographies in video files, something I have wanted to try for a long time, and have repeatedly discussed with Jean, Cordelia, and Lana.
+
+
+3/6/05
+
+* Adding UIUC copyright notice to top of each source file (as should have been done when first published).  Also adding self copyright notice to all sources currently posted to UIUC that were modified after 11/21 when my assistantship ran out at UIUC.  These sources are:
+Config
+Makefile
+src/image
+	AbsoluteValue.cc
+	Canvas.cc
+	CanvasImage.cc
+	CanvasPS.cc
+	Comparison.cc
+	Convolution1D.cc
+	Convolution2D.cc
+	ConvolutionRecursive.cc
+	DescriptorColorHistogram2D.cc
+	DescriptorColorHistogram3D.cc
+	DescriptorLBP.cc
+	DescriptorOrientationHistogram.cc
+	DescriptorSIFT.cc
+	DescriptorSchmid.cc
+	DescriptorSchmidScale.cc
+	DescriptorSpin.cc
+	DescriptorTextonScale.cc
+	FilterHarris.cc
+	GaussianDerivativeFirst.cc
+	GaussianDerivativeSecond.cc
+	GaussianDerivativeThird.cc
+	Image.cc
+	ImageFileFormatEPS.cc
+	ImageFileFormatMatlab.cc
+	ImageFileFormatPGM.cc
+	InterestDOG.cc
+	InterestHessian.cc
+	KLT.cc
+	Makefile
+	Pixel.cc
+	TransformGauss.cc
+	Video.cc
+	VideoFileFormatFFMPEG.cc
+src/X
+	X.cc
+src/base
+	Makefile
+src/net
+	Makefile
+	socket.cc
+src/numeric
+	Makefile
+	MatrixBool.cc
+	MatrixSparseBool.cc
+	NeuralNetworkBackprop.cc
+src/util
+	Makefile
+	epsall.cc
+include/fl
+	AnnealingAdaptive.tcc
+	LevenbergMarquardt.tcc
+	LevenbergMarquardtSparseBK.tcc
+	Matrix.tcc
+	MatrixBool.tcc -- new file
+	MatrixComplex.tcc
+	MatrixSparse.tcc
+	MatrixSparseBool.tcc -- new file
+	SearchableNumeric.tcc
+	SearchableSparse.tcc
+	Vector.tcc
+	canvas.h
+	cluster.h
+	color.h
+	convolve.h
+	descriptor.h
+	lapackd.h
+	lapacks.h
+	math.h
+	matrix.h
+	pi.h
+	pointer.h
+	random.h
+	socket.h
+	stats.h
+	string.h
+	time.h
+	video.h
+
+Also modified other sources after most recent posting to UIUC, but haven't checked changes into personal CVS yet.  Will add self copyright with next checkin on those sources.  Plan to add self-copyright to all sources I modify in the future.
+
+
+3/5/05
+
+* Placing cases into separate loops (a sort of unrolling) does not significantly improve speed of SIFT.  Don't do it, because it makes the code *much* harder to maintain.  Here are times for processing the first two bear images (> 3000 points each):
+	image1 image2
+	12.875 12.421  regular
+	12.814 12.339  unrolled
+
+
+3/1/05
+
+* Test of initial optimizations to SIFT produced equal descriptors and twice the speed.  Key changes are due to not handling both square and affine cases.  That allows removal of border testing for central loop.  Also moved image access outside loop and just incremented pointer to pixel location.
+
+
+2/27/05
+
+* Conclusion from benchmarking with Mikolajczyk software:
+	- square case offers no accuracy advantage
+	- in cases where blurring helps, blurring within rectified patch does slightly more good than using the scale pyramid.  Maybe should make blurring rectified patch a user-option.
+
+
+2/26/05
+
+* Test using Miklajczyk's tool on (dog + harris-laplacian) and graffiti set
+
+repeatability:
+img2: 25.4 43.7 57.0 63.0 67.4 70.1
+img3: 15.5 30.8 42.9 51.1 58.9 63.4
+img4: 12.0 26.4 38.2 46.5 54.3 59.6
+img5: 8.7 21.2 28.9 35.7 44.5 53.0
+img6: 5.7 15.0 21.3 27.0 35.8 44.9
+
+matching score of original SIFT and sr=6:
+img2: 42.2
+img3: 29.3
+img4: 20.4
+img5: 11.4
+img6: 7.0
+
+matching score of SIFT with blurring within rectified patch:
+img2: 40.1
+img3: 27.6
+img4: 19.6
+img5: 10.7
+img6: 6.8
+
+matching score of SIFT using scale pyramid:
+img2: 40.7
+img3: 27.7
+img4: 19.4
+img5: 9.9
+img6: 5.6
+
+* Tests on dog and bark set:
+
+repeatability:
+img2: 17.0 44.9 59.9 68.9 75.6 80.1
+img3: 5.1 38.9 59.0 69.7 75.5 79.7
+img4: 6.6 47.6 65.0 70.9 74.8 77.5
+img5: 22.2 55.0 64.8 68.5 73.8 77.2
+img6: 3.4 35.9 51.9 66.5 69.9 73.3
+
+matching score of original SIFT:
+img2: 12.9
+img3: 7.8
+img4: 11.6
+img5: 7.3
+img6: 3.0
+
+matching score of SIFT with blurring within rectified patch:
+img2: 14.5
+img3: 8.7
+img4: 11.5
+img5: 7.6
+img6: 3.4
+
+matching score of SIFT using scale pyramid:
+img2: 13.9
+img3: 8.6
+img4: 10.4
+img5: 7.0
+img6: 2.9
+
+matching score for SIFT with "square" case activated:
+img2: 13.4
+img3: 7.3
+img4: 10.8
+img5: 6.1
+img6: 1.4
+
+* Tests on (dog + harris-laplacian) and bark:
+
+repeatability:
+img2: 2.5 14.4 30.6 45.4 59.5 69.5
+img3: 1.2 13.5 30.8 47.8 60.3 70.8
+img4: 7.9 30.5 46.1 55.9 63.7 70.6
+img5: 9.2 26.7 39.4 49.1 57.8 64.4
+img6: 3.9 18.3 30.6 39.7 51.5 55.5
+
+matching score of original SIFT:
+img2: 10.7
+img3: 6.0
+img4: 8.4
+img5: 4.9
+img6: 2.0
+
+matching score for SIFT with blurring within rectified patch:
+img2: 10.2
+img3: 6.4
+img4: 8.6
+img5: 5.5
+img6: 2.4
+
+matching score for SIFT using scale pyramid:
+img2: 10.7
+img3: 5.7
+img4: 7.2
+img5: 4.6
+img6: 1.8
+
+
+2/20/05
+
+* Should use scale pyramid rather than larger filters in other point detectors:
+	HarrisLaplacian
+	Hessian
+	Harris
+	Laplacian
+Of these, only Hessian and HarrisLaplacian are actively used, so prioritize those.
+
+* Test repeatability when rectified patch is blurred:
+
+SIFT on bear: 12.734
+0.75 0.19403 156 648
+0.85 0.554555 554 445
+0.95 0.87451 223 32
+total = 0.453353 933 1125
+
+SIFT w/ scale on bear: 12.738
+0.75 0.201889 171 676
+0.85 0.526527 526 473
+0.95 0.888889 216 27
+total = 0.437051 913 1176
+
+SIFT on bear (downsampled by 2 with TransformGauss):
+0.75 0.219976 185 656
+0.85 0.569969 558 421
+0.95 0.818792 122 27
+total = 0.439309 865 1104
+
+SIFT w/ scale on bear (downsampled by 2 with TransformGauss): 12.58
+0.75 0.222965 200 697
+0.85 0.548199 563 464
+0.95 0.730337 65 24
+total = 0.411326 828 1185
+
+
+* Things still worth testing on Krystian's evaluation system:
+	- use of scale pyramid
+	- blurring within rectified patch
+	- special case for "square" patches
+
+* Tests with Krystian's code:
+
+Repeatability of affine-adapted combo (harris-laplacian + dog):
+overlap error: 10.0 20.0 30.0 40.0 50.0 60.0 
+repeatability: 25.4 43.7 57.0 63.0 67.4 70.1 
+nb of correspondences: 289 498 649 718 768 799 
+Matching with the descriptor for the overlap error < 50
+Matching score  0.2, nb of correct matches 2.0.
+
+Repeatability of raw (non-adapted) combo (harris-laplacian + dog):
+an order of magnitude more points caused the n^2 algorithm to take too long for my patience, aborted
+
+
+2/19/05
+
+* Further testing shows that using a scale pyramid when available does not improve speed of SIFT, and incurs slight cost in number of correct matches.  However, there may be some slight advantage in terms of ratio of correct matches.
+
+* Benchmark tests on "square" patches (alternate path in SIFT code):
+
+SIFT on bear: 80.541
+	before fix to use (non-existent) pyramid: 80.85
+0.75 0.22119 238 838
+0.85 0.455063 719 861
+0.95 0.331343 111 224
+total = 0.357071 1068 1923
+
+SIFT (affine path) on bear: 17.715
+0.75 0.247024 249 759
+0.85 0.516739 710 664
+0.95 0.326241 92 190
+total = 0.39452 1051 1613
+
+SIFT w/ scale on bear: 22.739
+0.75 0.244499 200 618
+0.85 0.501686 595 591
+0.95 0.30163 111 257
+total = 0.381956 906 1466
+
+SIFT (affine path) w/ scale on bear: 17.073
+0.75 0.234146 192 628
+0.85 0.499575 588 589
+0.95 0.297082 112 265
+total = 0.375737 892 1482
+
+SIFT2 on bear: 46.113
+0.75 0.269822 228 617
+0.85 0.5313 662 584
+0.95 0.281646 89 227
+total = 0.40673 979 1428
+
+SIFT2 w/o scale on bear: 180.016
+0.75 0.22119 238 838
+0.85 0.455063 719 861
+0.95 0.331343 111 224
+total = 0.357071 1068 1923
+
+
+SIFT on apple: 21.441
+0.75 0.0153846 4 256
+0.85 0.0474576 14 281
+0.95 0.0721649 14 180
+total = 0.0427236 32 717
+
+SIFT (affine path) on apple: 4.393
+0.75 0.0319635 7 212
+0.85 0.0630252 15 223
+0.95 0.0478469 10 199
+total = 0.048048 32 634
+
+SIFT w/ scale on apple: 5.657
+0.75 0.0472973 7 141
+0.85 0.0507812 13 243
+0.95 0.0485437 10 196
+total = 0.0491803 30 580
+
+SIFT (affine path) w/ scale on apple: 4.391
+0.75 0.0466667 7 143
+0.85 0.0510638 12 223
+0.95 0.0478261 11 219
+total = 0.0487805 30 585
+
+
+
+2/15/05
+
+* Conclusion from benchmarking: direct transformation of image gradient for affine patches (SIFT2) is slower than working in rectified patch.  Heavy optimization will probably not make SIFT2 faster than SIFT because SIFT could also be optimized, and SIFT is simpler than SIFT2.  Therefore, focus on optimizing SIFT and abandon SIFT2.
+	- However, retain cacheing mechanism that looks up closest blur level, because a downsampled image will process faster under any algorithm.
+	- The current SIFT implementation separates "square" from affine patches, and processes square patches just like Lowe does.  However, it may be that even in this case rectifying runs faster.
+	- Lowe's downsampling is probably mainly for speed rather than for factoring out scale change.
+
+
+2/14/05
+
+* Observation: SIFT2 must run all histogramming, etc., machinery for every pixel in source image that falls inside projection area of patch.  SIFT, on the other hand, does the work of a transformation on the same set of pixels, and the histogramming machinery only on the rectified patch, which is potentially much smaller than the image area.  It is the relatively greater expense of histogramming vs. transforming that makes SIFT more efficient than SIFT2.
+
+
+2/13/05
+
+* FTP'ed the version of FL from 1/22 to UIUC.  This version contains only compilability fixes for Cygwin and MSVC.  Kenton, the person who originally developed the MSVC port, asked for the updated version.
+
+
+2/12/05
+
+* Benchmarking results (tests done from 2/12 thru 2/19):
+
+SIFT on apple: 5.74
+0.75 0.0441501 20 433
+0.85 0.542373 32 27
+0.95 0.333333 3 6
+total = 0.105566 55 466
+
+SIFT w/ scale on apple: 5.809  5.813  5.807
+	w/o pyramid available (results same as w/o scale): 5.767  5.75
+0.75 0.0613497 20 306
+0.85 0.522727 23 21
+0.95 0.416667 5 7
+total = 0.125654 48 334
+
+SIFT2 on apple: 11.452
+0.75 0.06 24 376
+0.85 0.52381 22 20
+0.95 0.416667 5 7
+total = 0.112335 51 403
+
+SIFT2 w/o scale on apple: 36.432
+0.75 0.0340136 20 568
+0.85 0.241379 28 88
+0.95 0.4 4 6
+total = 0.0728291 52 662
+
+
+SIFT on apple (second image downsampled by TransformGauss):  5.646  5.59
+0.75 0.0780669 21 248
+0.85 0.6 21 14
+0.95 0.25 2 6
+total = 0.141026 44 268
+
+SIFT w/ scale on apple (second image downsampled by TransformGauss):  5.641  5.619
+0.75 0.0780669 21 248
+0.85 0.6 21 14
+0.95 0.25 2 6
+total = 0.141026 44 268
+
+SIFT2 on apple (second image downsampled by TransformGauss): 8.346
+0.75 0.087963 19 197
+0.85 0.615385 16 10
+0.95 0.4 4 6
+total = 0.154762 39 213
+
+SIFT2 w/o scale on apple (second image downsampled by TransformGauss):  22.771
+0.75 0.0526316 16 288
+0.85 0.395349 17 26
+0.95 0 0 1
+total = 0.0948276 33 315
+
+
+SIFT on bear:  11.456  11.407  11.209  seconds to generate descriptors
+center of comparison value range | percent correct | # correct | # incorrect
+topN = 5:
+0.75 0.0813138 255 2881
+0.85 0.481903 719 773
+0.95 0.94359 184 11
+topN = 1:
+0.75 0.211268 180 672
+0.85 0.694758 676 297
+0.95 0.963351 184 7
+total = 0.515873 1040 976
+
+SIFT w/ scale on bear: 11.6  11.512  11.459  11.505
+	11.64  11.634  w/o pyramid available
+topN = 5:
+0.75 0.0796178 225 2601
+0.85 0.456522 609 725
+0.95 0.908163 178 18
+topN = 1:
+0.75 0.226144 173 592
+0.85 0.68 578 272
+0.95 0.931937 178 13
+total = 0.514396 929 877
+
+SIFT2 on bear:  47.217 s
+topN = 5:
+0.75 0.0906684 274 2748
+0.85 0.484227 614 654
+0.95 0.923977 158 13
+topN = 1:
+0.75 0.247325 208 633
+0.85 0.695136 586 257
+0.95 0.928994 157 12
+total = 0.513222 951 902
+
+SIFT2 w/o scale on bear: 74.765  74.601
+0.75 0.175094 187 881
+0.85 0.623726 673 406
+0.95 0.890625 171 21
+total = 0.440787 1031 1308
+
+SIFT2 scale limited on bear: 12.692
+SIFT scale limited on bear: 8.005
+
+
+SIFT on bear (second image downsampled by 2 using TransformGauss):
+topN = 5:
+0.75 0.164966 388 1964
+0.85 0.493122 466 479
+0.95 0.5 5 5
+topN = 1:
+0.75 0.347392 313 588
+0.85 0.679878 446 210
+0.95 0.555556 5 4
+total = 0.487867 764 802
+
+SIFT w/ scale on bear (second image downsampled by 2 using TransformGauss):
+topN = 5:
+0.75 0.137349 374 2349
+0.85 0.412656 463 659
+0.95 0.731707 30 11
+topN = 1:
+0.75 0.328783 289 590
+0.85 0.633577 434 251
+0.95 0.74359 29 10
+total = 0.46912 752 851
+
+SIFT2 on bear (second image downsampled by 2 using TransformGauss):
+topN = 5:
+0.75 0.119819 292 2145
+0.85 0.442206 417 526
+0.95 0.880597 59 8
+topN = 1:
+0.75 0.279213 227 586
+0.85 0.649416 389 210
+0.95 0.893939 59 7
+total = 0.456698 675 803
+
+
+SIFT on bear (second image downsampled by 2 using blur and alternate pixels):
+topN = 5:
+0.75 0.175126 383 1804
+0.85 0.477673 353 386
+0.95 0.571429 4 3
+topN = 1:
+0.75 0.352097 319 587
+0.85 0.636872 342 195
+0.95 0.571429 4 3
+total = 0.458621 665 785
+
+SIFT w/ scale on bear (second image downsampled by 2 using blur and alternate pixels):
+topN = 5:
+0.75 0.136916 349 2200
+0.85 0.423414 387 527
+0.95 0.733333 22 8
+topN = 1:
+0.75 0.316514 276 596
+0.85 0.619289 366 225
+0.95 0.758621 22 7
+total = 0.44504 664 828
+
+SIFT2 on bear (second image downsampled by 2 using blur and alternate pixels):
+topN = 5:
+0.75 0.113636 260 2028
+0.85 0.475787 393 433
+0.95 0.926829 38 3
+topN = 1:
+0.75 0.265586 213 589
+0.85 0.661896 370 189
+0.95 0.926829 38 3
+total = 0.442939 621 781
+
+
+2/6/05
+
+* Should finish ConvolutionRecursive code and test.  It needs a response() function.  Recursive convolutions could speed up DoG.  Could mix recursive and discrete convolutions for purpose of downsampling in SIFT2.
+
+* Should analyze some specific cases where SIFT and SIFT2 dissagree strongly.
+
+* Should benchmark sift vs. sift2 for both speed and repeatability.
+
+
+1/30/05
+
+* Yesterday's conclusion is wrong.  The real issue is handling the most general form of the shape matrix correctly.  Skew is equivalent to a non-uniform scaling surrounded by two rotations.  Other transforms a already handled correctly.  In general, the shape matrix is a product of: rotation1 * scaling * rotation2.  Since the shape matrix describes a projection from the rectified patch to the image patch, the rotations should be inverted (gradient from image rotates into patch gradient), but scalings kept the same (compressing texture enlongates gradient vector).
+
+* Consider changing fl::PointAffine::A to be float rather than double.  No real need for that much precision in shape matrix, except in the context of a numerical process like shape adaptation.  For comparison, note that (x,Y) values are always stored as floats, even though some transformations require double precision.  I think the rule, though, is that any matrix destined to be inverted should be in double rather than float.  The shape matrix does frequently need to be inverted.
+
+
+1/29/05
+
+* Experimented with computing gradient values for affine patches directly from image rather than from rectified patch.  The two approaches produce the same results under small deformation, but diverge as deformation increases.  This is a sampling issue, and I think that the rectified patch is the more correct approach.  Therefore, don't change DescriptorSIFT or DescriptorOrientationHistogram in this regard.  Keep drawing off rectified patch before computing gradient.
+	- The correct transformation for gradient vector is essentially p.projection() but with p.angle negated (so it goes same direction as rectification), along with an appropriate scaling between rectified and original patches.
+
+
+1/23/05
+
+* The first requirement for the improved image cache is to remove need to sort points by scale in order to get efficient SIFT calculation.  This amounts to storing multiple gradient images rather than just one.
+
+
 1/22/05
 
 * Transferred cvs repository for fl from UIUC to home computer.  From now on, if changes are to be made public, just post the tar file to the UIUC web site.
 
+* Checked in MSVC fixes to date.
+
 * Priorities:
-	- improve image cache mechanism: store multiple types and scales.  Create new object to manage caching, and add interface to take it instead of image.  Make static cache shared by all image processors.  Make it TLS if possible.  Sources that currently do caching:
+	- improve image cache mechanism: store multiple types and scales.  Create new class to manage caching, and add interface to take it instead of image.  Make static cache shared by all image processors.  Make it TLS if possible.  Sources that currently do caching:
 		DescriptorCombo.cc
 		DescriptorLBP.cc
 		DescriptorOrientationHistogram.cc
