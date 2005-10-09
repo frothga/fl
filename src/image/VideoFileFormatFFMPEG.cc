@@ -6,7 +6,14 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Compilability fix for MSVC
+05/2005 Fred Rothganger -- Use new PixelFormat names.
+08/2005 Fred Rothganger -- Update to new time base representation in FFMPEG.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -283,7 +290,7 @@ VideoInFileFFMPEG::open (const string & fileName)
   stream = 0;
   for (int i = 0; i < fc->nb_streams; i++)
   {
-	if (fc->streams[i]->codec.codec_type == CODEC_TYPE_VIDEO)
+	if (fc->streams[i]->codec->codec_type == CODEC_TYPE_VIDEO)
 	{
 	  stream = fc->streams[i];
 	  break;
@@ -294,7 +301,7 @@ VideoInFileFFMPEG::open (const string & fileName)
 	state = -10;
 	return;
   }
-  cc = &stream->codec;
+  cc = stream->codec;
 
   codec = avcodec_find_decoder (cc->codec_id);
   if (! codec)
@@ -509,7 +516,7 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
   }
 
   // Set codec parameters.
-  AVCodecContext & cc = stream->codec;
+  AVCodecContext & cc = *stream->codec;
   cc.codec_type = codec->type;
   cc.codec_id   = codec->id;
   cc.gop_size     = 12; // default = 50; industry standard is 12
@@ -566,13 +573,13 @@ VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
 	  unsigned char * videoBuffer = new unsigned char[bufferSize];
 	  while (true)
 	  {
-		int size = avcodec_encode_video (& stream->codec, videoBuffer, bufferSize, 0);
+		int size = avcodec_encode_video (stream->codec, videoBuffer, bufferSize, 0);
 		if (size > 0)
 		{
 		  AVPacket packet;
 		  av_init_packet (&packet);
-		  packet.pts = stream->codec.coded_frame->pts;
-		  if (stream->codec.coded_frame->key_frame)
+		  packet.pts = stream->codec->coded_frame->pts;
+		  if (stream->codec->coded_frame->key_frame)
 		  {
 			packet.flags |= PKT_FLAG_KEY;
 		  }
@@ -588,7 +595,7 @@ VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
 	  }
 	  delete [] videoBuffer;
 
-	  avcodec_close (& stream->codec);
+	  avcodec_close (stream->codec);
 	}
 	codec = 0;
   }
@@ -602,9 +609,9 @@ VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
 
   if (stream)
   {
-	if (stream->codec.stats_in)
+	if (stream->codec->stats_in)
 	{
-	  av_free (stream->codec.stats_in);
+	  av_free (stream->codec->stats_in);
 	}
 
 	av_free (stream);
@@ -628,9 +635,9 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	return;
   }
 
-  stream->codec.width = image.width;
-  stream->codec.height = image.height;
-  if (stream->codec.pix_fmt == PIX_FMT_NONE)
+  stream->codec->width = image.width;
+  stream->codec->height = image.height;
+  if (stream->codec->pix_fmt == PIX_FMT_NONE)
   {
 	enum ::PixelFormat best = PIX_FMT_YUV420P;  // FFMPEG's default
 	if (codec->pix_fmts)  // options are available, so enumerate and find best match for image.format
@@ -660,14 +667,14 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 		p++;
 	  }
 	}
-	stream->codec.pix_fmt = best;
+	stream->codec->pix_fmt = best;
   }
 
   if (needHeader)
   {
 	needHeader = false;
 
-	state = avcodec_open (& stream->codec, codec);
+	state = avcodec_open (stream->codec, codec);
 	if (state < 0)
 	{
 	  return;
@@ -712,7 +719,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   }
 
   // ...then let FFMPEG convert it.
-  int destFormat = stream->codec.pix_fmt;
+  int destFormat = stream->codec->pix_fmt;
   AVPicture source;
   source.data[0] = (unsigned char *) sourceImage.buffer;
   source.linesize[0] = sourceImage.width * sourceImage.format->depth;
@@ -733,7 +740,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	// Finally, encode and write the frame
 	size = 1024 * 1024;
 	unsigned char * videoBuffer = new unsigned char[size];
-	size = avcodec_encode_video (& stream->codec, videoBuffer, size, &dest);
+	size = avcodec_encode_video (stream->codec, videoBuffer, size, &dest);
 	if (size < 0)  // TODO: Not sure if this case ever happens.
 	{
 	  state = size;
@@ -742,8 +749,8 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	{
 	  AVPacket packet;
 	  av_init_packet (&packet);
-	  packet.pts = av_rescale_q (stream->codec.coded_frame->pts, stream->codec.time_base, stream->time_base);
-	  if (stream->codec.coded_frame->key_frame)
+	  packet.pts = av_rescale_q (stream->codec->coded_frame->pts, stream->codec->time_base, stream->time_base);
+	  if (stream->codec->coded_frame->key_frame)
 	  {
 		packet.flags |= PKT_FLAG_KEY;
 	  }
@@ -794,26 +801,26 @@ VideoOutFileFFMPEG::set (const std::string & name, double value)
 		  }
 		  fr++;
 		}
-		stream->codec.time_base.num = bestRate->den;
-		stream->codec.time_base.den = bestRate->num;
+		stream->codec->time_base.num = bestRate->den;
+		stream->codec->time_base.den = bestRate->num;
 	  }
 	  else  // arbitrary framerate is acceptable
 	  {
-		stream->codec.time_base.num = AV_TIME_BASE;
-		stream->codec.time_base.den = (int) rint (value * AV_TIME_BASE);
+		stream->codec->time_base.num = AV_TIME_BASE;
+		stream->codec->time_base.den = (int) rint (value * AV_TIME_BASE);
 	  }
 	}
 	else if (name == "bitrate")
 	{
-	  stream->codec.bit_rate = (int) rint (value);
+	  stream->codec->bit_rate = (int) rint (value);
 	}
 	else if (name == "gop")
 	{
-	  stream->codec.gop_size = (int) rint (value);
+	  stream->codec->gop_size = (int) rint (value);
 	}
 	else if (name == "bframes")
 	{
-	  stream->codec.max_b_frames = (int) rint (value);
+	  stream->codec->max_b_frames = (int) rint (value);
 	}
   }
 }
