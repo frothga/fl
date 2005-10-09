@@ -6,7 +6,15 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Add warning about conflict with other headers.
+05/2005 Fred Rothganger -- Change all constants to upper-case.  Remove warning.
+        Move alpha channel to LSB.
+09/2005 Fred Rothganger -- Add BLUEGRAY.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file
+LICENSE for details.
 */
 
 
@@ -22,7 +30,10 @@ for details.
 
 #define RED       0xFF0000FF
 #define GREEN     0x00FF00FF
-#define BLUE      0x0000FFFF
+
+#define BLUE100    0x0000FFFF
+#define BLUEGRAY50 0x8080FFFF
+#define BLUE       BLUE100
 
 #define PURPLE    0xFF00FFFF
 
