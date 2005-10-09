@@ -1,11 +1,17 @@
 # Author: Fred Rothganger
 # Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
 #                         Univ. of Illinois.  All rights reserved.
-# Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
+# Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 # for details.
 #
 #
-# 12/2004 Revised by Fred Rothganger
+# 12/2004 Fred Rothganger -- Clean MS Visual Studio files
+# 08/2005 Fred Rothganger -- Put quotes around path names for sake of Cygwin
+# Revisions Copyright 2005 Sandia Corporation.
+# Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+# the U.S. Government retains certain rights in this software.
+# Distributed under the GNU Leser General Public License.  See the file
+# LICENSE for details.
 
 
 SOURCE_DIR := $(CURDIR)
@@ -30,35 +36,35 @@ doc:
 clean:
 	for PACKAGE in $(PACKAGES); do $(MAKE) -C src/$$PACKAGE clean; done
 	rm -f *~ include/$(NS)/*~ $(NS).tgz changens.sed
-	rm -f *.ncb lib/*.lib
+	rm -f *.ncb *.suo lib/*.lib
 	rm -rf html man
 
 depend:
 	for PACKAGE in $(PACKAGES); do $(MAKE) -C src/$$PACKAGE depend; done
 
 install-headers:
-	mkdir -p $(INSTALL_INC)/$(NS)
-	cp -Ruv $(SOURCE_INC)/$(NS)/*.h $(INSTALL_INC)/$(NS)
+	mkdir -p "$(INSTALL_INC)"/$(NS)
+	cp -Ruv "$(SOURCE_INC)"/$(NS)/*.h "$(INSTALL_INC)"/$(NS)
 
 install-libs:
-	mkdir -p $(INSTALL_LIB)
-	cp -Ruv $(SOURCE_LIB)/* $(INSTALL_LIB)
+	mkdir -p "$(INSTALL_LIB)"
+	cp -Ruv "$(SOURCE_LIB)"/* "$(INSTALL_LIB)"
 
 install-bin:
-	mkdir -p $(INSTALL_BIN)
-	cp -Ruv $(SOURCE_BIN)/* $(INSTALL_BIN)
-	find $(SOURCE_DIR)/script -not \( -name "*~" -or -type d \) -exec cp -v \{\} $(INSTALL_BIN) \;
+	mkdir -p "$(INSTALL_BIN)"
+	cp -Ruv "$(SOURCE_BIN)"/* "$(INSTALL_BIN)"
+	find "$(SOURCE_DIR)"/script -maxdepth 1 -not \( -name "*~" -or -type d \) -exec cp -v \{\} "$(INSTALL_BIN)" \;
 
 install-doc:
-	mkdir -p $(INSTALL_HTML)
-	cp -Ruv $(SOURCE_HTML)/* $(INSTALL_HTML)
-	mkdir -p $(INSTALL_MAN)
-	cp -Ruv $(SOURCE_MAN)/* $(INSTALL_MAN)
+	mkdir -p "$(INSTALL_HTML)"
+	cp -Ruv "$(SOURCE_HTML)"/* "$(INSTALL_HTML)"
+	mkdir -p "$(INSTALL_MAN)"
+	cp -Ruv "$(SOURCE_MAN)"/* "$(INSTALL_MAN)"
 
 install: all install-headers install-libs install-bin #install-doc
 
 tar: clean
-	tar -czvf $(NS).tgz -C .. $(notdir $(SOURCE_DIR)) --exclude=*.tgz --exclude=ideas --exclude=CVS --no-anchored
+	tar -czvf $(NS).tgz -C .. $(notdir $(SOURCE_DIR)) --exclude=*.tgz --exclude=CVS --exclude=private --no-anchored
 
 # If you prefer to place the library in a different namespace,
 # set OLDNS and NS in Config appropriately, then do "make changens".
