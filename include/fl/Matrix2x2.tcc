@@ -4,6 +4,14 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
+
+
+09/2005 Fred Rothganger -- Move geev from matrix.h
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file
+LICENSE for details.
 */
 
 
@@ -186,6 +194,56 @@ namespace fl
 	  stream << typeid (*this).name () << std::endl;
 	}
 	stream.write ((char *) data, 4 * sizeof (T));
+  }
+
+  template<class T>
+  void
+  geev (const Matrix2x2<T> & A, Matrix<T> & eigenvalues)
+  {
+	// a = 1  :)
+	T b = A.data[0][0] + A.data[1][1];  // trace
+	T c = A.data[0][0] * A.data[1][1] - A.data[0][1] * A.data[1][0];  // determinant
+	T b4c = b * b - 4 * c;
+	if (b4c < 0)
+	{
+	  throw "eigen: no real eigenvalues!";
+	}
+	if (b4c > 0)
+	{
+	  b4c = sqrt (b4c);
+	}
+	eigenvalues.resize (2, 1);
+	eigenvalues (0, 0) = (b - b4c) / 2.0;
+	eigenvalues (1, 0) = (b + b4c) / 2.0;
+  }
+
+  template<class T>
+  void
+  geev (const Matrix2x2<T> & A, Matrix<std::complex<T> > & eigenvalues)
+  {
+	eigenvalues.resize (2, 1);
+
+	// a = 1  :)
+	T b = -(A.data[0][0] + A.data[1][1]);  // trace
+	T c = A.data[0][0] * A.data[1][1] - A.data[0][1] * A.data[1][0];  // determinant
+	T b4c = b * b - 4 * c;
+	bool imaginary = b4c < 0;
+	if (b4c != 0)
+	{
+	  b4c = sqrt (fabs (b4c));
+	}
+	if (imaginary)
+	{
+	  b /= -2.0;
+	  b4c /= 2.0;
+	  eigenvalues(0,0) = std::complex<T> (b, b4c);
+	  eigenvalues(1,0) = std::complex<T> (b, -b4c);
+	}
+	else
+	{
+	  eigenvalues(0,0) = (-b - b4c) / T (2);
+	  eigenvalues(1,0) = (-b + b4c) / T (2);
+	}
   }
 }
 
