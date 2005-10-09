@@ -2,7 +2,7 @@
 Author: Fred Rothganger
 Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
-Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
+Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 */
 
@@ -200,27 +200,23 @@ main (int argc, char * argv[])
 	*/
 
 
+	/*
 	fl::GLXWindow window;
 	fl::GLXContext context;
-
 	window.map ();
 	window.makeCurrent (context);
-	//fl::Colormap colormap (window.screen->defaultVisual (), AllocNone);
-	//window.setColormap (colormap);
-
-	//sleep (1);
 	glClearColor (1,1,0,1);
 	glClear (GL_COLOR_BUFFER_BIT);
 	window.swapBuffers ();
 	sleep (2);
+	cerr << "after sleep" << endl;
+	*/
 
 
-	/*
 	GLTest window;
 	window.map ();
 	window.screen->display->flush ();
 	window.waitForClose ();
-	*/
   }
   //catch (const char * error)
   catch (int error)
