@@ -6,7 +6,16 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+01/2005 Fred Rothganger -- Update comments and defaults on some classes.  Add
+        ChiSquared::preprocess().  Guarantee orientations are returnd in
+        descending order by strength.
+09/2005 Fred Rothganger -- Commit to using ImageCache.  Efficiency improvements
+        to DescriptorSIFT.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file
+LICENSE for details.
 */
 
 
@@ -18,6 +27,7 @@ for details.
 #include "fl/matrix.h"
 #include "fl/point.h"
 #include "fl/canvas.h"
+#include "fl/imagecache.h"
 
 #include <iostream>
 #include <vector>
@@ -409,8 +419,10 @@ namespace fl
   public:
 	DescriptorSIFT (int width = 4, int angles = 8);
 	DescriptorSIFT (std::istream & stream);
+	~DescriptorSIFT ();
 
-	void computeGradient (const Image & image);
+	void init ();  ///< Computes certain working data based on current values of parameters.
+	float * getKernel (int size);  ///< Generates/caches Gaussian weighting kernels for various sizes of rectified patch.
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
@@ -420,16 +432,23 @@ namespace fl
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 
+	// Parameters
 	int width;  ///< Number of horizontal or vertical positions.
 	int angles;  ///< Number of orientation bins.
 	int supportPixel;  ///< Pixel radius of normalized form of affine-invariant patch, if used.
 	float sigmaWeight;  ///< Size of Gaussian that weights the entries in the bins.
 	float maxValue;  ///< Largest permissible entry in one bin.
 
-	void * lastBuffer;  ///< For detecting change in cached image.
-	double lastTime;  ///< For detecting change in cached image.
+	// Values derived from parameters by init().
+	float angleStep;
+
+	// Storage used for calculating individual descriptor values.  These are
+	// here mainly to avoid repeatedly constructing certain objects.
+	std::map<int, ImageOf<float> *> kernels;  ///< Gaussian weighting kernels for various sizes of rectified patch.
 	ImageOf<float> I_x;  ///< x component of gradient vectors
 	ImageOf<float> I_y;  ///< y component of gradient vectors
+	FiniteDifferenceX fdX;
+	FiniteDifferenceY fdY;
   };
 
   /**
