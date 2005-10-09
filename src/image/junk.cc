@@ -6,7 +6,14 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Attempt to adjust white balance of firewire camera
+10/2005 Fred Rothganger -- Test ImageFileFormatTIFF, Transform, InterestMSER,
+        Canvas::drawText, alternate implementations of DOG and SIFT.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -18,8 +25,11 @@ for details.
 #include "fl/interest.h"
 #include "fl/descriptor.h"
 #include "fl/lapackd.h"
+#include "fl/lapacks.h"
 #include "fl/random.h"
 #include "fl/track.h"
+#include "fl/imagecache.h"
+#include "fl/time.h"
 
 #include <math.h>
 #include <fstream>
@@ -326,8 +336,24 @@ main (int argc, char * argv[])
 	/*
 	new ImageFileFormatMatlab;
 	new ImageFileFormatJPEG;
-	Image image (parmChar (1, "test.mat"));
-	image *= Rescale (image);
+	new ImageFileFormatTIFF;
+	new ImageFileFormatPGM;
+	PixelFormatRGBABits barf0 (3, 0xFF00, 0xFF, 0xFF0000, 0x0);
+	PixelFormatRGBABits barf1 (3, 0xFF, 0xFF0000, 0xF00, 0x0);
+	Image image (parmChar (1, "test.tif"));
+	image *= BGRChar;
+	Image i2 (image.width, image.height, UYVChar);
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		unsigned int pixel;
+		pixel = image.getYUV (x, y);
+		i2.setYUV (x, y, pixel);
+	  }
+	}
+	image = i2;
+	cerr << typeid (*image.format).name () << endl;
 	window.show (image);
 	window.waitForClick ();
 	*/
@@ -420,7 +446,7 @@ main (int argc, char * argv[])
 		cerr << "vout is bad" << endl;
 		exit (0);
 	  }
-	  image.clear ((i << 16) | (i << 8) | i);
+	  image.clear ((i << 24) | (i << 16) | (i << 8));
 	  window.show (image);
 	  vout << image;
 	}
@@ -484,25 +510,33 @@ main (int argc, char * argv[])
 	new ImageFileFormatPGM;
 	new ImageFileFormatJPEG;
 	Image image;
-	image.read ("test.jpg");
-	image *= GrayFloat;
+	image.read ("test2.jpg");
+	//image *= GrayFloat;
 
 	Transform rot (parmFloat (1, 0) * PI / 180);
 	Transform scale (parmFloat (2, 1), parmFloat (3, 1));
-	Matrix2x2<float> A;
+	Matrix3x3<float> A;
 	A.identity ();
 	A(0,1) = parmFloat (4, 0);
+	A(2,0) = parmFloat (5, 0);
+	A(2,1) = parmFloat (6, 0);
 	Transform sheer (A);
-	TransformGauss T = scale * rot * sheer;
+	A.identity ();
+	A(0,2) = parmFloat (7, 0);
+	A(1,2) = parmFloat (8, 0);
+	Transform trans (A);
+	Transform T = scale * trans * rot * sheer;
 
-	//T.setWindow (0, 0, 100, 100);
+	//T.setWindow (50, 50, 100, 100);
 	//T.setPeg (50, 50, 100, 100);
+	Stopwatch w;
 	image *= T;
+	cerr << "time = " << w << endl;
 	cerr << typeid (*image.format).name () << endl;
+	cerr << "image = " << image.width << " " << image.height << endl;
 	window.show (image);
 	window.waitForClick ();
 	*/
-
 
 
 	// Test convolutions
@@ -600,25 +634,32 @@ main (int argc, char * argv[])
 
 
 	// Test interest operator
-	/*
 	new ImageFileFormatPGM;
 	new ImageFileFormatJPEG;
-	InterestHarrisLaplacian l;
+	new ImageFileFormatTIFF;
 	Image i;
 	i.read (parmChar (1, "test.jpg"));
-	CanvasImage ci = i;
-	i *= GrayFloat;
-	multiset<PointInterest> points;
-	l.run (i, points);
+	Image original = i;
+	i *= GrayChar;
+	InterestPointSet points;
+	InterestMSER m (parmInt (2, 5), parmFloat (3, 0.9f));
+	Stopwatch timer;
+	m.run (i, points);
+	cerr << "run time = " << timer << endl;
 	cerr << "total points = " << points.size () << endl;
-	multiset<PointInterest>::iterator it;
-	for (it = points.begin (); it != points.end (); it++)
+	InterestPointSet::reverse_iterator it;
+	  CanvasImage ci;
+	  ci.copyFrom (original);
+	for (it = points.rbegin (); it != points.rend (); it++)
 	{
-	  ci.drawCircle (*it, it->scale, green);
+	  PointMSER * p = (PointMSER *) *it;
+	  //cerr << "MSER = " << (int) p->threshold << " " << p->sign << " " << p->weight << endl;
+	  //ci.drawMSER (*p, i);
+	  ci.drawEllipse (*p, p->A * ~p->A, p->scale, GREEN);
 	}
-	window.show (ci);
-	window.waitForClick ();
-	*/
+	  window.show (ci);
+	  window.waitForClick ();
+
 
 
 	// Test SIFT
@@ -665,79 +706,247 @@ main (int argc, char * argv[])
 
 
 	// Test DOG + SIFT
+	/*
 	new ImageFileFormatPGM;
 	new ImageFileFormatJPEG;
 	InterestDOG l;
 	l.storePyramid = true;
-	//Image i (parmChar (1, "test.jpg"));
-	ImageOf<float> i (1280, 960, GrayFloat);
-	for (int x = 0; x < i.width; x++)
-	{
-	  for (int y = 0; y < i.height; y++)
-	  {
-		i(x,y) = (float) x / i.width;
-	  }
-	}
+	Image i (parmChar (1, "test.jpg"));
 	CanvasImage ci = i;
 	i *= GrayFloat;
 	multiset<PointInterest> points;
 	l.run (i, points);
-	PointInterest tp;
-	tp.x = 167.52;
-	tp.y = 470.56;
-	tp.scale = 66.68;
-	//tp.x = i.width / 2;
-	//tp.y = i.height / 2;
-	//tp.scale = 5;
-	points.clear ();
-	points.insert (tp);
 	cerr << "total points = " << points.size () << endl;
 	multimap<float, PointInterest> sorted;
 	multiset<PointInterest>::iterator it;
 	for (it = points.begin (); it != points.end (); it++)
 	{
 	  sorted.insert (make_pair (it->scale, *it));
+	  //ci.drawPoint (*it, red);
+	  //ci.drawCircle (*it, it->scale, white);
 	}
+	//window.show (ci);
+	//window.waitForClick ();
 	DescriptorSIFT sift;
 	DescriptorOrientationHistogram orient;
 	multimap<float, PointInterest>::iterator sit;
 	for (sit = sorted.begin (); sit != sorted.end (); sit++)
 	{
 	  PointAffine p = sit->second;
-	  // find closest pyramid entry
-	  float closestRatio = INFINITY;
-	  int closestIndex = 0;
-	  for (int j = 0; j < l.scales.size (); j++)
-	  {
-		float ratio = fabsf (1.0f - l.scales[j] / p.scale);
-		if (ratio < closestRatio)
-		{
-		  closestRatio = ratio;
-		  closestIndex = j;
-		}
-	  }
-	  cerr << "closestRatio = " << closestRatio << endl;
-	  float octave = (float) l.pyramid[0].width / l.pyramid[closestIndex].width;
-	  p.x = (p.x + 0.5f) / octave - 0.5f;
-	  p.y = (p.y + 0.5f) / octave - 0.5f;
-	  p.scale /= octave;
-	  Vector<float> angles = orient.value (l.pyramid[closestIndex], p);
-	  cerr << sit->second << " " << sit->second.scale << " : " << angles[0] << endl;
-	  //p.angle = angles[0];
-	  p.angle = -2.892;
-	  //p.angle = PI * 0.13;
-	  cerr << "p=" << p << " " << p.scale << " " << p.angle << endl;
-	  cerr << "pyramid image =" << l.pyramid[closestIndex].width << " " << l.pyramid[closestIndex].height << endl;
-	  Vector<float> value = sift.value (l.pyramid[closestIndex], p);
+	  Vector<float> angles = orient.value (i, p);
+	  p.angle = angles[0];
+	  cout << "p=" << p << " " << p.scale << " " << p.angle << endl;
+	  Vector<float> value = sift.value (i, p);
 	  // Covert to integer format used by Lowe's implementation
 	  for (int i = 0; i < value.rows (); i++)
 	  {
 		value[i] = min (255, (int) (512 * value[i]));
 	  }
-	  for (int i = 0; i < 6; i++) cerr << "  " << value.region (i * 20, 0, (i+1) * 20 - 1) << endl;
-	  cerr << "  " << value.region (120, 0) << endl;
+	  for (int i = 0; i < 6; i++) cout << "  " << value.region (i * 20, 0, (i+1) * 20 - 1) << endl;
+	  cout << "  " << value.region (120, 0) << endl;
 	}
+	*/
 
+
+	// Experiment with drawing gradient for SIFT directly from image
+	/*
+	float supportRadial = 3;
+	new ImageFileFormatPGM;
+	new ImageFileFormatJPEG;
+	Image i (parmChar (1, "test.jpg"));
+	CanvasImage ci = i;
+	i *= GrayFloat;
+	PointAffine p;
+	p.x = 400; //i.width / 2;
+	p.y = 300; //i.height / 2 - 100;
+	p.scale = 10;
+	p.angle = parmFloat (5, 0);
+	p.A(0,0) = parmFloat (2, 1);  // non-uniform scaling
+	p.A(0,1) = parmFloat (3, 0);  // skew
+	double s = sqrt (p.A(0,0) * p.A(1,1) - p.A(0,1) * p.A(1,0));
+	p.A /= s;
+	p.scale *= s;
+	double addrot = parmFloat (4, 0);
+	Matrix2x2<double> AA;
+	AA(0,0) = cos (addrot);
+	AA(0,1) = -sin (addrot);
+	AA(1,0) = -AA(0,1);
+	AA(1,1) = AA(0,0);
+	p.A = p.A * AA;
+	cerr << "p.A: " << p.A(0,0) * p.A(1,1) - p.A(1,0) * p.A(0,1) << endl;
+	cerr << p.A << endl;
+
+	//double currentBlur = 0.5;
+	//double targetBlur = pow (2.0, floor (log2 (p.scale)));
+	//cerr << "targetBlur = " << targetBlur << " " << p.scale << endl;
+	//if (currentBlur < targetBlur)
+	//{
+	//  Gaussian1D blur (sqrt (targetBlur * targetBlur - currentBlur * currentBlur), Boost, GrayFloat, Horizontal);
+	//  i *= blur;
+	//  blur.direction = Vertical;
+	//  i *= blur;
+	//}
+	//window.show (i);
+	//window.waitForClick ();
+
+	int supportPixel = 32;
+	int patchSize = 2 * supportPixel;
+	double scale = supportPixel / supportRadial;
+	Transform t (p.projection (), scale);
+	t.setWindow (0, 0, patchSize, patchSize);
+	Image patch = i * GrayFloat * t;
+
+	// p.A == postrot * scaling * prerot == U * D * VT
+	// p.A^-1 w/ scaling uninverted == -prerot * scaling * -postrot
+	// accounting for p.angle:  -angle * -prerot * scaling * -postrot
+	Matrix<double> U;
+	Matrix<double> D;
+	Matrix<double> VT;
+	gesvd (p.A, U, D, VT);
+	if (U(0,0) * U(1,1) < U(1,0) * U(0,1))
+	{
+	  cerr << "U det " << U(0,0) * U(1,1) - U(0,1) * U(1,0) << endl;
+	  cerr << "VT det " << VT(0,0) * VT(1,1) - VT(0,1) * VT(1,0) << endl;
+	  //U.column (1) *= -1;
+	  //VT.row (1) *= -1;
+	  VT = U * VT;
+	  U.identity ();
+	  cerr << "UDVT:" << endl << U * MatrixDiagonal<double> (D) * VT << endl;
+	}
+	cerr << "U rot = " << atan2 (U(1,0), U(0,0)) << endl;
+	cerr << "VT rot = " << atan2 (VT(1,0), VT(0,0)) << endl;
+	Matrix2x2<double> rot;
+	rot(0,0) = cos (-p.angle);
+	rot(0,1) = -sin (-p.angle);
+	rot(1,0) = -rot(0,1);
+	rot(1,1) = rot(0,0);
+	Matrix2x2<float> Q = rot * ~VT * MatrixDiagonal<double> (D) * ~U;
+
+	//PointAffine pp = p;
+	//pp.A = Q;
+	//ci.drawParallelogram (pp, supportRadial, green);
+	//ci.drawParallelogram (p, supportRadial, red);
+	//window.show (ci);
+	//window.waitForClick ();
+	//return 0;
+
+	Q *= p.scale / scale;
+
+	ImageOf<float> I_x = i * FiniteDifferenceX ();
+	ImageOf<float> I_y = i * FiniteDifferenceY ();
+	ImageOf<float> p_x = patch * FiniteDifferenceX ();
+	ImageOf<float> p_y = patch * FiniteDifferenceY ();
+	int sourceT;
+	int sourceL;
+	int sourceB;
+	int sourceR;
+	Vector<double> tl (3);
+	tl[0] = -supportRadial;
+	tl[1] = supportRadial;
+	tl[2] = 1;
+	Vector<double> tr (3);
+	tr[0] = supportRadial;
+	tr[1] = supportRadial;
+	tr[2] = 1;
+	Vector<double> bl (3);
+	bl[0] = -supportRadial;
+	bl[1] = -supportRadial;
+	bl[2] = 1;
+	Vector<double> br (3);
+	br[0] = supportRadial;
+	br[1] = -supportRadial;
+	br[2] = 1;
+	Matrix<double> S = p.projection ();
+	Matrix<double> R = p.rectification ();
+	R.region (0, 0, 1, 2) *= scale;
+	R(0,2) += supportPixel;
+	R(1,2) += supportPixel;
+	Point ptl = S * tl;
+	Point ptr = S * tr;
+	Point pbl = S * bl;
+	Point pbr = S * br;
+	sourceL = (int) rint (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0f));
+	sourceR = (int) rint (min (max (ptl.x, ptr.x, pbl.x, pbr.x), I_x.width - 1.0f));
+	sourceT = (int) rint (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0f));
+	sourceB = (int) rint (min (max (ptl.y, ptr.y, pbl.y, pbr.y), I_x.height - 1.0f));
+	ImageOf<float> q_x (p_x.width, p_x.height, GrayFloat);
+	ImageOf<float> q_y (p_x.width, p_x.height, GrayFloat);
+	int bins = 36;
+	Vector<float> histogram1 (bins);
+	histogram1.clear ();
+	Vector<float> histogram2 (bins);
+	histogram2.clear ();
+	ImageOf<float> bob = i;
+	for (int y = 0; y < p_x.height; y++)
+	{
+	  for (int x = 0; x < p_x.width; x++)
+	  {
+		float dx = p_x(x,y);
+		float dy = p_y(x,y);
+		float angle = atan2 (dy, dx);
+		int bin = (int) ((angle + PI) * bins / (2 * PI));
+		bin = min (bin, bins - 1);  // Technically, these two lines should not be necessary.  They compensate for numerical jitter.
+		bin = max (bin, 0);
+		float weight = sqrtf (dx * dx + dy * dy);
+		histogram1[bin] += weight;
+	  }
+	}
+	for (int y = sourceT; y <= sourceB; y++)
+	{
+	  for (int x = sourceL; x <= sourceR; x++)
+	  {
+		Point q = R * Point (x, y);
+		int qx = (int) rint (q.x);
+		int qy = (int) rint (q.y);
+		if (qx >= 0  &&  qx < patchSize  &&  qy >= 0  &&  qy < patchSize)
+		{
+		  Vector<float> v (2);
+		  v[0] = I_x(x,y);
+		  v[1] = I_y(x,y);
+
+		  // bi-linear method of finding gradient
+		  //int fromX = (int) x;
+		  //int fromY = (int) y;
+		  //float dx = x - fromX;
+		  //float dy = y - fromY;
+		  //float * p00 = & bob(fromX,fromY);
+		  //float * p10 = p00 + 1;
+		  //float * p01 = p00 + i.width;
+		  //float * p11 = p01 + 1;
+		  //v[0] = (1.0 - dy) * (*p10 - *p00) + dy * (*p11 - *p01);
+		  //v[1] = (1.0 - dx) * (*p01 - *p00) + dx * (*p11 - *p10);
+
+		  v = Q * v;
+		  q_x(qx,qy) = v[0];
+		  q_y(qx,qy) = v[1];
+		  //cerr << v[0] << " " << p_x(qx,qy) << "     " << v[1] << " " << p_y(qx,qy) << endl;
+
+		  float angle = atan2 (v[1], v[0]);
+		  int bin = (int) ((angle + PI) * bins / (2 * PI));
+		  bin = min (bin, bins - 1);
+		  bin = max (bin, 0);
+		  float weight = v.frob (2);
+		  histogram2[bin] += weight;
+		}
+	  }
+	}
+	histogram1.normalize ();
+	histogram2.normalize ();
+	ChiSquared c1;
+	NormalizedCorrelation c2;
+	MetricEuclidean c3;
+	HistogramIntersection c4;
+	cerr << "chi: " << c1.value (histogram1, histogram2) << endl;
+	cerr << "corr: " << c2.value (histogram1, histogram2) << endl;
+	cerr << "euc: " << c3.value (histogram1, histogram2) << endl;
+	cerr << "int: " << c4.value (histogram1, histogram2) << endl;
+	q_x.bitblt (p_x, q_x.width);
+	q_y.bitblt (p_y, q_y.width);
+	//window.show (q_x);
+	//window.waitForClick ();
+	//window.show (q_y);
+	//window.waitForClick ();
+	*/
 
 
 	// Test DescriptorLBP
@@ -799,6 +1008,16 @@ main (int argc, char * argv[])
 	cerr << patch.width << " " << patch.height << endl;
 	cerr << Gx.width << " " << Gx.height << endl;
 	cerr << Gx.response (patch, middle) << endl;
+	*/
+
+
+	// Test drawText
+	/*
+	CanvasImage disp (640, 480, RGBAChar);
+	disp.setFont ("courier", parmFloat (1, 12));
+	disp.drawText ("bob", Point (320, 240), WHITE, parmFloat (2, 0));
+	window.show (disp);
+	window.waitForClick ();
 	*/
 
 
