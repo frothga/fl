@@ -6,8 +6,14 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-5/2005 Fred Rothganger -- Revised interface.  Created InterestPointSet class
-       to manage collections of pointers to InterestPoints.
+05/2005 Fred Rothganger -- Revised interface.  Created InterestPointSet class
+        to manage collections of pointers to InterestPoints.
+08/2005 Fred Rothganger -- Fix compilation issue with MSVC 7.1
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
