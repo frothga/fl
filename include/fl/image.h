@@ -6,7 +6,13 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-4/2005 Revised by Fred Rothganger
+05/2005 Fred Rothganger -- Rationalize the naming scheme for PixelFormat to
+        be consistent across endians.  Deeper support for ImageFileFormatTIFF.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file
+LICENSE for details.
 */
 
 
