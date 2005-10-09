@@ -7,13 +7,19 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
+09/2005 Fred Rothganger -- Change lapackd.h to lapack.h
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
 #include "fl/descriptor.h"
 #include "fl/canvas.h"
 #include "fl/pi.h"
-#include "fl/lapackd.h"
+#include "fl/lapack.h"
 
 
 using namespace fl;
