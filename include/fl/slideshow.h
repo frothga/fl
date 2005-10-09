@@ -4,6 +4,14 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
+
+
+09/2005 Fred Rothganger -- Add stub for MS Windows version.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -11,12 +19,29 @@ for details.
 #define slideshow_h
 
 
+#ifndef _MSC_VER
 #include "fl/X.h"
+#endif
+
 #include "fl/image.h"
 
 
 namespace fl
 {
+#ifdef _MSC_VER
+
+  class SlideShow
+  {
+  public:
+	SlideShow () {}
+
+	void show (const Image & image, int centerX = 0, int centerY = 0) {}
+	void waitForClick () {}
+	void clear () {}
+  };
+
+#else
+
   class SlideShow : public Window
   {
   public:
@@ -50,6 +75,8 @@ namespace fl
 	pthread_mutex_t    waitingMutex;
 	pthread_cond_t     waitingCondition;
   };
+
+#endif
 }
 
 
