@@ -1,3 +1,9 @@
+/*
+Author: Fred Rothganger
+Created 01/12/2005 to support compilation under MSVC.
+*/
+
+
 #ifndef fl_matrix_bool_tcc
 #define fl_matrix_bool_tcc
 
