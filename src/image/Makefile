@@ -5,21 +5,30 @@
 # for details.
 #
 #
-# 12/2004 Revised by Fred Rothganger
+# 12/2004 Fred Rothganger -- Clean MSVC intermediate files.
+# 02/2005 Fred Rothganger -- Add ImageCache.
+# 06/2005 Fred Rothganger -- Add reference to Freetype2.  Remove reference to
+#         CGAL.  Add InterestMSER.
+# Revisions Copyright 2005 Sandia Corporation.
+# Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+# the U.S. Government retains certain rights in this software.
+# Distributed under the GNU Lesser General Public License.  See the file
+# LICENSE for details.
 
 
 SOURCE_DIR := ../..
 -include $(SOURCE_DIR)/Config
 
 
-CPPFLAGS += $(X_INC) $(MPEG_INC) # $(CGAL_INC)
+CPPFLAGS += $(X_INC) $(MPEG_INC) $(FT_INC)
 VPATH = $(SOURCE_LIB)
 
 
 IMAGE_O = \
 	Image.o \
 	Pixel.o \
-	Point.o
+	Point.o \
+	ImageCache.o
 
 IMAGE_FILE_FORMAT_O = \
 	ImageFileFormat.o \
@@ -90,7 +99,8 @@ INTEREST_O = \
 	InterestHarrisLaplacian.o \
 	InterestLaplacian.o \
 	InterestHessian.o \
-	InterestDOG.o
+	InterestDOG.o \
+	InterestMSER.o
 
 VIDEO_O = \
 	Video.o \
@@ -102,7 +112,7 @@ libflImage.a: $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(CANVAS_O) $(CONVOLVE_O) $(DESC
 
 
 test: test.o $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(INTEREST_O) $(CONVOLVE_O) $(VIDEO_O) $(CANVAS_O) $(DESCRIPTOR_O)
-	g++ -o $@ $^ -L../../lib -lflBase -lflNumeric -lflX $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB)
+	g++ -o $@ $^ -L../../lib -lflBase -lflNumeric -lflX $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB)
 
 
 clean:
