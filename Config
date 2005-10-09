@@ -5,7 +5,13 @@
 # for details.
 #
 #
-# 12/2004 Revised by Fred Rothganger
+# 12/2004 Fred Rothganger -- Added EXESUF for Cygwin
+# 05/2005 Fred Rothganger -- Add freetype 2 library.
+# Revisions Copyright 2005 Sandia Corporation.
+# Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+# the U.S. Government retains certain rights in this software.
+# Distributed under the GNU Leser General Public License.  See the file
+# LICENSE for details.
 
 
 # Namspace for package.  OLDNS is only used when changing namespace to
@@ -37,13 +43,13 @@ X_LIB = -L$(X_DIR)/lib -lXext -lX11 -lGL -lGLU
 
 # LAPACK library and dependencies
 FORTRAN_LIB = -lg2c
-LAPACK_DIR = $(HOME)/$(ARCH)
+LAPACK_DIR = /usr
 LAPACK_LIB = -L$(LAPACK_DIR)/lib -llapack -lblas $(FORTRAN_LIB)
 
 # FFMPEG libaray
-MPEG_DIR = $(HOME)/$(ARCH)
+MPEG_DIR = /usr
 MPEG_INC = -I$(MPEG_DIR)/include
-MPEG_LIB = -L$(MPEG_DIR)/lib -lavformat -lavcodec -lz
+MPEG_LIB = -L$(MPEG_DIR)/lib -lavformat -lavcodec -lavutil -lz
 
 # Tiff library
 TIFF_DIR = /usr
@@ -55,6 +61,11 @@ JPEG_DIR = /usr
 JPEG_INC = -I$(JPEG_DIR)/include
 JPEG_LIB = -L$(JPEG_DIR)/lib -ljpeg
 
+# Freetype2
+FT_DIR = /usr
+FT_INC = -I$(FT_DIR)/include/freetype2
+FT_LIB = -L$(FT_DIR)/lib -lfreetype -lz
+
 # General C++ options
 CPPFLAGS = -I$(SOURCE_INC)
 
@@ -62,8 +73,8 @@ CPPFLAGS = -I$(SOURCE_INC)
 CXXFLAGS += -O3  # full optimization
 #CXXFLAGS += -march=pentium  # P3 architecture
 CXXFLAGS += -march=pentium4 -mfpmath=sse  # P4 architecture
-#CXXFLAGS += -g1   # minimal debug symbols
-CXXFLAGS += -g   # full debug symbols
+CXXFLAGS += -g1   # minimal debug symbols
+#CXXFLAGS += -g   # full debug symbols
 
 # Misc configuration
 #EXESUF = .exe  # for cygwin
