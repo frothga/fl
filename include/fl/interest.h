@@ -6,8 +6,15 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-5/2005 Fred Rothganger -- Added MSER and changed interface to pass collections
-       of pointers.
+06/2005 Fred Rothganger -- Added MSER and changed interface to pass collections
+        of pointers.
+08/2005 Fred Rothganger -- Commit to using ImageCache
+09/2005 Fred Rothganger -- Add more constraints to InterestMSER.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file
+LICENSE for details.
 */
 
 
@@ -17,6 +24,7 @@ for details.
 
 #include "fl/convolve.h"
 #include "fl/matrix.h"
+#include "fl/imagecache.h"
 
 #include <set>
 
@@ -123,9 +131,6 @@ namespace fl
 	 Implements David Lowe's scale pyramid approach to finding difference of
 	 Gaussian extrema.  The shape of a difference-of-Gaussian kernel is very
 	 similar to a Laplacian of Gaussian.
-
-	 The member "pyramid" stores blurred images that could be used to generate
-	 gradient info for use DescriptorSIFT.
   **/
   class InterestDOG : public InterestOperator
   {
@@ -138,13 +143,10 @@ namespace fl
 	bool notOnEdge (ImageOf<float> & dog, int x, int y);
 	float fitQuadratic (std::vector< ImageOf<float> > & dogs, int s, int x, int y, Vector<float> & result);
 
-	std::vector<Image> pyramid;  ///< A series of blurred/resampled images.  pyramid[0] contains the original image in GrayFloat (or GrayDouble if that was the original format).  The coordinates in pyramid[i] are (x/s,y/s) where (x,y) are the coordinates in pyramid[0] and s = pyramid[0].width / pyramid[i].width.
-	std::vector<float> scales;  ///< Scale levels associated with the entries in pyramid
 	float firstScale;
 	float lastScale;
 	int steps;  ///< Number of scale steps between octaves.
 	int crop;  ///< Number of pixels from border to ignore maxima.
-	bool storePyramid;  ///< Indicates that blurred/resampled images should be stored rather than thrown away.
 	float thresholdEdge;  ///< Gives smallest permissible ratio of det(H) / trace(H)^2, where H is the Hessian of the DoG function on intensity.
 	float thresholdPeak;  ///< Minimum permissible strength of DoG function at a local maximum.
   };
@@ -152,14 +154,18 @@ namespace fl
   class InterestMSER : public InterestOperator
   {
   public:
-	InterestMSER (int delta = 5, int neighbors = 1);
+	InterestMSER (int delta = 5, float sizeRatio = 0.9f);
 
 	virtual void run (const Image & image, InterestPointSet & result);
 
 	// Parameters
 	int delta;  ///< Amount of gray-level distance above and below current gray-level to check when computing rate of change in region size.
-	int neighbors;  ///< Number of rate values on either side of a candidate local minimum which must exceed its value.
+	float sizeRatio;  ///< Ratio of the pixel count of a candidate local minimum to pixel counts of the upper and lower levels that bracket the range in which its rate must be less than any other.
 	float minScale;  ///< Smallest scale region to admit into resulting list of interest points.  Guards against long skinny structures and structures with too few pixels to be worth noting.
+	int minSize;  ///< Smallest number of pixels permitted in a region.
+	float maxSizeRatio;  ///< Largest number of pixels permitted in a region, as a portion of the total number of pixels in the image.  For example, 0.01 means regions never exceed 1% of the size of the image.
+	int minLevels;  ///< Smallest number of intensity levels between the first pixel in the region and the level at which it is generated.
+	float maxRate;  ///< Largest rate of change permitted for a region.
 
 	// Working data and subroutines of run().  All structures are created
 	// and destroyed by run(), not the constructor/destructor of this class
@@ -180,10 +186,12 @@ namespace fl
 	  Root * previous;
 
 	  unsigned char level;  ///< The gray-level where this region was created.
+	  unsigned char lower;  ///< Lower bound of scan for local minimum
+	  unsigned char center;  ///< Curent gray-level that is a candidate local minimum
 
 	  int size;  ///< Number of pixels in this tree
 	  int sizes[256];  ///< History of sizes for all gray-levels
-	  float rates[256];  ///< History of changes rates w.r.t. gray-level.  Calculated from sizes[].
+	  float rates[256];  ///< History of change rates w.r.t. gray-level.  Calculated from sizes[].
 
 	  // Info for generating Gaussians
 	  Node * head;  ///< Start of LIFO linked list of pixels.  IE: points to most recently added pixels.
@@ -214,6 +222,7 @@ namespace fl
 
 	int width;  ///< of input image
 	int height;  ///< of input image
+	int maxSize;  ///< Largest number of pixels in a region.  Computed based on number of pixels in image.  See maxSizeRatio.
 	int * lists[257];  ///< start of array of pixel indices for each gray-level; includes a stop point at the end
 
 	void clear (Root * head);  ///< deletes all Root structures in the given list
