@@ -7,6 +7,12 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fixes for MSVC and Cygwin
+09/2005 Fred Rothganger -- Move stream operators from matrix.h
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file
+LICENSE for details.
 */
 
 
@@ -444,6 +450,83 @@ namespace fl
 	{
 	  stream << typeid (*this).name () << std::endl;
 	}
+  }
+
+  template<class T>
+  std::ostream &
+  operator << (std::ostream & stream, const MatrixAbstract<T> & A)
+  {
+	for (int r = 0; r < A.rows (); r++)
+	{
+	  if (r > 0)
+	  {
+		if (A.columns () > 1)
+		{
+		  stream << std::endl;
+		}
+		else  // This is really a vector, so don't break lines.
+		{
+		  stream << " ";
+		}
+	  }
+	  std::string line;
+	  for (int c = 0; c < A.columns (); c++)
+	  {
+		// Let ostream absorb the variability in the type T of the matrix.
+		// This may not work as expected for type char, because ostreams treat
+		// chars as characters, not numbers.
+		std::ostringstream formatted;
+		formatted.precision (A.displayPrecision);
+		formatted << A (r, c);
+		if (c > 0)
+		{
+		  line += ' ';
+		}
+		while (line.size () < c * A.displayWidth)
+		{
+		  line += ' ';
+		}
+		line += formatted.str ();
+	  }
+	  stream << line;
+	}
+	return stream;
+  }
+
+  template<class T>
+  std::istream &
+  operator >> (std::istream & stream, MatrixAbstract<T> & A)
+  {
+	int rows;
+	int columns;
+	stream >> rows >> columns;
+	A.resize (rows, columns);
+
+	for (int r = 0; r < rows; r++)
+	{
+	  for (int c = 0; c < columns; c++)
+	  {
+		stream >> A(r, c);
+	  }
+	}
+	return stream;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  operator << (MatrixAbstract<T> & A, const std::string & source)
+  {
+	std::istringstream stream (source);
+	int rows = A.rows ();
+	int columns = A.columns ();
+	for (int r = 0; r < rows; r++)
+	{
+	  for (int c = 0; c < columns; c++)
+	  {
+		stream >> A(r,c);
+	  }
+	}
+	return A;
   }
 
 
@@ -981,6 +1064,46 @@ namespace fl
   MatrixTranspose<T>::resize (const int rows, const int columns)
   {
 	wrapped->resize (columns, rows);
+  }
+
+  template<class T>
+  Matrix<T>
+  MatrixTranspose<T>::operator * (const MatrixAbstract<T> & B) const
+  {
+	int w = wrapped->rows ();
+	int h = wrapped->columns ();
+	int bw = B.columns ();
+	Matrix<T> result (h, bw);
+	for (int c = 0; c < bw; c++)
+	{
+	  for (int r = 0; r < h; r++)
+	  {
+		register T element = (T) 0;
+		for (int i = 0; i < w; i++)
+		{
+		  element += (*wrapped)(i,r) * B(i,c);
+		}
+		result (r, c) = element;
+	  }
+	}
+	return result;
+  }
+
+  template<class T>
+  Matrix<T>
+  MatrixTranspose<T>::operator * (const T scalar) const
+  {
+    int h = wrapped->columns ();
+    int w = wrapped->rows ();
+	Matrix<T> result (h, w);
+    for (int c = 0; c < w; c++)
+    {
+      for (int r = 0; r < h; r++)
+      {
+		result (r, c) = (*wrapped)(c, r) * scalar;
+      }
+    }
+    return result;
   }
 
 
