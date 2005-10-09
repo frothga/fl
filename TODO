@@ -1,0 +1,24 @@
+TODO
+----
+
+* Add large image class to wrap tiled TIFFs and other similar files.  Make filters simple to use on large images without loosing performance on small images.
+* Use scale pyramid in HarrisLaplacian and Hessian.  Need to finish image cacheing to do this is in the nicest fashion.
+
+* Improve image cache mechanism: store multiple types and scales.  Create new class to manage caching, and add interface to take it instead of image.  Make static cache shared by all image processors.  Make it TLS if possible.  Sources that currently do caching:
+		DescriptorCombo.cc
+		DescriptorLBP.cc
+		DescriptorOrientationHistogram.cc
+		DescriptorSIFT.cc
+		DescriptorTextonScale.cc
+* Remove redundancies from DOG code.
+* Experiment with sse compatible code in ConvolutionDiscrete1D.  Idea is to multiply entire image by each element of kernel individually and add to a sum image, with appropriate offsets and bounds.  Limit amount of image processed in a single chunk to a size that can all fit in cache.  If sse instruction exists that can do this whole op, then it could be much faster.  May be faster even in c code.
+* socket.cc -- needs some code conditioned on use of Winsock.  There are subtle differences of behavior that require workarounds in linux, specifically w.r.t. waiting for packets to arrive/leave.  The standard send and recv functions in Winsock behave in the way I prefer (best recollection), but linux requires using the poll function to get the same behavior.  The current socket.cc is written for linux.
+* cluster.h -- uses pthreads and sockets.  Will probably write a thin pthread wrapper around Win32 threads, unless someone has already written one and it is free.  Currently exlcuding all clustering code (Agglomerate.cc ClusterMethod.cc Kmeans.cc KMeansParallel.cc Kohonen.cc) in vc project to avoid compile errors.
+* Deepen template specialization for bool, to get rid of warnings in MSVC.
+* Use Image::timestamp to set PTS in VideoFileFormatFFMPEG.
+* Find way to get timestamp from PTS during playback
+* Fix errors in VideoFileFormatFFMPEG::seek().
+* Find way to speed up pow() call in linearize() in Pixel.cc.  May make gamma a member of PixelFormat, and only do gamma correction if two PixelFormats claim to have different values.
+* Add UYYVYY pixel format.  Need to add new field that modifies depth.  Need to move towards virtual accessors so the memory format is fully encapsulated in Image.
+* Break dependency between the numeric and image libraries caused by a reference to Comparison in cluster.h.
+* Hunt down memory error in CanvasImage::drawText() and companions.  Also, after using setFont() for a while, ceases to work.  Probably related.
