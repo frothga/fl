@@ -9,9 +9,13 @@ for details.
 12/2004 Fred Rothganger -- Compilability fix for MSVC
 08/2005 Fred Rothganger -- Compilability fix for GCC 3.4.4
 09/2005 Fred Rothganger -- Make operator ! a member of various Matrix classes.
+        Move stream operators and Matrix2x2::geev() into appropriate tcc files.
+        Add operator * to MatrixTranspose.
 Revisions Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -168,6 +172,29 @@ namespace fl
 	static int displayWidth;  ///< Number of character positions per cell to use when printing out matrix.
 	static int displayPrecision;  ///< Number of significant digits to output.
   };
+
+  /// Dump human readable matrix.  Intended for printable output only.
+  template<class T>
+  std::ostream &
+  operator << (std::ostream & stream, const MatrixAbstract<T> & A);
+
+  /**
+	 Load matrix from human-readable stream.  Not idempotent with operator <<
+	 because this function expects to encounter number of rows
+	 and columns as part of stream.  (However, one can easily output them
+	 directly before using operator <<.)
+  **/
+  template<class T>
+  std::istream &
+  operator >> (std::istream & stream, MatrixAbstract<T> & A);
+
+  /**
+	 Load matrix from human-readable string.  Matrix must already be sized
+	 correctly.  Elements are read on row-major order.
+  **/
+  template<class T>
+  MatrixAbstract<T> &
+  operator << (MatrixAbstract<T> & A, const std::string & source);
 
 
   // Concrete matrices  -------------------------------------------------------
@@ -448,6 +475,9 @@ namespace fl
 	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns);
 
+	virtual Matrix<T> operator * (const MatrixAbstract<T> & B) const;
+	virtual Matrix<T> operator * (const T scalar) const;
+
 	// It is the job of the matrix being transposed to make another instance
 	// of itself.  It is our responsibility to delete this object when we
 	// are destroyed.
@@ -561,6 +591,13 @@ namespace fl
   };
 
   template<class T>
+  void geev (const Matrix2x2<T> & A, Matrix<T> & eigenvalues);
+
+  template<class T>
+  void geev (const Matrix2x2<T> & A, Matrix<std::complex<T> > & eigenvalues);
+
+
+  template<class T>
   class Matrix3x3 : public MatrixAbstract<T>
   {
   public:
@@ -602,148 +639,6 @@ namespace fl
 	// Data
 	T data[3][3];
   };
-
-
-  // Matrix operations --------------------------------------------------------
-
-  /// Dump human readable matrix.  Intended for printable output only.
-  template<class T>
-  inline std::ostream &
-  operator << (std::ostream & stream, const MatrixAbstract<T> & A)
-  {
-	for (int r = 0; r < A.rows (); r++)
-	{
-	  if (r > 0)
-	  {
-		if (A.columns () > 1)
-		{
-		  stream << std::endl;
-		}
-		else  // This is really a vector, so don't break lines.
-		{
-		  stream << " ";
-		}
-	  }
-	  std::string line;
-	  for (int c = 0; c < A.columns (); c++)
-	  {
-		// Let ostream absorb the variability in the type T of the matrix.
-		// This may not work as expected for type char, because ostreams treat
-		// chars as characters, not numbers.
-		std::ostringstream formatted;
-		formatted.precision (A.displayPrecision);
-		formatted << A (r, c);
-		if (c > 0)
-		{
-		  line += ' ';
-		}
-		while (line.size () < c * A.displayWidth)
-		{
-		  line += ' ';
-		}
-		line += formatted.str ();
-	  }
-	  stream << line;
-	}
-	return stream;
-  }
-
-
-  /**
-	 Load matrix from human-readable stream.  Not idempotent with the insertion
-	 operator above, because this function expects to encounter number of rows
-	 and columns as part of stream.  (However, one can easily output them
-	 directly before using the above insertion operator.)
-  **/
-  template<class T>
-  inline std::istream &
-  operator >> (std::istream & stream, MatrixAbstract<T> & A)
-  {
-	int rows;
-	int columns;
-	stream >> rows >> columns;
-	A.resize (rows, columns);
-
-	for (int r = 0; r < rows; r++)
-	{
-	  for (int c = 0; c < columns; c++)
-	  {
-		stream >> A(r, c);
-	  }
-	}
-	return stream;
-  }
-
-  /**
-	 Load matrix from human-readable string.  Matrix must already be sized
-	 correctly.
-  **/
-  template<class T>
-  inline MatrixAbstract<T> &
-  operator << (MatrixAbstract<T> & A, const std::string & source)
-  {
-	std::istringstream stream (source);
-	int rows = A.rows ();
-	int columns = A.columns ();
-	for (int r = 0; r < rows; r++)
-	{
-	  for (int c = 0; c < columns; c++)
-	  {
-		stream >> A(r,c);
-	  }
-	}
-	return A;
-  }
-
-  template<class T>
-  inline void
-  geev (const Matrix2x2<T> & A, Matrix<T> & eigenvalues)
-  {
-	// a = 1  :)
-	T b = A.data[0][0] + A.data[1][1];  // trace
-	T c = A.data[0][0] * A.data[1][1] - A.data[0][1] * A.data[1][0];  // determinant
-	T b4c = b * b - 4 * c;
-	if (b4c < 0)
-	{
-	  throw "eigen: no real eigenvalues!";
-	}
-	if (b4c > 0)
-	{
-	  b4c = sqrt (b4c);
-	}
-	eigenvalues.resize (2, 1);
-	eigenvalues (0, 0) = (b - b4c) / 2.0;
-	eigenvalues (1, 0) = (b + b4c) / 2.0;
-  }
-
-  template<class T>
-  inline void
-  geev (const Matrix2x2<T> & A, Matrix<std::complex<T> > & eigenvalues)
-  {
-	eigenvalues.resize (2, 1);
-
-	// a = 1  :)
-	T b = -(A.data[0][0] + A.data[1][1]);  // trace
-	T c = A.data[0][0] * A.data[1][1] - A.data[0][1] * A.data[1][0];  // determinant
-	T b4c = b * b - 4 * c;
-	bool imaginary = b4c < 0;
-	if (b4c != 0)
-	{
-	  b4c = sqrt (fabs (b4c));
-	}
-	if (imaginary)
-	{
-	  b /= -2.0;
-	  b4c /= 2.0;
-	  eigenvalues(0,0) = std::complex<T> (b, b4c);
-	  eigenvalues(1,0) = std::complex<T> (b, -b4c);
-	}
-	else
-	{
-	  eigenvalues(0,0) = (-b - b4c) / T (2);
-	  eigenvalues(1,0) = (-b + b4c) / T (2);
-	}
-  }
 }
 
 
