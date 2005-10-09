@@ -4,6 +4,8 @@ Created 5/31/2005
 Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -18,11 +20,15 @@ using namespace fl;
 
 // class InterestMSER ---------------------------------------------------------
 
-InterestMSER::InterestMSER (int delta, int neighbors)
+InterestMSER::InterestMSER (int delta, float sizeRatio)
 {
   this->delta     = delta;
-  this->neighbors = neighbors;
-  minScale = 1.0;
+  this->sizeRatio = sizeRatio;
+  minScale        = 1.0;
+  minSize         = 30;
+  maxSizeRatio    = 0.01f;
+  minLevels       = 10;
+  maxRate         = 1.0f;
 }
 
 inline void
@@ -185,6 +191,8 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, vector<PointMSER *> 
 
 	  r->size = 1;
 	  r->level = level;
+	  r->center = sign ? level + delta - 1 : level - delta + 1;
+	  r->lower = level;
 	  r->head = i;
 	  r->tail = 0;
 	  r->tailSize = 0;
@@ -215,49 +223,74 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, vector<PointMSER *> 
 	r = roots.next;
 	while (r != &roots)
 	{
-	  if (sign ? r->level <= a : r->level >= b)
+	  if (sign ? r->level > a : r->level < b)
 	  {
-		r->rates[c] = fabs ((float) (r->sizes[b] - r->sizes[a])) / r->sizes[c];
+		r = r->next;
+		continue;
 	  }
-	  r = r->next;
-	}
+	  r->rates[c] = fabs ((float) (r->sizes[b] - r->sizes[a])) / r->sizes[c];
 
-	// Check for local minima in rates
-	c += sign ? -neighbors : neighbors;
-	a = c - delta - neighbors;
-	b = c + delta + neighbors;
-	if (a >= 0  &&  b <= 255)
-	{
-	  int firstLevel = sign ? a : b;
-	  a = c - neighbors;
-	  b = c + neighbors;
-
-	  r = roots.next;
-	  while (r != &roots)
+	  unsigned char & center = r->center;
+	  unsigned char & lower  = r->lower;
+	  unsigned char firstRate = sign ? r->level + delta : r->level - delta;
+	  while (true)
 	  {
-		bool localMinimum = sign ? r->level <= firstLevel : r->level >= firstLevel;
-		localMinimum &= r->sizes[c] > r->tailSize;
-		if (localMinimum)
+		bool localMinimum = true;
+		if (sign)
 		{
-		  float localRate = r->rates[c];
-		  int i = a;
-		  while (localMinimum  &&  i < c)
+		  if (c - center <= 1) break;
+		  if ((float) r->sizes[center+1] / r->sizes[c+1] >= sizeRatio) break;
+		  center++;
+		  if (r->rates[center] > maxRate) continue;
+		  if (center - r->level < minLevels) continue;
+		  if (r->sizes[center] < minSize  ||  r->sizes[center] > maxSize) continue;
+		  while ((float) r->sizes[lower] / r->sizes[center] < sizeRatio  &&  center - lower > 1) lower++;
+		  if (lower < firstRate) continue;
+
+		  float localRate = r->rates[center];
+		  int i = lower;
+		  localMinimum = r->rates[i++] > localRate;
+		  while (localMinimum  &&  i < center)
 		  {
-			localMinimum &= r->rates[i++] > localRate;
+			localMinimum &= r->rates[i++] >= localRate;
 		  }
 		  i++;
-		  while (localMinimum  &&  i <= b)
+		  while (localMinimum  &&  i <= c)
 		  {
 			localMinimum &= r->rates[i++] > localRate;
 		  }
 		}
-		if (localMinimum)
+		else
 		{
-		  // Got an MSER!  Now record it and generate shape matrix and scale.
+		  if (center - c <= 1) break;
+		  if ((float) r->sizes[center-1] / r->sizes[c-1] >= sizeRatio) break;
+		  center--;
+		  if (r->rates[center] > maxRate) continue;
+		  if (r->level - center < minLevels) continue;
+		  if (r->sizes[center] < minSize  ||  r->sizes[center] > maxSize) continue;
+		  while ((float) r->sizes[lower] / r->sizes[center] < sizeRatio  &&  lower - center > 1) lower--;
+		  if (lower > firstRate) continue;
 
-		  Node * head = r->heads[c];
+		  float localRate = r->rates[center];
+		  int i = lower;
+		  localMinimum = r->rates[i--] > localRate;
+		  while (localMinimum  &&  i > center)
+		  {
+			localMinimum &= r->rates[i--] >= localRate;
+		  }
+		  i--;
+		  while (localMinimum  &&  i >= c)
+		  {
+			localMinimum &= r->rates[i--] > localRate;
+		  }
+		}
+		if (! localMinimum) continue;
+
+		// Got an MSER!  Now record it and generate shape matrix and scale.
+
+		  Node * head = r->heads[center];
 		  Node * representative = findSet (head);
-		  int newWeight = r->sizes[c];
+		  int newWeight = r->sizes[center];
 		  float totalWeight = newWeight;
 
 		  Root * otherGaussians = 0;  // a singly-linked list
@@ -374,7 +407,7 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, vector<PointMSER *> 
 		  r->xy = xy;
 		  r->yy = yy;
 		  r->tail     = head;
-		  r->tailSize = r->sizes[c];  // same as totalWeight, but avoid round trip int->float->int
+		  r->tailSize = r->sizes[center];  // same as totalWeight, but avoid round trip int->float->int
 		  head->root = r;  // representative->root also points to r, but has a different job
 		  head->next = 0;
 
@@ -383,7 +416,7 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, vector<PointMSER *> 
 		  float scale = sqrt (sqrt (r->xx * r->yy - r->xy * r->xy));  // two sqrt() calls are probably more efficient than 1 pow(0.25, x) call
 		  if (scale >= minScale)
 		  {
-			PointMSER * m = new PointMSER (representative - nodes, c, sign);
+			PointMSER * m = new PointMSER (representative - nodes, center, sign);
 			m->x        = r->x;
 			m->y        = r->y;
 			m->weight   = totalWeight;  // size and scale are closely correlated
@@ -404,8 +437,7 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, vector<PointMSER *> 
 		  }
 		}
 
-		r = r->next;
-	  }
+	  r = r->next;
 	}
   }
 }
@@ -422,6 +454,7 @@ InterestMSER::run (const Image & image, InterestPointSet & result)
   width  = image.width;
   height = image.height;
   int imageSize = width * height;
+  maxSize = (int) ceil (imageSize * maxSizeRatio);
 
   // Separate image into gray levels
   //   Pass 1 -- Determine size of each gray-level list
