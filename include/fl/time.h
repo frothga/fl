@@ -6,7 +6,14 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Compilability fix for MSVC
+05/2005 Fred Rothganger -- Use hires timer under MS Windows
+08/2005 Fred Rothganger -- Reorder hires functions to read time ASAP
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -18,6 +25,8 @@ for details.
 
 #ifdef WIN32
 #  include <windows.h>
+#  undef min
+#  undef max
 #else
 #  include <sys/time.h>
 #  include <unistd.h>
@@ -30,10 +39,10 @@ namespace fl
   {
 #   ifdef WIN32
 
-	LARGE_INTEGER frequency;
 	LARGE_INTEGER count;
-	QueryPerformanceFrequency (&frequency);
+	LARGE_INTEGER frequency;
 	QueryPerformanceCounter (&count);
+	QueryPerformanceFrequency (&frequency);
 	return (double) count.QuadPart / frequency.QuadPart;
 
 #   else
