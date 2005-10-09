@@ -18,9 +18,12 @@ for details.
 #include <iostream>
 #include <vector>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#ifdef WIN32
+#else
+  #include <sys/types.h>
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+#endif
 
 
 namespace fl
