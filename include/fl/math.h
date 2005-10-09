@@ -6,7 +6,13 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Compilability fixes for MSVC and Cygwin
+09/2005 Fred Rothganger -- Additional compilability fixes for GCC 3.4.4
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -17,7 +23,9 @@ for details.
 #include <cmath>
 
 #ifdef _MSC_VER
-  #include <float.h>
+#  include <float.h>
+#  undef min
+#  undef max
 #endif
 
 
@@ -43,6 +51,18 @@ namespace std
 	return (int) floor (pow ((double) a, b));
   }
 
+  inline int
+  isinf (float a)
+  {
+	return isinff (a);
+  }
+
+  inline int
+  isnan (float a)
+  {
+	return isnanf (a);
+  }
+
 #else
 
   inline float
@@ -55,6 +75,19 @@ namespace std
   rint (double a)
   {
 	return floor (a + 0.5);
+  }
+
+  inline int
+  isnan (double a)
+  {
+	return _isnan (a);
+  }
+
+  inline int
+  isinf (double a)
+  {
+	int c = _fpclass (a);
+	return c == _FPCLASS_PINF  ||  c == _FPCLASS_NINF;
   }
 
 #endif
@@ -120,21 +153,5 @@ issubnormal (double a)
   #endif
 }
 
-#ifdef _MSC_VER
-
-inline int
-isnan (double a)
-{
-  return _isnan (a);
-}
-
-inline int
-isinf (double a)
-{
-  int c = _fpclass (a);
-  return c == _FPCLASS_PINF  ||  c == _FPCLASS_NINF;
-}
-
-#endif
 
 #endif
