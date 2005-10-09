@@ -6,7 +6,13 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Compilability fix for MSVC.
+08/2005 Fred Rothganger -- Compilability fix for GCC 3.4.4
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -21,6 +27,7 @@ using namespace std;
 
 // class Comparison -----------------------------------------------------------
 
+template class Factory<Comparison>;
 template <> Factory<Comparison>::productMap Factory<Comparison>::products;
 
 Comparison::~Comparison ()
