@@ -6,7 +6,13 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-09/2005 Fred Rothganger -- Added dsygv_
+09/2005 Fred Rothganger -- Add dsygv_
+10/2005 Fred Rothganger -- Add dgelsd_
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -48,6 +54,21 @@ extern "C"
 				int &          rank,
                 double         work[],
 				const int &    lwork,
+				int &          info);
+
+  void dgelsd_ (const int &    m,
+				const int &    n,
+				const int &    nrhs,
+				double         a[],
+				const int &    lda,
+				double         b[],
+				const int &    ldb,
+				double         s[],
+				const double & rcond,
+				int &          rank,
+                double         work[],
+				const int &    lwork,
+				int            iwork[],
 				int &          info);
 
   void dgesvd_ (const char & jobu,
