@@ -9,15 +9,17 @@ for details.
 12/2004 Fred Rothganger -- Compilability fix for MSVC.
 05/2005 Fred Rothganger -- Implement drawText() via Freetype2.
 09/2005 Fred Rothganger -- Add drawMSER.  Break dependency of canvas.h on
-        Freetype2 include files.
+        Freetype2 include files.  Change lapackd.h to lapack.h
 Revisions Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
 #include "fl/canvas.h"
-#include "fl/lapackd.h"
+#include "fl/lapack.h"
 #include "fl/string.h"
 
 #include <algorithm>

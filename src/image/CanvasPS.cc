@@ -8,14 +8,17 @@ for details.
 
 12/2004 Fred Rothganger -- Compilability fixes for MSVC.
 05/2005 Fred Rothganger -- Use new rgb layout.
+09/2005 Fred Rothganger -- Change lapackd.h to lapack.h
 Revisions Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
 #include "fl/canvas.h"
-#include "fl/lapackd.h"
+#include "fl/lapack.h"
 
 #include <algorithm>
 
