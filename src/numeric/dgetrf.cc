@@ -8,6 +8,12 @@ for details.
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
 09/2005 Fred Rothganger -- Moved from lapackd.h into separate file.
+10/2005 Fred Rothganger -- Make det() operate on MatrixAbstract
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -90,7 +96,7 @@ namespace fl
 
   template<>
   double
-  det (const Matrix<double> & A)
+  det (const MatrixAbstract<double> & A)
   {
 	int m = A.rows ();
 	if (m != A.columns ())
