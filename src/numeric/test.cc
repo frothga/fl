@@ -7,51 +7,32 @@ for details.
 */
 
 
-#include "fl/complex.h"
+#include "fl/zroots.h"
 #include "fl/matrix.h"
 #include "fl/random.h"
 #include "fl/search.h"
-#include "fl/lapackd.h"
+#include "fl/lapack.h"
 #include "fl/time.h"
-#include "fl/zroots.h"
 #include "fl/pi.h"
 #include "fl/neural.h"
-
-
+#include "fl/factory.h"
+#include "fl/reduce.h"
+#include "fl/cluster.h"
 
 #include <iostream>
 #include <fstream>
+#include <complex>
 
 
 using namespace std;
 using namespace fl;
 
 
-/*  This class structure demonstrates the overloaded function resolution
-	"problem".  If you write:
-	B a;
-	B b;
-	a * b;
-	You will get a compile error.
-
-class A
-{
-public:
-  void operator * (const A & b) const;
-};
-
-class B : public A
-{
-public:
-  void operator * (float f) const;
-};
-*/
-
-
 // Searchable class for testing numeric search methods
 // Expected result = 0.08241057  1.133037  2.343695
+template<class T>
 //class Test : public SearchableSparse
-class Test : public SearchableNumeric
+class Test : public SearchableNumeric<T>
 {
 public:
   /*
@@ -76,17 +57,17 @@ public:
 	return 15;
   }
 
-  virtual void value (const Vector<double> & x, Vector<double> & result)
+  virtual void value (const Vector<T> & x, Vector<T> & result)
   {
-	const double y[] = {0.14, 0.18, 0.22, 0.25, 0.29, 0.32, 0.35, 0.39,
-						0.37, 0.58, 0.73, 0.96, 1.34, 2.10, 4.39};
+	const T y[] = {0.14, 0.18, 0.22, 0.25, 0.29, 0.32, 0.35, 0.39,
+				   0.37, 0.58, 0.73, 0.96, 1.34, 2.10, 4.39};
 
 	result.resize (15);
 	for (int i = 0; i < 15; i++)
 	{
-	  double t0 = i + 1;
-	  double t1 = 15 - i;
-	  double t2 = t0;
+	  T t0 = i + 1;
+	  T t1 = 15 - i;
+	  T t2 = t0;
 	  if (i > 7)
 	  {
 		t2 = t1;
@@ -117,22 +98,6 @@ public:
 };
 
 
-
-
-
-
-
-inline Matrix2x2<double>
-rotationMatrix (const double angle)
-{
-  Matrix2x2<double> R;
-  R(0,0) = cos (angle);
-  R(0,1) = -sin (angle);
-  R(1,0) = -R(0,1);
-  R(1,1) = R(0,0);
-  return R;
-}
-
 inline double
 randbad ()
 {
@@ -153,7 +118,8 @@ makeMatrix (const int m, const int n)
 	for (int c = 0; c < n; c++)
 	{
 	  //A(r,c) = randbad ();
-	  A(r,c) = randfb ();
+	  //A(r,c) = randfb ();
+	  A(r,c) = randf ();
 	}
   }
   //cerr << A << endl << endl;
@@ -161,149 +127,84 @@ makeMatrix (const int m, const int n)
   return A;
 }
 
-
-
-
-
-
-
-
-class NeuronInput : public NeuronBackprop
+void
+throwPoint (const Vector<float> & center, const float radius, vector< Vector<float> > & data)
 {
-public:
-  virtual float getOutput ()
+  Vector<float> point (center.rows ());
+  for (int i = 0; i < point.rows (); i++)
   {
-	if (line[position] == code)
-	{
-	  return 1.0;
-	}
-	else if (line[position] == '?')
-	{
-	  return unknownValue;
-	}
-	else
-	{
-	  return 0;
-	}
+	point[i] = randGaussian (); // * (i ? 1 : 2);
   }
 
-  char * line;
-  int position;
-  char code;
-  float unknownValue;
-};
+  point.normalize (radius);
+  point += center;
 
-class NeuronOutput : public NeuronBackprop
+  data.push_back (point);
+}
+
+void
+makeClusters (int clusters, int dimension, vector< Vector<float> > & data)
 {
-public:
-  virtual float getDelta ()
+  vector< Vector<float> > center;
+  for (int i = 0; i < clusters; i++)
   {
-	float desired = line[0] == code ? 0.9f : -0.9f;
-	delta = desired - getOutput ();
-	return delta;
+	Vector<float> point (dimension);
+	point.clear ();
+	point[i] = 1;
+	center.push_back (point);
   }
 
-  char * line;
-  char code;
-};
+  int iterations = dimension * dimension;  // We need d + d * (d + 1) / 2 data points per cluster to do k-means.  We get iterations * centers data points.
+  float radius = 0.1;
+  for (int i = 0; i < iterations; i++)
+  {
+    for (int j = 0; j < center.size (); j++)
+	{
+	  throwPoint (center[j], radius, data);
+    }
+  }
+}
 
-class TestNN : public NeuralNetworkBackprop
+void
+regress (vector<float> & data, float & ave, float & std)
 {
-public:
-  TestNN ()
+  ave = 0;
+  for (int i = 0; i < data.size (); i++)
   {
-	char * values[] =
-	{
-	  "bcxfks",
-	  "fgys",
-	  "nbcgrpuewy",
-	  "tf",
-	  "alcyfmnps",
-	  "adfn",
-	  "cwd",
-	  "bn",
-	  "knbhgropuewy",
-	  "et",
-	  "bcuezr",  // also includes "?", but handled differently
-	  "fyks",
-	  "fyks",
-	  "nbcgopewy",
-	  "nbcgopewy",
-	  "pu",
-	  "nowy",
-	  "not",
-	  "ceflnpsz",
-	  "knbhrouwy",
-	  "acnsvy",
-	  "glmpuwd"
-	};
-
-	for (int j = 0; j < 22; j++)
-	{
-	  for (int k = 0; values[j][k]; k++)
-	  {
-		NeuronInput * n = new NeuronInput;
-		n->line         = buffer;
-		n->position     = (j + 1) * 2;
-		n->code         = values[j][k];
-		n->unknownValue = 1.0 / strlen (values[j]);
-		inputs.push_back (n);
-	  }
-	}
-
-	NeuronOutput * e = new NeuronOutput;
-	e->line = buffer;
-	e->code = 'e';
-	outputs.push_back (e);
-	NeuronOutput * p = new NeuronOutput;
-	p->line = buffer;
-	p->code = 'p';
-	outputs.push_back (p);
-
-	vector<int> hiddenSizes;
-	//hiddenSizes.push_back (40);
-	//hiddenSizes.push_back (5);
-	constructHiddenLayers (hiddenSizes);
+	ave += data[i];
   }
+  ave /= data.size ();
 
-  virtual void startData ()
+  std = 0;
+  for (int i = 0; i < data.size (); i++)
   {
-	index = 0;
+	float d = data[i] - ave;
+	std += d * d;
   }
+  std /= data.size ();
+}
 
-  virtual bool nextDatum ()
+void
+regress (vector<Vector<float> > & data, Vector<float> & ave, Matrix<float> & std)
+{
+  int dimension = data[0].rows ();
+  ave.resize (dimension);
+  ave.clear ();
+  for (int i = 0; i < data.size (); i++)
   {
-	if (index == dataCount)
-	{
-	  return false;
-	}
-	strcpy (buffer, data[index++]);
-	return true;
+	ave += data[i];
   }
+  ave /= data.size ();
 
-  virtual bool correct ()
+  std.resize (dimension, dimension);
+  std.clear ();
+  for (int i = 0; i < data.size (); i++)
   {
-	return fabsf (outputs[0]->getDelta ()) < 0.4f  &&  fabsf (outputs[1]->getDelta ()) < 0.4f;
+	Vector<float> d = data[i] - ave;
+	std += d * ~d;
   }
-
-  virtual void happyGraph (int iteration, float accuracy)
-  {
-	cerr << iteration << " " << accuracy << endl;
-  }
-
-  int index;
-  int dataCount;
-  char * data[9000];
-  char buffer[80];
-};
-
-
-
-
-
-
-
-
+  std /= data.size ();
+}
 
 
 
@@ -319,70 +220,83 @@ main (int argc, char * argv[])
   srand (seed);
   cerr << "Random seed = " << seed << endl;
 
-  //int m = parmInt (1, 4);  // rows
-  //int n = parmInt (2, 4);  // columns
+  int m = parmInt (1, 4);  // rows
+  int n = parmInt (2, 4);  // columns
 
+  Matrix<float> A = makeMatrix (m, n);
+  Matrix<float> b = makeMatrix (m, 3);
 
+  Matrix<float> AA;
+  AA.copyFrom (A);
+  Matrix<float> bb;
+  bb.copyFrom (b);
+  Matrix<float> x;
+  gelss (A, x, b);
+  cerr << "x by gelss:" << endl << x << endl;
 
-
-  // Construct the NN
-  srand ((unsigned) time (NULL));
-  TestNN NN;
-
-  char buffer[80];
-  char * testset[9000];
-
-  // Load data
-  NN.dataCount = 0;
-  ifstream trainStream ("trainset");
-  while (! trainStream.eof ())
-  {
-	trainStream.getline (buffer, sizeof (buffer));
-	if (strlen (buffer) > 10)
-	{
-	  NN.data[NN.dataCount++] = strdup (buffer);
-	}
-  }
-  trainStream.close ();
-
-  int testCount = 0;
-  ifstream testStream ("testset");
-  while (! testStream.eof ())
-  {
-	testStream.getline (buffer, sizeof (buffer));
-	if (strlen (buffer) > 10)
-	{
-	  testset[testCount++] = strdup (buffer);
-	}
-  }
-  testStream.close ();
-  cerr << "testset size = " << testCount << endl;
-
-  // Train
-  NN.train ();
-
-  // Test
-  int accuracy = 0;
-  for (int i = 0; i < testCount; i++)
-  {
-	strcpy (NN.buffer, testset[i]);
-	NN.reset ();
-	if (NN.correct ()) accuracy++;
-  }
-  cout << "Test accuracy: " << accuracy << " (" << (float) accuracy / testCount << ")" << endl;
-
-  return 0;
-
-
+  gelsd (AA, x, bb);
+  cerr << "x by gelsd:" << endl << x << endl;
 
 
 
   /*
-  //AnnealingAdaptive method;
-  //LevenbergMarquardt method;
-  LevenbergMarquardtMinpack method;
-  //LevenbergMarquardtSparseBK method;
-  Test t;
+  vector<Vector<float> > data1;
+  for (int i = 0; i < 1000; i++)
+  {
+	Vector<float> point (2);
+	point[0] = randGaussian ();
+	point[1] = randGaussian ();
+	point *= 2;
+	data1.push_back (point);
+  }
+  Vector<float> ave1;
+  Matrix<float> std1;
+  regress (data1, ave1, std1);
+  cerr << "ave1 = " << ave1 << endl;
+  cerr << "std1: " << endl << std1 << endl;
+
+  vector<Vector<float> > data2;
+  for (int i = 0; i < 100; i++)
+  {
+	Vector<float> point (2);
+	point[0] = randGaussian () + 4;
+	point[1] = randGaussian () - 3;
+	data2.push_back (point);
+  }
+  Vector<float> ave2;
+  Matrix<float> std2;
+  regress (data2, ave2, std2);
+  cerr << "ave2 = " << ave2 << endl;
+  cerr << "std2: " << endl << std2 << endl;
+
+  Vector<float> ave;
+  Matrix<float> std;
+  vector<Vector<float> > data = data1;
+  data.insert (data.end (), data2.begin (), data2.end ());
+  regress (data, ave, std);
+  cerr << "ave = " << ave << endl;
+  cerr << "std: " << endl << std << endl;
+
+
+  float w1 = data1.size ();
+  float w2 = data2.size ();
+  float w = w1 + w2;
+  Vector<float> ave3 = (ave1 * w1 + ave2 * w2) / w;
+  cerr << "weighted mean = " << ave3 << endl;
+  Matrix<float> shift1 = ave1 - ave3;
+  Matrix<float> shift2 = ave2 - ave3;
+  shift1 *= ~shift1;
+  shift2 *= ~shift2;
+  Matrix<float> std3 = ((std1 + shift1) * w1 + (std2 + shift2) * w2) / w;
+  cerr << "std3 = " << endl << std3 << endl;
+  */
+
+
+  /*
+  AnnealingAdaptive<double> method;
+  //LevenbergMarquardt<float> method;
+  //LevenbergMarquardtSparseBK<float> method;
+  Test<double> t;
   Vector<double> point (3);
   point[0] = 1;
   point[1] = 1;
