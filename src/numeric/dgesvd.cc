@@ -8,6 +8,12 @@ for details.
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
 09/2005 Fred Rothganger -- Moved from lapackd.h into separate file.
+10/2005 Fred Rothganger -- Allow overwriting of input.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -21,14 +27,22 @@ namespace fl
 {
   template<>
   void
-  gesvd (const MatrixAbstract<double> & A, Matrix<double> & U, Matrix<double> & S, Matrix<double> & VT, char jobu, char jobvt)
+  gesvd (const MatrixAbstract<double> & A, Matrix<double> & U, Matrix<double> & S, Matrix<double> & VT, char jobu, char jobvt, bool copy)
   {
 	int m = A.rows ();
 	int n = A.columns ();
 	int minmn = std::min (m, n);
 
 	Matrix<double> tempA;
-	tempA.copyFrom (A);
+	const Matrix<double> * p;
+	if (! copy  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
+	{
+	  tempA = *p;
+	}
+	else
+	{
+	  tempA.copyFrom (A);
+	}
 
 	S.resize (minmn);
 
@@ -113,12 +127,12 @@ namespace fl
 
   template<>
   Matrix<double>
-  pinv (const Matrix<double> & A, double tolerance, double epsilon)
+  pinv (const MatrixAbstract<double> & A, double tolerance, double epsilon)
   {
 	Matrix<double> U;
 	Vector<double> D;
 	Matrix<double> VT;
-	gesvd (A, U, D, VT);
+	gesvd (A, U, D, VT, true);
 
 	if (tolerance < 0)
 	{
@@ -147,12 +161,12 @@ namespace fl
 
   template<>
   int
-  rank (const Matrix<double> & A, double threshold, double epsilon)
+  rank (const MatrixAbstract<double> & A, double threshold, double epsilon)
   {
 	Matrix<double> U;
 	Matrix<double> S;
 	Matrix<double> VT;
-	gesvd (A, U, S, VT, 'N', 'N');
+	gesvd (A, U, S, VT, 'N', 'N', true);
 
 	if (threshold < 0)
 	{
