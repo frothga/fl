@@ -1,6 +1,11 @@
 /*
 Author: Fred Rothganger
 Created 9/10/2005 to complement the float version of the same routine.
+Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -12,11 +17,30 @@ namespace fl
 {
   template<>
   void
-  sygv (const Matrix<double> & A, Matrix<double> & B, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors)
+  sygv (const MatrixAbstract<double> & A, const MatrixAbstract<double> & B, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool copy)
   {
-	int n = A.rows ();  // or A.columns (); they should be equal
+	const Matrix<double> * p;
+	if (! copy  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
+	{
+	  eigenvectors = *p;
+	}
+	else
+	{
+	  eigenvectors.copyFrom (A);
+	}
+
+	Matrix<double> tempB;
+	if (! copy  &&  (p = dynamic_cast<const Matrix<double> *> (&B)))
+	{
+	  tempB = *p;
+	}
+	else
+	{
+	  tempB.copyFrom (B);
+	}
+
+	int n = eigenvectors.rows ();  // or eigenvectors.columns (); they should be equal
 	eigenvalues.resize (n);
-	eigenvectors.copyFrom (A);
 
 	int lwork = -1;
 	double optimalSize = 0;
@@ -29,7 +53,7 @@ namespace fl
 			n,
 			& eigenvectors[0],
 			n,
-			& B[0],
+			& tempB[0],
 			n,
 			& eigenvalues[0],
 			& optimalSize,
@@ -46,7 +70,7 @@ namespace fl
 			n,
 			& eigenvectors[0],
 			n,
-			& B[0],
+			& tempB[0],
 			n,
 			& eigenvalues[0],
 			work,

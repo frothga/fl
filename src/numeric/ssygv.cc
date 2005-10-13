@@ -7,7 +7,13 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
-09/2005 Fred Rothganger -- Moved from lapacks.h into separate file.
+09/2005 Fred Rothganger -- Moved from lapacks.h into separate file.  Update
+        interface for B to match A, and allow overwriting of input.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -19,11 +25,30 @@ namespace fl
 {
   template<>
   void
-  sygv (const Matrix<float> & A, Matrix<float> & B, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors)
+  sygv (const MatrixAbstract<float> & A, const MatrixAbstract<float> & B, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors, bool copy)
   {
-	int n = A.rows ();  // or A.columns (); they should be equal
+	const Matrix<float> * p;
+	if (! copy  &&  (p = dynamic_cast<const Matrix<float> *> (&A)))
+	{
+	  eigenvectors = *p;
+	}
+	else
+	{
+	  eigenvectors.copyFrom (A);
+	}
+
+	Matrix<float> tempB;
+	if (! copy  &&  (p = dynamic_cast<const Matrix<float> *> (&B)))
+	{
+	  tempB = *p;
+	}
+	else
+	{
+	  tempB.copyFrom (B);
+	}
+
+	int n = eigenvectors.rows ();  // or eigenvectors.columns (); they should be equal
 	eigenvalues.resize (n);
-	eigenvectors.copyFrom (A);
 
 	int lwork = -1;
 	float optimalSize = 0;
@@ -36,7 +61,7 @@ namespace fl
 			n,
 			& eigenvectors[0],
 			n,
-			& B[0],
+			& tempB[0],
 			n,
 			& eigenvalues[0],
 			& optimalSize,
@@ -53,7 +78,7 @@ namespace fl
 			n,
 			& eigenvectors[0],
 			n,
-			& B[0],
+			& tempB[0],
 			n,
 			& eigenvalues[0],
 			work,
