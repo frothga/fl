@@ -7,7 +7,13 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
-09/2005 Fred Rothganger -- Moved from lapackd.h into separate file.
+09/2005 Fred Rothganger -- Moved from lapackd.h into separate file.  Allow
+        overwriting of input.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -19,15 +25,21 @@ namespace fl
 {
   template<>
   void
-  geev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors)
+  geev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool copy)
   {
-	char jobvl = 'N';
-	char jobvr = 'V';
-
 	int lda = A.rows ();
 	int n = std::min (lda, A.columns ());
+
 	Matrix<double> tempA;
-	tempA.copyFrom (A);
+	const Matrix<double> * pA;
+	if (! copy  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	{
+	  tempA = *pA;
+	}
+	else
+	{
+	  tempA.copyFrom (A);
+	}
 
 	eigenvalues.resize (n);
 	Matrix<double> wi (n);
@@ -38,8 +50,8 @@ namespace fl
 	double * work = (double *) malloc (lwork * sizeof (double));
 	int info = 0;
 
-	dgeev_ (jobvl,
-			jobvr,
+	dgeev_ ('N',
+			'V',
 			n,
 			& tempA[0],
 			lda,
@@ -63,13 +75,21 @@ namespace fl
 
   template<>
   void
-  geev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues)
+  geev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, bool copy)
   {
 	int lda = A.rows ();
 	int n = std::min (lda, A.columns ());
 
 	Matrix<double> tempA;
-	tempA.copyFrom (A);
+	const Matrix<double> * pA;
+	if (! copy  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	{
+	  tempA = *pA;
+	}
+	else
+	{
+	  tempA.copyFrom (A);
+	}
 
 	eigenvalues.resize (n);
 	Matrix<double> wi (n);
@@ -103,15 +123,21 @@ namespace fl
 
   template<>
   void
-  geev (const MatrixAbstract<double> & A, Matrix<std::complex<double> > & eigenvalues, Matrix<double> & eigenvectors)
+  geev (const MatrixAbstract<double> & A, Matrix<std::complex<double> > & eigenvalues, Matrix<double> & eigenvectors, bool copy)
   {
-	char jobvl = 'N';
-	char jobvr = 'V';
-
 	int lda = A.rows ();
 	int n = std::min (lda, A.columns ());
+
 	Matrix<double> tempA;
-	tempA.copyFrom (A);
+	const Matrix<double> * pA;
+	if (! copy  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	{
+	  tempA = *pA;
+	}
+	else
+	{
+	  tempA.copyFrom (A);
+	}
 
 	eigenvalues.resize (n);
 	Matrix<double> wr (n);
@@ -123,8 +149,8 @@ namespace fl
 	double * work = (double *) malloc (lwork * sizeof (double));
 	int info = 0;
 
-	dgeev_ (jobvl,
-			jobvr,
+	dgeev_ ('N',
+			'V',
 			n,
 			& tempA[0],
 			lda,
