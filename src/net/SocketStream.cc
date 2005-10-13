@@ -6,15 +6,18 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Revised by Fred Rothganger
+12/2004 Fred Rothganger -- Compilability fixes for MSVC (incomplete).
 */
 
 
 #include "fl/socket.h"
 
-#include <sys/ioctl.h>
-#include <sys/poll.h>
-#include <fcntl.h>
+#ifdef WIN32
+#else
+  #include <sys/ioctl.h>
+  #include <sys/poll.h>
+  #include <fcntl.h>
+#endif
 
 // To enable cerr for tracing...
 //#include <iostream>
