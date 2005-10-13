@@ -7,7 +7,13 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
-09/2005 Fred Rothganger -- Moved from lapackd.h into separate file.
+09/2005 Fred Rothganger -- Moved from lapackd.h into separate file.  Allow
+        overwriting of input.
+Revisions Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -19,10 +25,19 @@ namespace fl
 {
   template<>
   void
-  syev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors)
+  syev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool copy)
   {
-	int n = A.rows ();
-	eigenvectors.copyFrom (A);
+	const Matrix<double> * pA;
+	if (! copy  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	{
+	  eigenvectors = *pA;
+	}
+	else
+	{
+	  eigenvectors.copyFrom (A);
+	}
+
+	int n = eigenvectors.rows ();
 	eigenvalues.resize (n);
 
 	char jobz = 'V';
@@ -53,12 +68,20 @@ namespace fl
 
   template<>
   void
-  syev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues)
+  syev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, bool copy)
   {
-	int n = A.rows ();
-
 	Matrix<double> eigenvectors;
-	eigenvectors.copyFrom (A);
+	const Matrix<double> * pA;
+	if (! copy  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	{
+	  eigenvectors = *pA;
+	}
+	else
+	{
+	  eigenvectors.copyFrom (A);
+	}
+
+	int n = A.rows ();
 	eigenvalues.resize (n);
 
 	char jobz = 'N';
