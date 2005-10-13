@@ -9,9 +9,12 @@
 # 06/2005 Fred Rothganger -- Added FT_INC to CPPFLAGS.
 # 09/2005 Fred Rothganger -- Change lapack*.h to templated lapack.h and move
 #         implementations into separate files.
+# 10/2005 Fred Rothganger -- Add dgesd and sgelsd
 # Revisions Copyright 2005 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
+# Distributed under the GNU Lesser General Public License.  See the file
+# LICENSE for details.
 
 
 SOURCE_DIR := ../..
@@ -61,6 +64,7 @@ LAPACK_DOUBLE_O = \
 	dsygv.o \
 	dgeev.o \
 	dgelss.o \
+	dgelsd.o \
 	dgesvd.o \
 	dgetrf.o
 
@@ -70,6 +74,7 @@ LAPACK_FLOAT_O = \
 	ssygv.o \
 	sgeev.o \
 	sgelss.o \
+	sgelsd.o \
 	sgesvd.o \
 	sgetrf.o
 
