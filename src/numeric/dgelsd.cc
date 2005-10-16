@@ -14,6 +14,8 @@ for details.
 #include "fl/lapackprotod.h"
 #include "fl/lapackproto.h"
 
+#include <assert.h>
+
 
 using namespace std;
 
@@ -59,7 +61,7 @@ namespace fl
 	}
 
 	int smlsiz = ilaenv (9, "DGELSD", " ", 0, 0, 0, 0);
-	int nlvl = max (0, (int) ceil (log (minmn / (smlsiz + 1)) / log (2.0)));
+	int nlvl = max (0, (int) ceil (log (minmn / (smlsiz + 1.0)) / log (2.0)));
 
 	double * s = (double *) malloc (minmn * sizeof (double));
 	int liwork = 3 * minmn * nlvl + 11 * minmn;
