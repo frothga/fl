@@ -10,6 +10,7 @@ for details.
 01/2005 Fred Rothganger -- Compilability fix for MSVC
 05/2005 Fred Rothganger -- Rework naming scheme to be consistent across
         endians.
+10/2005 Fred Rothganger -- 64-bit compatibility
 Revisions Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
@@ -2745,7 +2746,7 @@ unsigned int
 PixelFormatUYVYChar::getRGBA (void * pixel) const
 {
   int y;
-  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
   {
 	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	y = ((unsigned char *) pixel)[3] << 16;
@@ -2774,7 +2775,7 @@ unsigned int
 PixelFormatUYVYChar::getYUV (void * pixel) const
 {
   unsigned int y;
-  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
   {
 	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	y = ((unsigned char *) pixel)[3] << 16;
@@ -2807,7 +2808,7 @@ PixelFormatUYVYChar::setRGBA (void * pixel, unsigned int rgba) const
   unsigned char u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000, 0), 0xFFFFFF) >> 16;
   unsigned char v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000, 0), 0xFFFFFF) >> 16;
 
-  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
   {
 	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	((unsigned char *) pixel)[0] = u;
@@ -2825,7 +2826,7 @@ PixelFormatUYVYChar::setRGBA (void * pixel, unsigned int rgba) const
 void
 PixelFormatUYVYChar::setYUV (void * pixel, unsigned int yuv) const
 {
-  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
   {
 	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	((unsigned char *) pixel)[0] = (yuv & 0xFF00) >>  8;
@@ -2897,7 +2898,7 @@ unsigned int
 PixelFormatYUYVChar::getRGBA (void * pixel) const
 {
   int y;
-  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
   {
 	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	y = ((unsigned char *) pixel)[2] << 16;
@@ -2920,7 +2921,7 @@ unsigned int
 PixelFormatYUYVChar::getYUV (void * pixel) const
 {
   unsigned int y;
-  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
   {
 	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	y = ((unsigned char *) pixel)[2] << 16;
@@ -2950,7 +2951,7 @@ PixelFormatYUYVChar::setRGBA (void * pixel, unsigned int rgba) const
   unsigned char u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000, 0), 0xFFFFFF) >> 16;
   unsigned char v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000, 0), 0xFFFFFF) >> 16;
 
-  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
   {
 	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	((unsigned char *) pixel)[1] = u;
@@ -2968,7 +2969,7 @@ PixelFormatYUYVChar::setRGBA (void * pixel, unsigned int rgba) const
 void
 PixelFormatYUYVChar::setYUV (void * pixel, unsigned int yuv) const
 {
-  if (((unsigned int) pixel) % 4)  // in middle of 32-bit word
+  if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
   {
 	pixel = & ((short *) pixel)[-1];  // Move backward in memory 16 bits.
 	((unsigned char *) pixel)[1] = (yuv & 0xFF00) >>  8;
