@@ -8,7 +8,8 @@ for details.
 
 12/2004 Fred Rothganger -- Attempt to adjust white balance of firewire camera
 10/2005 Fred Rothganger -- Test ImageFileFormatTIFF, Transform, InterestMSER,
-        Canvas::drawText, alternate implementations of DOG and SIFT.
+        Canvas::drawText, 64-bit readiness for Pixel, alternate implementations
+        of DOG and SIFT.  Change lapack?.h to lapack.h
 Revisions Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
@@ -24,8 +25,7 @@ for details.
 #include "fl/video.h"
 #include "fl/interest.h"
 #include "fl/descriptor.h"
-#include "fl/lapackd.h"
-#include "fl/lapacks.h"
+#include "fl/lapack.h"
 #include "fl/random.h"
 #include "fl/track.h"
 #include "fl/imagecache.h"
@@ -91,33 +91,22 @@ main (int argc, char * argv[])
 
 
 	// Test effect of removing intensity information from image
-	/*
 	new ImageFileFormatJPEG;
 	new ImageFileFormatPGM;
 	new ImageFileFormatTIFF;
 	Image image (parmChar (1, "test.jpg"));
-	float total = 0;
-	float U = 0;
-	float V = 0;
-	for (int y = 75; y < image.height - 50; y++)
+	image *= YUYVChar;
+	for (int y = 0; y < image.height; y++)
 	{
-	  for (int x = 100; x < image.width - 50; x++)
+	  for (int x = 0; x < image.width; x++)
 	  {
 		unsigned int yuv = image.getYUV (x, y);
-		total++;
-		U += ((yuv & 0xFF00) >> 8);
-		V += (yuv & 0xFF);
 		yuv = (yuv & 0xFFFF) | 0x800000;
 		image.setYUV (x, y, yuv);
 	  }
 	}
-	U /= total;
-	V /= total;
-	cerr << "(U,V) = " << U << " " << V << endl;
-	//image *= GrayFloat;
 	window.show (image);
 	window.waitForClick ();
-	*/
 
 
 	// Test rotation in HLS space
@@ -634,6 +623,7 @@ main (int argc, char * argv[])
 
 
 	// Test interest operator
+	/*
 	new ImageFileFormatPGM;
 	new ImageFileFormatJPEG;
 	new ImageFileFormatTIFF;
@@ -659,7 +649,7 @@ main (int argc, char * argv[])
 	}
 	  window.show (ci);
 	  window.waitForClick ();
-
+	*/
 
 
 	// Test SIFT
