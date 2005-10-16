@@ -20,6 +20,8 @@ for details.
 #include "fl/lapack.h"
 #include "fl/lapackprotos.h"
 
+#include <assert.h>
+
 
 namespace fl
 {
