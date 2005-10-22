@@ -7,6 +7,7 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fixes for MSVC (incomplete).
+10/2005 Fred Rothganger -- Use generic int types for x64 compatibility.
 */
 
 
@@ -38,7 +39,7 @@ SocketStreambuf::SocketStreambuf (int socket, int timeout)
   setp (putBuffer, putBuffer + sizeof (putBuffer));
 }
 
-int
+SocketStreambuf::int_type
 SocketStreambuf::underflow ()
 {
   if (! waitForInput ())
@@ -54,8 +55,8 @@ SocketStreambuf::underflow ()
   return traits_type::to_int_type (getBuffer[0]);
 }
 
-int
-SocketStreambuf::overflow (int c)
+SocketStreambuf::int_type
+SocketStreambuf::overflow (int_type c)
 {
   if (sync ())
   {
@@ -92,7 +93,7 @@ SocketStreambuf::sync ()
   return 0;
 }
 
-int
+std::streamsize
 SocketStreambuf::showmanyc ()
 {
   int count = 0;
