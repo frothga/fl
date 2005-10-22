@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+10/2005 Fred Rothganger -- Use generic int types for x64 compatibility.
 */
 
 
@@ -28,10 +31,10 @@ namespace fl
 	SocketStreambuf (int socket = -1, int timeout = 0);
 	void init (int socket);
 
-	int underflow ();
-	int overflow (int c);
-	int sync ();
-	int showmanyc ();
+	int_type        underflow ();
+	int_type        overflow (int_type c);
+	int             sync ();
+	std::streamsize showmanyc ();
 
 	bool waitForInput ();  // Waits for timeout seconds for input from socket.
 	bool waitForOutput ();  // Ditto for output.  Returns true if ready for output.  Returns false if timeout expires.
