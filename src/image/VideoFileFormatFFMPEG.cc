@@ -618,10 +618,9 @@ VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
 	stream = 0;
   }
 
-  url_fclose (& fc->pb);
-
   if (fc)
   {
+	url_fclose (& fc->pb);
 	av_free (fc);
 	fc = 0;
   }
