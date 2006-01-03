@@ -14,6 +14,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+12/2005 Fred Rothganger -- Fix problems with seek.
 */
 
 
@@ -62,6 +65,12 @@ VideoInFileFFMPEG::seekFrame (int frame)
 }
 
 /**
+   Assumptions:
+   <ul>
+   <li>Timestamps are monotonic in video file
+   <li>Constant frame rate
+   </ul>
+
    \todo Seek in c.avi (bear and dog rotating) is screwed up at the FFMPEG
    level.  It has more index than video, and the index seems to be on a
    different time base than the video itself.
@@ -75,42 +84,59 @@ VideoInFileFFMPEG::seekTime (double timestamp)
   }
 
   int targetFrame = (int) floor (timestamp * stream->r_frame_rate.num / stream->r_frame_rate.den + 1e-6);  // floor() because any timestamp should equate to the frame visible at that time.
+
+  int64_t startPTS = 0;
+  if (stream->start_time != AV_NOPTS_VALUE)
+  {
+	startPTS = stream->start_time;
+  }
+  else if (fc->start_time != AV_NOPTS_VALUE)
+  {
+	startPTS = av_rescale (fc->start_time, stream->time_base.den, stream->time_base.num * AV_TIME_BASE);
+  }
+  int64_t minDTS = max ((int64_t) 0, startPTS);
+
   while (cc->frame_number != targetFrame)
   {
 	if (! seekLinear  &&  (cc->frame_number > targetFrame  ||  cc->frame_number < targetFrame - 12))  // 12 is arbitrary, but based on the typical size of a GOP in mpeg
 	{
 	  // Use seek to position at or before the frame
-	  int64_t targetDTS = (int64_t) rint
+	  int64_t targetDTS = startPTS + (int64_t) rint
 	  (
-	    (timestamp - (double) expectedSkew * cc->time_base.num / cc->time_base.den)
+	    (timestamp - expectedSkew * stream->r_frame_rate.den / stream->r_frame_rate.num)
 		* stream->time_base.den / stream->time_base.num  // this is counterintuitive, but time_base is apparently defined as the amount to *divide* seconds by to get stream units
 	  );
-	  if (fc->start_time != AV_NOPTS_VALUE)
+	  if (targetDTS < minDTS)
 	  {
-		targetDTS += av_rescale (fc->start_time, stream->time_base.den, stream->time_base.num * AV_TIME_BASE);
+		state = av_seek_frame (fc, stream->index, 0, AVSEEK_FLAG_BYTE);
+		if (state < 0)
+		{
+		  return;
+		}
 	  }
-	  state = av_seek_frame (fc, stream->index, targetDTS, cc->frame_number > targetFrame ? AVSEEK_FLAG_BACKWARD : 0);
-	  if (state < 0)
+	  else
 	  {
-		return;
-	  }
-
-	  // Flush the codec's state, and also clear our own packet state.
-	  avcodec_flush_buffers (cc);
-	  if (packet.size)
-	  {
-		av_free_packet (&packet);
+		bool backwards;
+		if (packet.size)
+		{
+		  backwards = packet.dts > targetDTS;
+		}
+		else
+		{
+		  backwards = cc->frame_number > targetFrame;
+		}
+		state = av_seek_frame (fc, stream->index, targetDTS, backwards ? AVSEEK_FLAG_BACKWARD : 0);
+		if (state < 0)
+		{
+		  return;
+		}
 	  }
 
 	  // Read the next key frame.  It is possible for a seek to find something
 	  // other than a key frame.  For example, if an mpeg has timestamps on
 	  // packets other than I frames.
-	  state = av_read_frame (fc, &packet);  // packet.pts and dts are in AV_TIME_BASE units
-	  if (state < 0)
-	  {
-		return;
-	  }
-	  while (packet.stream_index != stream->index  ||  (stream->parser  &&  ! packet.flags))  // Need to be more specific about flags.
+	  avcodec_flush_buffers (cc);
+	  do
 	  {
 		av_free_packet (&packet);
 		state = av_read_frame (fc, &packet);
@@ -119,6 +145,7 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 		  return;
 		}
 	  }
+	  while (packet.stream_index != stream->index  ||  (stream->parser  &&  ! (packet.flags & PKT_FLAG_KEY)));
 	  state = 0;
 	  size = packet.size;
 	  data = packet.data;
@@ -131,19 +158,13 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 		cc->frame_number = targetFrame + 1;  // to force reopen, since we don't know where we are in the video now
 		continue;
 	  }
-	  int64_t PTS = packet.dts;
-	  if (fc->start_time != AV_NOPTS_VALUE)
-	  {
-		PTS -= fc->start_time;
-	  }
-	  double decodeFrame = ((double) PTS / AV_TIME_BASE) * stream->r_frame_rate.num / stream->r_frame_rate.den;
+	  double decodeFrame = ((double) (packet.dts - startPTS) * stream->time_base.num / stream->time_base.den) * stream->r_frame_rate.num / stream->r_frame_rate.den;
 	  double skew = 0;
 	  if (packet.pts != AV_NOPTS_VALUE)
 	  {
-		PTS = packet.pts - packet.dts;
-		skew = ((double) PTS / AV_TIME_BASE) * cc->time_base.den / cc->time_base.num;
+		skew = ((double) (packet.pts - packet.dts) * stream->time_base.num / stream->time_base.den) * stream->r_frame_rate.num / stream->r_frame_rate.den;
 	  }
-	  cc->frame_number = (int) rint (decodeFrame + skew);  // rint() because PTS should be exactly on some frame's timestamp, and we want to compensate for numerical error.
+	  cc->frame_number = (int) rint (decodeFrame + skew);  // rint() because DTS should be exactly on some frame's timestamp, and we want to compensate for numerical error.
 	  //cerr << "frame_number = " << cc->frame_number << " " << decodeFrame << " " << skew << endl;
 	  if (cc->frame_number > targetFrame)
 	  {
@@ -161,8 +182,16 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 
 	if (seekLinear  &&  targetFrame < cc->frame_number)
 	{
-	  close ();
-	  open (fileName);
+	  // Reset to start of file
+	  state = av_seek_frame (fc, stream->index, 0, AVSEEK_FLAG_BYTE);
+	  if (state < 0)
+	  {
+		return;
+	  }
+	  avcodec_flush_buffers (cc);
+	  av_free_packet (&packet);
+	  size = 0;
+	  data = 0;
 	}
 
 	// Read forward until finding the exact frame requested.
@@ -196,10 +225,7 @@ VideoInFileFFMPEG::readNext (Image * image)
   {
 	if (size <= 0)
 	{
-	  if (packet.size)
-	  {
-		av_free_packet (&packet);  // sets packet.size to zero
-	  }
+	  av_free_packet (&packet);  // sets packet.size to zero
 	  state = av_read_frame (fc, &packet);
 	  if (state < 0)
 	  {
