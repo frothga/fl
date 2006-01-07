@@ -14,6 +14,9 @@
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Lesser General Public License.  See the file
 # LICENSE for details.
+#
+#
+# 01/2006 Fred Rothganger -- Move PixelFormat clases to separate file.
 
 
 SOURCE_DIR := ../..
@@ -27,6 +30,7 @@ VPATH = $(SOURCE_LIB)
 IMAGE_O = \
 	Image.o \
 	Pixel.o \
+	PixelFormat.o \
 	Point.o \
 	ImageCache.o
 
