@@ -15,6 +15,10 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Improve efficiency of decimation and image
+        difference.
 */
 
 
@@ -110,6 +114,52 @@ InterestDOG::fitQuadratic (vector< ImageOf<float> > & dogs, int s, int x, int y,
   return dog1(x,y) + 0.5f * result.dot (g);
 }
 
+/**
+   Efficiently subtract image b from image a, where both consist of floats.
+ **/
+static inline Image
+difference (const Image & a, const Image & b)
+{
+  int w = a.width;
+  int h = a.height;
+  Image result (w, h, GrayFloat);
+
+  float * source1 = (float *) a.buffer;
+  float * source2 = (float *) b.buffer;
+  float * dest    = (float *) result.buffer;
+  float * end     = dest + w * h;
+  while (dest < end)
+  {
+	*dest++ = *source1++ - *source2++;
+  }
+
+  return result;
+}
+
+/**
+   Downsample the given image by a factor of 2.
+ **/
+static inline Image
+decimate (const Image & image)
+{
+  Image result (image.width / 2, image.height / 2, GrayFloat);
+  float * fromPixel = (float *) image.buffer;
+  float * toPixel   = (float *) result.buffer;
+  float * end       = toPixel + result.width * result.height;
+  while (toPixel < end)
+  {
+	float * nextRow = fromPixel + 2 * image.width;
+	float * rowEnd  = toPixel   +     result.width;
+	while (toPixel < rowEnd)
+	{
+	  *toPixel++ = *fromPixel++;
+	  fromPixel++;
+	}
+	fromPixel = nextRow;
+  }
+  return result;
+}
+
 void
 InterestDOG::run (const Image & image, InterestPointSet & result)
 {
@@ -169,7 +219,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 	vector< ImageOf<float> > dogs (steps + 2);
 	for (int i = 0; i < steps + 2; i++)
 	{
-	  dogs[i] = blurred[i] - blurred[i+1];
+	  dogs[i] = difference (blurred[i], blurred[i+1]);
 	}
 
 	// Search for maxima in DoG at each scale level
@@ -235,21 +285,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 	  }
 	}
 
-	// Downsample the working image
-	ImageOf<float> downsampled (work.width / 2, work.height / 2, GrayFloat);
-	int y2 = 0;
-	for (int y = 0; y < downsampled.height; y++)
-	{
-	  int x2 = 0;
-	  for (int x = 0; x < downsampled.width; x++)
-	  {
-		downsampled(x,y) = work(x2,y2);
-		x2 += 2;
-	  }
-	  y2 += 2;
-	}
-	work = downsampled;
-
+	work = decimate (work);
 	octave *= 2.0f;
   }
 
