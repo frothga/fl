@@ -18,7 +18,7 @@ for details.
 
 
 01/2006 Fred Rothganger -- Improve efficiency of decimation and image
-        difference.
+        difference.  Avoid unecessary image copies.
 */
 
 
@@ -169,8 +169,14 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
   multiset<PointInterest> sorted;
 
   ImageOf<float> work;
-  work.copyFrom (image);
-  work *= GrayFloat;
+  if (*image.format == GrayFloat)
+  {
+	work.copyFrom (image);
+  }
+  else
+  {
+	work = image * GrayFloat;
+  }
   if (firstScale != 0.5f)  // The blur level of a raw image is defined to be 0.5
   {
 	Gaussian1D blur (sqrt (firstScale * firstScale - 0.25), Boost, GrayFloat, Horizontal);
@@ -195,11 +201,12 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
   // Step thru octaves until image is too small to process
   int minsize = 2 * crop + 3;
   float octave = 1.0f;  // actually, this variable stores 2^octave
+  vector<Image> blurred (steps + 3);
+  vector< ImageOf<float> > dogs (steps + 2);
   while (work.width >= minsize  &&  work.height >= minsize  &&  octave * firstScale <= lastScale)
   {
 	// Build set of blurred images
-	vector<Image> blurred (steps + 3);
-	blurred[0].copyFrom (work);
+	blurred[0] = work;
 	for (int i = 1; i < steps + 3; i++)
 	{
 	  Gaussian1D & blur = blurs[i-1];
@@ -207,16 +214,15 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 	  work *= blur;
 	  blur.direction = Vertical;
 	  work *= blur;
-	  blurred[i].copyFrom (work);
+	  blurred[i] = work;
 	}
-	work = blurred[steps];
+	work = decimate (blurred[steps]);
 	for (int i = 1; i <= steps; i++)
 	{
 	  ImageCache::shared.add (blurred[i], ImageCache::monochrome, octave * firstScale * powf (scaleRatio, i));
 	}
 
 	// Build set of Difference-of-Gaussian images
-	vector< ImageOf<float> > dogs (steps + 2);
 	for (int i = 0; i < steps + 2; i++)
 	{
 	  dogs[i] = difference (blurred[i], blurred[i+1]);
@@ -285,8 +291,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 	  }
 	}
 
-	work = decimate (work);
-	octave *= 2.0f;
+ 	octave *= 2.0f;
   }
 
   result.add (sorted);
