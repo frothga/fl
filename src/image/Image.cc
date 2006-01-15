@@ -418,94 +418,170 @@ Image::clear (unsigned int rgba)
 Image
 Image::operator + (const Image & that)
 {
-  if (*format != *that.format)
+  if (max (format->precedence, that.format->precedence) <= GrayFloat.precedence)
   {
-	if (format->precedence >= that.format->precedence)
+	if (*format != GrayFloat  ||  *that.format != GrayFloat)
 	{
-	  Image temp = that * (*format);
-	  return *this + temp;
+	  return (*this * GrayFloat) + (that * GrayFloat);
 	}
-	else
+  }
+  else
+  {
+	if (*format != GrayDouble  ||  *that.format != GrayDouble)
 	{
-	  Image temp = (*this) * (*that.format);
-	  return temp + that;
+	  return (*this * GrayDouble) + (that * GrayDouble);
 	}
   }
 
   Image result (max (width, that.width), max (height, that.height), *format);
 
-  int offsetX1 = 0;
-  int offsetX2 = 0;
-  if (width > that.width)
-  {
-	offsetX2 = (width - that.width) / 2;
-  }
-  else
-  {
-	offsetX1 = (that.width - width) / 2;
-  }
-  int offsetY1 = 0;
-  int offsetY2 = 0;
-  if (height > that.height)
-  {
-	offsetY2 = (height - that.height) / 2;
-  }
-  else
-  {
-	offsetY1 = (that.height - height) / 2;
+  int offsetX = abs (width  - that.width)  / 2;
+  int offsetY = abs (height - that.height) / 2;
+  int sharedWidth = min (width, that.width);
+  int sharedHeight = min (height, that.height);
+  assert (offsetX * 2 == abs (width - that.width)  &&  offsetY * 2 == abs (height - that.height));  // avoid odd-even mismatch
+
+  #define add(size) \
+  { \
+	size * start1 = (size *) buffer; \
+	size * start2 = (size *) that.buffer; \
+	size * start  = (size *) result.buffer; \
+    \
+	size * pixel1 = start1; \
+	size * pixel2 = start2; \
+	if (width > that.width) pixel1 += offsetX; \
+	else                    pixel2 += offsetX; \
+	if (height > that.height) pixel1 += offsetY * width; \
+	else                      pixel2 += offsetY * that.width; \
+	size * pixel  = start + (offsetX + offsetY * result.width); \
+    \
+	int advance1 = width        - sharedWidth; \
+	int advance2 = that.width   - sharedWidth; \
+	int advance  = result.width - sharedWidth; \
+    \
+	size * end = start + (result.width * (result.height - offsetY) - offsetX); \
+	while (pixel < end) \
+	{ \
+	  size * rowEnd = pixel + sharedWidth; \
+	  while (pixel < rowEnd) \
+	  { \
+		*pixel++ = *pixel1++ + *pixel2++; \
+	  } \
+	  pixel1 += advance1; \
+	  pixel2 += advance2; \
+	  pixel  += advance; \
+	} \
+    \
+	if (height != that.height) \
+	{ \
+	  size * sourceT; \
+	  size * sourceB; \
+	  int sourceWidth; \
+	  if (height > that.height) \
+	  { \
+		sourceT = start1; \
+		sourceB = start1 + ((height - offsetY) * width); \
+		sourceWidth = width; \
+	  } \
+	  else \
+	  { \
+		sourceT = start2; \
+		sourceB = start2 + ((that.height - offsetY) * that.width); \
+		sourceWidth = that.width; \
+	  } \
+	  size * pixelT = start; \
+	  if (sourceWidth < result.width) pixelT += offsetX; \
+	  size * pixelB = pixelT + ((result.height - offsetY) * result.width); \
+      \
+	  int advance = result.width - sourceWidth; \
+      \
+	  size * end = sourceT + offsetY * sourceWidth; \
+	  while (sourceT < end) \
+	  { \
+		size * rowEnd = sourceT + sourceWidth; \
+		while (sourceT < rowEnd) \
+		{ \
+		  *pixelT++ = *sourceT++; \
+		  *pixelB++ = *sourceB++; \
+		} \
+		pixelT += advance; \
+		pixelB += advance; \
+	  } \
+	} \
+    \
+	if (width != that.width) \
+	{ \
+	  size * sourceL; \
+	  size * end; \
+	  int sourceHeight; \
+	  if (width > that.width) \
+	  { \
+		sourceL = start1; \
+		end     = start1 + width * height; \
+		sourceHeight = height; \
+	  } \
+	  else \
+	  { \
+		sourceL = start2; \
+		end     = start2 + that.width * that.height; \
+		sourceHeight = that.height; \
+	  } \
+	  if (sourceHeight > sharedHeight) \
+	  { \
+		sourceL += offsetY * result.width; \
+		end     -= offsetY * result.width; \
+	  } \
+	  size * sourceR = sourceL + (result.width - offsetX); \
+	  size * pixelL  = start + offsetY * result.width; \
+	  size * pixelR  = pixelL + (result.width - offsetX); \
+      \
+	  int advance = result.width - offsetX; \
+      \
+	  while (sourceR < end) \
+	  { \
+		size * rowEnd = sourceR + offsetX; \
+		while (sourceR < rowEnd) \
+		{ \
+		  *pixelL++ = *sourceL++; \
+		  *pixelR++ = *sourceR++; \
+		} \
+		sourceL = sourceR; \
+		sourceR += advance; \
+		pixelL = pixelR; \
+		pixelR += advance; \
+	  } \
+	} \
+    \
+	if ((width - that.width) * (height - that.height) < 0) \
+	{ \
+	  size * pixelTL = start; \
+	  size * pixelTR = start + (result.width - offsetX); \
+	  size * pixelBL = pixelTL + ((result.height - offsetY) * result.width); \
+	  size * pixelBR = pixelTR + ((result.height - offsetY) * result.width); \
+      \
+	  int advance = result.width - offsetX; \
+      \
+	  size * end = start + result.width * result.height; \
+	  while (pixelBR < end) \
+	  { \
+		size * rowEnd = pixelBR + offsetX; \
+		while (pixelBR < rowEnd) \
+		{ \
+		  *pixelTL++ = 0.0f; \
+		  *pixelTR++ = 0.0f; \
+		  *pixelBL++ = 0.0f; \
+		  *pixelBR++ = 0.0f; \
+		} \
+		pixelTL = pixelTR; \
+		pixelBL = pixelBR; \
+		pixelTR += advance; \
+		pixelBR += advance; \
+	  } \
+	} \
   }
 
-  if (*format == GrayFloat)
-  {
-	ImageOf<float> image1 (*this);
-	ImageOf<float> image2 (that);
-	ImageOf<float> imageR (result);
-	for (int x = 0; x < result.width; x++)
-	{
-	  for (int y = 0; y < result.height; y++)
-	  {
-		float pixel1 = 0;
-		if (x - offsetX1 >= 0  &&  x - offsetX1 < width  &&  y - offsetY1 >= 0  &&  y - offsetY1 < height)
-		{
-		  pixel1 = image1 (x - offsetX1, y - offsetY1);
-		}
-		float pixel2 = 0;
-		if (x - offsetX2 >= 0  &&  x - offsetX2 < that.width  &&  y - offsetY2 >= 0  &&  y - offsetY2 < that.height)
-		{
-		  pixel2 = image2 (x - offsetX2, y - offsetY2);
-		}
-		imageR (x, y) = pixel1 + pixel2;
-	  }
-	}
-  }
-  else if (*format == GrayDouble)
-  {
-	ImageOf<double> image1 (*this);
-	ImageOf<double> image2 (that);
-	ImageOf<double> imageR (result);
-	for (int x = 0; x < result.width; x++)
-	{
-	  for (int y = 0; y < result.height; y++)
-	  {
-		double pixel1 = 0;
-		if (x - offsetX1 >= 0  &&  x - offsetX1 < width  &&  y - offsetY1 >= 0  &&  y - offsetY1 < height)
-		{
-		  pixel1 = image1 (x - offsetX1, y - offsetY1);
-		}
-		double pixel2 = 0;
-		if (x - offsetX2 >= 0  &&  x - offsetX2 < that.width  &&  y - offsetY2 >= 0  &&  y - offsetY2 < that.height)
-		{
-		  pixel2 = image2 (x - offsetX2, y - offsetY2);
-		}
-		imageR (x, y) = pixel1 + pixel2;
-	  }
-	}
-  }
-  else
-  {
-	throw "add unimplemented for general formats";
-	// Use Pixel class to encapsulate format, and code similar to above
-  }
+  if (*format == GrayFloat) add (float)
+  else add (double)
 
   return result;
 }
@@ -701,7 +777,7 @@ Image::operator - (const Image & that)
   }
 
   if (*format == GrayFloat) subtract (float)
-  else subtract(double)
+  else subtract (double)
 
   return result;
 }
