@@ -13,11 +13,15 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Write zeros to image if out of bounds.
 */
 
 
 #include "fl/convolve.h"
 #include "fl/pi.h"
+#include "fl/color.h"
 
 #include <float.h>
 
@@ -148,6 +152,10 @@ TransformGauss::filter (const Image & image)
 		  }
 		  result (toX, toY) = sum / weight;
 		}
+		else
+		{
+		  result (toX, toY) = 0.0f;
+		}
 	  }
 	}
 	return result;
@@ -202,6 +210,10 @@ TransformGauss::filter (const Image & image)
 			Gx += GstepX;
 		  }
 		  result (toX, toY) = sum / weight;
+		}
+		else
+		{
+		  result (toX, toY) = 0.0;
 		}
 	  }
 	}
@@ -269,6 +281,10 @@ TransformGauss::filter (const Image & image)
 		  sum[2] /= weight;
 		  sum[3] /= weight;
 		  result.setRGBA (toX, toY, sum);
+		}
+		else
+		{
+		  result.setRGBA (toX, toY, BLACK);
 		}
 	  }
 	}
