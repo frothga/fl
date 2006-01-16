@@ -13,6 +13,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Prioritize exception 4 (out of bounds) over others
 */
 
 
@@ -313,14 +316,14 @@ KLT::track (const Point & point0, const int level, Point & point1)
   int count = 0;
   while (true)
   {
-	if (count++ >= maxIterations)
-	{
-	  throw 3;
-	}
-
 	if (point1.x < xl  ||  point1.x >= lastH  ||  point1.y < yl  ||  point1.y >= lastV)
 	{
 	  throw 4;
+	}
+
+	if (count++ >= maxIterations)
+	{
+	  throw 3;
 	}
 
 	// Compute second moment matrix and error vector
@@ -390,6 +393,11 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	{
 	  break;
 	}
+  }
+
+  if (point1.x < xl  ||  point1.x >= lastH  ||  point1.y < yl  ||  point1.y >= lastV)
+  {
+	throw 4;
   }
 
   return sqrtf (error / pixels);
