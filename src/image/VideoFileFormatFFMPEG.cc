@@ -17,6 +17,7 @@ for details.
 
 
 12/2005 Fred Rothganger -- Fix problems with seek.
+01/2006 Fred Rothganger -- Protect against uninitialized packet.
 */
 
 
@@ -39,6 +40,8 @@ VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName, const fl::Pi
   fc = 0;
   cc = 0;
   packet.size = 0;
+  packet.data = 0;
+  av_init_packet (&packet);
   timestampMode = false;
   seekLinear = false;
 
@@ -364,10 +367,7 @@ VideoInFileFFMPEG::open (const string & fileName)
 void
 VideoInFileFFMPEG::close ()
 {
-  if (packet.size)
-  {
-	av_free_packet (&packet);  // sets size field to zero
-  }
+  av_free_packet (&packet);  // sets size field to zero
   if (cc  &&  cc->codec)
   {
 	avcodec_close (cc);
