@@ -172,10 +172,12 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
   if (*image.format == GrayFloat)
   {
 	work.copyFrom (image);
+	ImageCache::shared.add (image, ImageCache::monochrome);
   }
   else
   {
 	work = image * GrayFloat;
+	ImageCache::shared.add (work, ImageCache::monochrome);
   }
   if (firstScale != 0.5f)  // The blur level of a raw image is defined to be 0.5
   {
@@ -183,6 +185,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 	work *= blur;
 	blur.direction = Vertical;
 	work *= blur;
+	ImageCache::shared.add (work, ImageCache::monochrome, firstScale);
   }
 
   // Make a set of blurring kernels, one for each step of blurring while
@@ -205,27 +208,38 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
   vector< ImageOf<float> > dogs (steps + 2);
   while (work.width >= minsize  &&  work.height >= minsize  &&  octave * firstScale <= lastScale)
   {
-	// Build set of blurred images
-	blurred[0] = work;
-	for (int i = 1; i < steps + 3; i++)
+	if (octave <= 1.0f)
 	{
-	  Gaussian1D & blur = blurs[i-1];
-	  blur.direction = Horizontal;
-	  work *= blur;
-	  blur.direction = Vertical;
-	  work *= blur;
-	  blurred[i] = work;
+	  blurred[0] = work;
+	  for (int i = 1; i < steps + 3; i++)
+	  {
+		Gaussian1D & blur = blurs[i-1];
+		blur.direction = Horizontal;
+		work *= blur;
+		blur.direction = Vertical;
+		work *= blur;
+		blurred[i] = work;
+		dogs[i-1] = difference (blurred[i-1], blurred[i]);
+		ImageCache::shared.add (blurred[i], ImageCache::monochrome, octave * firstScale * powf (scaleRatio, i));
+	  }
 	}
-	work = decimate (blurred[steps]);
-	for (int i = 1; i <= steps; i++)
+	else
 	{
-	  ImageCache::shared.add (blurred[i], ImageCache::monochrome, octave * firstScale * powf (scaleRatio, i));
-	}
-
-	// Build set of Difference-of-Gaussian images
-	for (int i = 0; i < steps + 2; i++)
-	{
-	  dogs[i] = difference (blurred[i], blurred[i+1]);
+	  dogs[0] = decimate (dogs[steps  ]);
+	  dogs[1] = decimate (dogs[steps+1]);
+	  blurred[2] = decimate (blurred[steps+2]);
+	  work = blurred[2];
+	  for (int i = 3; i < steps + 3; i++)
+	  {
+		Gaussian1D & blur = blurs[i-1];
+		blur.direction = Horizontal;
+		work *= blur;
+		blur.direction = Vertical;
+		work *= blur;
+		blurred[i] = work;
+		dogs[i-1] = difference (blurred[i-1], blurred[i]);
+		ImageCache::shared.add (blurred[i], ImageCache::monochrome, octave * firstScale * powf (scaleRatio, i));
+	  }
 	}
 
 	// Search for maxima in DoG at each scale level
