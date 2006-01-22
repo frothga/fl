@@ -15,6 +15,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Add "fast" mode to InterestDOG.
 */
 
 
@@ -149,6 +152,7 @@ namespace fl
 	int crop;  ///< Number of pixels from border to ignore maxima.
 	float thresholdEdge;  ///< Gives smallest permissible ratio of det(H) / trace(H)^2, where H is the Hessian of the DoG function on intensity.
 	float thresholdPeak;  ///< Minimum permissible strength of DoG function at a local maximum.
+	bool fast;  ///< Indicates to use fast mode:  23% faster,  23% more points.  Under strictest conditions (matching scale), repeatability goes down.  However, larger numer of points detected compensates for this as scale criterion is relaxed.
   };
 
   class InterestMSER : public InterestOperator
