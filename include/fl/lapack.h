@@ -14,6 +14,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Add "copy" option to gelss() and gelsd().
 */
 
 
@@ -131,9 +134,11 @@ namespace fl
 	 in b that don't have associated elements in x, which only exist when A
 	 has more rows than columns.  If A has equal or fewer rows than columns,
 	 then the squared error is zero.
+	 \param copy Indicates that A should not be overwritten, even if it
+	 is a dense Matrix.  Forces A to be copied, which is less efficient.
   **/
   template<class T>
-  void gelss (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & b, T * residual = 0);
+  void gelss (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & b, T * residual = 0, bool copy = false);
 
   /**
 	 Solve least squares problem using divide and conquer.  LAPACK
@@ -156,9 +161,11 @@ namespace fl
 	 in b that don't have associated elements in x, which only exist when A
 	 has more rows than columns.  If A has equal or fewer rows than columns,
 	 then the squared error is zero.
+	 \param copy Indicates that A should not be overwritten, even if it
+	 is a dense Matrix.  Forces A to be copied, which is less efficient.
   **/
   template<class T>
-  void gelsd (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & b, T * residual = 0);
+  void gelsd (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & b, T * residual = 0, bool copy = false);
 
   /**
 	 Singular value decomposition on a general matrix.
