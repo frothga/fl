@@ -56,25 +56,36 @@ namespace fl
 
   /**
 	 Like a stopwatch, this class accumulates time as long as it is
-	 "running", and it can be paused.  It starts running the moment
-	 it is created.  In addition to stopping and starting, it can
+	 "running", and it can be paused.  By default, it starts running the
+	 moment it is created.  In addition to stopping and starting, it can
 	 also clear its accumulated time and start from zero again.
   **/
   class Stopwatch
   {
   public:
-	Stopwatch ()
+	/**
+	   /param run Indicates that we should start accumulating time immediately.
+	 **/
+	Stopwatch (bool run = true)
 	{
-	  reset ();
+	  accumulator = 0;
+	  if (run)
+	  {
+		timestamp = getTimestamp ();
+	  }
+	  else
+	  {
+		timestamp = 0;
+	  }
 	}
 
 	/**
-	   Clears accumulated time and starts running.
+	   Clears accumulated time.
 	 **/
 	void reset ()
 	{
 	  accumulator = 0;
-	  timestamp = getTimestamp ();
+	  if (timestamp) timestamp = getTimestamp ();  // Only start if already running before call to this function.
 	}
 
 	/**
