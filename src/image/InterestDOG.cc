@@ -18,7 +18,7 @@ for details.
 
 
 01/2006 Fred Rothganger -- Improve efficiency of decimation and image
-        difference.  Avoid unecessary image copies.
+        difference.  Avoid unecessary image copies.  Add "fast" mode.
 */
 
 
