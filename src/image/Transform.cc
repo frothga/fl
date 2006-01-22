@@ -14,6 +14,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Fix bugs in clip() related to openness of endpoints.
 */
 
 
@@ -742,15 +745,16 @@ Transform::twistCorner (const double inx, const double iny, double & l, double &
    Subroutine of prepareResult() which helps find range of destination image
    rows that don't require bounds checking because they fall fully in the
    source image.
-   dy0 should be associated with the points on y=0 in the destination image.
-   (sx1,sy1) - (sx0,sy0) should define a vector whose positive (ie: left) side
-   is the inside of the image.
+   (dx0,dy0) should be associated with the point on y=0 (that is, at the top)
+   in the destination image.
+   (sx1,sy1) - (sx0,sy0) should define a vector whose positive (that is, right)
+   side is the inside of the image.
  **/
 inline void
 Transform::clip (const double dx0, const double dy0, const double dx1, const double dy1,
 				 const double sx0, const double sy0, const double sx1, const double sy1,
 				 const bool open,
-				 double & dLo, double & dHi, bool & openHi, bool & openLo)
+				 double & dLo, double & dHi, bool & openLo, bool & openHi)
 {
   double sx   = sx1 - sx0;
   double sy   = sy1 - sy0;
@@ -771,8 +775,8 @@ Transform::clip (const double dx0, const double dy0, const double dx1, const dou
 	return;
   }
 
-  double dx   = dx1 - dx0;
-  double dy   = dy1 - dy0;
+  double dx    = dx1 - dx0;
+  double dy    = dy1 - dy0;
   double denom = dy * sx - dx * sy;
   // Don't worry about parallel lines (denom == 0), since already determined that endpoints of destination edge are on opposite sides of source edge.
   double t = -det0 / denom;
@@ -783,6 +787,10 @@ Transform::clip (const double dx0, const double dy0, const double dx1, const dou
 	  dHi = t;
 	  openHi = open;
 	}
+	else if (t - dHi < 1e-6)
+	{
+	  openHi |= open;
+	}
   }
   else  // ! inside0  &&  inside1
   {
@@ -790,6 +798,10 @@ Transform::clip (const double dx0, const double dy0, const double dx1, const dou
 	{
 	  dLo = t;
 	  openLo = open;
+	}
+	else if (dLo - t < 1e-6)
+	{
+	  openLo |= open;
 	}
   }
 }
@@ -894,8 +906,8 @@ Transform::prepareResult (const Image & image, int & w, int & h, Matrix3x3<doubl
   dHi *= h1;
   double iLo = ceil (dLo);
   double iHi = floor (dHi);
-  if (openLo  &&  iLo == dLo) iLo++;
-  if (openHi  &&  iHi == dHi) iHi--;
+  if (openLo  &&  iLo - dLo < 1e-6) iLo++;
+  if (openHi  &&  dHi - iHi < 1e-6) iHi--;
   lo = (int) iLo;
   hi = (int) iHi;
 }
