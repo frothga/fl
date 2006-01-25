@@ -17,7 +17,8 @@ for details.
 
 
 12/2005 Fred Rothganger -- Fix problems with seek.
-01/2006 Fred Rothganger -- Protect against uninitialized packet.
+01/2006 Fred Rothganger -- Protect against uninitialized packet.  Read/write
+        timestamps in video file.
 */
 
 
@@ -232,7 +233,8 @@ VideoInFileFFMPEG::readNext (Image * image)
 	  state = av_read_frame (fc, &packet);
 	  if (state < 0)
 	  {
-		break;
+		size = 0;
+		data = 0;
 	  }
 	  else
 	  {
@@ -243,16 +245,48 @@ VideoInFileFFMPEG::readNext (Image * image)
 	  }
 	}
 
-	while (size > 0  &&  ! gotPicture)
+	while ((size > 0  ||  state)  &&  ! gotPicture)
 	{
-      int used = avcodec_decode_video (cc, &picture, &gotPicture, data, size);
-      if (used < 0)
+	  int used = avcodec_decode_video (cc, &picture, &gotPicture, data, size);
+	  if (used < 0)
 	  {
 		state = used;
 		return;
 	  }
-      size -= used;
-      data += used;
+	  size -= used;
+	  data += used;
+
+	  if (gotPicture)
+	  {
+		state = 0;  // to reset EOF condition while emptying out codec's queue.
+
+		if (picture.pts == AV_NOPTS_VALUE  ||  picture.pts == 0)
+		{
+		  switch (codec->id)
+		  {
+			case CODEC_ID_DVVIDEO:
+			  picture.pts = packet.pts;  // since decoding is immediate
+			  break;
+			default:
+			  picture.pts = lastDTS;
+		  }
+		}
+
+		//cerr << "got:";
+		//cerr << " pts=" << picture.pts;
+		//cerr << " type=" << picture.pict_type;
+		//cerr << " coded=" << picture.coded_picture_number;
+		//cerr << endl;
+	  }
+	  else if (state)
+	  {
+		return;
+	  }
+	}
+
+	if (packet.dts != AV_NOPTS_VALUE)
+	{
+	  lastDTS = packet.dts;
 	}
   }
 
@@ -356,12 +390,7 @@ VideoInFileFFMPEG::open (const string & fileName)
   state = 0;
 
   expectedSkew = 0;
-  if (codec->id == CODEC_ID_MPEG2VIDEO)
-  {
-	cerr << "Warning: hacking frame rate to 24000/1001.  Should verify telecine first." << endl;
-	stream->r_frame_rate.num = 24000;
-	stream->r_frame_rate.den = 1001;
-  }
+  lastDTS = 0;
 }
 
 void
@@ -490,7 +519,7 @@ VideoInFileFFMPEG::extractImage (Image & image)
   }
   else
   {
-	image.timestamp = (double) (cc->frame_number - 1) * stream->r_frame_rate.den / stream->r_frame_rate.num;
+	image.timestamp = (double) picture.pts * stream->time_base.num / stream->time_base.den;
   }
   gotPicture = 0;
 }
@@ -545,7 +574,7 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
   AVCodecContext & cc = *stream->codec;
   cc.codec_type = codec->type;
   cc.codec_id   = codec->id;
-  cc.gop_size     = 12; // default = 50; industry standard is 12
+  cc.gop_size     = 12; // default = 50; industry standard is 12 or 15
   if (codec->id == CODEC_ID_MPEG2VIDEO)
   {
 	cc.max_b_frames = 2;
@@ -762,6 +791,12 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   {
 	state = 0;
 
+	if (image.timestamp < 95443)  // approximately 2^33 / 90kHz, or about 26.5 hours.  Times larger than this are probably coming from the system clock and are not intended to be encoded in the video.
+	{
+	  AVCodecContext & cc = *stream->codec;
+	  dest.pts = (int64_t) rint (image.timestamp * cc.time_base.den / cc.time_base.num);
+	}
+
 	// Finally, encode and write the frame
 	size = 1024 * 1024;
 	unsigned char * videoBuffer = new unsigned char[size];
@@ -817,7 +852,7 @@ VideoOutFileFFMPEG::set (const std::string & name, double value)
 		double bestDistance = INFINITY;
 		while (fr->den)
 		{
-		  double rate = (double) fr->den / fr->num;
+		  double rate = (double) fr->num / fr->den;
 		  double distance = fabs (value - rate);
 		  if (distance < bestDistance)
 		  {
