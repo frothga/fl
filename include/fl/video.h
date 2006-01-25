@@ -7,6 +7,7 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
+01/2006 Fred Rothganger -- Generate timestamp from PTS.
 */
 
 
@@ -152,6 +153,7 @@ namespace fl
 	bool timestampMode;  ///< Indicates that image.timestamp should be frame number rather than presentation time.
 	double expectedSkew;  ///< Compensates for difference between PTS and DTS when seeking.  Units = frames.
 	bool seekLinear;  ///< Indicates that the file only supports linear seeking, not random seeking.  Generally due to lack of timestamps in stream.
+	int64_t lastDTS;  ///< DTS of previous packet pushed into decoder.  Used to determine PTS of current frame in MPEG.
 
 	const fl::PixelFormat * hint;
 	std::string fileName;
