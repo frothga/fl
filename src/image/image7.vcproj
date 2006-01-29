@@ -360,6 +360,10 @@
 				FileType="0">
 			</File>
 			<File
+				RelativePath=".\PixelFormat.cc"
+				FileType="0">
+			</File>
+			<File
 				RelativePath=".\Point.cc"
 				FileType="0">
 			</File>
