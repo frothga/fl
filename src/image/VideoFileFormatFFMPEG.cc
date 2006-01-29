@@ -18,7 +18,7 @@ for details.
 
 12/2005 Fred Rothganger -- Fix problems with seek.
 01/2006 Fred Rothganger -- Protect against uninitialized packet.  Read/write
-        timestamps in video file.
+        timestamps in video file.  Pure seek on timestamp.
 */
 
 
@@ -57,6 +57,10 @@ VideoInFileFFMPEG::~VideoInFileFFMPEG ()
   close ();
 }
 
+/**
+   Assumes frame rate is constant throughout entire video, or at least
+   from the beginning to the requested frame.
+ **/
 void
 VideoInFileFFMPEG::seekFrame (int frame)
 {
@@ -65,15 +69,42 @@ VideoInFileFFMPEG::seekFrame (int frame)
 	return;
   }
 
-  seekTime ((double) frame * stream->r_frame_rate.den / stream->r_frame_rate.num);  // = frame / r_frame_rate
+  if (seekLinear)
+  {
+	if (frame < cc->frame_number)
+	{
+	  // Reset to start of file
+	  state = av_seek_frame (fc, stream->index, 0, AVSEEK_FLAG_BYTE);
+	  if (state < 0)
+	  {
+		return;
+	  }
+	  avcodec_flush_buffers (cc);
+	  av_free_packet (&packet);
+	  size = 0;
+	  data = 0;
+	  cc->frame_number = 0;
+	}
+
+	// Read forward until finding the exact frame requested.
+	while (cc->frame_number < frame)
+	{
+	  readNext (0);
+	  if (! gotPicture)
+	  {
+		return;
+	  }
+	  gotPicture = 0;
+	}
+  }
+  else
+  {
+	seekTime (startTime + (double) frame * stream->r_frame_rate.den / stream->r_frame_rate.num);  // = frame / r_frame_rate
+  }
 }
 
 /**
-   Assumptions:
-   <ul>
-   <li>Timestamps are monotonic in video file
-   <li>Constant frame rate
-   </ul>
+   Assumes timestamps are monotonic in video file.
 
    \todo Seek in c.avi (bear and dog rotating) is screwed up at the FFMPEG
    level.  It has more index than video, and the index seems to be on a
@@ -87,53 +118,47 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	return;
   }
 
-  int targetFrame = (int) floor (timestamp * stream->r_frame_rate.num / stream->r_frame_rate.den + 1e-6);  // floor() because any timestamp should equate to the frame visible at that time.
+  timestamp = max (timestamp, startTime);
 
-  int64_t startPTS = 0;
-  if (stream->start_time != AV_NOPTS_VALUE)
+  if (seekLinear)
   {
-	startPTS = stream->start_time;
+	// The expression below uses floor() because timestamp refers to the
+	// frame visible at the time, rather than the nearest frame boundary.
+	seekFrame ((int) floor ((timestamp - startTime) * stream->r_frame_rate.num / stream->r_frame_rate.den + 1e-6));
+	return;
   }
-  else if (fc->start_time != AV_NOPTS_VALUE)
-  {
-	startPTS = av_rescale (fc->start_time, stream->time_base.den, stream->time_base.num * AV_TIME_BASE);
-  }
-  int64_t minDTS = max ((int64_t) 0, startPTS);
 
-  while (cc->frame_number != targetFrame)
+  // This is counterintuitive, but stream->time_base is apparently defined
+  // as the amount to *divide* seconds by to get stream units.
+  // targetPTS uses ceil() to force rounding errors in the direction of the
+  // next frame.  This produces more intuitive results.
+  int64_t targetPTS  = (int64_t) ceil (timestamp * stream->time_base.den / stream->time_base.num);
+  int64_t startPTS   = (int64_t) rint (startTime * stream->time_base.den / stream->time_base.num);
+  int64_t horizonPTS = targetPTS - (int64_t) rint ((double) stream->time_base.den / stream->time_base.num);  // willing to sift forward up to 1 second before using seek
+  int64_t framePeriod = (int64_t) rint ((double) stream->r_frame_rate.den / stream->r_frame_rate.num * stream->time_base.den / stream->time_base.num);
+
+  while (targetPTS < picture.pts  ||  nextPTS <= targetPTS)
   {
-	if (! seekLinear  &&  (cc->frame_number > targetFrame  ||  cc->frame_number < targetFrame - 12))  // 12 is arbitrary, but based on the typical size of a GOP in mpeg
+	if (targetPTS < nextPTS  ||  nextPTS < horizonPTS)  // Must move backwards or a long ways away
 	{
 	  // Use seek to position at or before the frame
-	  int64_t targetDTS = startPTS + (int64_t) rint
-	  (
-	    (timestamp - expectedSkew * stream->r_frame_rate.den / stream->r_frame_rate.num)
-		* stream->time_base.den / stream->time_base.num  // this is counterintuitive, but time_base is apparently defined as the amount to *divide* seconds by to get stream units
-	  );
-	  if (targetDTS < minDTS)
+	  int64_t skewDTS = targetPTS - expectedSkew;
+	  if (skewDTS < startPTS)
 	  {
 		state = av_seek_frame (fc, stream->index, 0, AVSEEK_FLAG_BYTE);
-		if (state < 0)
-		{
-		  return;
-		}
 	  }
 	  else
 	  {
-		bool backwards;
+		bool backwards = false;
 		if (packet.size)
 		{
-		  backwards = packet.dts > targetDTS;
+		  backwards = packet.dts > skewDTS;
 		}
-		else
-		{
-		  backwards = cc->frame_number > targetFrame;
-		}
-		state = av_seek_frame (fc, stream->index, targetDTS, backwards ? AVSEEK_FLAG_BACKWARD : 0);
-		if (state < 0)
-		{
-		  return;
-		}
+		state = av_seek_frame (fc, stream->index, skewDTS, backwards ? AVSEEK_FLAG_BACKWARD : 0);
+	  }
+	  if (state < 0)
+	  {
+		return;
 	  }
 
 	  // Read the next key frame.  It is possible for a seek to find something
@@ -155,60 +180,52 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	  data = packet.data;
 	  gotPicture = false;
 
-	  // Determine what frame the seek actually obtained.
+	  // Guard against unseekability
 	  if (packet.dts == AV_NOPTS_VALUE)
 	  {
+		// Timing info is not available, so fall back to "linear" mode
 		seekLinear = true;
-		cc->frame_number = targetFrame + 1;  // to force reopen, since we don't know where we are in the video now
-		continue;
-	  }
-	  double decodeFrame = ((double) (packet.dts - startPTS) * stream->time_base.num / stream->time_base.den) * stream->r_frame_rate.num / stream->r_frame_rate.den;
-	  double skew = 0;
-	  if (packet.pts != AV_NOPTS_VALUE)
-	  {
-		skew = ((double) (packet.pts - packet.dts) * stream->time_base.num / stream->time_base.den) * stream->r_frame_rate.num / stream->r_frame_rate.den;
-	  }
-	  cc->frame_number = (int) rint (decodeFrame + skew);  // rint() because DTS should be exactly on some frame's timestamp, and we want to compensate for numerical error.
-	  //cerr << "frame_number = " << cc->frame_number << " " << decodeFrame << " " << skew << endl;
-	  if (cc->frame_number > targetFrame)
-	  {
-		// Oops!  We overshot.  Need to expect more skew.
-		if (expectedSkew < cc->frame_number - targetFrame)
-		{
-		  expectedSkew = max (skew, (double) cc->frame_number - targetFrame);
-		}
-		else
-		{
-		  expectedSkew++;
-		}
+		seekTime (timestamp);
+		return;
 	  }
 	}
 
-	if (seekLinear  &&  targetFrame < cc->frame_number)
+	// Sift forward until the current picture contains the requested time.
+	do
 	{
-	  // Reset to start of file
-	  state = av_seek_frame (fc, stream->index, 0, AVSEEK_FLAG_BYTE);
-	  if (state < 0)
-	  {
-		return;
-	  }
-	  avcodec_flush_buffers (cc);
-	  av_free_packet (&packet);
-	  size = 0;
-	  data = 0;
-	}
-
-	// Read forward until finding the exact frame requested.
-	while (cc->frame_number < targetFrame)
-	{
-	  readNext (0);
-	  if (! gotPicture)
-	  {
-		return;
-	  }
 	  gotPicture = 0;
+	  readNext (0);
+	  if (! gotPicture) return;
+	}
+	while (nextPTS <= targetPTS);
+
+	// Adjust skew if necessary
+	if (targetPTS < picture.pts)
+	{
+	  // We overshot.  Need to target further ahead.
+	  if (expectedSkew < picture.pts - targetPTS)
+	  {
+		expectedSkew = picture.pts - targetPTS;
+	  }
+	  else
+	  {
+		expectedSkew += framePeriod;
+	  }
 	}
   }
+  gotPicture = 1;  // Hack to reactivate a picture if we already have it in hand.
+
+  // Determine the number of frame that seek obtained
+  // Use rint() because DTS should be exactly on some frame's timestamp,
+  // and we want to compensate for numerical error.
+  // Add 1 to be consistent with normal frame_number semantics.  IE: we have
+  // already retrieved the picture, so frame_number should point to next
+  // picture.
+  cc->frame_number = 1 + (int) rint
+  (
+    ((double) (picture.pts - startPTS) * stream->time_base.num / stream->time_base.den)
+	* stream->r_frame_rate.num / stream->r_frame_rate.den
+  );
 }
 
 void
@@ -268,15 +285,9 @@ VideoInFileFFMPEG::readNext (Image * image)
 			  picture.pts = packet.pts;  // since decoding is immediate
 			  break;
 			default:
-			  picture.pts = lastDTS;
+			  picture.pts = nextPTS;
 		  }
 		}
-
-		//cerr << "got:";
-		//cerr << " pts=" << picture.pts;
-		//cerr << " type=" << picture.pict_type;
-		//cerr << " coded=" << picture.coded_picture_number;
-		//cerr << endl;
 	  }
 	  else if (state)
 	  {
@@ -286,7 +297,9 @@ VideoInFileFFMPEG::readNext (Image * image)
 
 	if (packet.dts != AV_NOPTS_VALUE)
 	{
-	  lastDTS = packet.dts;
+	  // May need to condition this on codec, since it is true
+	  // specifically for MPEG.
+	  nextPTS = packet.dts;
 	}
   }
 
@@ -327,6 +340,10 @@ VideoInFileFFMPEG::get (const std::string & name, double & value)
 	  {
 		value = (double) fc->duration / AV_TIME_BASE;
 	  }
+	}
+	else if (name == "startTime")
+	{
+	  value = startTime;
 	}
   }
 }
@@ -389,8 +406,20 @@ VideoInFileFFMPEG::open (const string & fileName)
   }
   state = 0;
 
+  seekLinear = false;
   expectedSkew = 0;
-  lastDTS = 0;
+  nextPTS = 0;
+
+  startTime = 0;
+  if (stream->start_time != AV_NOPTS_VALUE)
+  {
+	startTime = (double) stream->start_time * stream->time_base.num / stream->time_base.den;
+  }
+  else if (fc->start_time != AV_NOPTS_VALUE)
+  {
+	startTime = (double) fc->start_time / AV_TIME_BASE;
+  }
+  startTime = max (startTime, 0.0);
 }
 
 void

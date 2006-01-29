@@ -7,7 +7,7 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
-01/2006 Fred Rothganger -- Generate timestamp from PTS.
+01/2006 Fred Rothganger -- Generate timestamp from PTS. Pure seek on timestamp.
 */
 
 
@@ -151,9 +151,10 @@ namespace fl
 	int gotPicture;  ///< indicates that picture contains a full image
 	int state;  ///< state == 0 means good; anything else means we can't read more frames
 	bool timestampMode;  ///< Indicates that image.timestamp should be frame number rather than presentation time.
-	double expectedSkew;  ///< Compensates for difference between PTS and DTS when seeking.  Units = frames.
+	int64_t expectedSkew;  ///< How much before a given target time to read in order to get a keyframe, in stream units.
 	bool seekLinear;  ///< Indicates that the file only supports linear seeking, not random seeking.  Generally due to lack of timestamps in stream.
-	int64_t lastDTS;  ///< DTS of previous packet pushed into decoder.  Used to determine PTS of current frame in MPEG.
+	int64_t nextPTS;  ///< DTS of most recent packet pushed into decoder.  In MPEG, this will be the PTS of the next picture to come out of decoder, which occurs next time a packet is pushed in.
+	double startTime;  ///< Best estimate of timestamp on first image in video.
 
 	const fl::PixelFormat * hint;
 	std::string fileName;
