@@ -14,6 +14,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Add "copy" option.
 */
 
 
@@ -27,7 +30,7 @@ namespace fl
 {
   template<>
   void
-  gelss (const MatrixAbstract<double> & A, Matrix<double> & x, const MatrixAbstract<double> & b, double * residual)
+  gelss (const MatrixAbstract<double> & A, Matrix<double> & x, const MatrixAbstract<double> & b, double * residual, bool copy)
   {
 	int m = A.rows ();
 	int n = A.columns ();
@@ -37,7 +40,7 @@ namespace fl
 
 	Matrix<double> tempA;
 	const Matrix<double> * p;
-	if (p = dynamic_cast<const Matrix<double> *> (&A))
+	if (! copy  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
 	{
 	  tempA = *p;
 	}
