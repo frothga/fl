@@ -25,6 +25,11 @@ public:
 	useFrames = true;
 	vin.setTimestampMode (useFrames);
 
+	startTime = 0;
+	vin.get ("startTime", startTime);
+	duration = 0;
+	vin.get ("duration", duration);
+
 	playing = false;
 	sizeSet = false;
 
@@ -75,10 +80,7 @@ public:
 		else if (event.xbutton.button == Button3)
 		{
 		  pause ();
-		  double timestamp = 0;
-		  vin.get ("duration", timestamp);
-		  timestamp *= (double) event.xbutton.x / image.width;
-		  vin.seekTime (timestamp);
+		  vin.seekTime (startTime + duration * event.xbutton.x / image.width);
 		  showFrame ();
 		}
 		else if (event.xbutton.button == Button4)
@@ -114,13 +116,22 @@ public:
 		KeySym keysym = XLookupKeysym ((XKeyEvent *) &event, event.xkey.state);
 		switch (keysym)
 		{
-		  case 'w':
+		  case 'j':
 		  {
 			pause ();
 			char buffer[1024];
 			sprintf (buffer, "%s.frame%g.jpg", stem.c_str (), image.timestamp);
 			cerr << "writing " << buffer << endl;
 			image.write (buffer, "jpeg");
+			return true;
+		  }
+		  case 'p':
+		  {
+			pause ();
+			char buffer[1024];
+			sprintf (buffer, "%s.frame%g.ppm", stem.c_str (), image.timestamp);
+			cerr << "writing " << buffer << endl;
+			image.write (buffer, "ppm");
 			return true;
 		  }
 		  case 'f':
@@ -131,11 +142,11 @@ public:
 			{
 			  if (useFrames)
 			  {
-				vin.seekFrame ((int) image.timestamp);
+				vin.seekTime (image.timestamp);
 			  }
 			  else
 			  {
-				vin.seekTime (image.timestamp);
+				vin.seekFrame ((int) image.timestamp);
 			  }
 			  showFrame ();
 			}
@@ -205,6 +216,8 @@ public:
   VideoIn vin;
   Image image;  // hides SlideShow::image
   bool useFrames;
+  double startTime;
+  double duration;
   string stem;
   pthread_t pidPlayThread;
   bool playing;
