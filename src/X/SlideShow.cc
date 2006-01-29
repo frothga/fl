@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Get rid of dead code.  Add optimized expose handler.
 */
 
 
@@ -85,6 +88,16 @@ SlideShow::processEvent (XEvent & event)
   switch (event.type)
   {
     case Expose:
+	{
+	  int destX   = event.xexpose.x;
+	  int destY   = event.xexpose.y;
+	  int sourceX = destX + offsetX;
+	  int sourceY = destY + offsetY;
+	  int w       = event.xexpose.width;
+	  int h       = event.xexpose.height;
+	  putImage (*gc, ximage, destX, destY, sourceX, sourceY, w, h);
+	  return true;
+	}
     case MapNotify:
 	{
 	  paint ();
@@ -172,22 +185,18 @@ SlideShow::processEvent (XEvent & event)
 
 		if (deltaX > 0)
 		{
-		  //clear (width - deltaX, 0, deltaX, height);
 		  putImage (*gc, ximage, width - deltaX, 0, offsetX + width - deltaX, offsetY, deltaX, height);
 		}
 		if (deltaX < 0)
 		{
-		  //clear (0, 0, -deltaX, height);
 		  putImage (*gc, ximage, 0, 0, offsetX, offsetY, -deltaX, height);
 		}
 		if (deltaY > 0)
 		{
-		  //clear (0, height - deltaY, width, deltaY);
 		  putImage (*gc, ximage, 0, height - deltaY, offsetX, offsetY + height - deltaY, width, deltaY);
 		}
 		if (deltaY < 0)
 		{
-		  //clear (0, 0, width, -deltaY);
 		  putImage (*gc, ximage, 0, 0, offsetX, offsetY, width, -deltaY);
 		}
 
