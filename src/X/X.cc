@@ -7,6 +7,7 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for Cygwin
+01/2006 Fred Rothganger -- Add EventPredicate
 */
 
 
@@ -436,6 +437,16 @@ fl::Drawable::copyArea (const fl::GC & gc, const fl::Drawable & source, int toX,
 }
 
 
+// class EventPredicate -------------------------------------------------------
+
+Bool
+EventPredicate::predicate (::Display * display, XEvent * event, XPointer arg)
+{
+  EventPredicate * me = (EventPredicate *) arg;
+  return me->value (*event) ? True : False;
+}
+
+
 // class Window ---------------------------------------------------------------
 
 fl::Window::Window (fl::Screen * screen, ::Window id)
@@ -553,6 +564,12 @@ bool
 fl::Window::checkTypedEvent (XEvent & event, int eventType)
 {
   return XCheckTypedWindowEvent (screen->display->display, id, eventType, &event);
+}
+
+bool
+fl::Window::checkIfEvent (XEvent & event, EventPredicate & predicate)
+{
+  return XCheckIfEvent (screen->display->display, &event, &predicate.predicate, (XPointer) &predicate);
 }
 
 bool
