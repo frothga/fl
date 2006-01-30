@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Update seek capabilities.  Write ppm files.
 */
 
 
@@ -14,6 +17,23 @@ for details.
 
 using namespace std;
 using namespace fl;
+
+
+class EventPredicateMotion3 : public EventPredicate
+{
+public:
+  EventPredicateMotion3 (XEvent & pattern) : pattern (pattern) {}
+
+  virtual bool value (XEvent & event)
+  {
+	return    event.type         == MotionNotify
+	       && event.xany.display == pattern.xany.display
+	       && event.xany.window  == pattern.xany.window
+	       && (event.xmotion.state & Button3Mask);
+  }
+
+  XEvent & pattern;
+};
 
 
 class VideoShow : public SlideShow
@@ -109,6 +129,18 @@ public:
 	  }
       case MotionNotify:
 	  {
+		if (event.xmotion.state & Button3Mask)
+		{
+		  EventPredicateMotion3 predicate (event);
+		  bool found = false;
+		  while (checkIfEvent (event, predicate)) found = true;
+		  if (! found)
+		  {
+			pause ();
+			vin.seekTime (startTime + duration * event.xbutton.x / image.width);
+			showFrame ();
+		  }
+		}
 		return true;
 	  }
       case KeyPress:
