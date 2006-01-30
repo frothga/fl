@@ -89,14 +89,16 @@ SlideShow::processEvent (XEvent & event)
   {
     case Expose:
 	{
-	  int destX   = event.xexpose.x;
-	  int destY   = event.xexpose.y;
-	  int sourceX = destX + offsetX;
-	  int sourceY = destY + offsetY;
-	  int w       = event.xexpose.width;
-	  int h       = event.xexpose.height;
-	  putImage (*gc, ximage, destX, destY, sourceX, sourceY, w, h);
-	  return true;
+	  bool found = false;
+	  while (checkTypedEvent (event, event.type)) found = true;
+	  if (found)
+	  {
+		// We've purged the whole queue of Expose events.  Now post a new
+		// one to the end, to ensure we actually draw something.
+		sendEvent (event);
+		return true;
+	  }
+	  // else fall through to MapNotify handler below...
 	}
     case MapNotify:
 	{
