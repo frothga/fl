@@ -15,6 +15,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Correct epsilon on angleStep.
 */
 
 
@@ -62,7 +65,7 @@ void
 DescriptorSIFT::init ()
 {
   dimension = width * width * angles;
-  angleStep = 2.0f * PI / (angles + 1e-6);
+  angleStep = (2.0f * PI / angles) + 1e-6;
 
   map<int, ImageOf<float> *>::iterator it;
   for (it = kernels.begin (); it != kernels.end (); it++)
