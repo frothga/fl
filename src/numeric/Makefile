@@ -15,13 +15,18 @@
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Lesser General Public License.  See the file
 # LICENSE for details.
+#
+#
+# 02/2006 Fred Rothganger -- Build shared libraries.  Add distclean.
+#         Break dependency on FT_INC.
 
 
 SOURCE_DIR := ../..
 -include $(SOURCE_DIR)/Config
 
-CPPFLAGS += $(FT_INC)
+MODULE = Numeric
 VPATH = $(SOURCE_LIB)
+LOADLIBS = -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Net $(LAPACK_LIB)
 
 
 MATRIX_DOUBLE_O = \
@@ -96,6 +101,7 @@ ROOTS_O = \
 	zroots.o
 
 CLUSTER_O = \
+	Metric.o \
 	ClusterMethod.o \
 	KMeans.o \
 	KMeansParallel.o \
@@ -112,12 +118,14 @@ REDUCE_O = \
 	PCA.o \
 	MDA.o
 
-libflNumeric.a: $(MATRIX_DOUBLE_O) $(MATRIX_FLOAT_O) $(MATRIX_BOOL_O) $(MATRIX_INT_O) $(MATRIX_COMPLEX_DOUBLE_O) $(LAPACK_DOUBLE_O) $(LAPACK_FLOAT_O) $(SEARCH_DOUBLE_O) $(SEARCH_FLOAT_O) $(ROOTS_O) $(CLUSTER_O) $(NEURAL_O) $(REDUCE_O)
-	ar rcsv $(SOURCE_LIB)/$@ $^
+OBJS = $(MATRIX_DOUBLE_O) $(MATRIX_FLOAT_O) $(MATRIX_BOOL_O) $(MATRIX_INT_O) $(MATRIX_COMPLEX_DOUBLE_O) $(LAPACK_DOUBLE_O) $(LAPACK_FLOAT_O) $(SEARCH_DOUBLE_O) $(SEARCH_FLOAT_O) $(ROOTS_O) $(CLUSTER_O) $(NEURAL_O) $(REDUCE_O)
+
+$(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
+	$(LIBCOMMAND)
 
 
-test: test.cc libflNumeric.a
-	g++ -o $@ $^ $(CPPFLAGS) $(CXXFLAGS) $(LAPACK_LIB) ../base/random.o
+test: test.cc $(LIBPREF)$(MODULE)$(LIBSUFF)
+	g++ -o $@ -L$(SOURCE_LIB) $^ -l$(NS)Base $(CPPFLAGS) $(CXXFLAGS) $(LAPACK_LIB)
 
 #CXXFLAGS = -g -O3 -march=pentiumpro
 #test: test.cc MatrixDouble.o LevenbergMarquardt.o VectorDouble.o MatrixInt.o MatrixSparseInt.o SearchableNumeric.o VectorInt.o MatrixSparseDouble.o
@@ -125,8 +133,12 @@ test: test.cc libflNumeric.a
 
 
 clean:
-	rm -f *~ *.o core core.* test Dependencies $(SOURCE_LIB)/libflNumeric.a
+	rm -f *~ *.o core core.* $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
 	rm -rf Debug Release
+	rm -f test
+
+distclean: clean
+	rm -f Dependencies
 
 depend:
 	rm -f Dependencies
