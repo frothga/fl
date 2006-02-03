@@ -29,13 +29,14 @@ extern "C"
 
 namespace fl
 {
-  int ilaenv (const int    ispec,
-			  const char * name,
-			  const char * opts,
-			  const int    n1 = -1,
-			  const int    n2 = -1,
-			  const int    n3 = -1,
-			  const int    n4 = -1)
+  inline int
+  ilaenv (const int    ispec,
+		  const char * name,
+		  const char * opts,
+		  const int    n1 = -1,
+		  const int    n2 = -1,
+		  const int    n3 = -1,
+		  const int    n4 = -1)
   {
 	return ilaenv_ (ispec, name, opts, n1, n2, n3, n4, strlen (name), strlen (opts));
   }
