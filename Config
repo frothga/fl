@@ -12,6 +12,9 @@
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Leser General Public License.  See the file
 # LICENSE for details.
+#
+#
+# 02/2006 Fred Rothganger -- Support shared libraries
 
 
 # Namspace for package.  OLDNS is only used when changing namespace to
@@ -65,6 +68,26 @@ JPEG_LIB = -L$(JPEG_DIR)/lib -ljpeg
 FT_DIR = /usr
 FT_INC = -I$(FT_DIR)/include/freetype2
 FT_LIB = -L$(FT_DIR)/lib -lfreetype -lz
+
+
+# Library construction
+
+#   Archives (static libraries) on most platforms
+LIBPREF = lib$(NS)
+LIBSUFF = .a
+LIBCOMMAND = ar rcsv $(SOURCE_LIB)/$@ $(OBJS)
+
+#   Cygwin DLLs
+#LIBPREF = $(NS)
+#LIBSUFF = .dll
+#LIBCOMMAND = $(CXX) -shared -o $(SOURCE_LIB)/$@ -Wl,--out-implib=$(SOURCE_LIB)/$@.a -Wl,--export-all-symbols -Wl,--enable-auto-import -Wl,--whole-archive $(OBJS) -Wl,--no-whole-archive $(LOADLIBS)
+
+#   Linux shared objects
+#LIBPREF = lib$(NS)
+#LIBSUFF = .so
+#LIBCOMMAND = $(CXX) -shared -o $(SOURCE_LIB)/$@ $(OBJS) $(LOADLIBS)
+#CXXFLAGS += -fPIC  # verify this is really needed on x86 linux
+
 
 # General C++ options
 CPPFLAGS = -I$(SOURCE_INC)
