@@ -19,7 +19,7 @@ SOURCE_DIR := ../..
 -include $(SOURCE_DIR)/Config
 
 
-FL_LIB = -L$(SOURCE_LIB) -lflBase -lflImage -lflNumeric -lflX
+FL_LIB = -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Image -l$(NS)Numeric -l$(NS)X
 
 
 VPATH = $(SOURCE_BIN)
@@ -49,7 +49,10 @@ xv$(EXESUF): xv.cc
 
 
 clean:
-	rm -f *~ *.o core core.* Dependencies $(patsubst %,$(SOURCE_BIN)/%,$(PROGRAMS))
+	rm -f *~ *.o core core.* $(patsubst %,$(SOURCE_BIN)/%,$(PROGRAMS))
+
+distclean: clean
+	rm -f Dependencies
 
 depend:
 	rm -f Dependencies
