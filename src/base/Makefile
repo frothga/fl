@@ -6,20 +6,28 @@
 #
 #
 # 12/2004 Fred Rothganger -- Clean MSVC intermediate files.
+# 02/2006 Fred Rothganger -- Build shared libraries.  Add distclean
 
 
 SOURCE_DIR := ../..
 -include $(SOURCE_DIR)/Config
 
-
+MODULE = Base
 VPATH = $(SOURCE_LIB)
+LOADLIBS =
 
-libflBase.a: random.o Parameters.o
-	ar rcsv $(SOURCE_LIB)/$@ $^
+OBJS = random.o Parameters.o
+
+$(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
+	$(LIBCOMMAND)
+
 
 clean:
-	rm -f *~ *.o core core.* Dependencies $(SOURCE_LIB)/libflBase.a
+	rm -f *~ *.o core core.* $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
 	rm -rf Debug Release
+
+distclean: clean
+	rm -f Dependencies
 
 depend:
 	rm -f Dependencies

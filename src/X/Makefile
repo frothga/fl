@@ -3,17 +3,23 @@
 #                         Univ. of Illinois.  All rights reserved.
 # Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 # for details.
+#
+#
+# 02/2006 Fred Rothganger -- Build shared libraries.  Add distclean.
 
 
 SOURCE_DIR := ../..
 -include $(SOURCE_DIR)/Config
 
-
+MODULE = X
 CPPFLAGS += $(X_INC)
 VPATH = $(SOURCE_LIB)
+LOADLIBS = -L$(SOURCE_LIB) -l$(NS)Image $(X_LIB)
 
-libflX.a: X.o glx.o SlideShow.o GLShow.o
-	ar rcsv $(SOURCE_LIB)/$@ $^
+OBJS = X.o glx.o SlideShow.o GLShow.o
+
+$(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
+	$(LIBCOMMAND)
 
 
 test.o: test.cc
@@ -24,7 +30,11 @@ test: test.o X.o glx.o GLShow.o SlideShow.o
 
 
 clean:
-	rm -f *~ *.o core core.* test Dependencies $(SOURCE_LIB)/libflX.a
+	rm -f *~ *.o core core.* $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
+	rm -f test
+
+distclean: clean
+	rm -f Dependencies
 
 depend:
 	rm -f Dependencies

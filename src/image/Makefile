@@ -17,14 +17,16 @@
 #
 #
 # 01/2006 Fred Rothganger -- Move PixelFormat clases to separate file.
+# 02/2006 Fred Rothganger -- Build shared libraries.  Add distclean.
 
 
 SOURCE_DIR := ../..
 -include $(SOURCE_DIR)/Config
 
-
+MODULE = Image
 CPPFLAGS += $(X_INC) $(MPEG_INC) $(FT_INC)
 VPATH = $(SOURCE_LIB)
+LOADLIBS = -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric $(MPEG_LIB) $(TIFF_LIB) $(JPEG_LIB) $(FT_LIB)
 
 
 IMAGE_O = \
@@ -111,17 +113,23 @@ VIDEO_O = \
 	VideoFileFormatFFMPEG.o \
 	KLT.o
 
-libflImage.a: $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(CANVAS_O) $(CONVOLVE_O) $(DESCRIPTOR_O) $(INTEREST_O) $(VIDEO_O)
-	ar rcsv $(SOURCE_LIB)/$@ $^
+OBJS = $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(CANVAS_O) $(CONVOLVE_O) $(DESCRIPTOR_O) $(INTEREST_O) $(VIDEO_O)
+
+$(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
+	$(LIBCOMMAND)
 
 
 test: test.o $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(INTEREST_O) $(CONVOLVE_O) $(VIDEO_O) $(CANVAS_O) $(DESCRIPTOR_O)
-	g++ -o $@ $^ -L../../lib -lflBase -lflNumeric -lflX $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB)
+	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB)
 
 
 clean:
-	rm -f *~ *.o core core.* test Dependencies $(SOURCE_LIB)/libflImage.a
+	rm -f *~ *.o core core.* $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
 	rm -rf Debug Release
+	rm -f test
+
+distclean: clean
+	rm -f Dependencies
 
 depend:
 	rm -f Dependencies
