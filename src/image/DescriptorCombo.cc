@@ -105,7 +105,12 @@ DescriptorCombo::patch (int index, const Vector<float> & value)
 Comparison *
 DescriptorCombo::comparison ()
 {
-  return new ComparisonCombo (descriptors);
+  ComparisonCombo * result = new ComparisonCombo;
+  for (int i = 0; i < descriptors.size (); i++)
+  {
+	result->add (descriptors[i]->comparison (), descriptors[i]->dimension);
+  }
+  return result;
 }
 
 void
@@ -141,15 +146,9 @@ DescriptorCombo::write (ostream & stream, bool withName)
 
 // class ComparisonCombo ------------------------------------------------------
 
-ComparisonCombo::ComparisonCombo (vector<Descriptor *> & descriptors)
+ComparisonCombo::ComparisonCombo ()
 {
   totalDimension = 0;
-  for (int i = 0; i < descriptors.size (); i++)
-  {
-	comparisons.push_back (descriptors[i]->comparison ());
-	dimensions.push_back (descriptors[i]->dimension);
-	totalDimension += dimensions[i];
-  }
 }
 
 ComparisonCombo::ComparisonCombo (istream & stream)
@@ -160,10 +159,27 @@ ComparisonCombo::ComparisonCombo (istream & stream)
 
 ComparisonCombo::~ComparisonCombo ()
 {
+  clear ();
+}
+
+void
+ComparisonCombo::clear ()
+{
   for (int i = 0; i < comparisons.size (); i++)
   {
 	delete comparisons[i];
   }
+  comparisons.clear ();
+  dimensions.clear ();
+  totalDimension = 0;
+}
+
+void
+ComparisonCombo::add (Comparison * comparison, int dimension)
+{
+  comparisons.push_back (comparison);
+  dimensions.push_back (dimension);
+  totalDimension += dimension;
 }
 
 Vector<float>
@@ -180,22 +196,29 @@ ComparisonCombo::preprocess (const Vector<float> & value) const
   return result;
 }
 
+/**
+   The idea here is to treat each of the subvalues as a probability (by
+   subtracting them from 1) and then find their product.  Finally, convert
+   this back to a distance by subtracting from 1 again.
+ **/
 float
-ComparisonCombo::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
+ComparisonCombo::value (const Vector<float> & value1, const Vector<float> & value2) const
 {
   float result = 1.0f;
   int r = 0;
   for (int i = 0; i < comparisons.size (); i++)
   {
+	Comparison * c = comparisons[i];
+	c->needPreprocess = needPreprocess;
 	int l = dimensions[i] - 1;
-	result *= comparisons[i]->value (value1.region (r, 0, r+l), value2.region (r, 0, r+l), preprocessed);
+	result *= 1.0f - c->value (value1.region (r, 0, r+l), value2.region (r, 0, r+l));
 	r += dimensions[i];
   }
-  return result;
+  return 1.0f - result;
 }
 
 float
-ComparisonCombo::value (int index, const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
+ComparisonCombo::value (int index, const Vector<float> & value1, const Vector<float> & value2) const
 {
   int r = 0;
   for (int i = 0; i < index; i++)
@@ -203,7 +226,10 @@ ComparisonCombo::value (int index, const Vector<float> & value1, const Vector<fl
 	r += dimensions[i];
   }
   int l = dimensions[index] - 1;
-  return comparisons[index]->value (value1.region (r, 0, r+l), value2.region (r, 0, r+l), preprocessed);
+
+  Comparison * c = comparisons[index];
+  c->needPreprocess = needPreprocess;
+  return c->value (value1.region (r, 0, r+l), value2.region (r, 0, r+l));
 }
 
 Vector<float>
@@ -231,7 +257,9 @@ ComparisonCombo::read (istream & stream)
   }
   for (int i = 0; i < count; i++)
   {
-    comparisons.push_back (Factory<Comparison>::read (stream));
+	Comparison * c = dynamic_cast<Comparison *> (Factory<Metric>::read (stream));
+	if (! c) throw "Stored object is not a Comparison.";
+    comparisons.push_back (c);
 	int d;
 	stream.read ((char *) &d, sizeof (d));
     dimensions.push_back (d);
