@@ -17,6 +17,7 @@ for details.
 
 
 01/2006 Fred Rothganger -- Add "copy" option.
+02/2006 Fred Rothganger -- Use pointer pushing for more efficient copies.
 */
 
 
@@ -30,7 +31,7 @@ namespace fl
 {
   template<>
   void
-  gelss (const MatrixAbstract<double> & A, Matrix<double> & x, const MatrixAbstract<double> & b, double * residual, bool copy)
+  gelss (const MatrixAbstract<double> & A, Matrix<double> & x, const MatrixAbstract<double> & b, double * residual, bool copyA, bool copyb)
   {
 	int m = A.rows ();
 	int n = A.columns ();
@@ -40,7 +41,7 @@ namespace fl
 
 	Matrix<double> tempA;
 	const Matrix<double> * p;
-	if (! copy  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
+	if (! copyA  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
 	{
 	  tempA = *p;
 	}
@@ -49,19 +50,25 @@ namespace fl
 	  tempA.copyFrom (A);
 	}
 
-	if (ldx == m  &&  (p = dynamic_cast<const Matrix<double> *> (&b)))
+	if (! copyb  &&  ldx == m  &&  (p = dynamic_cast<const Matrix<double> *> (&b)))
 	{
 	  x = *p;
 	}
 	else
 	{
 	  x.resize (ldx, nrhs);
-	  for (int c = 0; c < nrhs; c++)
+	  double * xp = & x(0,0);
+	  double * bp = & b(0,0);
+	  double * end = bp + m * nrhs;
+	  int step = ldx - m;
+	  while (bp < end)
 	  {
-		for (int r = 0; r < m; r++)
+		double * rowEnd = bp + m;
+		while (bp < rowEnd)
 		{
-		  x(r,c) = b(r,c);
+		  *xp++ = *bp++;
 		}
+		xp += step;
 	  }
 	}
 
@@ -96,23 +103,32 @@ namespace fl
 	if (ldx > n)
 	{
 	  Matrix<double> tempX (n, nrhs);
-	  for (int c = 0; c < nrhs; c++)
+	  double * xp = & x(0,0);
+	  double * tp = & tempX(0,0);
+	  double * end = tp + n * nrhs;
+	  int step = ldx - n;
+	  while (tp < end)
 	  {
-		for (int r = 0; r < n; r++)
+		double * rowEnd = tp + n;
+		while (tp < rowEnd)
 		{
-		  tempX(r,c) = x(r,c);
+		  *tp++ = *xp++;
 		}
+		xp += step;
 	  }
 
 	  if (residual)
 	  {
 		double total = 0;
-		for (int c = 0; c < nrhs; c++)
+		double * xp = & x(0,0);
+		double * end = xp + ldx * nrhs;
+		while (xp < end)
 		{
-		  for (int r = n; r < ldx; r++)
+		  double * rowEnd = xp + ldx;
+		  xp += n;
+		  while (xp < rowEnd)
 		  {
-			double e = x(r,c);
-			total += e * e;
+			total += *xp * *xp++;
 		  }
 		}
 		*residual = total;
