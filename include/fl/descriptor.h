@@ -16,6 +16,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Derive Comparison from Metric.
 */
 
 
@@ -28,6 +31,7 @@ for details.
 #include "fl/point.h"
 #include "fl/canvas.h"
 #include "fl/imagecache.h"
+#include "fl/metric.h"
 
 #include <iostream>
 #include <vector>
@@ -38,30 +42,23 @@ namespace fl
   // Comparison ---------------------------------------------------------------
 
   /**
-	 Takes two feature vectors and returns a value in [0,1].  This could be
-	 interpreted as a probability, but there is no guarantee that for any
-	 given data it actually predicts the likelihood of a correct match.
-	 What is guaranteed is the 1 means perfect match, and 0 means no
-	 chance whatsoever of a match.
-
-	 The application should remap [0,1] to an actual probability if that is
-	 what it requires.  At some point, it may make sense to add a Function
-	 object that we run on behalf of the application to reshape the result.
+	 A Metric that returns a value in [0,1] and that may preprocess the
+	 two input vectors to normalize them in some way.
   **/
-  class Comparison
+  class Comparison : public Metric
   {
   public:
-	virtual ~Comparison ();  ///< Establishes that destructor is virtual, but doesn't do anything else.
+	Comparison ();
 
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
-	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const = 0;
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const = 0;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
 	static void addProducts ();  ///< Registers with the Factory all basic Comparison classes other than ComparisonCombo.
-  };
 
-  class Descriptor;
+	bool needPreprocess;  ///< Indicates that any data passed to the value() function should be preprocessed.  Default (set by constructor) is true.  If you compare values multiple times, it is more efficient to preprocess them all once and then set this flag to false.
+  };
 
   /**
 	 Handles comparisons between feature vectors that are composed of several
@@ -70,13 +67,16 @@ namespace fl
   class ComparisonCombo : public Comparison
   {
   public:
-	ComparisonCombo (std::vector<Descriptor *> & descriptors);
+	ComparisonCombo ();
 	ComparisonCombo (std::istream & stream);
 	virtual ~ComparisonCombo ();  ///< Delete all comparisons we are holding.
 
+	void clear ();
+	void add (Comparison * comparison, int dimension);
+
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
-	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
-	virtual float value (int index, const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;  ///< Compares one specific feature vector from the set.
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
+	virtual float value (int index, const Vector<float> & value1, const Vector<float> & value2) const;  ///< Compares one specific feature vector from the set.
 	Vector<float> extract (int index, const Vector<float> & value) const;  ///< Returns one specific feature vector from the set.
 
 	virtual void read (std::istream & stream);
@@ -104,7 +104,7 @@ namespace fl
 	NormalizedCorrelation (std::istream & stream);
 
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
-	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
@@ -114,8 +114,8 @@ namespace fl
 
   /**
 	 Uses the stardard Euclidean distance between two points.
-	 Maps zero distance to 1 and infinite (or alternately, maximum) distance to
-	 probability zero.
+	 Maps zero distance to 0 and infinite (or alternately, maximum) distance to
+	 1.
   **/
   class MetricEuclidean : public Comparison
   {
@@ -123,7 +123,7 @@ namespace fl
 	MetricEuclidean (float upperBound = INFINITY);
 	MetricEuclidean (std::istream & stream);
 
-	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = true);
@@ -141,7 +141,7 @@ namespace fl
   public:
 	HistogramIntersection () {}
 	HistogramIntersection (std::istream & stream);
-	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
   };
 
   /**
@@ -155,7 +155,7 @@ namespace fl
 	ChiSquared (std::istream & stream);
 
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
-	virtual float value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed = false) const;
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
   };
 
 
