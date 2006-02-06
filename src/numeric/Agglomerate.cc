@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Use Metric rather than Comparison.
 */
 
 
@@ -52,11 +55,11 @@ ClusterAgglomerative::write (ostream & stream)
 
 // class Agglomerate ----------------------------------------------------------
 
-Agglomerate::Agglomerate (Comparison * comparison, float distanceLimit, int minClusters)
+Agglomerate::Agglomerate (Metric * metric, float distanceLimit, int minClusters)
 {
-  this->comparison = comparison;
+  this->metric        = metric;
   this->distanceLimit = distanceLimit;
-  this->minClusters = minClusters;
+  this->minClusters   = minClusters;
 }
 
 Agglomerate::Agglomerate (istream & stream)
@@ -66,7 +69,7 @@ Agglomerate::Agglomerate (istream & stream)
 
 Agglomerate::~Agglomerate ()
 {
-  delete comparison;
+  delete metric;
 
   for (int i = 0; i < clusters.size (); i++)
   {
@@ -92,7 +95,7 @@ Agglomerate::run (const std::vector< Vector<float> > & data)
   {
 	for (int j = i + 1; j < clusters.size (); j++)
 	{
-	  distances(i,j) = comparison->value (clusters[i]->center, clusters[j]->center);
+	  distances(i,j) = metric->value (clusters[i]->center, clusters[j]->center);
 	}
   }
 
@@ -100,7 +103,7 @@ Agglomerate::run (const std::vector< Vector<float> > & data)
   while (! stop  &&  clusters.size () > minClusters)
   {
 	// Find the next closest cluster pair
-	float closestDistance = -1;
+	float closestDistance = INFINITY;
 	int bestI;
 	int bestJ;
 	for (int i = 0; i < clusters.size (); i++)
@@ -108,7 +111,7 @@ Agglomerate::run (const std::vector< Vector<float> > & data)
 	  for (int j = i + 1; j < clusters.size (); j++)
 	  {
 		float distance = distances(i,j);
-		if (distance > closestDistance)
+		if (distance < closestDistance)
 		{
 		  closestDistance = distance;
 		  bestI = i;
@@ -119,7 +122,7 @@ Agglomerate::run (const std::vector< Vector<float> > & data)
 
 	cerr << clusters.size () << " " << closestDistance << endl;
 
-	if (closestDistance >= distanceLimit)
+	if (closestDistance <= distanceLimit)
 	{
 	  (*clusters[bestI]) += (*clusters[bestJ]);
 	  delete clusters[bestJ];
@@ -142,7 +145,7 @@ Agglomerate::run (const std::vector< Vector<float> > & data)
 	  }
 	  for (int j = 0; j < clusters.size (); j++)
 	  {
-		distances(bestI,j) = comparison->value (clusters[bestI]->center, clusters[j]->center);
+		distances(bestI,j) = metric->value (clusters[bestI]->center, clusters[j]->center);
 	  }
 	}
 	else
@@ -156,11 +159,11 @@ int
 Agglomerate::classify (const Vector<float> & point)
 {
   int result = 0;
-  float bestValue = 0;
+  float bestValue = INFINITY;
   for (int i = 0; i < clusters.size (); i++)
   {
-	float value = comparison->value (point, clusters[i]->center);
-	if (value > bestValue)
+	float value = metric->value (point, clusters[i]->center);
+	if (value < bestValue)
 	{
 	  result = i;
 	  bestValue = value;
@@ -175,7 +178,7 @@ Agglomerate::distribution (const Vector<float> & point)
   Vector<float> result (clusters.size ());
   for (int i = 0; i < clusters.size (); i++)
   {
-	result[i] = comparison->value (point, clusters[i]->center);
+	result[i] = metric->value (point, clusters[i]->center);
   }
   result.normalize ();
   return result;
@@ -196,7 +199,7 @@ Agglomerate::representative (int group)
 void
 Agglomerate::read (istream & stream)
 {
-  comparison = Factory<Comparison>::read (stream);
+  metric = Factory<Metric>::read (stream);
 
   stream.read ((char *) &distanceLimit, sizeof (distanceLimit));
   stream.read ((char *) &minClusters, sizeof (minClusters));
@@ -219,7 +222,7 @@ Agglomerate::write (ostream & stream, bool withName)
 {
   ClusterMethod::write (stream, withName);
 
-  comparison->write (stream, true);
+  metric->write (stream, true);
 
   stream.write ((char *) &distanceLimit, sizeof (distanceLimit));
   stream.write ((char *) &minClusters, sizeof (minClusters));
