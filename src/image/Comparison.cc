@@ -27,11 +27,9 @@ using namespace std;
 
 // class Comparison -----------------------------------------------------------
 
-template class Factory<Comparison>;
-template <> Factory<Comparison>::productMap Factory<Comparison>::products;
-
-Comparison::~Comparison ()
+Comparison::Comparison ()
 {
+  needPreprocess = true;
 }
 
 Vector<float>
@@ -64,10 +62,10 @@ Comparison::write (ostream & stream, bool withName)
 void
 Comparison::addProducts ()
 {
-  Product<Comparison, NormalizedCorrelation>::add ();
-  Product<Comparison, MetricEuclidean>::add ();
-  Product<Comparison, HistogramIntersection>::add ();
-  Product<Comparison, ChiSquared>::add ();
+  Product<Metric, NormalizedCorrelation>::add ();
+  Product<Metric, MetricEuclidean>::add ();
+  Product<Metric, HistogramIntersection>::add ();
+  Product<Metric, ChiSquared>::add ();
 }
 
 
@@ -108,10 +106,10 @@ NormalizedCorrelation::preprocess (const Vector<float> & value) const
 }
 
 float
-NormalizedCorrelation::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
+NormalizedCorrelation::value (const Vector<float> & value1, const Vector<float> & value2) const
 {
   float result;
-  if (preprocessed)
+  if (! needPreprocess)
   {
 	result = value1.dot (value2);
   }
@@ -145,9 +143,7 @@ NormalizedCorrelation::value (const Vector<float> & value1, const Vector<float> 
 	result = value1.dot (value2) / (value1.frob (2) * value2.frob (2));
   }
 
-  result = max (0.0f, result);  // Default mode is to consider everything below zero as zero probability.
-
-  return result;
+  return 1.0f - max (0.0f, result);  // Using max() because default mode is to consider negative correlation as zero.
 }
 
 void
@@ -170,10 +166,9 @@ NormalizedCorrelation::write (ostream & stream, bool withName)
 /**
    Select between alternate squashing methods.  There are two possible methods
    for converting a Euclidean distance [0,inf) to [0,1].  One is a hyperbolic
-   squashing function that maps a distance of 0 to a value of 1 and a distance
-   of inf to a value of 0.  The other method, usable when the Euclidean
-   distance is known to have an upper bound, is to map the distance to the
-   output value with a linear transformation.
+   squashing function that maps a distance of inf to a value of 1.  The other
+   method, usable when the Euclidean distance is known to have an upper bound,
+   is to map the distance to the output value with a linear transformation.
  **/
 MetricEuclidean::MetricEuclidean (float upperBound)
 {
@@ -186,15 +181,15 @@ MetricEuclidean::MetricEuclidean (istream & stream)
 }
 
 float
-MetricEuclidean::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
+MetricEuclidean::value (const Vector<float> & value1, const Vector<float> & value2) const
 {
   if (isinf (upperBound))
   {
-	return 1.0f / coshf ((value1 - value2).frob (2));
+	return 1.0f - 1.0f / coshf ((value1 - value2).frob (2));
   }
   else
   {
-	return 1.0f - (value1 - value2).frob (2) / upperBound;
+	return (value1 - value2).frob (2) / upperBound;
   }
 }
 
@@ -221,7 +216,7 @@ HistogramIntersection::HistogramIntersection (istream & stream)
 }
 
 float
-HistogramIntersection::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
+HistogramIntersection::value (const Vector<float> & value1, const Vector<float> & value2) const
 {
   float result = 0;
   const int m = value1.rows ();
@@ -244,8 +239,7 @@ HistogramIntersection::value (const Vector<float> & value1, const Vector<float> 
 	  count2++;
 	}
   }
-  result /= max (count1, count2);
-  return result;
+  return 1.0f - result / max (count1, count2);
 }
 
 
@@ -263,11 +257,11 @@ ChiSquared::preprocess (const Vector<float> & value) const
 }
 
 float
-ChiSquared::value (const Vector<float> & value1, const Vector<float> & value2, bool preprocessed) const
+ChiSquared::value (const Vector<float> & value1, const Vector<float> & value2) const
 {
   float result = 0;
   const int m = value1.rows ();
-  if (preprocessed)
+  if (! needPreprocess)
   {
 	for (int i = 0; i < m; i++)
 	{
@@ -297,5 +291,5 @@ ChiSquared::value (const Vector<float> & value1, const Vector<float> & value2, b
   }
 
   // result is always in [0, 2].
-  return 1.0f - result / 2.0f;
+  return result / 2.0f;
 }
