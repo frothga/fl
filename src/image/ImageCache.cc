@@ -6,6 +6,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+01/2006 Fred Rothganger -- Fix memory leak when setting original image.
 */
 
 
@@ -191,12 +194,12 @@ ImageCache::add (const Image & image, int id, float scale)
 {
   if (id == primary)
   {
-	if (original  &&  *original != image)
+	if (original)
 	{
+	  if (*original == image) return original;
 	  clear ();
 	}
-	original = new PyramidImage (image, scale);
-	return original;
+	return original = new PyramidImage (image, scale);
   }
 
   PyramidImage * result = new PyramidImage (image, scale);
