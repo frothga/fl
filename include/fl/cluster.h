@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Use Metric.rather than Comparison.
 */
 
 
@@ -13,7 +16,7 @@ for details.
 
 #include "fl/matrix.h"
 #include "fl/socket.h"
-#include "fl/descriptor.h"
+#include "fl/metric.h"
 
 #include <iostream>
 #include <vector>
@@ -211,7 +214,7 @@ namespace fl
   class Agglomerate : public ClusterMethod
   {
   public:
-	Agglomerate (Comparison * comparison, float distanceLimit, int minClusters = 1);
+	Agglomerate (Metric * comparison, float distanceLimit, int minClusters = 1);
 	Agglomerate (std::istream & stream);
 	~Agglomerate ();
 
@@ -223,7 +226,7 @@ namespace fl
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = false);
 
-	Comparison * comparison;
+	Metric * metric;
 	float distanceLimit;  ///< The largest distance permissible between two clusters.
 	int minClusters;  ///< The target number of clusters at convergence.  Result will be no smaller than this unless there are fewer input data.
 	std::vector<ClusterAgglomerative *> clusters;
