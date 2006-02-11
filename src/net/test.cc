@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Fixes for Cygwin: include errno.h, use smaller stack
 */
 
 
@@ -15,6 +18,7 @@ for details.
 #include <unistd.h>
 #include <iostream>
 #include <signal.h>
+#include <errno.h>
 
 
 using namespace std;
@@ -36,7 +40,7 @@ main (int argc, char * argv[])
   signal (SIGIO, handler);
   signal (SIGPIPE, handler);
 
-  const int blockSize = 1000000;
+  const int blockSize = 500000;
   int data[blockSize];
 
   if (argc < 2)
