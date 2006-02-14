@@ -7,18 +7,66 @@ for details.
 
 
 10/2005 Fred Rothganger -- Use generic int types for x64 compatibility.
+02/2006 Fred Rothganger -- Finish Win32 version.  Add Listener.
 */
 
 
-#ifndef socket_h
-#define socket_h
+#ifndef fl_socket_h
+#define fl_socket_h
 
 
 #ifdef WIN32
-  #include <winsock2.h>
+
+// winsock2.h must be included before anything else that includes
+// windows.h (namely fl/thread.h), otherwise windows.h will bring
+// in winsock.h, which will conflict with winsock2.
+#  include <winsock2.h>
+#  include <ws2tcpip.h>
+
+#  define socklen_t int
+
+#  define SENDFLAGS 0
+#  define IOCTLSOCKET ioctlsocket
+#  define CLOSESOCKET closesocket
+
+#  define GETLASTERROR WSAGetLastError ()
+#  define EADDRINUSE  WSAEADDRINUSE
+#  define EINTR       WSAEINTR
+#  define EINPROGRESS WSAEINPROGRESS
+#  define EMFILE      WSAEMFILE
+#  define ENOBUFS     WSAENOBUFS
+
 #else
-  #include <sys/socket.h>
+
+#  include <sys/types.h>
+#  include <sys/socket.h>
+#  include <sys/ioctl.h>
+#  include <sys/poll.h>
+#  include <fcntl.h>
+#  include <netinet/in.h>
+#  include <netdb.h>
+#  include <errno.h>
+#  include <sys/select.h>
+#  include <arpa/inet.h>
+
+#  ifdef __CYGWIN__
+#    define NO_IPV6
+#  endif
+
+#  define SOCKET int
+#  define INVALID_SOCKET (SOCKET) -1
+#  define SOCKET_ERROR -1
+
+#  define SENDFLAGS MSG_NOSIGNAL
+#  define IOCTLSOCKET ioctl
+#  define CLOSESOCKET close
+
+#  define GETLASTERROR errno
+
 #endif
+
+
+#include "fl/thread.h"
 
 #include <istream>
 
@@ -28,18 +76,23 @@ namespace fl
   class SocketStreambuf : public std::streambuf
   {
   public:
-	SocketStreambuf (int socket = -1, int timeout = 0);
-	void init (int socket);
+	SocketStreambuf (SOCKET socket = INVALID_SOCKET, int timeout = 0);
+
+	void attach (SOCKET socket);
+	void closeSocket ();
+	void setTimeout (int timeout = 0);
 
 	int_type        underflow ();
 	int_type        overflow (int_type c);
 	int             sync ();
 	std::streamsize showmanyc ();
 
-	bool waitForInput ();  // Waits for timeout seconds for input from socket.
-	bool waitForOutput ();  // Ditto for output.  Returns true if ready for output.  Returns false if timeout expires.
+#ifndef WIN32
+	bool waitForInput ();
+	bool waitForOutput ();
+#endif
 
-	int socket;
+	SOCKET socket;
 	char getBuffer[4096];
 	char putBuffer[4096];
 	int timeout;
@@ -48,13 +101,54 @@ namespace fl
   class SocketStream : public std::iostream
   {
   public:
-	SocketStream (int socket = -1, int timeout = 0) : buffer (socket, timeout), std::iostream (&buffer) {}
-	void init (int socket) {buffer.init (socket);}
+	SocketStream (const std::string & hostname, const std::string & port, int timeout = 0);
+	SocketStream (SOCKET socket = INVALID_SOCKET, int timeout = 0);
+	~SocketStream ();  ///< Destroy the socket if we own it.
 
-	int in_avail () {return buffer.in_avail ();}
+	void connect (const std::string & hostname, const std::string & port);
+	void attach (SOCKET socket);
+	void detach ();
+	void setTimeout (int timeout = 0);
+
+	int in_avail ();
 
 	SocketStreambuf buffer;
+	bool ownSocket;  ///< Indicates that we created the socket ourselves, and must shut it down on destruction.
   };
+
+  class Listener
+  {
+  public:
+	Listener (int timeout = 0, bool threaded = true);
+	~Listener ();
+
+	void listen (int port, int lastPort = -1);
+	virtual void processConnection (SocketStream & ss, struct sockaddr_in & clientAddress) = 0;  ///< Override this function to implement the server.
+
+	bool threaded;  ///< If true, create a new thread per connection.  If false, each connection will be handled serially on the listen() thread.
+	int timeout;  ///< Number of seconds to pass to SocketStream constructor.
+	int port;  ///< TCP port that the server is actually listening on.
+	bool stop;  ///< Indicates that listen() should terminate as soon as feasible.
+
+	// Machinery for spawning threads
+	static PTHREAD_RESULT processConnectionThread (PTHREAD_PARAMETER param);
+	struct ThreadDataHolder
+	{
+	  Listener * me;
+	  SocketStream ss;
+	  struct sockaddr_in clientAddress;
+	};
+  };
+
+# ifdef WIN32
+  class WinsockInitializer
+  {
+	WinsockInitializer ();
+	~WinsockInitializer ();
+
+	static WinsockInitializer singleton;
+  };
+# endif
 }
 
 
