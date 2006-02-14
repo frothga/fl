@@ -37,6 +37,15 @@ for details.
 
 namespace fl
 {
+# ifdef WIN32
+  inline int
+  sleep (unsigned int seconds)
+  {
+	Sleep (seconds * 1000);
+	return 0;
+  }
+# endif
+
   inline double
   getTimestamp ()
   {
