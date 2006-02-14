@@ -6,7 +6,8 @@
 #
 #
 # 12/2004 Fred Rothganger -- Clean MSVC intermediate files.
-# 02/2006 Fred Rothganger -- Build shared libraries.  Add distclean
+# 02/2006 Fred Rothganger -- Build shared libraries.  Add distclean.
+#         Rename SocketStream and add Listener
 
 
 SOURCE_DIR := ../..
@@ -16,19 +17,20 @@ MODULE = Net
 VPATH = $(SOURCE_LIB)
 LOADLIBS =
 
-OBJS = socket.o
+OBJS = SocketStream.o Listener.o
 
 $(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
 	$(LIBCOMMAND)
 
 
-test: test.o socket.o
+test: test.o $(OBJS)
 	g++ -o $@ $^
 
 
 clean:
 	rm -f *~ *.o core core.* $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
 	rm -rf Debug Release
+	rm -f test$(EXESUF)
 
 distclean: clean
 	rm -f Dependencies
