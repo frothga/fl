@@ -6,19 +6,15 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Fixes for Cygwin: include errno.h, use smaller stack
+02/2006 Fred Rothganger -- Rewrite to use Listener and updated SocketStream
 */
 
 
 #include "fl/socket.h"
+#include "fl/time.h"
 
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <unistd.h>
 #include <iostream>
-#include <signal.h>
-#include <errno.h>
+#include <string>
 
 
 using namespace std;
@@ -26,220 +22,174 @@ using namespace fl;
 
 
 #define portNumber 60000
+#define blockSize 1000000
 
 
-void
-handler (int s)
+class TestListener : public Listener
 {
-  cerr << "Got signal " << s << endl;
-}
+public:
+  TestListener (int * data)
+  : Listener (60)
+  {
+	state = 0;
+	this->data = data;
+  }
+
+  virtual void processConnection (SocketStream & ss, struct sockaddr_in & clientAddress)
+  {
+	switch (state++)
+	{
+	  case 0:
+		cerr << "Got first connection" << endl;
+		break;
+	  case 1:
+	  {
+		cerr << "Got second connection" << endl;
+
+		struct hostent * hp = gethostbyaddr ((char *) &clientAddress.sin_addr, sizeof (clientAddress.sin_addr), AF_INET);
+		string remoteName = "unknown";
+		if (hp)
+		{
+		  remoteName = hp->h_name;
+		}
+		else
+		{
+		  cerr << "gethostbyaddr failed" << endl;
+		  remoteName = inet_ntoa (clientAddress.sin_addr);
+		}
+		cerr << "connection = " << remoteName << endl;
+
+		int i = 0;
+		while (ss.good ())
+		{
+		  int count = rand () % blockSize + 1;
+		  data[count - 1] = i;
+		  cerr << i << " writing " << count * sizeof (int) << endl;
+		  ss.write ((char *) &count, sizeof (count));
+		  ss.write ((char *) data, count * sizeof (int));
+		  ss.flush ();
+		  data[count - 1] = count - 1;
+		  if (! ss.good ())
+		  {
+			cerr << i << " write bad " << ss.bad () << " " << ss.eof () << " " << ss.fail () << endl;
+		  }
+
+		  ss.read ((char *) &count, sizeof (count));
+		  cerr << i << " got count " << count << " " << ss.gcount () << endl;
+		  int readCount = 0;
+		  for (int j = 0; j < count; j++)
+		  {
+			ss.read ((char *) &data[j], sizeof (int));
+			readCount += ss.gcount ();
+			if (j < count - 1  &&  data[j] != j) cerr << "unexpected value: " << data[j] << " rather than " << j << endl;
+		  }
+		  cerr << i << " read " << readCount << endl;
+		  if (! ss.good ())
+		  {
+			cerr << i << " read bad " << ss.bad () << " " << ss.eof () << " " << ss.fail () << endl;
+		  }
+		  if (data[count - 1] != i)
+		  {
+			cerr << i << " read bad value " << data[count - 1] << endl;
+		  }
+		  data[count - 1] = count - 1;
+
+		  i++;
+		}
+		// Fall through to case 2 below..
+	  }
+	  case 2:
+	  default:
+		stop = true;
+	}
+  }
+
+  int state;
+  int * data;
+};
+
 
 int
 main (int argc, char * argv[])
 {
-  signal (SIGIO, handler);
-  signal (SIGPIPE, handler);
-
-  const int blockSize = 500000;
-  int data[blockSize];
-
-  if (argc < 2)
+  try
   {
-	// Be server
-	cerr << "server" << endl;
+	int * data = new int[blockSize];
+	for (int i = 0; i < blockSize; i++) data[i] = i;
 
-	int sock = socket (AF_INET, SOCK_STREAM, 0);
-	if (sock == -1)
+	if (argc < 2)
 	{
-	  perror ("socket");
-	  exit (1);
-	}
+	  // Be server
+	  cerr << "server" << endl;
 
-	struct sockaddr_in sin;
-	bzero (&sin, sizeof (sin));
-	sin.sin_family      = AF_INET;
-	sin.sin_port        = htons (portNumber);
-	sin.sin_addr.s_addr = htonl (INADDR_ANY);
-
-	if (bind (sock, (struct sockaddr *) &sin, sizeof (sin)) == -1)
-	{
-	  perror ("bind");
-	  exit (1);
-	}
-	if (listen (sock, 5) == -1)
-	{
-	  perror ("listen");
-	  exit (1);
-	}
-
-	int optval = 1;
-	setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof (optval));
-
-	struct sockaddr_in peer;
-	socklen_t size;
-	int connection = accept (sock, (sockaddr *) &peer, &size);
-	if (connection == -1)
-	{
-	  cerr << "accept failed: " << strerror (errno) << endl;
-	  exit (1);
-	}
-	cerr << "got first connectin" << endl;
-	close (connection);
-	connection = accept (sock, (sockaddr *) &peer, &size);
-	if (connection == -1)
-	{
-	  cerr << "accept failed: " << strerror (errno) << endl;
-	  exit (1);
-	}
-	cerr << "got second connectin" << endl;
-
-	struct hostent * hp = gethostbyaddr ((char *) &peer.sin_addr, sizeof (peer.sin_addr), AF_INET);
-    string remoteName = "unknown";
-	if (hp)
-	{
-	  remoteName = hp->h_name;
+	  TestListener tl (data);
+	  tl.listen (portNumber);
 	}
 	else
 	{
-	  herror ("gethostbyaddr failed: ");
-	  remoteName = inet_ntoa (peer.sin_addr);
+	  // Be client
+	  cerr << "client" << endl;
+
+	  string serverName = argv[1];
+	  char portName[256];
+	  sprintf (portName, "%i", portNumber);
+
+	  SocketStream ss (serverName, portName);
+	  cerr << "got first connection" << endl;
+
+	  ss.connect (serverName, portName);
+	  cerr << "got second connection" << endl;
+
+	  char hostname[256];
+	  gethostname (hostname, sizeof (hostname));
+	  strtok (hostname, ".");
+	  cerr << "Connection complete: " << serverName << " " << hostname << endl;
+
+	  int i = 0;
+	  while (ss.good ())
+	  {
+		int count;
+		ss.read ((char *) &count, sizeof (count));
+		cerr << i << " got count " << count << " " << ss.gcount () << endl;
+		int readCount = 0;
+		for (int j = 0; j < count; j++)
+		{
+		  ss.read ((char *) &data[j], sizeof (int));
+		  readCount += ss.gcount ();
+		  if (j < count - 1  &&  data[j] != j) cerr << "unexpected value: " << data[j] << " rather than " << j << endl;
+		}
+		cerr << i << " read " << readCount << endl;
+		if (! ss.good ())
+		{
+		  cerr << i << " read bad " << ss.bad () << " " << ss.eof () << " " << ss.fail () << endl;
+		}
+		if (data[count - 1] != i)
+		{
+		  cerr << i << " read bad value " << data[count - 1] << endl;
+		}
+		data[count - 1] = count - 1;
+
+		sleep (rand () % 2);
+
+		count = rand () % blockSize + 1;
+		data[count - 1] = i;
+		cerr << i << " writing " << count * sizeof (int) << endl;
+		ss.write ((char *) &count, sizeof (count));
+		ss.write ((char *) data, count * sizeof (int));
+		ss.flush ();
+		data[count - 1] = count - 1;
+		if (! ss.good ())
+		{
+		  cerr << i << " write bad " << ss.bad () << " " << ss.eof () << " " << ss.fail () << endl;
+		}
+
+		i++;
+	  }
 	}
-	cerr << "connection = " << remoteName << endl;
-
-
-	SocketStream ss (connection, 60);
-
-	int i = 0;
-	while (ss.good ())
-	{
-	  int count = rand () % blockSize + 1;
-	  data[count - 1] = i;
-	  cerr << i << " writing " << count * sizeof (int) << endl;
-	  ss.write ((char *) &count, sizeof (count));
-	  ss.write ((char *) data, count * sizeof (int));
-	  ss.flush ();
-	  if (! ss.good ())
-	  {
-		cerr << i << " write bad " << ss.bad () << " " << ss.eof () << " " << ss.fail () << endl;
-	  }
-
-	  ss.read ((char *) &count, sizeof (count));
-	  cerr << i << " got count " << count << " " << ss.gcount () << endl;
-	  int readCount = 0;
-	  for (int j = 0; j < count; j++)
-	  {
-		ss.read ((char *) &data[j], sizeof (int));
-		readCount += ss.gcount ();
-	  }
-	  cerr << i << " read " << readCount << endl;
-	  if (! ss.good ())
-	  {
-		cerr << i << " read bad " << ss.bad () << " " << ss.eof () << " " << ss.fail () << endl;
-	  }
-	  if (data[count - 1] != i)
-	  {
-		cerr << i << " read bad value " << data[count - 1] << endl;
-	  }
-
-	  i++;
-	}
-
-	close (connection);
   }
-  else
+  catch (const char * message)
   {
-	// Be client
-	cerr << "client" << endl;
-
-	string serverName = argv[1];
-	struct hostent * hp;
-	hp = gethostbyname (serverName.c_str ());
-	if (! hp)
-	{
-	  cerr << "Couldn't look up server " << serverName << endl;
-	  exit (1);
-	}
-
-	struct sockaddr_in server;
-	bzero ((char *) &server, sizeof (server));
-	bcopy (hp->h_addr, &server.sin_addr, hp->h_length);
-	server.sin_family = hp->h_addrtype;
-	server.sin_port   = htons (portNumber);
-
-	int connection = socket (hp->h_addrtype, SOCK_STREAM, 0);
-	if (connection < 0)
-	{
-	  cerr << "Unable to create stream socket" << endl;
-	  exit (1);
-	}
-	if (connect (connection, (sockaddr *) &server, sizeof (server)) < 0)
-	{
-	  perror ("connect");
-	  exit (1);
-	}
-	cerr << "got first connection" << endl;
-
-	close (connection);
-	connection = socket (hp->h_addrtype, SOCK_STREAM, 0);
-	if (connection < 0)
-	{
-	  cerr << "Unable to create stream socket" << endl;
-	  exit (1);
-	}
-	if (connect (connection, (sockaddr *) &server, sizeof (server)) < 0)
-	{
-	  perror ("connect");
-	  exit (1);
-	}
-	cerr << "got second connection" << endl;
-
-	char hostname[256];
-	gethostname (hostname, sizeof (hostname));
-	strtok (hostname, ".");
-	cerr << "Connection complete: " << serverName << " " << hostname << endl;
-
-
-	SocketStream ss (connection);
-
-	int i = 0;
-	while (ss.good ())
-	{
-	  int count;
-	  ss.read ((char *) &count, sizeof (count));
-	  cerr << i << " got count " << count << " " << ss.gcount () << endl;
-	  int readCount = 0;
-	  for (int j = 0; j < count; j++)
-	  {
-		ss.read ((char *) &data[j], sizeof (int));
-		readCount += ss.gcount ();
-	  }
-	  cerr << i << " read " << readCount << endl;
-	  if (! ss.good ())
-	  {
-		cerr << i << " read bad " << ss.bad () << " " << ss.eof () << " " << ss.fail () << endl;
-	  }
-	  if (data[count - 1] != i)
-	  {
-		cerr << i << " read bad value " << data[count - 1] << endl;
-	  }
-
-	  sleep (rand () % 2);
-
-	  count = rand () % blockSize + 1;
-	  data[count - 1] = i;
-	  cerr << i << " writing " << count * sizeof (int) << endl;
-	  ss.write ((char *) &count, sizeof (count));
-	  ss.write ((char *) data, count * sizeof (int));
-	  ss.flush ();
-	  if (! ss.good ())
-	  {
-		cerr << i << " write bad " << ss.bad () << " " << ss.eof () << " " << ss.fail () << endl;
-	  }
-
-	  i++;
-	}
-
-	close (connection);
+	cerr << "Exception: " << message << endl;
   }
 
   return 0;
