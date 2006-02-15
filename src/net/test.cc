@@ -23,13 +23,14 @@ using namespace fl;
 
 #define portNumber 60000
 #define blockSize 1000000
+#define timeout 60
 
 
 class TestListener : public Listener
 {
 public:
   TestListener (int * data)
-  : Listener (60)
+  : Listener (timeout)
   {
 	state = 0;
 	this->data = data;
@@ -77,11 +78,21 @@ public:
 		  ss.read ((char *) &count, sizeof (count));
 		  cerr << i << " got count " << count << " " << ss.gcount () << endl;
 		  int readCount = 0;
-		  for (int j = 0; j < count; j++)
+		  if (rand () % 2)
 		  {
-			ss.read ((char *) &data[j], sizeof (int));
-			readCount += ss.gcount ();
-			if (j < count - 1  &&  data[j] != j) cerr << "unexpected value: " << data[j] << " rather than " << j << endl;
+			cerr << i << " reading single block" << endl;
+			ss.read ((char *) data, count * sizeof (data[0]));
+			readCount = ss.gcount ();
+		  }
+		  else
+		  {
+			cerr << i << " reading individual entries" << endl;
+			for (int j = 0; j < count; j++)
+			{
+			  ss.read ((char *) &data[j], sizeof (int));
+			  readCount += ss.gcount ();
+			  if (j < count - 1  &&  data[j] != j) cerr << "unexpected value: " << data[j] << " rather than " << j << endl;
+			}
 		  }
 		  cerr << i << " read " << readCount << endl;
 		  if (! ss.good ())
@@ -134,7 +145,7 @@ main (int argc, char * argv[])
 	  char portName[256];
 	  sprintf (portName, "%i", portNumber);
 
-	  SocketStream ss (serverName, portName);
+	  SocketStream ss (serverName, portName, timeout);
 	  cerr << "got first connection" << endl;
 
 	  ss.connect (serverName, portName);
@@ -152,11 +163,21 @@ main (int argc, char * argv[])
 		ss.read ((char *) &count, sizeof (count));
 		cerr << i << " got count " << count << " " << ss.gcount () << endl;
 		int readCount = 0;
-		for (int j = 0; j < count; j++)
+		if (rand () % 2)
 		{
-		  ss.read ((char *) &data[j], sizeof (int));
-		  readCount += ss.gcount ();
-		  if (j < count - 1  &&  data[j] != j) cerr << "unexpected value: " << data[j] << " rather than " << j << endl;
+		  cerr << i << " reading single block" << endl;
+		  ss.read ((char *) data, count * sizeof (data[0]));
+		  readCount = ss.gcount ();
+		}
+		else
+		{
+		  cerr << i << " reading individual entries" << endl;
+		  for (int j = 0; j < count; j++)
+		  {
+			ss.read ((char *) &data[j], sizeof (int));
+			readCount += ss.gcount ();
+			if (j < count - 1  &&  data[j] != j) cerr << "unexpected value: " << data[j] << " rather than " << j << endl;
+		  }
 		}
 		cerr << i << " read " << readCount << endl;
 		if (! ss.good ())
