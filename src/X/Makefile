@@ -25,13 +25,13 @@ $(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
 test.o: test.cc
 	g++ -c test.cc -g $(CPPFLAGS)
 
-test: test.o X.o glx.o GLShow.o SlideShow.o
+test: test.o $(OBJS)
 	g++ -o $@ $^ -L../../lib -lflImage -lflNumeric $(X_LIB) -lpthread -lefence
 
 
 clean:
 	rm -f *~ *.o core core.* $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
-	rm -f test
+	rm -f test$(EXESUF)
 
 distclean: clean
 	rm -f Dependencies
