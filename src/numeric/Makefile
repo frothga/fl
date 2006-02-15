@@ -135,7 +135,7 @@ test: test.cc $(LIBPREF)$(MODULE)$(LIBSUFF)
 clean:
 	rm -f *~ *.o core core.* $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
 	rm -rf Debug Release
-	rm -f test
+	rm -f test$(EXESUF)
 
 distclean: clean
 	rm -f Dependencies
