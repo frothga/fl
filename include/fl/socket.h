@@ -35,6 +35,8 @@ for details.
 #  define EINPROGRESS WSAEINPROGRESS
 #  define EMFILE      WSAEMFILE
 #  define ENOBUFS     WSAENOBUFS
+#  define ENOTSOCK    WSAENOTSOCK
+#  define EOPNOTSUPP  WSAEOPNOTSUPP
 
 #else
 
@@ -80,17 +82,11 @@ namespace fl
 
 	void attach (SOCKET socket);
 	void closeSocket ();
-	void setTimeout (int timeout = 0);
 
 	int_type        underflow ();
 	int_type        overflow (int_type c);
 	int             sync ();
 	std::streamsize showmanyc ();
-
-#ifndef WIN32
-	bool waitForInput ();
-	bool waitForOutput ();
-#endif
 
 	SOCKET socket;
 	char getBuffer[4096];
