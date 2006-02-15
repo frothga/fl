@@ -27,8 +27,8 @@ using namespace std;
 
 SocketStreambuf::SocketStreambuf (SOCKET socket, int timeout)
 {
+  this->timeout = timeout;
   attach (socket);
-  setTimeout (timeout);
 }
 
 void
@@ -50,44 +50,29 @@ SocketStreambuf::closeSocket ()
   }
 }
 
-void
-SocketStreambuf::setTimeout (int timeout)
-{
-  this->timeout = timeout;
-
-# ifdef WIN32
-  if (timeout  &&  socket != INVALID_SOCKET)
-  {
-	int t = timeout * 1000;
-	setsockopt
-	(
-	  socket,
-	  SOL_SOCKET,
-	  SO_SNDTIMEO,
-	  (char *) &t,
-	  sizeof (timeout)
-	);
-	setsockopt
-	(
-	  socket,
-	  SOL_SOCKET,
-	  SO_RCVTIMEO,
-	  (char *) &t,
-	  sizeof (timeout)
-	);
-  }
-# endif
-}
-
 SocketStreambuf::int_type
 SocketStreambuf::underflow ()
 {
-# ifndef WIN32
-  if (! waitForInput ())
+  // Wait until data is available
+  fd_set readfds;
+  timeval timeLimit = {timeout, 0};
+  while (true)
   {
-	return EOF;
+	FD_ZERO (&readfds);
+	FD_SET (socket, &readfds);
+	int ready = select (socket + 1, &readfds, NULL, NULL, timeout ? &timeLimit : NULL);
+	if (ready == 1) break;  // Success: data is ready
+	if (ready == SOCKET_ERROR)
+	{
+	  int error = GETLASTERROR;
+	  if (error == EINTR  ||  error == EINPROGRESS)
+	  {
+		continue;  // Not fatal, so keep listening.
+	  }
+	}
+	return EOF;  // timeout, or fatal error
   }
-# endif
+
   int count = recv (socket, getBuffer, sizeof (getBuffer), 0);
   if (count <= 0)
   {
@@ -119,12 +104,26 @@ SocketStreambuf::sync ()
   char * start = putBuffer;
   while (count > 0)
   {
-#   ifndef WIN32
-	if (! waitForOutput ())
+	// Wait until system is ready to transmit
+	fd_set writefds;
+	timeval timeLimit = {timeout, 0};
+	while (true)
 	{
-	  return -1;
+	  FD_ZERO (&writefds);
+	  FD_SET (socket, &writefds);
+	  int ready = select (socket + 1, NULL, &writefds, NULL, timeout ? &timeLimit : NULL);
+	  if (ready == 1) break;  // Success: system is ready
+	  if (ready == SOCKET_ERROR)
+	  {
+		int error = GETLASTERROR;
+		if (error == EINTR  ||  error == EINPROGRESS)
+		{
+		  continue;  // Not fatal, so keep waiting.
+		}
+	  }
+	  return -1;  // timeout, or fatal error
 	}
-#   endif
+
 	int sent = send (socket, start, count, SENDFLAGS);
 	if (sent <= 0)
 	{
@@ -147,15 +146,11 @@ SocketStreambuf::showmanyc ()
 	return -1;
   }
 
-# ifdef WIN32
-
-#   pragma message (__FILE__ "(152): warning: Need WinSock code to detect whether the connection is still up")
-
-# else
-
+  // Verify that connection is still up.  This feature is not critical to
+  // the correct operation of this streambuf.
+# ifndef WIN32
   if (! count)
   {
-	// Verify that connection is still up
 	struct pollfd p;
 	p.fd = socket;
 	p.events = 0;
@@ -165,67 +160,10 @@ SocketStreambuf::showmanyc ()
 	  return -1;
 	}
   }
-
 # endif
 
   return count;
 }
-
-#ifndef WIN32
-
-/**
-  Waits for timeout seconds for input from socket.
-  This is a hack to work around the inability to set socket timeouts in Linux.
-  The alternative to polling is to use SIGIO, but that creates more depency on
-  properly configured client code.
-  \return true if input is available, or false if timeout is reached.
-**/
-bool
-SocketStreambuf::waitForInput ()
-{
-  struct pollfd p;
-  p.fd = socket;
-  p.events = POLLIN | POLLPRI;
-
-  if (poll (&p, 1, timeout ? timeout * 1000 : -1) <= 0)
-  {
-	return false;  // On timeout or error.
-  }
-
-  if (p.revents & (POLLERR | POLLHUP | POLLNVAL))
-  {
-	return false;
-  }
-
-  return p.revents & (POLLIN | POLLPRI);
-}
-
-/**
-  Waits for timeout seconds for socket to become ready for output.
-  See comments on waitForInput().
-  \return true if ready for output, or false if timeout expires.
-**/
-bool
-SocketStreambuf::waitForOutput ()
-{
-  struct pollfd p;
-  p.fd = socket;
-  p.events = POLLOUT;
-
-  if (poll (&p, 1, timeout ? timeout * 1000 : -1) <= 0)
-  {
-	return false;
-  }
-
-  if (p.revents & (POLLERR | POLLHUP | POLLNVAL))
-  {
-	return false;
-  }
-
-  return p.revents & POLLOUT;
-}
-
-#endif
 
 
 // class SocketStream ---------------------------------------------------------
@@ -328,7 +266,7 @@ SocketStream::detach ()
 void
 SocketStream::setTimeout (int timeout)
 {
-  buffer.setTimeout (timeout);
+  buffer.timeout = timeout;
 }
 
 int
