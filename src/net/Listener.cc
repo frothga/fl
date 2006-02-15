@@ -81,11 +81,9 @@ Listener::listen (int port, int lastPort)
 	  int error = GETLASTERROR;
 	  if (error == EINTR  ||  error == EINPROGRESS)
 	  {
-		// Not fatal, so jump to top of loop and keep listening.
-		continue;
+		continue;  // Not fatal, so keep listening.
 	  }
-	  // Fatal, so exit.
-	  break;
+	  break;  // Fatal, so exit.
 	}
 
 	// At this point we know a request is ready, so grab it.
@@ -94,12 +92,18 @@ Listener::listen (int port, int lastPort)
 	SOCKET connection = accept (sock, (struct sockaddr *) &clientAddress, &size);
 	if (connection == SOCKET_ERROR)
 	{
+	  // Here we are checking if the error is fatal to listening in general,
+	  // rather than to the current connection.
 	  int error = GETLASTERROR;
-	  if (error == EMFILE  ||  error == ENOBUFS  ||  error == EINTR  ||  error == EINPROGRESS)
+	  if (   error == EBADF
+		  || error == ENOTSOCK
+		  || error == EOPNOTSUPP
+		  || error == EINVAL
+		  || error == EFAULT)
 	  {
-		continue;
+		break;  // Fatal error
 	  }
-	  break;
+	  continue;  // Not fatal, so resume litening
 	}
 
 	if (threaded)
