@@ -16,7 +16,7 @@ Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Include fstream.
+02/2006 Fred Rothganger -- Include fstream.  Use destroy option in syev().
 */
 
 
@@ -252,7 +252,7 @@ cerr << "center: " << center << endl;
 	// Prepare matrix of basis vectors on which to project the cluster centers
 	Matrix<float> eigenvectors;
 	Vector<float> eigenvalues;
-	syev (covariance, eigenvalues, eigenvectors);
+	syev (covariance, eigenvalues, eigenvectors, true);
 	float minev = largestNormalFloat;
 	float maxev = 0;
 	for (int i = 0; i < eigenvalues.rows (); i++)

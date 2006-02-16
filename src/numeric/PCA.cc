@@ -12,6 +12,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Use destroy option in syev().
 */
 
 
@@ -62,7 +65,7 @@ PCA::analyze (const vector< Vector<float> > & data)
 
   Vector<float> eigenvalues;
   Matrix<float> eigenvectors;
-  syev (covariance, eigenvalues, eigenvectors);
+  syev (covariance, eigenvalues, eigenvectors, true);
 
   map<float, int> sorted;
   for (int i = 0; i < eigenvalues.rows (); i++)
