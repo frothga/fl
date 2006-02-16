@@ -17,6 +17,7 @@ for details.
 
 
 01/2006 Fred Rothganger -- Add "copy" option to gelss() and gelsd().
+02/2006 Fred Rothganger -- Change all "copy" options to "destroy".
 */
 
 
@@ -31,167 +32,146 @@ namespace fl
 {
   /**
 	 Compute eigenvalues and eigenvectors for symmetric matrix.
-	 \param A This parameter is marked as const for convenience (to allow
-	 immediate construction of matrix classes within the call list), but
-	 will in fact be overwritten by the eigenvectors if this is a dense Matrix.
-	 \param eigenvectors This matrix gets aliased to A if A is a dense Matrix.
-	 \param copy Indicates that A should not be overwritten, even if it
-	 is a dense Matrix.  Forces A to be copied, which is less efficient.
+	 \param eigenvectors Will be aliased to A if destroyA is true.
+	 \param destroyA Indicates that A may be overwritten by the eigenvectors
+	 if A is a dense Matrix.  The default is for A to be copied, which is
+	 less efficient but allows A to be reused in other calculations.
   **/
   template<class T>
-  void syev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool copy = false);
+  void syev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
 
   /**
 	 Compute eigenvalues and eigenvectors for symmetric matrix stored in
 	 packed format.
-	 \param A This parameter is marked as const for convenience (to allow
-	 immediate construction of matrix classes within the call list), but
-	 will in fact be overwritten.
+	 \param destroyA Indicates that A may be overwritten.  The default is
+	 for A to be copied, which is less efficient but allows A to be reused
+	 in other calculations.
   **/
   template<class T>
-  void syev (const MatrixPacked<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors);
+  void syev (const MatrixPacked<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
 
   /**
 	 Compute eigenvalues (only) for symmetric matrix.
-	 \param A This parameter is marked as const for convenience (to allow
-	 immediate construction of matrix classes within the call list), but
-	 will in fact be overwritten if this is a dense Matrix.
-	 \param copy Indicates that A should not be overwritten, even if it
-	 is a dense Matrix.  Forces A to be copied, which is less efficient.
+	 \param destroyA Indicates that A may be overwritten if A is a dense
+	 Matrix.  The default is for A to be copied, which is less efficient
+	 but allows A to be reused in other calculations.
   **/
   template<class T>
-  void syev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, bool copy = false);
+  void syev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, bool destroyA = false);
 
   /**
 	 Symmetric generalized eigenvalue problem: A*x = lambda*B*x.
-	 \param A This parameter is marked as const for convenience (to allow
-	 immediate construction of matrix classes within the call list), but
-	 will in fact be overwritten by the eigenvectors if this is a dense Matrix.
-	 \param B This parameter is marked as const for convenience, but
-	 will in fact be overwritten by the triangular factor U or L from the
-	 Cholesky factorization L*~L or ~U*U if this is a dense Matrix.
-	 \param eigenvectors This matrix gets aliased to A if A is dense.
-	 \param copy Indicates that A and B should not be overwritten, even if
-	 they are dense Matrices.  Forces them to be copied, which is less
-	 efficient.
+	 \param destroyA Indicates that A may be overwritten if A is a dense
+	 Matrix.  The default is for A to be copied, which is less efficient
+	 but allows A to be reused in other calculations.
+	 \param destroyB Indicates that B may be overwritten by the triangular
+	 factor U or L from the Cholesky factorization L*~L or ~U*U if B is a
+	 dense Matrix.  The default is for B to be copied.
+	 \param eigenvectors This matrix gets aliased to A if destroyA is true
+	 and A is dense.
    **/
   template<class T>
-  void sygv (const MatrixAbstract<T> & A, const MatrixAbstract<T> & B, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool copy = false);
+  void sygv (const MatrixAbstract<T> & A, const MatrixAbstract<T> & B, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false, bool destroyB = false);
 
   /**
 	 Compute eigenvalues and right eigenvectors for general (non-symmetric)
 	 matrix.
-	 \param A This parameter is marked as const for convenience (to allow
-	 immediate construction of matrix classes within the call list), but
-	 will in fact be overwritten if this is a dense Matrix.
-	 \param copy Indicates that A should not be overwritten, even if it
-	 is a dense Matrix.  Forces A to be copied, which is less efficient.
+	 \param destroyA Indicates that A may be overwritten if A is a dense
+	 Matrix.  The default is for A to be copied, which is less efficient
+	 but allows A to be reused in other calculations.
   **/
   template<class T>
-  void geev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool copy = false);
+  void geev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
 
   /**
 	 Compute eigenvalues only for general (non-symmetric) matrix.
-	 \param A This parameter is marked as const for convenience (to allow
-	 immediate construction of matrix classes within the call list), but
-	 will in fact be overwritten if this is a dense Matrix.
-	 \param copy Indicates that A should not be overwritten, even if it
-	 is a dense Matrix.  Forces A to be copied, which is less efficient.
+	 \param destroyA Indicates that A may be overwritten if A is a dense
+	 Matrix.  The default is for A to be copied, which is less efficient
+	 but allows A to be reused in other calculations.
   **/
   template<class T>
-  void geev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, bool copy = false);
+  void geev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, bool destroyA = false);
 
   /**
 	 Compute eigenvalues and right eigenvectors for general (non-symmetric)
 	 matrix.  This version returns the imaginary component of any complex
 	 eigenvalues, rather than just ignoring it.
-	 \param A This parameter is marked as const for convenience (to allow
-	 immediate construction of matrix classes within the call list), but
-	 will in fact be overwritten if this is a dense Matrix.
-	 \param copy Indicates that A should not be overwritten, even if it
-	 is a dense Matrix.  Forces A to be copied, which is less efficient.
+	 \param destroyA Indicates that A may be overwritten if A is a dense
+	 Matrix.  The default is for A to be copied, which is less efficient
+	 but allows A to be reused in other calculations.
   **/
   template<class T>
-  void geev (const MatrixAbstract<T> & A, Matrix<std::complex<T> > & eigenvalues, Matrix<T> & eigenvectors, bool copy = false);
+  void geev (const MatrixAbstract<T> & A, Matrix<std::complex<T> > & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
 
   /**
 	 Solve least squares problem using SVD via QR.
-	 \param A This parameter is marked as const for convenience (to allow
-	 immediate construction of matrix classes within the call list), but
-	 will in fact be overwritten by the right singular vectors if this is a
-	 dense Matrix.
-	 \param x This matrix will be aliased to b if b is dense and if A has
-	 at least as many rows as columns.  Otherwise, x will be sized
-	 appropriately by a fresh memory allocation and b will be copied (which
-	 is less efficient).
-	 \param b This parameter is marked as const for convenience, but
-	 will in fact be overwritten by the solution x if this is a
-	 dense Matrix and if A has at least as many rows as columns (that is,
-	 if the problem is overconstrained or exact).
+	 \param A Will be overwritten by the right singular vectors if destroyA
+	 is true and this is a dense Matrix.
+	 \param x This matrix will be aliased to B if destroyB is true AND B is
+	 a dense Matrix AND A has at least as many rows as columns.  Otherwise,
+	 x will be sized appropriately by a fresh memory allocation and B will
+	 be copied (which is less efficient).
+	 \param B Will be overwritten by the solution x under certain conditions.
+	 See the parameters x and destroyB for details.
 	 \param residual If nonzero, then compute the sum of squared error and
 	 assign to the given address.  In zero, don't compute the residual.
 	 Computes the residual by summing the squares of all the "extra" elements
 	 in b that don't have associated elements in x, which only exist when A
 	 has more rows than columns.  If A has equal or fewer rows than columns,
 	 then the squared error is zero.
-	 \param copyA Indicates that A should not be overwritten, even if it
-	 is a dense Matrix.  Forces A to be copied, which is less efficient.
-	 \param copyb Indicates that b should not be overwritten, even if it
-	 is a dense Matrix and A is overconstrained.  Forces b to be copied,
-	 which is less efficient.
+	 \param destroyA Indicates that A may be overwritten by the right singular
+	 vectors if A is a dense Matrix.  The default is for A to be copied,
+	 which is less efficient but allows A to be reused in other calculations.
+	 \param destroyB Indicates that B may be overwritten by the solution x if
+	 B is a dense Matrix.  The default is for B to be copied.
   **/
   template<class T>
-  void gelss (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & b, T * residual = 0, bool copyA = false, bool copyb = false);
+  void gelss (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & B, T * residual = 0, bool destroyA = false, bool destroyB = false);
 
   /**
 	 Solve least squares problem using divide and conquer.  LAPACK
 	 documentation claims this is a faster implementation than gelss.
-	 \param A This parameter is marked as const for convenience (to allow
-	 immediate construction of matrix classes within the call list), but
-	 will in fact be overwritten by the right singular vectors if this is a
-	 dense Matrix.
-	 \param x This matrix will be aliased to b if b is dense and if A has
-	 at least as many rows as columns.  Otherwise, x will be sized
-	 appropriately by a fresh memory allocation and b will be copied (which
-	 is less efficient).
-	 \param b This parameter is marked as const for convenience, but
-	 will in fact be overwritten by the solution x if this is a
-	 dense Matrix and if A has at least as many rows as columns (that is,
-	 if the problem is overconstrained or exact).
+	 \param A Will be overwritten by the right singular vectors if destroyA
+	 is true and this is a dense Matrix.
+	 \param x This matrix will be aliased to B if destroyB is true AND B is
+	 a dense Matrix AND A has at least as many rows as columns.  Otherwise,
+	 x will be sized appropriately by a fresh memory allocation and B will
+	 be copied (which is less efficient).
+	 \param B Will be overwritten by the solution x under certain conditions.
+	 See the parameters x and destroyB for details.
 	 \param residual If nonzero, then compute the sum of squared error and
 	 assign to the given address.  In zero, don't compute the residual.
 	 Computes the residual by summing the squares of all the "extra" elements
 	 in b that don't have associated elements in x, which only exist when A
 	 has more rows than columns.  If A has equal or fewer rows than columns,
 	 then the squared error is zero.
-	 \param copyA Indicates that A should not be overwritten, even if it
-	 is a dense Matrix.  Forces A to be copied, which is less efficient.
-	 \param copyb Indicates that b should not be overwritten, even if it
-	 is a dense Matrix and A is overconstrained.  Forces b to be copied,
-	 which is less efficient.
+	 \param destroyA Indicates that A may be overwritten by the right singular
+	 vectors if A is a dense Matrix.  The default is for A to be copied,
+	 which is less efficient but allows A to be reused in other calculations.
+	 \param destroyB Indicates that B may be overwritten by the solution x if
+	 B is a dense Matrix.  The default is for B to be copied.
   **/
   template<class T>
-  void gelsd (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & b, T * residual = 0, bool copyA = false, bool copyb = false);
+  void gelsd (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & b, T * residual = 0, bool destroyA = false, bool destroyB = false);
 
   /**
 	 Singular value decomposition on a general matrix.
-	 \param A This parameter is marked as const for convenience (to allow
-	 immediate construction of matrix classes within the call list), but
-	 will in fact be overwritten if this is a dense Matrix.  Exactly what
-	 overwrites A depends on jobu and jobvt.
-	 \param copy Indicates that A should not be overwritten, even if it
-	 is a dense Matrix.  Forces A to be copied, which is less efficient.
+	 \param A Will be overwritten if destroyA is true and this is a dense
+	 Matrix.  Exactly what overwrites A depends on jobu and jobvt.
+	 \param destroyA Indicates that A may be overwritten if A is a dense
+	 Matrix.  The default is for A to be copied, which is less efficient
+	 but allows A to be reused in other calculations.
    **/
   template<class T>
-  void gesvd (const MatrixAbstract<T> & A, Matrix<T> & U, Matrix<T> & S, Matrix<T> & VT, char jobu = 'S', char jobvt = 'S', bool copy = false);
+  void gesvd (const MatrixAbstract<T> & A, Matrix<T> & U, Matrix<T> & S, Matrix<T> & VT, char jobu = 'S', char jobvt = 'S', bool destroyA = false);
 
   /**
 	 Convenience function to avoid specifying job modes for gesvd().
    **/
   template<class T>
-  void gesvd (const MatrixAbstract<T> & A, Matrix<T> & U, Matrix<T> & S, Matrix<T> & VT, bool copy)
+  void gesvd (const MatrixAbstract<T> & A, Matrix<T> & U, Matrix<T> & S, Matrix<T> & VT, bool destroyA)
   {
-	gesvd (A, U, S, VT, 'S', 'S', copy);
+	gesvd (A, U, S, VT, 'S', 'S', destroyA);
   }
 
 

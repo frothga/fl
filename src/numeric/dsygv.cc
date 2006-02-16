@@ -6,6 +6,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Add "destroy" option.
 */
 
 
@@ -17,10 +20,10 @@ namespace fl
 {
   template<>
   void
-  sygv (const MatrixAbstract<double> & A, const MatrixAbstract<double> & B, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool copy)
+  sygv (const MatrixAbstract<double> & A, const MatrixAbstract<double> & B, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool destroyA, bool destroyB)
   {
 	const Matrix<double> * p;
-	if (! copy  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
 	{
 	  eigenvectors = *p;
 	}
@@ -30,7 +33,7 @@ namespace fl
 	}
 
 	Matrix<double> tempB;
-	if (! copy  &&  (p = dynamic_cast<const Matrix<double> *> (&B)))
+	if (destroyB  &&  (p = dynamic_cast<const Matrix<double> *> (&B)))
 	{
 	  tempB = *p;
 	}

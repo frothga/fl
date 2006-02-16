@@ -15,6 +15,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Add "destroy" option.
 */
 
 
@@ -28,7 +31,7 @@ namespace fl
 {
   template<>
   void
-  gesvd (const MatrixAbstract<float> & A, Matrix<float> & U, Matrix<float> & S, Matrix<float> & VT, char jobu, char jobvt, bool copy)
+  gesvd (const MatrixAbstract<float> & A, Matrix<float> & U, Matrix<float> & S, Matrix<float> & VT, char jobu, char jobvt, bool destroyA)
   {
 	int m = A.rows ();
 	int n = A.columns ();
@@ -36,7 +39,7 @@ namespace fl
 
 	Matrix<float> tempA;
 	const Matrix<float> * p;
-	if (! copy  &&  (p = dynamic_cast<const Matrix<float> *> (&A)))
+	if (destroyA  &&  (p = dynamic_cast<const Matrix<float> *> (&A)))
 	{
 	  tempA = *p;
 	}

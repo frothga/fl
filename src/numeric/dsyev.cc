@@ -14,6 +14,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Add "destroy" option.
 */
 
 
@@ -25,10 +28,10 @@ namespace fl
 {
   template<>
   void
-  syev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool copy)
+  syev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool destroyA)
   {
 	const Matrix<double> * pA;
-	if (! copy  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
 	{
 	  eigenvectors = *pA;
 	}
@@ -68,11 +71,11 @@ namespace fl
 
   template<>
   void
-  syev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, bool copy)
+  syev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, bool destroyA)
   {
 	Matrix<double> eigenvectors;
 	const Matrix<double> * pA;
-	if (! copy  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
 	{
 	  eigenvectors = *pA;
 	}

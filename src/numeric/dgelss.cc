@@ -18,6 +18,7 @@ for details.
 
 01/2006 Fred Rothganger -- Add "copy" option.
 02/2006 Fred Rothganger -- Use pointer pushing for more efficient copies.
+        Change "copy" to "destroy".
 */
 
 
@@ -31,17 +32,17 @@ namespace fl
 {
   template<>
   void
-  gelss (const MatrixAbstract<double> & A, Matrix<double> & x, const MatrixAbstract<double> & b, double * residual, bool copyA, bool copyb)
+  gelss (const MatrixAbstract<double> & A, Matrix<double> & x, const MatrixAbstract<double> & B, double * residual, bool destroyA, bool destroyB)
   {
 	int m = A.rows ();
 	int n = A.columns ();
-	int nrhs = b.columns ();
+	int nrhs = B.columns ();
 	int ldx = std::max (m, n);
-	assert (b.rows () == m);
+	assert (B.rows () == m);
 
 	Matrix<double> tempA;
 	const Matrix<double> * p;
-	if (! copyA  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
 	{
 	  tempA = *p;
 	}
@@ -50,7 +51,7 @@ namespace fl
 	  tempA.copyFrom (A);
 	}
 
-	if (! copyb  &&  ldx == m  &&  (p = dynamic_cast<const Matrix<double> *> (&b)))
+	if (destroyB  &&  ldx == m  &&  (p = dynamic_cast<const Matrix<double> *> (&B)))
 	{
 	  x = *p;
 	}
@@ -58,7 +59,7 @@ namespace fl
 	{
 	  x.resize (ldx, nrhs);
 	  double * xp = & x(0,0);
-	  double * bp = & b(0,0);
+	  double * bp = & B(0,0);
 	  double * end = bp + m * nrhs;
 	  int step = ldx - m;
 	  while (bp < end)

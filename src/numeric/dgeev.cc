@@ -14,6 +14,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Add "destroy" option.
 */
 
 
@@ -25,14 +28,14 @@ namespace fl
 {
   template<>
   void
-  geev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool copy)
+  geev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool destroyA)
   {
 	int lda = A.rows ();
 	int n = std::min (lda, A.columns ());
 
 	Matrix<double> tempA;
 	const Matrix<double> * pA;
-	if (! copy  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
 	{
 	  tempA = *pA;
 	}
@@ -75,14 +78,14 @@ namespace fl
 
   template<>
   void
-  geev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, bool copy)
+  geev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, bool destroyA)
   {
 	int lda = A.rows ();
 	int n = std::min (lda, A.columns ());
 
 	Matrix<double> tempA;
 	const Matrix<double> * pA;
-	if (! copy  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
 	{
 	  tempA = *pA;
 	}
@@ -123,14 +126,14 @@ namespace fl
 
   template<>
   void
-  geev (const MatrixAbstract<double> & A, Matrix<std::complex<double> > & eigenvalues, Matrix<double> & eigenvectors, bool copy)
+  geev (const MatrixAbstract<double> & A, Matrix<std::complex<double> > & eigenvalues, Matrix<double> & eigenvectors, bool destroyA)
   {
 	int lda = A.rows ();
 	int n = std::min (lda, A.columns ());
 
 	Matrix<double> tempA;
 	const Matrix<double> * pA;
-	if (! copy  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
 	{
 	  tempA = *pA;
 	}

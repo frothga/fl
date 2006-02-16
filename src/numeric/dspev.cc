@@ -8,6 +8,7 @@ for details.
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
 09/2005 Fred Rothganger -- Moved from lapackd.h into separate file.
+02/2006 Fred Rothganger -- Add "destroy" option.
 */
 
 
@@ -19,12 +20,19 @@ namespace fl
 {
   template<>
   void
-  syev (const MatrixPacked<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors)
+  syev (const MatrixPacked<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool destroyA)
   {
 	int n = A.rows ();
 
 	MatrixPacked<double> tempA;
-	tempA.copyFrom (A);
+	if (destroyA)
+	{
+	  tempA = A;
+	}
+	else
+	{
+	  tempA.copyFrom (A);
+	}
 
 	eigenvalues.resize (n);
 	eigenvectors.resize (n, n);
