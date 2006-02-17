@@ -12,6 +12,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Use destroy option in gelss().
 */
 
 
@@ -87,8 +90,7 @@ DescriptorFilters::patch (const Vector<float> & value)
   Vector<float> b = value / value.frob (2);
   Vector<float> x;
   Matrix<float> A;
-  A.copyFrom (filterMatrix);
-  gelss (A, x, b);
+  gelss (A, x, b, (float *) 0, false, true);
   Image result;
   result.copyFrom ((unsigned char *) x.data, patchWidth, patchHeight, GrayFloat);
   return result;
