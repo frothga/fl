@@ -28,6 +28,7 @@ for details.
 
 #include <algorithm>
 #include <fstream>
+#include <time.h>
 
 
 using namespace std;
