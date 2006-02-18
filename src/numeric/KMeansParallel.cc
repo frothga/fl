@@ -24,12 +24,10 @@ for details.
 #include "fl/lapack.h"
 
 #include <algorithm>
-#include <pthread.h>
-#include <arpa/inet.h>
-#include <netdb.h>
 #include <sys/stat.h>
 #include <fstream>
 #include <errno.h>
+#include <time.h>
 
 
 using namespace fl;
@@ -39,12 +37,14 @@ using namespace std;
 // class KMeansParallel -------------------------------------------------------
 
 KMeansParallel::KMeansParallel (float maxSize, float minSize, int initialK, int maxK, const string & clusterFileName)
-: KMeans (maxSize, minSize, initialK, maxK, clusterFileName)
+: KMeans (maxSize, minSize, initialK, maxK, clusterFileName),
+  Listener (4000)
 {
 }
 
 KMeansParallel::KMeansParallel (istream & stream, const string & clusterFileName)
-: KMeans (stream, clusterFileName)
+: KMeans (stream, clusterFileName),
+  Listener (4000)
 {
 }
 
@@ -54,7 +54,7 @@ KMeansParallel::run (const std::vector<Vector<float> > & data)
   this->data = &data;
 
   // Fire up parallel processing
-  stop = false;
+  ClusterMethod::stop = false;
   pthread_mutex_init (&stateLock, NULL);
   state = initializing;
   pthread_t pid;
@@ -66,7 +66,7 @@ KMeansParallel::run (const std::vector<Vector<float> > & data)
   // nearest cluster center.
   iteration = 0;
   bool converged = false;
-  while (! converged  &&  ! stop)
+  while (! converged  &&  ! ClusterMethod::stop)
   {
 	cerr << "========================================================" << iteration++ << endl;
 	double timestamp = getTimestamp ();
@@ -102,13 +102,14 @@ KMeansParallel::run (const std::vector<Vector<float> > & data)
 	}
 	state = estimating;
 	pthread_mutex_unlock (&stateLock);
-	while (unitsPending  &&  ! stop)
+	while (unitsPending  &&  ! ClusterMethod::stop)
 	{
 	  sleep (1);
 	}
 	cerr << endl;
-	if (stop)
+	if (ClusterMethod::stop)
 	{
+	  Listener::stop = true;
 	  break;
 	}
 
@@ -128,12 +129,13 @@ KMeansParallel::run (const std::vector<Vector<float> > & data)
 	}
 	state = maximizing;
 	pthread_mutex_unlock (&stateLock);
-	while (unitsPending  &&  ! stop)
+	while (unitsPending  &&  ! ClusterMethod::stop)
 	{
 	  sleep (1);
 	}
-	if (stop)
+	if (ClusterMethod::stop)
 	{
+	  Listener::stop = true;
 	  break;
 	}
 
@@ -147,79 +149,19 @@ KMeansParallel::run (const std::vector<Vector<float> > & data)
   }
 }
 
-void *
+PTHREAD_RESULT
 KMeansParallel::listenThread (void * arg)
 {
 cerr << "starting listenThread" << endl;
-  KMeansParallel * kmeans = (KMeansParallel *) arg;
-
-  int sock = socket (AF_INET, SOCK_STREAM, 0);
-  if (sock == -1)
-  {
-	perror ("socket");
-	exit (1);
-  }
-
-  struct sockaddr_in sin;
-  bzero (&sin, sizeof (sin));
-  sin.sin_family      = AF_INET;
-  sin.sin_port        = htons (portNumber);
-  sin.sin_addr.s_addr = htonl (INADDR_ANY);
-
-  if (bind (sock, (struct sockaddr *) &sin, sizeof (sin)) == -1)
-  {
-	perror ("bind");
-	exit (1);
-  }
-  if (listen (sock, 5) == -1)
-  {
-	perror ("listen");
-	exit (1);
-  }
-
-  while (! kmeans->stop)
-  {
-	fd_set readfds;
-	FD_ZERO (&readfds);
-	FD_SET (sock, &readfds);
-	int result = select (sock + 1, &readfds, NULL, NULL, NULL);  // No timeout, because select is interruptable by signals, which is all we need.
-	if (result == 0)
-	{
-	  continue;
-	}
-	if (result < 0)
-	{
-	  cerr << "listenThread shutting down due to error: " << strerror (errno) << endl;
-	  break;
-	}
-
-	ThreadDataHolder * td = new ThreadDataHolder;
-	td->kmeans = kmeans;
-
-	socklen_t size;
-	if ((td->connection = accept (sock, (sockaddr *) &td->peer, &size)) == -1)
-	{
-	  cerr << "accept failed: " << strerror (errno) << endl;
-	  continue;
-	}
-
-	pthread_t pid;
-	pthread_create (&pid, NULL, proxyThread, td);
-  }
-
-cerr << "exiting listenThread" << endl;
+  KMeansParallel * me = (KMeansParallel *) arg;
+  me->listen (portNumber);
   return NULL;
 }
 
-void *
-KMeansParallel::proxyThread (void * arg)
+void
+KMeansParallel::processConnection (SocketStream & ss, struct sockaddr_in & clientAddress)
 {
-  ThreadDataHolder * td   = (ThreadDataHolder *) arg;
-  KMeansParallel * kmeans = td->kmeans;
-  struct in_addr address  = td->peer.sin_addr;
-  int connection          = td->connection;
-  delete td;
-
+  struct in_addr address  = clientAddress.sin_addr;
   struct hostent * hp = gethostbyaddr ((char *) &address, sizeof (address), AF_INET);
   char peer[128];
   if (hp)
@@ -233,23 +175,22 @@ KMeansParallel::proxyThread (void * arg)
   strtok (peer, ".");
   cerr << peer << " starting proxyThread" << endl;
 
-  const vector<Vector<float> > & data = *kmeans->data;
-  SocketStream ss (connection, 4000);
+  const vector<Vector<float> > & data = *this->data;
 
   int lastIteration = -1;
-  while (ss.good ()  &&  ! kmeans->stop)
+  while (ss.good ()  &&  ! ClusterMethod::stop)
   {
-	pthread_mutex_lock (&kmeans->stateLock);
-	EMstate state = kmeans->state;
+	pthread_mutex_lock (&stateLock);
+	EMstate state = this->state;
 	int unit = -1;
-	if (kmeans->workUnits.size ())
+	if (workUnits.size ())
 	{
-	  unit = kmeans->workUnits.back ();
-	  kmeans->workUnits.pop_back ();
+	  unit = workUnits.back ();
+	  workUnits.pop_back ();
 	}
-	pthread_mutex_unlock (&kmeans->stateLock);
+	pthread_mutex_unlock (&stateLock);
 
-	if (kmeans->stop)
+	if (ClusterMethod::stop)
 	{
 	  break;
 	}
@@ -265,15 +206,15 @@ KMeansParallel::proxyThread (void * arg)
 	  case estimating:
 	  {
 		int command;
-		if (lastIteration != kmeans->iteration)
+		if (lastIteration != iteration)
 		{
-		  lastIteration = kmeans->iteration;
+		  lastIteration = iteration;
 		  command = 1;  // Re-read cluster file
 		  ss.write ((char *) &command, sizeof (command));
 		  // The following trivia will help the client determine when NFS is
 		  // presenting a current copy of the file.
-		  ss.write ((char *) &kmeans->clusterFileSize, sizeof (kmeans->clusterFileSize));
-		  ss.write ((char *) &kmeans->clusterFileTime, sizeof (kmeans->clusterFileTime));
+		  ss.write ((char *) &clusterFileSize, sizeof (clusterFileSize));
+		  ss.write ((char *) &clusterFileTime, sizeof (clusterFileTime));
 		  ss.flush ();
 		}
 		command = 2;  // Perform estimation
@@ -283,20 +224,20 @@ KMeansParallel::proxyThread (void * arg)
 		int jbegin = workUnitSize * unit;
 		int jend = jbegin + workUnitSize;
 		jend = min (jend, (int) data.size ());
-		ss.read ((char *) & kmeans->member (0, jbegin), kmeans->clusters.size () * (jend - jbegin) * sizeof (float));
-//cerr << ss.gcount () << " " << kmeans->clusters.size () * (jend - jbegin) * sizeof (float) << endl;
+		ss.read ((char *) & member (0, jbegin), clusters.size () * (jend - jbegin) * sizeof (float));
+//cerr << ss.gcount () << " " << clusters.size () * (jend - jbegin) * sizeof (float) << endl;
 		if (ss.good ())
 		{
-		  pthread_mutex_lock (&kmeans->stateLock);
-		  kmeans->unitsPending--;
-		  pthread_mutex_unlock (&kmeans->stateLock);
+		  pthread_mutex_lock (&stateLock);
+		  unitsPending--;
+		  pthread_mutex_unlock (&stateLock);
           cerr << ".";
 		}
 		else
 		{
-		  pthread_mutex_lock (&kmeans->stateLock);
-		  kmeans->workUnits.push_back (unit);
-		  pthread_mutex_unlock (&kmeans->stateLock);
+		  pthread_mutex_lock (&stateLock);
+		  workUnits.push_back (unit);
+		  pthread_mutex_unlock (&stateLock);
 cerr << peer << " put back " << unit << endl;
 		}
 		break;
@@ -308,14 +249,14 @@ cerr << peer << " put back " << unit << endl;
 		ss.write ((char *) &unit, sizeof (unit));
 		for (int j = 0; j < data.size (); j++)
 		{
-		  ss.write ((char *) & kmeans->member (unit, j), sizeof (float));
+		  ss.write ((char *) & member (unit, j), sizeof (float));
 		}
 		ss.flush ();
 		float change;
 		ss.read ((char *) &change, sizeof (change));
 		try
 		{
-		  kmeans->clusters[unit].read (ss);
+		  clusters[unit].read (ss);
 		}
 		catch (...)
 		{
@@ -324,24 +265,24 @@ cerr << peer << " put back " << unit << endl;
 		}
 		if (ss.good ())
 		{
-		  pthread_mutex_lock (&kmeans->stateLock);
-		  kmeans->largestChange = max (kmeans->largestChange, change);
-		  kmeans->unitsPending--;
-		  pthread_mutex_unlock (&kmeans->stateLock);
+		  pthread_mutex_lock (&stateLock);
+		  largestChange = max (largestChange, change);
+		  unitsPending--;
+		  pthread_mutex_unlock (&stateLock);
 		  float minev = largestNormalFloat;
 		  float maxev = 0;
-		  for (int j = 0; j < kmeans->clusters[unit].eigenvalues.rows (); j++)
+		  for (int j = 0; j < clusters[unit].eigenvalues.rows (); j++)
 		  {
-			minev = min (minev, fabsf (kmeans->clusters[unit].eigenvalues[j]));
-			maxev = max (maxev, fabsf (kmeans->clusters[unit].eigenvalues[j]));
+			minev = min (minev, fabsf (clusters[unit].eigenvalues[j]));
+			maxev = max (maxev, fabsf (clusters[unit].eigenvalues[j]));
 		  }
-		  cerr << unit << " = " << kmeans->clusters[unit].alpha << " " << change << " " << sqrt (minev) << " " << sqrt (maxev) << endl;
+		  cerr << unit << " = " << clusters[unit].alpha << " " << change << " " << sqrt (minev) << " " << sqrt (maxev) << endl;
 		}
 		else
 		{
-		  pthread_mutex_lock (&kmeans->stateLock);
-		  kmeans->workUnits.push_back (unit);
-		  pthread_mutex_unlock (&kmeans->stateLock);
+		  pthread_mutex_lock (&stateLock);
+		  workUnits.push_back (unit);
+		  pthread_mutex_unlock (&stateLock);
 cerr << peer << " put back " << unit << endl;
 		}
 		break;
@@ -350,49 +291,20 @@ cerr << peer << " put back " << unit << endl;
 		sleep (1);
 	}
   }
-
-  close (connection);
 cerr << peer << " exiting proxyThread" << endl;
-  return NULL;
 }
 
 void
 KMeansParallel::client (std::string serverName)
 {
   // Open connection to server
-  struct hostent * hp;
-  hp = gethostbyname (serverName.c_str ());
-  if (! hp)
-  {
-	cerr << "Couldn't look up server " << serverName << endl;
-	exit (1);
-  }
-
-  struct sockaddr_in server;
-  bzero ((char *) &server, sizeof (server));
-  bcopy (hp->h_addr, &server.sin_addr, hp->h_length);
-  server.sin_family = hp->h_addrtype;
-  server.sin_port   = htons (portNumber);
-
-  int connection = socket (hp->h_addrtype, SOCK_STREAM, 0);
-  if (connection < 0)
-  {
-	cerr << "Unable to create stream socket" << endl;
-	exit (1);
-  }
-
-  if (connect (connection, (sockaddr *) &server, sizeof (server)) < 0)
-  {
-	perror ("connect");
-	exit (1);
-  }
-
+  char portName[256];
+  sprintf (portName, "%i", portNumber);
+  SocketStream ss (serverName, portName);
   char hostname[256];
   gethostname (hostname, sizeof (hostname));
   strtok (hostname, ".");
   cerr << "Connection complete: " << serverName << " " << hostname << endl;
-
-  SocketStream ss (connection);
 
   // Handle requests
   while (ss.good ())
@@ -503,5 +415,4 @@ cerr << "  wrote cluster" << endl;
   }
 
   cerr << "exiting due to bad stream" << endl;
-  close (connection);
 }
