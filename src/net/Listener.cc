@@ -128,7 +128,7 @@ Listener::listen (int port, int lastPort)
 }
 
 PTHREAD_RESULT
-Listener::processConnectionThread (PTHREAD_PARAMETER param)
+Listener::processConnectionThread (void * param)
 {
   ThreadDataHolder * holder = (ThreadDataHolder *) param;
   holder->me->processConnection (holder->ss, holder->clientAddress);
