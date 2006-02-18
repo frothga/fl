@@ -86,7 +86,7 @@ LIBCOMMAND = ar rcsv $(SOURCE_LIB)/$@ $(OBJS)
 #LIBPREF = lib$(NS)
 #LIBSUFF = .so
 #LIBCOMMAND = $(CXX) -shared -o $(SOURCE_LIB)/$@ $(OBJS) $(LOADLIBS)
-#CXXFLAGS += -fPIC  # verify this is really needed on x86 linux
+#CXXFLAGS += -fPIC
 
 
 # General C++ options
