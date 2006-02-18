@@ -36,7 +36,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(OutDir)/flNet.lib"/>
+				OutputFile="$(OutDir)/flNetD.lib"/>
 			<Tool
 				Name="VCMIDLTool"/>
 			<Tool

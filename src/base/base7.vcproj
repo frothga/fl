@@ -38,7 +38,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(OutDir)/flBase.lib"/>
+				OutputFile="$(OutDir)/flBaseD.lib"/>
 			<Tool
 				Name="VCMIDLTool"/>
 			<Tool
@@ -148,6 +148,9 @@
 			</File>
 			<File
 				RelativePath="..\..\include\fl\string.h">
+			</File>
+			<File
+				RelativePath="..\..\include\fl\thread.h">
 			</File>
 			<File
 				RelativePath="..\..\include\fl\time.h">
