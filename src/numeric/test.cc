@@ -226,16 +226,15 @@ main (int argc, char * argv[])
   Matrix<float> A = makeMatrix (m, n);
   Matrix<float> b = makeMatrix (m, 3);
 
-  Matrix<float> AA;
-  AA.copyFrom (A);
-  Matrix<float> bb;
-  bb.copyFrom (b);
   Matrix<float> x;
-  gelss (A, x, b);
+  float residual;
+  gelss (A, x, b, &residual);
   cerr << "x by gelss:" << endl << x << endl;
+  cerr << "residual = " << residual << endl;
 
-  gelsd (AA, x, bb);
+  gelsd (A, x, b, &residual, true, true);
   cerr << "x by gelsd:" << endl << x << endl;
+  cerr << "residual = " << residual << endl;
 
 
 
