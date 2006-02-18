@@ -17,6 +17,7 @@ for details.
 
 
 02/2006 Fred Rothganger -- Include fstream.  Use destroy option in syev().
+        Include time.h for MSVC compilability.
 */
 
 
