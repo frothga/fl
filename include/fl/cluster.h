@@ -6,7 +6,8 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Use Metric.rather than Comparison.
+02/2006 Fred Rothganger -- Use Metric.rather than Comparison.  Update for new
+        socket.h.
 */
 
 
@@ -20,13 +21,6 @@ for details.
 
 #include <iostream>
 #include <vector>
-
-#ifdef WIN32
-#else
-  #include <sys/types.h>
-  #include <sys/socket.h>
-  #include <netinet/in.h>
-#endif
 
 
 namespace fl
@@ -110,16 +104,16 @@ namespace fl
 	off_t clusterFileSize;
   };
 
-  class KMeansParallel : public KMeans
+  class KMeansParallel : public KMeans, public Listener
   {
   public:
 	KMeansParallel (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");
 	KMeansParallel (std::istream & stream, const std::string & clusterFileName = "");
 
 	virtual void run (const std::vector< Vector<float> > & data);
+	virtual void processConnection (fl::SocketStream & ss, struct sockaddr_in & clientAddress);
 
-	static void * listenThread (void * arg);
-	static void * proxyThread (void * arg);
+	static PTHREAD_RESULT listenThread (void * arg);
 	void client (std::string serverName);
 
 	// Shared state for parallel processing
@@ -138,13 +132,6 @@ namespace fl
 	pthread_mutex_t  stateLock;  ///< Used for all access to shared structures
 	std::vector<int> workUnits;  ///< List of current tasks, identified only by ints.  Basically, these are positions in a well-defined loop.
 	int              unitsPending;  ///< Number of workUnits still being worked on.  Allows for error recovery by monitoring completion as a separate concept from tasks claimed by a thread.
-
-	struct ThreadDataHolder
-	{
-	  KMeansParallel * kmeans;
-	  int connection;
-	  struct sockaddr_in peer;
-	};
   };
 
   // Find a more elegant way to disseminate these constants!
