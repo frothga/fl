@@ -36,7 +36,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(OutDir)/flNumeric.lib"/>
+				OutputFile="$(OutDir)/flNumericD.lib"/>
 			<Tool
 				Name="VCMIDLTool"/>
 			<Tool
@@ -116,11 +116,19 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
+				RelativePath=".\Agglomerate.cc"
+				FileType="0">
+			</File>
+			<File
 				RelativePath=".\AnnealingAdaptiveDouble.cc"
 				FileType="0">
 			</File>
 			<File
 				RelativePath=".\AnnealingAdaptiveFloat.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\ClusterMethod.cc"
 				FileType="0">
 			</File>
 			<File
@@ -153,6 +161,18 @@
 			</File>
 			<File
 				RelativePath=".\dsygv.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\KMeans.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\KMeansParallel.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\Kohonen.cc"
 				FileType="0">
 			</File>
 			<File
@@ -249,6 +269,10 @@
 			</File>
 			<File
 				RelativePath=".\MDA.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\Metric.cc"
 				FileType="0">
 			</File>
 			<File
