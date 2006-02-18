@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- MSVC compilability fix: use rint() not rintf().
 */
 
 
@@ -102,7 +105,7 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 
   // Prepare a Gaussian kernel to use as our neighborhood function
   float sigma2 = sigma * sigma;
-  int h = (int) rintf (4 * sigma);  // "half" = distance from middle until cell values become insignificant
+  int h = (int) rint (4 * sigma);  // "half" = distance from middle until cell values become insignificant
   int s = 2 * h + 1;  // "size" of kernel
   Matrix<float> lambda (s, s);
   for (int column = 0; column < s; column++)
