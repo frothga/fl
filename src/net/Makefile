@@ -24,7 +24,7 @@ $(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
 
 
 test: test.o $(OBJS)
-	g++ -o $@ $^
+	g++ -o $@ $^ -lpthread
 
 
 clean:
