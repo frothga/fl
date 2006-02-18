@@ -13,7 +13,6 @@ Created 2/11/2006 to provide pthread emulation on Windows
 #  include <pthread.h>
 
 #  define PTHREAD_RESULT void *
-#  define PTHREAD_PARAMETER void *
 
 #else
 
@@ -23,13 +22,14 @@ Created 2/11/2006 to provide pthread emulation on Windows
 #  undef max
 
 #  define PTHREAD_RESULT DWORD WINAPI
-#  define PTHREAD_PARAMETER LPVOID
 
 typedef DWORD pthread_t;
 #define pthread_attr_t void
+typedef CRITICAL_SECTION pthread_mutex_t;
+#define pthread_mutex_attr_t void
 
 inline int
-pthread_create (pthread_t * thread, pthread_attr_t * attributes, LPTHREAD_START_ROUTINE startRoutine, PTHREAD_PARAMETER arg)
+pthread_create (pthread_t * thread, pthread_attr_t * attributes, LPTHREAD_START_ROUTINE startRoutine, void * arg)
 {
   HANDLE handle = CreateThread
   (
@@ -45,6 +45,34 @@ pthread_create (pthread_t * thread, pthread_attr_t * attributes, LPTHREAD_START_
 	return GetLastError ();
   }
   CloseHandle (handle);
+  return 0;
+}
+
+inline int
+pthread_mutex_init (pthread_mutex_t * mutex, const pthread_mutex_attr_t * mutexattr)
+{
+  InitializeCriticalSection (mutex);
+  return 0;
+}
+
+inline int
+pthread_mutex_destroy (pthread_mutex_t * mutex)
+{
+  DeleteCriticalSection (mutex);
+  return 0;
+}
+
+inline int
+pthread_mutex_lock (pthread_mutex_t * mutex)
+{
+  EnterCriticalSection (mutex);
+  return 0;
+}
+
+inline int
+pthread_mutex_unlock(pthread_mutex_t * mutex)
+{
+  LeaveCriticalSection (mutex);
   return 0;
 }
 
