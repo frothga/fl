@@ -127,7 +127,7 @@ namespace fl
 	bool stop;  ///< Indicates that listen() should terminate as soon as feasible.
 
 	// Machinery for spawning threads
-	static PTHREAD_RESULT processConnectionThread (PTHREAD_PARAMETER param);
+	static PTHREAD_RESULT processConnectionThread (void * param);
 	struct ThreadDataHolder
 	{
 	  Listener * me;
