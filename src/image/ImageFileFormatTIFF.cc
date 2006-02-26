@@ -24,6 +24,7 @@ for details.
 #include "fl/math.h"
 
 #include <tiffio.h>
+#include <tiffio.hxx>
 
 
 using namespace std;
@@ -290,13 +291,23 @@ ImageFileFormatTIFF::open (const string & fileName, const string & mode) const
 ImageFile *
 ImageFileFormatTIFF::open (istream & stream) const
 {
-  throw "ImageFileFormatTIFF does not yet support stream style I/O";
+  TIFF * tif = TIFFStreamOpen ("", &stream);
+  if (! tif)
+  {
+	throw "Unable to open file.";
+  }
+  return new ImageFileTIFF (tif);
 }
 
 ImageFile *
 ImageFileFormatTIFF::open (ostream & stream) const
 {
-  throw "ImageFileFormatTIFF does not yet support stream style I/O";
+  TIFF * tif = TIFFStreamOpen ("", &stream);
+  if (! tif)
+  {
+	throw "Unable to open file.";
+  }
+  return new ImageFileTIFF (tif);
 }
 
 float

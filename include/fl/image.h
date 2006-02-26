@@ -892,11 +892,6 @@ namespace fl
 	virtual float handles (const std::string & formatName) const;
   };
 
-  /**
-	 \todo This format can't read and write streams, so those two methods
-	 will throw an exception.  However, there does exist a streams-style
-	 interface to libtiff.
-  **/
   class ImageFileFormatTIFF : public ImageFileFormat
   {
   public:
