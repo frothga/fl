@@ -20,6 +20,7 @@ for details.
 #define pointer_h
 
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ostream>
@@ -276,26 +277,26 @@ namespace fl
 
 
   /**
-	 SmartPointer is like Pointer, except that it works with a known structure,
+	 Like Pointer, except that it works with a known structure,
 	 and therefore a fixed amount of memory.  In order to use this template,
 	 the wrapped class must have a default constructor (ie: one that takes no
 	 arguments).
   **/
   template<class T>
-  class SmartPointer
+  class PointerStruct
   {
   public:
-	SmartPointer ()
+	PointerStruct ()
 	{
 	  memory = 0;
 	}
 
-	SmartPointer (const SmartPointer & that)
+	PointerStruct (const PointerStruct & that)
 	{
 	  attach (that.memory);
 	}
 
-	~SmartPointer ()
+	~PointerStruct ()
 	{
 	  detach ();
 	}
@@ -304,12 +305,12 @@ namespace fl
 	{
 	  if (! memory)
 	  {
-		memory = new SmartBlock;
+		memory = new RefcountBlock;
 		memory->refcount = 1;
 	  }
 	}
 
-	SmartPointer & operator = (const SmartPointer & that)
+	PointerStruct & operator = (const PointerStruct & that)
 	{
 	  if (that.memory != memory)
 	  {
@@ -319,11 +320,11 @@ namespace fl
 	  return *this;
 	}
 
-	void copyFrom (const SmartPointer & that)
+	void copyFrom (const PointerStruct & that)
 	{
 	  if (that.memory)
 	  {
-		SmartPointer temp (that);
+		PointerStruct temp (that);
 		detach ();
 		initialize ();
 		memory->object = temp.memory->object;  // May or may not be a deep copy
@@ -365,18 +366,18 @@ namespace fl
 	  }
 	}
 
-	struct SmartBlock
+	struct RefcountBlock
 	{
 	  T object;
 	  int refcount;
 	};
-	SmartBlock * memory;
+	RefcountBlock * memory;
 
   protected:
 	/**
 	   attach assumes that memory == 0, so we must protect it.
 	 **/
-	void attach (SmartBlock * that)
+	void attach (RefcountBlock * that)
 	{
 	  memory = that;
 	  if (memory)
@@ -384,6 +385,139 @@ namespace fl
 		memory->refcount++;
 	  }
 	}
+  };
+
+
+  /**
+	 Interface the objects held by PointerPoly must implement.  It is not
+	 mandatory that such objects inherit from this class, but if they do
+	 then they are guaranteed to satisfy the requirements of PointerPoly.
+	 When a ReferenceCounted is first constructed, its count is zero.
+	 When PointerPolys attach to or detach from it, they update the count.
+	 When the last PointerPoly detaches, it destructs this object.
+   **/
+  class ReferenceCounted
+  {
+  public:
+	ReferenceCounted () {PointerPolyReferenceCount = 0;}
+	int PointerPolyReferenceCount;  ///< The number of PointerPolys that are attached to this instance.
+  };
+  
+
+  /**
+	 Keeps track of an instance of a polymorphic class.  Similar to Pointer
+	 and PointerStruct.  Expects that the wrapped object be an instance of
+	 ReferenceCounted or at least implement the same interface.
+
+	 <p>Note that this class does not have a copyFrom() function, because it
+	 would require adding a duplicate() function to the ReferenceCounted
+	 interface.  (We don't know the exact class of "memory", so we don't know
+	 how to contruct another instance of it a priori.  A duplicate() function
+	 encapsulates this knowledge in the wrapped class itself.)  That may be a
+	 reasonable thing to do, but it would also adds to the burden of using
+	 this tool.  On the other hand, it is simple enough to duplicate the object
+	 in client code.
+  **/
+  template<class T>
+  class PointerPoly
+  {
+  public:
+	PointerPoly ()
+	{
+	  memory = 0;
+	}
+
+	PointerPoly (const PointerPoly & that)
+	{
+	  attach (that.memory);
+	}
+
+	PointerPoly (T * that)
+	{
+	  attach (that);
+	}
+
+	~PointerPoly ()
+	{
+	  detach ();
+	}
+
+	PointerPoly & operator = (const PointerPoly & that)
+	{
+	  if (that.memory != memory)
+	  {
+		detach ();
+		attach (that.memory);
+	  }
+	  return *this;
+	}
+
+	PointerPoly & operator = (T * that)
+	{
+	  if (that != memory)
+	  {
+		detach ();
+		attach (that);
+	  }
+	  return *this;
+	}
+
+	int refcount () const
+	{
+	  if (memory)
+	  {
+		return memory->PointerPolyReferenceCount;
+	  }
+	  return -1;
+	}
+
+	T * operator -> () const
+	{
+	  assert (memory);
+	  return memory;
+	}
+
+	T & operator * () const
+	{
+	  assert (memory);
+	  return *memory;
+	}
+
+	template <class T2>
+	operator T2 * () const
+	{
+	  return dynamic_cast<T2 *> (memory);
+	}
+
+	/**
+	   Binds to the given pointer.  This method should only be called when
+	   we are not currently bound to anything.  This class is coded so that
+	   this condition is always true when this function is called internally.
+	 **/
+	void attach (T * that)
+	{
+	  assert (memory == 0);
+	  memory = that;
+	  if (memory)
+	  {
+		memory->PointerPolyReferenceCount++;
+	  }
+	}
+
+	void detach ()
+	{
+	  if (memory)
+	  {
+		assert (memory->PointerPolyReferenceCount > 0);
+		if (--(memory->PointerPolyReferenceCount) == 0)
+		{
+		  delete memory;
+		}
+		memory = 0;
+	  }
+	}
+
+	T * memory;
   };
 }
 
