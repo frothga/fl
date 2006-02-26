@@ -7,12 +7,12 @@ for details.
 
 
 02/2006 Fred Rothganger -- MSVC compilability fix: use rint() not rintf().
+        Don't include convolve.h.
 */
 
 
 #include "fl/cluster.h"
 #include "fl/random.h"
-#include "fl/convolve.h"
 #include "fl/time.h"
 
 
