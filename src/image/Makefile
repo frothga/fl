@@ -124,7 +124,7 @@ $(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
 test: test.o $(OBJS)
 	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB)
 
-test2: test2.o $(OBJS)
+junk: junk.o $(OBJS)
 	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB)
 
 
