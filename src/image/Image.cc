@@ -7,6 +7,7 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
+01/2005 Fred Rothganger -- Encapsulate storage in PixelBuffer
 */
 
 
@@ -30,60 +31,61 @@ using namespace fl;
 Image::Image ()
 {
   timestamp = getTimestamp ();
-  this->format = &GrayChar;
-  width = 0;
-  height = 0;
+  buffer    = new PixelBufferPacked (GrayChar.depth);
+  format    = &GrayChar;
+  width     = 0;
+  height    = 0;
 }
 
 Image::Image (const PixelFormat & format)
 {
-  timestamp = getTimestamp ();
+  timestamp    = getTimestamp ();
+  buffer       = new PixelBufferPacked (format.depth);
   this->format = &format;
-  width = 0;
-  height = 0;
+  width        = 0;
+  height       = 0;
 }
 
 Image::Image (int width, int height)
-: buffer (width * height * GrayChar.depth)
 {
-  timestamp = getTimestamp ();
-  this->format = &GrayChar;
-  this->width  = max (0, width);  // Note that if a negative width or height was specified, the Pointer class would handle it correctly when constructing the buffer.
+  timestamp    = getTimestamp ();
+  this->width  = max (0, width);
   this->height = max (0, height);
+  buffer       = new PixelBufferPacked (this->width, this->height, GrayChar.depth);
+  format       = &GrayChar;
 }
 
 Image::Image (int width, int height, const PixelFormat & format)
-: buffer (width * height * format.depth)
 {
-  timestamp = getTimestamp ();
-  this->format = &format;
+  timestamp    = getTimestamp ();
   this->width  = max (0, width);
   this->height = max (0, height);
+  buffer       = new PixelBufferPacked (this->width, this->height, format.depth);
+  this->format = &format;
 }
 
 Image::Image (const Image & that)
-: buffer (that.buffer)
 {
+  buffer    = that.buffer;
   format    = that.format;
+  timestamp = that.timestamp;
   width     = that.width;
   height    = that.height;
-  timestamp = that.timestamp;
 }
 
-Image::Image (unsigned char * buffer, int width, int height, const PixelFormat & format)
-: buffer (buffer, width * height * format.depth)
+Image::Image (void * block, int width, int height, const PixelFormat & format)
 {
-  timestamp = getTimestamp ();
-  this->format = &format;
+  timestamp    = getTimestamp ();
   this->width  = max (0, width);
   this->height = max (0, height);
+  buffer       = new PixelBufferPacked (block, this->width, this->height, format.depth);
+  this->format = &format;
 }
 
 Image::Image (const std::string & fileName)
 {
-  // Set these so resize() will work right.
-  width = 0;
-  height = 0;
+  // Set this so resize() will work right.
+  buffer = new PixelBufferPacked ();
 
   read (fileName);
 }
@@ -146,10 +148,10 @@ Image::write (ostream & stream, const std::string & formatName) const
   f->write (stream, *this);
 }
 
-void
-Image::copyFrom (const Image & that)
+Image &
+Image::operator <<= (const Image & that)
 {
-  buffer.copyFrom (that.buffer);
+  buffer    = that.buffer;
   format    = that.format;
   width     = that.width;
   height    = that.height;
@@ -157,36 +159,61 @@ Image::copyFrom (const Image & that)
 }
 
 void
-Image::copyFrom (unsigned char * buffer, int width, int height, const PixelFormat & format)
+Image::copyFrom (const Image & that)
 {
-  if (this->buffer.memory != buffer)
-  {
-	timestamp = getTimestamp ();  // Actually, we don't know the timestamp on a bare buffer, but this guess is as good as any.
+  buffer    = that.buffer->duplicate ();
+  format    = that.format;
+  width     = that.width;
+  height    = that.height;
+  timestamp = that.timestamp;
+}
 
-	this->format = &format;
+void
+Image::copyFrom (void * block, int width, int height, const PixelFormat & format)
+{
+  PixelBufferPacked * p = (PixelBufferPacked *) buffer;
+  if (! p)
+  {
+	buffer = p = new PixelBufferPacked ();
+  }
+  if (p->memory.memory != block)
+  {
+	timestamp    = getTimestamp ();  // Actually, we don't know the timestamp on a bare buffer, but this guess is as good as any.
 	this->width  = max (0, width);
 	this->height = max (0, height);
-
-	this->buffer.copyFrom (buffer, width * height * format.depth);
+	p->copyFrom (block, this->width, this->height, format.depth);
+	this->format = &format;
   }
 }
 
 void
-Image::attach (unsigned char * buffer, int width, int height, const PixelFormat & format)
+Image::attach (void * block, int width, int height, const PixelFormat & format)
 {
-  this->buffer.attach (buffer, width * height * format.depth);
-  timestamp = getTimestamp ();
-  this->format = &format;
+  timestamp    = getTimestamp ();
   this->width  = max (0, width);
   this->height = max (0, height);
+  buffer       = new PixelBufferPacked (block, this->width, this->height, format.depth);
+  this->format = &format;
 }
 
 void
 Image::detach ()
 {
-  buffer.detach ();
-  width = 0;
-  height = 0;
+  buffer = new PixelBufferPacked;
+}
+
+/**
+   Changes image to new size.
+   /param preserve If true, then any pixels that are still visible are
+   aligned correctly and any newly exposed pixels are set to black.
+   If false, then the content of the buffer is undefined.
+**/
+void
+Image::resize (int width, int height, bool preserve)
+{
+  buffer->resize (width, height, *format, preserve);
+  this->width  = width;
+  this->height = height;
 }
 
 struct triad
@@ -194,78 +221,17 @@ struct triad
   unsigned char channel[3];
 };
 
-void
-Image::resize (const int width, const int height)
-{
-  if (width <= 0  ||  height <= 0)
-  {
-	this->width  = 0;
-	this->height = 0;
-	buffer.detach ();
-	return;
-  }
-
-  int needWidth = min (this->width, width);
-  int needHeight = min (this->height, height);
-
-  if (width == this->width)
-  {
-	if (height > this->height)
-	{
-	  Pointer temp (buffer);
-	  buffer.detach ();
-	  buffer.grow (width * height * format->depth);
-	  int count = width * needHeight * format->depth;
-	  memcpy (buffer.memory, temp.memory, count);
-	  assert (count >= 0  &&  count < buffer.size ());
-	  memset ((char *) buffer + count, 0, buffer.size () - count);
-	}
-	this->height = height;
-  }
-  else
-  {
-    int oldwidth = this->width;
-	this->width = width;
-	this->height = height;
-	Pointer temp (buffer);
-	buffer.detach ();
-	buffer.grow (width * height * format->depth);
-	buffer.clear ();
-
-    #define reshuffle(size) \
-    { \
-	  for (int x = 0; x < needWidth; x++) \
-	  { \
-	    for (int y = 0; y < needHeight; y++) \
-	    { \
-		  ((size *) buffer)[y * width + x] = ((size *) temp)[y * oldwidth + x]; \
-	    } \
-	  } \
-	}
-	switch (format->depth)
-	{
-      case 2:
-		reshuffle (unsigned short);
-		break;
-      case 3:
-		reshuffle (triad);
-		break;
-      case 4:
-		reshuffle (unsigned int);
-		break;
-      case 8:
-		reshuffle (double);
-		break;
-      case 1:
-      default:
-		reshuffle (unsigned char);
-	}
-  }
-}
-
+/**
+   /todo Use line transfers rather than pixel oriented loops.
+   /todo Handle reading or writing non-packed buffers.
+ **/
 void
 Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int width, int height)
 {
+  // Temporary guard against non-packed buffers.
+  PixelBufferPacked * toBuffer = (PixelBufferPacked *) this->buffer;
+  if (! toBuffer) throw "Non-packed buffers not yet implemented in bitblt.";
+
   // Adjust parameters
   if (fromX >= that.width  ||  fromY >= that.height)
   {
@@ -311,14 +277,18 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
   }
 
   // Get source image in same format we are.
-  Image source = that * (*(this->format));
+  Image source = that * (*(this->format));  // should also force conversion to packed format
+  PixelBufferPacked * fromBuffer = (PixelBufferPacked *) source.buffer;
+  if (! fromBuffer) throw "Non-packed buffers not yet implemented in bitblt.";
 
   // Adjust size of target Image (ie: this)
   int needWidth = toX + width;
   int needHeight = toY + height;
   if (needWidth > this->width  ||  needHeight > this->height)
   {
-	resize (max (this->width, needWidth), max (this->height, needHeight));
+	this->width  = max (this->width,  needWidth);
+	this->height = max (this->height, needHeight);
+	resize (this->width, this->height, true);
   }
 
   // Transfer the block
@@ -335,7 +305,7 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
         { \
 	      for (int y = needHeight - 1; y >= toY; y--) \
 	      { \
-            ((size *) buffer)[y * this->width + x] = ((size *) source.buffer)[(y + offsetY) * source.width + (x + offsetX)]; \
+            ((size *) toBuffer->memory)[y * this->width + x] = ((size *) fromBuffer->memory)[(y + offsetY) * that.width + (x + offsetX)]; \
 	      } \
 	    } \
       } \
@@ -345,7 +315,7 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
         { \
 	      for (int y = toY; y < needHeight; y++) \
 	      { \
-            ((size *) buffer)[y * this->width + x] = ((size *) source.buffer)[(y + offsetY) * source.width + (x + offsetX)]; \
+            ((size *) toBuffer->memory)[y * this->width + x] = ((size *) fromBuffer->memory)[(y + offsetY) * that.width + (x + offsetX)]; \
 	      } \
 	    } \
       } \
@@ -358,7 +328,7 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
         { \
 	      for (int y = needHeight - 1; y >= toY; y--) \
 	      { \
-            ((size *) buffer)[y * this->width + x] = ((size *) source.buffer)[(y + offsetY) * source.width + (x + offsetX)]; \
+            ((size *) toBuffer->memory)[y * this->width + x] = ((size *) fromBuffer->memory)[(y + offsetY) * that.width + (x + offsetX)]; \
 	      } \
 	    } \
 	  } \
@@ -368,7 +338,7 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
         { \
 	      for (int y = toY; y < needHeight; y++) \
 	      { \
-            ((size *) buffer)[y * this->width + x] = ((size *) source.buffer)[(y + offsetY) * source.width + (x + offsetX)]; \
+            ((size *) toBuffer->memory)[y * this->width + x] = ((size *) fromBuffer->memory)[(y + offsetY) * that.width + (x + offsetX)]; \
 	      } \
 	    } \
       } \
@@ -400,20 +370,19 @@ Image::clear (unsigned int rgba)
 {
   if (rgba)
   {
-	unsigned char * pixel = (unsigned char *) buffer;
-	unsigned char * end = pixel + width * height * format->depth;
-	while (pixel < end)
+	for (int y = 0; y < height; y++)
 	{
-	  format->setRGBA (pixel, rgba);
-	  pixel += format->depth;
+	  for (int x = 0; x < width; x++)
+	  {
+		format->setRGBA (buffer->pixel (x, y), rgba);
+	  }
 	}
   }
   else
   {
-	buffer.clear ();
+	buffer->clear ();
   }
 }
-
 
 Image
 Image::operator + (const Image & that)
@@ -433,6 +402,10 @@ Image::operator + (const Image & that)
 	}
   }
 
+  PixelBufferPacked * buffer1 = (PixelBufferPacked *) buffer;
+  PixelBufferPacked * buffer2 = (PixelBufferPacked *) that.buffer;
+  if (! buffer1  ||  ! buffer2) throw "Non-packed buffers not yet implemented in operator +.";
+
   Image result (max (width, that.width), max (height, that.height), *format);
 
   int offsetX = abs (width  - that.width)  / 2;
@@ -443,9 +416,9 @@ Image::operator + (const Image & that)
 
   #define add(size) \
   { \
-	size * start1 = (size *) buffer; \
-	size * start2 = (size *) that.buffer; \
-	size * start  = (size *) result.buffer; \
+	size * start1 = (size *) buffer1->memory; \
+	size * start2 = (size *) buffer2->memory; \
+	size * start  = (size *) ((PixelBufferPacked *) result.buffer)->memory; \
     \
 	size * pixel1 = start1; \
 	size * pixel2 = start2; \
@@ -604,6 +577,10 @@ Image::operator - (const Image & that)
 	}
   }
 
+  PixelBufferPacked * buffer1 = (PixelBufferPacked *) buffer;
+  PixelBufferPacked * buffer2 = (PixelBufferPacked *) that.buffer;
+  if (! buffer1  ||  ! buffer2) throw "Non-packed buffers not yet implemented in operator +.";
+
   Image result (max (width, that.width), max (height, that.height), *format);
 
   int offsetX = abs (width  - that.width)  / 2;
@@ -613,9 +590,9 @@ Image::operator - (const Image & that)
 
   #define subtract(size) \
   { \
-	size * start1 = (size *) buffer; \
-	size * start2 = (size *) that.buffer; \
-	size * start  = (size *) result.buffer; \
+	size * start1 = (size *) buffer1->memory; \
+	size * start2 = (size *) buffer2->memory; \
+	size * start  = (size *) ((PixelBufferPacked *) result.buffer)->memory; \
     \
 	size * pixel1 = start1; \
 	size * pixel2 = start2; \
@@ -785,12 +762,16 @@ Image::operator - (const Image & that)
 Image
 Image::operator * (double factor)
 {
+  PixelBufferPacked * p = (PixelBufferPacked *) buffer;
+  if (! p) throw "Can't multiply non-packed buffer yet.";
+
   Image result (width, height, *format);
+  PixelBufferPacked * q = (PixelBufferPacked *) result.buffer;
 
   if (*format == GrayFloat)
   {
-	float * fromPixel = (float *) buffer;
-	float * toPixel   = (float *) result.buffer;
+	float * fromPixel = (float *) p->memory;
+	float * toPixel   = (float *) q->memory;
 	float * end       = fromPixel + width * height;
 	while (fromPixel < end)
 	{
@@ -799,8 +780,8 @@ Image::operator * (double factor)
   }
   else if (*format == GrayDouble)
   {
-	double * fromPixel = (double *) buffer;
-	double * toPixel   = (double *) result.buffer;
+	double * fromPixel = (double *) p->memory;
+	double * toPixel   = (double *) q->memory;
 	double * end       = fromPixel + width * height;
 	while (fromPixel < end)
 	{
@@ -810,8 +791,8 @@ Image::operator * (double factor)
   else if (*format == GrayChar)
   {
 	int ifactor = (int) (factor * (1 << 16));
-	unsigned char * fromPixel = (unsigned char *) buffer;
-	unsigned char * toPixel   = (unsigned char *) result.buffer;
+	unsigned char * fromPixel = (unsigned char *) p->memory;
+	unsigned char * toPixel   = (unsigned char *) q->memory;
 	unsigned char * end       = fromPixel + width * height;
 	while (fromPixel < end)
 	{
@@ -829,9 +810,12 @@ Image::operator * (double factor)
 Image &
 Image::operator *= (double factor)
 {
+  PixelBufferPacked * p = (PixelBufferPacked *) buffer;
+  if (! p) throw "Can't multiply non-packed buffer yet.";
+
   if (*format == GrayFloat)
   {
-	float * pixel = (float *) buffer;
+	float * pixel = (float *) p->memory;
 	float * end   = pixel + width * height;
 	while (pixel < end)
 	{
@@ -840,7 +824,7 @@ Image::operator *= (double factor)
   }
   else if (*format == GrayDouble)
   {
-	double * pixel = (double *) buffer;
+	double * pixel = (double *) p->memory;
 	double * end   = pixel + width * height;
 	while (pixel < end)
 	{
@@ -851,7 +835,7 @@ Image::operator *= (double factor)
   {
 	// This does not explicitly handle negative factors.
 	int ifactor = (int) (factor * (1 << 16));
-	unsigned char * pixel = (unsigned char *) buffer;
+	unsigned char * pixel = (unsigned char *) p->memory;
 	unsigned char * end   = pixel + width * height;
 	while (pixel < end)
 	{
@@ -869,9 +853,12 @@ Image::operator *= (double factor)
 Image &
 Image::operator += (double value)
 {
+  PixelBufferPacked * p = (PixelBufferPacked *) buffer;
+  if (! p) throw "Can't multiply non-packed buffer yet.";
+
   if (*format == GrayFloat)
   {
-	float * pixel = (float *) buffer;
+	float * pixel = (float *) p->memory;
 	float * end   = pixel + width * height;
 	while (pixel < end)
 	{
@@ -880,7 +867,7 @@ Image::operator += (double value)
   }
   else if (*format == GrayDouble)
   {
-	double * pixel = (double *) buffer;
+	double * pixel = (double *) p->memory;
 	double * end   = pixel + width * height;
 	while (pixel < end)
 	{
@@ -891,7 +878,7 @@ Image::operator += (double value)
   {
 	// This does not explicitly handle negative values.
 	int ivalue = (int) (value * (1 << 16));
-	unsigned char * pixel = (unsigned char *) buffer;
+	unsigned char * pixel = (unsigned char *) p->memory;
 	unsigned char * end   = pixel + width * height;
 	while (pixel < end)
 	{
@@ -904,30 +891,4 @@ Image::operator += (double value)
   }
 
   return *this;
-}
-
-unsigned int
-Image::getRGBA (const int x, const int y) const
-{
-  if (x < 0  ||  x >= width  ||  y < 0  ||  y >= height)
-  {
-	// We could throw an exception, which may help expose errors of logic in the caller.
-	// However, by being tolerant, we enable more flexible programming.  The caller can
-	// view the image as existing but being zero outside its bounds.
-	return 0;
-  }
-
-  return format->getRGBA (((char *) buffer) + (y * width + x) * format->depth);
-}
-
-void
-Image::setRGBA (const int x, const int y, const unsigned int rgba)
-{
-  if (x < 0  ||  x >= width  ||  y < 0  ||  y >= height)
-  {
-	// Silently ignore out of bounds pixels.
-	return;
-  }
-
-  return format->setRGBA (((char *) buffer) + (y * width + x) * format->depth, rgba);
 }

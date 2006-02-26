@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -24,16 +27,15 @@ GaussianDerivativeSecond1D::GaussianDerivativeSecond1D (double sigma, const Bord
   double C = 1.0 / (sqrt (2.0 * PI) * sigma * sigma2);
 
   int h = (int) rint (Gaussian2D::cutoff * sigma);
-  width = 2 * h + 1;
-  height = 1;
-  buffer.grow (width * GrayDouble.depth);
+  resize (2 * h + 1, 1);
 
+  double * kernel = (double *) ((PixelBufferPacked *) buffer)->memory;
   for (int i = 0; i <= h; i++)
   {
 	double x2 = i * i;
 	double value = C * exp (- x2 / (2 * sigma2)) * (x2 / sigma2 - 1);
-	((double *) buffer)[h + i] = value;
-	((double *) buffer)[h - i] = value;
+	kernel[h + i] = value;
+	kernel[h - i] = value;
   }
 
   *this *= format;

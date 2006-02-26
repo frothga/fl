@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -46,6 +49,10 @@ IntensityHistogram::IntensityHistogram (float minimum, float maximum, int bins)
 Image
 IntensityHistogram::filter (const Image & image)
 {
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "IntensityHistogram can only handle packed buffers for now";
+  Pointer imageMemory = imageBuffer->memory;
+
   const int bins = counts.size ();
   for (int i = 0; i < bins; i++)
   {
@@ -54,7 +61,7 @@ IntensityHistogram::filter (const Image & image)
 
   #define addup(size) \
   { \
-	size * pixel = (size *) image.buffer; \
+	size * pixel = (size *) imageMemory; \
 	size * end   = pixel + image.width * image.height; \
 	while (pixel < end) \
 	{ \

@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -25,15 +28,20 @@ IntensityDeviation::IntensityDeviation (float average, bool ignoreZeros)
 Image
 IntensityDeviation::filter (const Image & image)
 {
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "IntensityDeviation can only handle packed buffers for now";
+  Pointer imageMemory = imageBuffer->memory;
+
   float variance = 0;
-  int count = 0;
+  int count = image.width * image.height;
 
   #define addup(size) \
   { \
-	size * pixel = (size *) image.buffer; \
-	size * end   = pixel + image.width * image.height; \
+	size * pixel = (size *) imageMemory; \
+	size * end   = pixel + count; \
 	if (ignoreZeros) \
 	{ \
+	  count = 0; \
 	  while (pixel < end) \
 	  { \
 		if (*pixel != 0) \
@@ -52,7 +60,6 @@ IntensityDeviation::filter (const Image & image)
 		float t = *pixel++ - average; \
 		variance += t * t; \
 	  } \
-	  count = image.width * image.height; \
 	} \
   }
 

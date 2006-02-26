@@ -15,6 +15,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -131,7 +134,9 @@ CanvasImage::pen (const Point & p, unsigned int color)
 {
   if (lineWidth == 1)  // hack for simple line drawing
   {
-	setRGBA ((int) rint (p.x), (int) rint (p.y), color);
+	int x = (int) rintf (p.x);
+	int y = (int) rintf (p.y);
+	if (x >= 0  &&  x < width  &&  y >= 0  &&  y < height) setRGBA (x, y, color);
   }
   else
   {
@@ -344,6 +349,13 @@ CanvasImage::drawFilledRectangle (const Point & corner0, const Point & corner1, 
 	swap (y0, y1);
   }
 
+  if (x1 < 0  ||  x0 >= width  ||  y1 < 0  ||  y0 >= height) return;
+
+  x0 = max (x0, 0);
+  x1 = min (x1, width - 1);
+  y0 = max (y0, 0);
+  y1 = min (y1, height - 1);
+
   for (int y = y0; y <= y1; y++)
   {
 	for (int x = x0; x <= x1; x++)
@@ -505,7 +517,9 @@ void
 CanvasImage::drawMSER (const PointMSER & point, const Image & image, unsigned int colorFill, unsigned int colorBorder)
 {
   Image grayImage = image * GrayChar;
-  unsigned char * g = (unsigned char *) grayImage.buffer;
+  PixelBufferPacked * buffer = (PixelBufferPacked *) grayImage.buffer;
+  if (! buffer) throw "Can't draw MSER on anything besides a packed buffer for now.";
+  unsigned char * g = (unsigned char *) buffer->memory;
 
   int width = image.width;
   int height = image.height;
@@ -514,7 +528,7 @@ CanvasImage::drawMSER (const PointMSER & point, const Image & image, unsigned in
 
   Image visited (width, height, GrayChar);
   visited.clear ();
-  unsigned char * v = (unsigned char *) visited.buffer;
+  unsigned char * v = (unsigned char *) ((PixelBufferPacked *) visited.buffer)->memory;
 
   vector<int> frontier;
   vector<int> newFrontier;
@@ -590,38 +604,48 @@ CanvasImage::drawText (const string & text, const Point & point, unsigned int co
 	int left = (int) rint (pen.x + slot->bitmap_left);
 	int top  = (int) rint (pen.y - slot->bitmap_top);
 
+	int xl = max (0,            -left);
+	int xh = min (bitmap.width, width - left) - 1;
+	int yl = max (0,            -top);
+	int yh = min (bitmap.rows,  height - top) - 1;
+
 	switch (bitmap.pixel_mode)
 	{
 	  case FT_PIXEL_MODE_MONO:
 	  {
-		for (int y = 0; y < bitmap.rows; y++)
+		cerr << "mono" << endl;
+		for (int y = yl; y <= yh; y++)
 		{
-		  unsigned char * alpha = bitmap.buffer + bitmap.pitch * y;
-		  int x = 0;
-		  while (x < bitmap.width)
+		  int x = xl;
+		  unsigned char * alpha = bitmap.buffer + bitmap.pitch * y + (x / 8);
+		  unsigned char mask = 0x80 >> (x % 8);
+		  while (x <= xh)
 		  {
-			unsigned char mask = 0x80;
-			while (mask  &&  x < bitmap.width)
+			while (mask  &&  x <= xh)
 			{
 			  if (*alpha & mask) setRGBA (left + x, top + y, color);
 			  mask >>= 1;
 			  x++;
 			}
 			alpha++;
+			mask = 0x80;
 		  }
 		}
 		break;
 	  }
 	  default:  // Assume gray
 	  {
-		for (int y = 0; y < bitmap.rows; y++)
+		cerr << "gray" << endl;
+		for (int y = yl; y <= yh; y++)
 		{
-		  unsigned char * alpha = bitmap.buffer + bitmap.pitch * y;
-		  for (int x = 0; x < bitmap.width; x++)
+		  int x = xl;
+		  unsigned char * alpha = bitmap.buffer + bitmap.pitch * y + x;
+		  while (x <= xh)
 		  {
 			C.setAlpha (*alpha++);
 			Pixel p = (*this) (left + x, top + y);
 			p = p << C;
+			x++;
 		  }
 		}
 	  }

@@ -7,6 +7,7 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC.
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -51,6 +52,13 @@ ConvolutionDiscrete1D::filter (const Image & image)
 	return filter (image * (*format));
   }
 
+  PixelBufferPacked * kernelBuffer = (PixelBufferPacked *) buffer;
+  if (! kernelBuffer) throw "kernel must be a packed buffer";
+  Pointer kernel = kernelBuffer->memory;
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "Convolution1D only handles packed buffers for now";
+  Pointer input = imageBuffer->memory;
+
   int last = width - 1;
   int mid  = width / 2;
   int stride = direction == Horizontal ? 1 : image.width;
@@ -79,14 +87,14 @@ ConvolutionDiscrete1D::filter (const Image & image)
 
 	  if (*format == GrayFloat)
 	  {
-		float * r = (float *) result.buffer;
+		float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
 		r += incy * image.width + incx;
 		for (int y = incy; y < result.height - incy; y++)
 		{
 		  for (int x = incx; x < result.width - incx; x++)
 		  {
-			float * a = (float *) buffer;
-			float * b = & ((float *) image.buffer)[y * image.width + x];
+			float * a = (float *) kernel;
+			float * b = (float *) input + (y * image.width + x);
 			b += mid * stride;
 
 			float sum = 0;
@@ -102,14 +110,14 @@ ConvolutionDiscrete1D::filter (const Image & image)
 	  }
 	  else if (*format == GrayDouble)
 	  {
-		double * r = (double *) result.buffer;
+		double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
 		r += incy * image.width + incx;
 		for (int y = incy; y < result.height - incy; y++)
 		{
 		  for (int x = incx; x < result.width - incx; x++)
 		  {
-			double * a = (double *) buffer;
-			double * b = & ((double *) image.buffer)[y * image.width + x];
+			double * a = (double *) kernel;
+			double * b = (double *) input + (y * image.width + x);
 			b += mid * stride;
 
 			double sum = 0;
@@ -136,7 +144,7 @@ ConvolutionDiscrete1D::filter (const Image & image)
 
 	  if (*format == GrayFloat)
 	  {
-		float * r = (float *) result.buffer;
+		float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
 		if (direction == Horizontal)
 		{
 		  for (int y = 0; y < result.height; y++)
@@ -146,8 +154,8 @@ ConvolutionDiscrete1D::filter (const Image & image)
 			  int low  = max (0,    x + mid - (image.width - 1));	
 			  int high = min (last, x + mid);
 
-			  float * a = & ((float *) buffer)[low];
-			  float * b = & ((float *) image.buffer)[y * image.width + x];
+			  float * a = (float *) kernel + low;
+			  float * b = (float *) input + (y * image.width + x);
 			  b += (mid - low) * stride;
 
 			  float sum = 0;
@@ -169,8 +177,8 @@ ConvolutionDiscrete1D::filter (const Image & image)
 
 			for (int x = 0; x < result.width; x++)
 			{
-			  float * a = & ((float *) buffer)[low];
-			  float * b = & ((float *) image.buffer)[y * image.width + x];
+			  float * a = (float *) kernel + low;
+			  float * b = (float *) input + (y * image.width + x);
 			  b += (mid - low) * stride;
 
 			  float sum = 0;
@@ -186,7 +194,7 @@ ConvolutionDiscrete1D::filter (const Image & image)
 	  }
 	  else if (*format == GrayDouble)
 	  {
-		double * r = (double *) result.buffer;
+		double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
 		if (direction == Horizontal)
 		{
 		  for (int y = 0; y < result.height; y++)
@@ -196,8 +204,8 @@ ConvolutionDiscrete1D::filter (const Image & image)
 			  int low  = max (0,    x + mid - (image.width - 1));	
 			  int high = min (last, x + mid);
 
-			  double * a = & ((double *) buffer)[low];
-			  double * b = & ((double *) image.buffer)[y * image.width + x];
+			  double * a = (double *) kernel + low;
+			  double * b = (double *) input + (y * image.width + x);
 			  b += (mid - low) * stride;
 
 			  double sum = 0;
@@ -219,8 +227,8 @@ ConvolutionDiscrete1D::filter (const Image & image)
 
 			for (int x = 0; x < result.width; x++)
 			{
-			  double * a = & ((double *) buffer)[low];
-			  double * b = & ((double *) image.buffer)[y * image.width + x];
+			  double * a = (double *) kernel + low;
+			  double * b = (double *) input + (y * image.width + x);
 			  b += (mid - low) * stride;
 
 			  double sum = 0;
@@ -247,7 +255,7 @@ ConvolutionDiscrete1D::filter (const Image & image)
 
 	  if (*format == GrayFloat)
 	  {
-		float * r = (float *) result.buffer;
+		float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
 		if (direction == Horizontal)
 		{
 		  for (int y = 0; y < result.height; y++)
@@ -257,8 +265,8 @@ ConvolutionDiscrete1D::filter (const Image & image)
 			  int low  = max (0,    x + mid - (image.width - 1));	
 			  int high = min (last, x + mid);
 
-			  float * a = & ((float *) buffer)[low];
-			  float * b = & ((float *) image.buffer)[y * image.width + x];
+			  float * a = (float *) kernel + low;
+			  float * b = (float *) input + (y * image.width + x);
 			  b += (mid - low) * stride;
 
 			  float sum = 0;
@@ -282,8 +290,8 @@ ConvolutionDiscrete1D::filter (const Image & image)
 
 			for (int x = 0; x < result.width; x++)
 			{
-			  float * a = & ((float *) buffer)[low];
-			  float * b = & ((float *) image.buffer)[y * image.width + x];
+			  float * a = (float *) kernel + low;
+			  float * b = (float *) input + (y * image.width + x);
 			  b += (mid - low) * stride;
 
 			  float sum = 0;
@@ -301,7 +309,7 @@ ConvolutionDiscrete1D::filter (const Image & image)
 	  }
 	  else if (*format == GrayDouble)
 	  {
-		double * r = (double *) result.buffer;
+		double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
 		if (direction == Horizontal)
 		{
 		  for (int y = 0; y < result.height; y++)
@@ -311,8 +319,8 @@ ConvolutionDiscrete1D::filter (const Image & image)
 			  int low  = max (0,    x + mid - (image.width - 1));	
 			  int high = min (last, x + mid);
 
-			  double * a = & ((double *) buffer)[low];
-			  double * b = & ((double *) image.buffer)[y * image.width + x];
+			  double * a = (double *) kernel + low;
+			  double * b = (double *) input + (y * image.width + x);
 			  b += (mid - low) * stride;
 
 			  double sum = 0;
@@ -336,8 +344,8 @@ ConvolutionDiscrete1D::filter (const Image & image)
 
 			for (int x = 0; x < result.width; x++)
 			{
-			  double * a = & ((double *) buffer)[low];
-			  double * b = & ((double *) image.buffer)[y * image.width + x];
+			  double * a = (double *) kernel + low;
+			  double * b = (double *) input + (y * image.width + x);
 			  b += (mid - low) * stride;
 
 			  double sum = 0;
@@ -382,13 +390,13 @@ ConvolutionDiscrete1D::filter (const Image & image)
 
 	  if (*format == GrayFloat)
 	  {
-		float * r = (float *) result.buffer;
+		float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
 		for (int y = 0; y < result.height; y++)
 		{
 		  for (int x = 0; x < result.width; x++)
 		  {
-			float * a = (float *) buffer;
-			float * b = & ((float *) image.buffer)[y * image.width + x];
+			float * a = (float *) kernel;
+			float * b = (float *) input + (y * image.width + x);
 			b += last * stride;
 
 			float sum = 0;
@@ -403,13 +411,13 @@ ConvolutionDiscrete1D::filter (const Image & image)
 	  }
 	  else if (*format == GrayDouble)
 	  {
-		double * r = (double *) result.buffer;
+		double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
 		for (int y = 0; y < result.height; y++)
 		{
 		  for (int x = 0; x < result.width; x++)
 		  {
-			double * a = (double *) buffer;
-			double * b = & ((double *) image.buffer)[y * image.width + x];
+			double * a = (double *) kernel;
+			double * b = (double *) input + (y * image.width + x);
 			b += last * stride;
 
 			double sum = 0;
@@ -448,6 +456,13 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
 	return response (image * (*format), p);
   }
 
+  PixelBufferPacked * kernelBuffer = (PixelBufferPacked *) buffer;
+  if (! kernelBuffer) throw "kernel must be a packed buffer";
+  Pointer kernel = kernelBuffer->memory;
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "Convolution1D only handles packed buffers for now";
+  Pointer input = imageBuffer->memory;
+
   int last = width - 1;
   int mid = width / 2;
 
@@ -485,8 +500,8 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
   {
 	if (*format == GrayFloat)
 	{
-	  float * a = & ((float *) buffer)[low];
-	  float * b = & ((float *) image.buffer)[y * image.width + x];
+	  float * a = (float *) kernel + low;
+	  float * b = (float *) input + (y * image.width + x);
 	  b += (mid - low) * stride;
 
 	  float result = 0;
@@ -501,8 +516,8 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
 	}
 	else if (*format == GrayDouble)
 	{
-	  double * a = & ((double *) buffer)[low];
-	  double * b = & ((double *) image.buffer)[y * image.width + x];
+	  double * a = (double *) kernel + low;
+	  double * b = (double *) input + (y * image.width + x);
 	  b += (mid - low) * stride;
 
 	  double result = 0;
@@ -524,8 +539,8 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
   {
 	if (*format == GrayFloat)
 	{
-	  float * a = & ((float *) buffer)[low];
-	  float * b = & ((float *) image.buffer)[y * image.width + x];
+	  float * a = (float *) kernel + low;
+	  float * b = (float *) input + (y * image.width + x);
 	  b += (mid - low) * stride;
 
 	  float result = 0;
@@ -538,8 +553,8 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
 	}
 	else if (*format == GrayDouble)
 	{
-	  double * a = & ((double *) buffer)[low];
-	  double * b = & ((double *) image.buffer)[y * image.width + x];
+	  double * a = (double *) kernel + low;
+	  double * b = (double *) input + (y * image.width + x);
 	  b += (mid - low) * stride;
 
 	  double result = 0;
@@ -562,7 +577,7 @@ ConvolutionDiscrete1D::normalFloats ()
 {
   if (*format == GrayFloat)
   {
-	float * a   = (float *) buffer;
+	float * a   = (float *) ((PixelBufferPacked *) buffer)->memory;
 	float * end = a + width;
 	while (a < end)
 	{
@@ -575,7 +590,7 @@ ConvolutionDiscrete1D::normalFloats ()
   }
   else if (*format == GrayDouble)
   {
-	double * a   = (double *) buffer;
+	double * a   = (double *) ((PixelBufferPacked *) buffer)->memory;
 	double * end = a + width;
 	while (a < end)
 	{

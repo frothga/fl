@@ -19,6 +19,7 @@ for details.
 
 
 01/2006 Fred Rothganger -- Moved PixelFormat code into separate file.
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -199,8 +200,7 @@ PixelFormat::filter (const Image & image)
 	return result;
   }
 
-  result.width     = image.width;
-  result.height    = image.height;
+  result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
   fromAny (image, result);
@@ -208,23 +208,38 @@ PixelFormat::filter (const Image & image)
   return result;
 }
 
+/**
+   Uses getRGBA() and setRGBA().  XYZ would be more accurate, but this
+   is also adequate, since RGB values are well defined (as non-linear sRGB).
+**/
 void
 PixelFormat::fromAny (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
-
-  unsigned char * dest = (unsigned char *) result.buffer;
-  unsigned char * end = dest + result.buffer.size ();
-  unsigned char * source = (unsigned char *) image.buffer;
+  unsigned char * dest = (unsigned char *) ((PixelBufferPacked *) result.buffer)->memory;
   const PixelFormat * sourceFormat = image.format;
-  int sourceDepth = sourceFormat->depth;
-  while (dest < end)
+
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  if (i)
   {
-	// Kinda fast and definitely dirty.  XYZ would be more precise, but this
-	// is also accurate, since RGB values are well defined (as non-linear sRGB).
-	setRGBA (dest, sourceFormat->getRGBA (source));
-	source += sourceDepth;
-	dest += depth;
+	unsigned char * source = (unsigned char *) i->memory;
+	int sourceDepth = sourceFormat->depth;
+	unsigned char * end = dest + image.width * image.height * depth;
+	while (dest < end)
+	{
+	  setRGBA (dest, sourceFormat->getRGBA (source));
+	  source += sourceDepth;
+	  dest += depth;
+	}
+  }
+  else
+  {
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		setRGBA (dest, sourceFormat->getRGBA (image.buffer->pixel (x, y)));
+	  }
+	}
   }
 }
 
@@ -385,6 +400,7 @@ PixelFormat::setAlpha (void * pixel, unsigned char alpha) const
 
 PixelFormatGrayChar::PixelFormatGrayChar ()
 {
+  planes     = 1;
   depth      = 1;
   precedence = 0;  // Below everything
   monochrome = true;
@@ -402,8 +418,7 @@ PixelFormatGrayChar::filter (const Image & image)
 	return result;
   }
 
-  result.width     = image.width;
-  result.height    = image.height;
+  result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
@@ -433,11 +448,13 @@ PixelFormatGrayChar::filter (const Image & image)
 void
 PixelFormatGrayChar::fromGrayFloat (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  float * fromPixel = (float *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height;
+  float *         fromPixel = (float *)         i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
 	float p = min (max (*fromPixel++, 0.0f), 1.0f);
@@ -449,11 +466,13 @@ PixelFormatGrayChar::fromGrayFloat (const Image & image, Image & result) const
 void
 PixelFormatGrayChar::fromGrayDouble (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  double * fromPixel = (double *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height;
+  double *        fromPixel = (double *)        i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
 	double p = min (max (*fromPixel++, 0.0), 1.0);
@@ -465,10 +484,12 @@ PixelFormatGrayChar::fromGrayDouble (const Image & image, Image & result) const
 void
 PixelFormatGrayChar::fromRGBAChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  unsigned char * toPixel   = (unsigned char *) result.buffer;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
   unsigned char * end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
@@ -484,7 +505,9 @@ PixelFormatGrayChar::fromRGBAChar (const Image & image, Image & result) const
 void
 PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
   PixelFormatRGBABits * that = (PixelFormatRGBABits *) image.format;
 
@@ -496,8 +519,8 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 
   #define RGBBits2GrayChar(fromSize) \
   { \
-    unsigned fromSize * fromPixel = (unsigned fromSize *) image.buffer; \
-    unsigned char * toPixel       = (unsigned char *)     result.buffer; \
+    unsigned fromSize * fromPixel = (unsigned fromSize *) i->memory; \
+    unsigned char * toPixel       = (unsigned char *)     o->memory; \
     unsigned char * end           = toPixel + result.width * result.height; \
     while (toPixel < end) \
     { \
@@ -522,9 +545,9 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 	  break;
     case 3:
 	{
-	  unsigned char * fromPixel = (unsigned char *) image.buffer;
+	  unsigned char * fromPixel = (unsigned char *) i->memory;
 	  endianAdjustFromPixel
-	  unsigned char * toPixel   = (unsigned char *) result.buffer;
+	  unsigned char * toPixel   = (unsigned char *) o->memory;
 	  unsigned char * end       = toPixel + result.width * result.height;
 	  while (toPixel < end)
 	  {
@@ -549,17 +572,30 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 void
 PixelFormatGrayChar::fromAny (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
-
-  unsigned char * dest = (unsigned char *) result.buffer;
-  unsigned char * end = dest + result.buffer.size ();
-  unsigned char * source = (unsigned char *) image.buffer;
+  unsigned char * dest = (unsigned char *) ((PixelBufferPacked *) result.buffer)->memory;
   const PixelFormat * sourceFormat = image.format;
-  int sourceDepth = sourceFormat->depth;
-  while (dest < end)
+
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  if (i)
   {
-	*dest++ = sourceFormat->getGray (source);
-	source += sourceDepth;
+	unsigned char * source = (unsigned char *) i->memory;
+	int sourceDepth = sourceFormat->depth;
+	unsigned char * end = dest + image.width * image.height;
+	while (dest < end)
+	{
+	  *dest++ = sourceFormat->getGray (source);
+	  source += sourceDepth;
+	}
+  }
+  else
+  {
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		*dest++ = sourceFormat->getGray (image.buffer->pixel (x, y));
+	  }
+	}
   }
 }
 
@@ -649,6 +685,7 @@ PixelFormatGrayChar::setGray (void * pixel, float gray) const
 
 PixelFormatGrayShort::PixelFormatGrayShort ()
 {
+  planes     = 1;
   depth      = 2;
   precedence = 2;  // Above GrayChar and UYVY, but below everything else
   monochrome = true;
@@ -666,8 +703,7 @@ PixelFormatGrayShort::filter (const Image & image)
 	return result;
   }
 
-  result.width     = image.width;
-  result.height    = image.height;
+  result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
   if (typeid (*image.format) == typeid (PixelFormatGrayChar))
@@ -693,25 +729,30 @@ PixelFormatGrayShort::filter (const Image & image)
 void
 PixelFormatGrayShort::fromGrayChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  unsigned short * toPixel = (unsigned short *) result.buffer;
-  unsigned short * end = toPixel + result.width * result.height;
+  unsigned char *  fromPixel = (unsigned char *)  i->memory;
+  unsigned short * toPixel   = (unsigned short *) o->memory;
+  unsigned short * end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	*toPixel++ = *fromPixel++ << 8;
+	*toPixel++ = (*fromPixel << 8) + *fromPixel;
+	fromPixel++;
   }
 }
 
 void
 PixelFormatGrayShort::fromGrayFloat (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  float * fromPixel = (float *) image.buffer;
-  unsigned short * toPixel = (unsigned short *) result.buffer;
-  unsigned short * end = toPixel + result.width * result.height;
+  float *          fromPixel = (float *)          i->memory;
+  unsigned short * toPixel   = (unsigned short *) o->memory;
+  unsigned short * end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
 	float p = min (max (*fromPixel++, 0.0f), 1.0f);
@@ -723,11 +764,13 @@ PixelFormatGrayShort::fromGrayFloat (const Image & image, Image & result) const
 void
 PixelFormatGrayShort::fromGrayDouble (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  double * fromPixel = (double *) image.buffer;
-  unsigned short * toPixel = (unsigned short *) result.buffer;
-  unsigned short * end = toPixel + result.width * result.height;
+  double *         fromPixel = (double *)         i->memory;
+  unsigned short * toPixel   = (unsigned short *) o->memory;
+  unsigned short * end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
 	double p = min (max (*fromPixel++, 0.0), 1.0);
@@ -739,17 +782,32 @@ PixelFormatGrayShort::fromGrayDouble (const Image & image, Image & result) const
 void
 PixelFormatGrayShort::fromAny (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
-
-  unsigned short * dest = (unsigned short *) result.buffer;
-  unsigned short * end = dest + result.width * result.height;
-  unsigned char * source = (unsigned char *) image.buffer;
+  unsigned short * dest = (unsigned short *) ((PixelBufferPacked *) result.buffer)->memory;
   const PixelFormat * sourceFormat = image.format;
-  const int sourceDepth = sourceFormat->depth;
-  while (dest < end)
+
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  if (i)
   {
-	*dest++ = sourceFormat->getGray (source) << 8;
-	source += sourceDepth;
+	unsigned char * source = (unsigned char *) i->memory;
+	int sourceDepth = sourceFormat->depth;
+	unsigned short * end = dest + image.width * image.height;
+	while (dest < end)
+	{
+	  unsigned short p = sourceFormat->getGray (source);
+	  *dest++ = (p << 8) + p;
+	  source += sourceDepth;
+	}
+  }
+  else
+  {
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		unsigned short p = sourceFormat->getGray (image.buffer->pixel (x, y));
+		*dest++ = (p << 8) + p;
+	  }
+	}
   }
 }
 
@@ -838,6 +896,7 @@ PixelFormatGrayShort::setGray (void * pixel, float gray) const
 
 PixelFormatGrayFloat::PixelFormatGrayFloat ()
 {
+  planes      = 1;
   depth       = 4;
   precedence  = 4;  // Above all integer formats and below GrayDouble
   monochrome  = true;
@@ -855,8 +914,7 @@ PixelFormatGrayFloat::filter (const Image & image)
 	return result;
   }
 
-  result.width     = image.width;
-  result.height    = image.height;
+  result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
@@ -894,11 +952,13 @@ PixelFormatGrayFloat::filter (const Image & image)
 void
 PixelFormatGrayFloat::fromGrayChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  float * toPixel = (float *) result.buffer;
-  float * end = toPixel + result.width * result.height;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  float *         toPixel   = (float *)         o->memory;
+  float *         end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
 	float v = *fromPixel++ / 255.0f;
@@ -910,11 +970,13 @@ PixelFormatGrayFloat::fromGrayChar (const Image & image, Image & result) const
 void
 PixelFormatGrayFloat::fromGrayShort (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned short * fromPixel = (unsigned short *) image.buffer;
-  float * toPixel = (float *) result.buffer;
-  float * end = toPixel + result.width * result.height;
+  unsigned short * fromPixel = (unsigned short *) i->memory;
+  float *          toPixel   = (float *)          o->memory;
+  float *          end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
 	float v = *fromPixel++ / 65535.0f;
@@ -926,11 +988,13 @@ PixelFormatGrayFloat::fromGrayShort (const Image & image, Image & result) const
 void
 PixelFormatGrayFloat::fromGrayDouble (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  double * fromPixel = (double *) image.buffer;
-  float * toPixel = (float *) result.buffer;
-  float * end = toPixel + result.width * result.height;
+  double * fromPixel = (double *) i->memory;
+  float *  toPixel   = (float *)  o->memory;
+  float *  end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
 	*toPixel++ = (float) *fromPixel++;
@@ -940,10 +1004,12 @@ PixelFormatGrayFloat::fromGrayDouble (const Image & image, Image & result) const
 void
 PixelFormatGrayFloat::fromRGBAChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  float *         toPixel   = (float *)         result.buffer;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  float *         toPixel   = (float *)         o->memory;
   float *         end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
@@ -961,10 +1027,12 @@ PixelFormatGrayFloat::fromRGBAChar (const Image & image, Image & result) const
 void
 PixelFormatGrayFloat::fromRGBChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  float *         toPixel   = (float *)         result.buffer;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  float *         toPixel   = (float *)         o->memory;
   float *         end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
@@ -982,7 +1050,9 @@ PixelFormatGrayFloat::fromRGBChar (const Image & image, Image & result) const
 void
 PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
   PixelFormatRGBABits * that = (PixelFormatRGBABits *) image.format;
 
@@ -994,8 +1064,8 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 
   #define RGBBits2GrayFloat(imageSize) \
   { \
-    unsigned imageSize * fromPixel = (unsigned imageSize *) image.buffer; \
-    float *              toPixel   = (float *)              result.buffer; \
+    unsigned imageSize * fromPixel = (unsigned imageSize *) i->memory; \
+    float *              toPixel   = (float *)              o->memory; \
     float *              end       = toPixel + result.width * result.height; \
 	while (toPixel < end) \
     { \
@@ -1023,9 +1093,9 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 	  break;
     case 3:
 	{
-	  unsigned char * fromPixel = (unsigned char *) image.buffer;
+	  unsigned char * fromPixel = (unsigned char *) i->memory;
 	  endianAdjustFromPixel
-	  float *         toPixel   = (float *)         result.buffer;
+	  float *         toPixel   = (float *)         o->memory;
 	  float *         end       = toPixel + result.width * result.height;
 	  while (toPixel < end)
 	  {
@@ -1053,17 +1123,30 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 void
 PixelFormatGrayFloat::fromAny (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
-
-  float * dest = (float *) result.buffer;
-  float * end = dest + result.width * result.height;
-  unsigned char * source = (unsigned char *) image.buffer;
+  float * dest = (float *) ((PixelBufferPacked *) result.buffer)->memory;
   const PixelFormat * sourceFormat = image.format;
-  int sourceDepth = sourceFormat->depth;
-  while (dest < end)
+
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  if (i)
   {
-	sourceFormat->getGray (source, *dest++);
-	source += sourceDepth;
+	unsigned char * source = (unsigned char *) i->memory;
+	int sourceDepth = sourceFormat->depth;
+	float * end = dest + image.width * image.height;
+	while (dest < end)
+	{
+	  sourceFormat->getGray (source, *dest++);
+	  source += sourceDepth;
+	}
+  }
+  else
+  {
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		sourceFormat->getGray (image.buffer->pixel (x, y), *dest++);
+	  }
+	}
   }
 }
 
@@ -1151,6 +1234,7 @@ PixelFormatGrayFloat::setGray  (void * pixel, float gray) const
 
 PixelFormatGrayDouble::PixelFormatGrayDouble ()
 {
+  planes      = 1;
   depth       = 8;
   precedence  = 6;  // above all integer formats and above GrayFloat
   monochrome  = true;
@@ -1168,8 +1252,7 @@ PixelFormatGrayDouble::filter (const Image & image)
 	return result;
   }
 
-  result.width     = image.width;
-  result.height    = image.height;
+  result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
@@ -1203,11 +1286,13 @@ PixelFormatGrayDouble::filter (const Image & image)
 void
 PixelFormatGrayDouble::fromGrayChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  double * toPixel = (double *) result.buffer;
-  double * end = toPixel + result.width * result.height;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  double *        toPixel   = (double *)        o->memory;
+  double *        end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
 	double v = *fromPixel++ / 255.0;
@@ -1219,11 +1304,13 @@ PixelFormatGrayDouble::fromGrayChar (const Image & image, Image & result) const
 void
 PixelFormatGrayDouble::fromGrayFloat (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  float * fromPixel = (float *) image.buffer;
-  double * toPixel = (double *) result.buffer;
-  double * end = toPixel + result.width * result.height;
+  float *  fromPixel = (float *)  i->memory;
+  double * toPixel   = (double *) o->memory;
+  double * end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
 	*toPixel++ = *fromPixel++;
@@ -1233,10 +1320,12 @@ PixelFormatGrayDouble::fromGrayFloat (const Image & image, Image & result) const
 void
 PixelFormatGrayDouble::fromRGBAChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  double *        toPixel   = (double *)        result.buffer;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  double *        toPixel   = (double *)        o->memory;
   double *        end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
@@ -1254,10 +1343,12 @@ PixelFormatGrayDouble::fromRGBAChar (const Image & image, Image & result) const
 void
 PixelFormatGrayDouble::fromRGBChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  double *        toPixel   = (double *)        result.buffer;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  double *        toPixel   = (double *)        o->memory;
   double *        end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
@@ -1275,7 +1366,9 @@ PixelFormatGrayDouble::fromRGBChar (const Image & image, Image & result) const
 void
 PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
   PixelFormatRGBABits * that = (PixelFormatRGBABits *) image.format;
 
@@ -1287,8 +1380,8 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 
   #define RGBBits2GrayDouble(imageSize) \
   { \
-    unsigned imageSize * fromPixel = (unsigned imageSize *) image.buffer; \
-    double *             toPixel   = (double *)             result.buffer; \
+    unsigned imageSize * fromPixel = (unsigned imageSize *) i->memory; \
+    double *             toPixel   = (double *)             o->memory; \
     double *             end       = toPixel + result.width * result.height; \
 	while (toPixel < end) \
     { \
@@ -1316,9 +1409,9 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 	  break;
     case 3:
 	{
-	  unsigned char * fromPixel = (unsigned char *) image.buffer;
+	  unsigned char * fromPixel = (unsigned char *) i->memory;
 	  endianAdjustFromPixel
-	  double *        toPixel   = (double *)        result.buffer;
+	  double *        toPixel   = (double *)        o->memory;
 	  double *        end       = toPixel + result.width * result.height;
 	  while (toPixel < end)
 	  {
@@ -1346,19 +1439,34 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 void
 PixelFormatGrayDouble::fromAny (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
-
-  double * dest = (double *) result.buffer;
-  double * end = dest + result.width * result.height;
-  unsigned char * source = (unsigned char *) image.buffer;
+  double * dest = (double *) ((PixelBufferPacked *) result.buffer)->memory;
   const PixelFormat * sourceFormat = image.format;
-  int sourceDepth = sourceFormat->depth;
-  while (dest < end)
+
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  if (i)
   {
-	float value;
-	sourceFormat->getGray (source, value);
-	*dest++ = value;
-	source += sourceDepth;
+	unsigned char * source = (unsigned char *) i->memory;
+	int sourceDepth = sourceFormat->depth;
+	double * end = dest + image.width * image.height;
+	while (dest < end)
+	{
+	  float value;
+	  sourceFormat->getGray (source, value);
+	  *dest++ = value;
+	  source += sourceDepth;
+	}
+  }
+  else
+  {
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		float value;
+		sourceFormat->getGray (image.buffer->pixel (x, y), value);
+		*dest++ = value;
+	  }
+	}
   }
 }
 
@@ -1452,6 +1560,7 @@ PixelFormatRGBABits::PixelFormatRGBABits (int depth, unsigned int redMask, unsig
   this->blueMask  = blueMask;
   this->alphaMask = alphaMask;
 
+  planes     = 1;
   precedence = 3;  // Above GrayChar and below all floating point formats
   monochrome = redMask == greenMask  &&  greenMask == blueMask;
   hasAlpha   = alphaMask;
@@ -1468,8 +1577,7 @@ PixelFormatRGBABits::filter (const Image & image)
 	return result;
   }
 
-  result.width     = image.width;
-  result.height    = image.height;
+  result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
@@ -1498,8 +1606,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define Bits2Bits(fromSize,toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned fromSize * fromPixel = (unsigned fromSize *) image.buffer; \
-  unsigned toSize *   toPixel   = (unsigned toSize *)   result.buffer; \
+  unsigned fromSize * fromPixel = (unsigned fromSize *) i->memory; \
+  unsigned toSize *   toPixel   = (unsigned toSize *)   o->memory; \
   unsigned toSize *   end       = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
@@ -1517,9 +1625,9 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define OddBits2Bits(toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned char *   fromPixel = (unsigned char *)   image.buffer; \
+  unsigned char *   fromPixel = (unsigned char *)   i->memory; \
   endianAdjustFromPixel \
-  unsigned toSize * toPixel   = (unsigned toSize *) result.buffer; \
+  unsigned toSize * toPixel   = (unsigned toSize *) o->memory; \
   unsigned toSize * end       = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
@@ -1538,8 +1646,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define Bits2OddBits(fromSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned fromSize * fromPixel = (unsigned fromSize *) image.buffer; \
-  unsigned char *     toPixel   = (unsigned char *)     result.buffer; \
+  unsigned fromSize * fromPixel = (unsigned fromSize *) i->memory; \
+  unsigned char *     toPixel   = (unsigned char *)     o->memory; \
   unsigned char *     end       = toPixel + result.width * result.height * 3; \
   while (toPixel < end) \
   { \
@@ -1562,9 +1670,9 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define OddBits2OddBits(fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned char * fromPixel = (unsigned char *) image.buffer; \
+  unsigned char * fromPixel = (unsigned char *) i->memory; \
   endianAdjustFromPixel \
-  unsigned char * toPixel   = (unsigned char *) result.buffer; \
+  unsigned char * toPixel   = (unsigned char *) o->memory; \
   unsigned char * end       = toPixel + result.width * result.height * 3; \
   while (toPixel < end) \
   { \
@@ -1588,8 +1696,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define GrayFloat2Bits(fromSize,toSize) \
 { \
-  fromSize *        fromPixel = (fromSize *)        image.buffer; \
-  unsigned toSize * toPixel   = (unsigned toSize *) result.buffer; \
+  fromSize *        fromPixel = (fromSize *)        i->memory; \
+  unsigned toSize * toPixel   = (unsigned toSize *) o->memory; \
   unsigned toSize * end       = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
@@ -1605,8 +1713,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define GrayFloat2OddBits(fromSize) \
 { \
-  fromSize *      fromPixel = (fromSize *)      image.buffer; \
-  unsigned char * toPixel   = (unsigned char *) result.buffer; \
+  fromSize *      fromPixel = (fromSize *)      i->memory; \
+  unsigned char * toPixel   = (unsigned char *) o->memory; \
   unsigned char * end       = toPixel + result.width * result.height * 3; \
   while (toPixel < end) \
   { \
@@ -1629,7 +1737,9 @@ PixelFormatRGBABits::filter (const Image & image)
 void
 PixelFormatRGBABits::fromGrayChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
   int redShift;
   int greenShift;
@@ -1661,7 +1771,9 @@ PixelFormatRGBABits::fromGrayChar (const Image & image, Image & result) const
 void
 PixelFormatRGBABits::fromGrayFloat (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
   int redShift;
   int greenShift;
@@ -1693,7 +1805,9 @@ PixelFormatRGBABits::fromGrayFloat (const Image & image, Image & result) const
 void
 PixelFormatRGBABits::fromGrayDouble (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
   int redShift;
   int greenShift;
@@ -1725,7 +1839,9 @@ PixelFormatRGBABits::fromGrayDouble (const Image & image, Image & result) const
 void
 PixelFormatRGBABits::fromRGBABits (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
   PixelFormatRGBABits * that = (PixelFormatRGBABits *) image.format;
 
@@ -2019,8 +2135,7 @@ PixelFormatRGBAChar::filter (const Image & image)
 	return result;
   }
 
-  result.width     = image.width;
-  result.height    = image.height;
+  result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
@@ -2054,11 +2169,13 @@ PixelFormatRGBAChar::filter (const Image & image)
 void
 PixelFormatRGBAChar::fromGrayChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height * depth;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * end       = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
 	unsigned char t = *fromPixel++;
@@ -2073,11 +2190,13 @@ PixelFormatRGBAChar::fromGrayChar (const Image & image, Image & result) const
 void
 PixelFormatRGBAChar::fromGrayFloat (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  float * fromPixel = (float *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height * depth;
+  float *         fromPixel = (float *)         i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * end       = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
 	float v = min (max (*fromPixel++, 0.0f), 1.0f);
@@ -2094,11 +2213,13 @@ PixelFormatRGBAChar::fromGrayFloat (const Image & image, Image & result) const
 void
 PixelFormatRGBAChar::fromGrayDouble (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  double * fromPixel = (double *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height * depth;
+  double *        fromPixel = (double *)        i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * end       = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
 	float v = min (max (*fromPixel++, 0.0), 1.0);
@@ -2115,11 +2236,13 @@ PixelFormatRGBAChar::fromGrayDouble (const Image & image, Image & result) const
 void
 PixelFormatRGBAChar::fromRGBChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height * depth;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * end       = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
 	toPixel[0] = fromPixel[0];
@@ -2186,8 +2309,7 @@ PixelFormatRGBChar::filter (const Image & image)
 	return result;
   }
 
-  result.width     = image.width;
-  result.height    = image.height;
+  result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
@@ -2225,11 +2347,13 @@ PixelFormatRGBChar::filter (const Image & image)
 void
 PixelFormatRGBChar::fromGrayChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height * depth;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * end       = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
 	unsigned char t = *fromPixel++;
@@ -2243,11 +2367,13 @@ PixelFormatRGBChar::fromGrayChar (const Image & image, Image & result) const
 void
 PixelFormatRGBChar::fromGrayShort (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned short * fromPixel = (unsigned short *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height * depth;
+  unsigned short * fromPixel = (unsigned short *) i->memory;
+  unsigned char *  toPixel   = (unsigned char *)  o->memory;
+  unsigned char *  end       = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
 	unsigned char t = *fromPixel++ >> 8;
@@ -2261,11 +2387,13 @@ PixelFormatRGBChar::fromGrayShort (const Image & image, Image & result) const
 void
 PixelFormatRGBChar::fromGrayFloat (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  float * fromPixel = (float *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height * depth;
+  float *         fromPixel = (float *)         i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * end       = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
 	float v = min (max (*fromPixel++, 0.0f), 1.0f);
@@ -2281,11 +2409,13 @@ PixelFormatRGBChar::fromGrayFloat (const Image & image, Image & result) const
 void
 PixelFormatRGBChar::fromGrayDouble (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  double * fromPixel = (double *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height * depth;
+  double *        fromPixel = (double *)        i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * end       = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
 	double v = min (max (*fromPixel++, 0.0), 1.0);
@@ -2301,11 +2431,13 @@ PixelFormatRGBChar::fromGrayDouble (const Image & image, Image & result) const
 void
 PixelFormatRGBChar::fromRGBAChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) image.buffer;
-  unsigned char * toPixel = (unsigned char *) result.buffer;
-  unsigned char * end = toPixel + result.width * result.height * depth;
+  unsigned char * fromPixel = (unsigned char *) i->memory;
+  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * end       = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
 	toPixel[0] = fromPixel[0];
@@ -2339,10 +2471,11 @@ PixelFormatRGBChar::setRGBA  (void * pixel, unsigned int rgba) const
 
 PixelFormatRGBAShort::PixelFormatRGBAShort ()
 {
-  depth = 8;
+  planes     = 1;
+  depth      = 8;
   precedence = 5;  // Above RGBAChar and GrayFloat.  Slightly below GrayDouble.
   monochrome = false;
-  hasAlpha = true;
+  hasAlpha   = true;
 }
 
 unsigned int
@@ -2382,10 +2515,11 @@ PixelFormatRGBAShort::setAlpha (void * pixel, unsigned char alpha) const
 
 PixelFormatRGBShort::PixelFormatRGBShort ()
 {
-  depth = 6;
+  planes     = 1;
+  depth      = 6;
   precedence = 5;  // Above RGBAChar and GrayFloat.  Slightly below GrayDouble.
   monochrome = false;
-  hasAlpha = false;
+  hasAlpha   = false;
 }
 
 unsigned int
@@ -2412,6 +2546,7 @@ PixelFormatRGBShort::setRGBA (void * pixel, unsigned int rgba) const
 
 PixelFormatRGBAFloat::PixelFormatRGBAFloat ()
 {
+  planes     = 1;
   depth      = 4 * sizeof (float);
   precedence = 7;  // Above everything
   monochrome = false;
@@ -2497,6 +2632,7 @@ PixelFormatRGBAFloat::setAlpha (void * pixel, unsigned char alpha) const
 
 PixelFormatUYVYChar::PixelFormatUYVYChar ()
 {
+  planes     = 1;
   depth      = 2;
   precedence = 1;  // above GrayChar and below GrayShort
   monochrome = false;
@@ -2514,8 +2650,7 @@ PixelFormatUYVYChar::filter (const Image & image)
 	return result;
   }
 
-  result.width     = image.width;
-  result.height    = image.height;
+  result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatYUYVChar))
@@ -2533,11 +2668,13 @@ PixelFormatUYVYChar::filter (const Image & image)
 void
 PixelFormatUYVYChar::fromYUYVChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned int * fromPixel = (unsigned int *) image.buffer;
-  unsigned int * toPixel = (unsigned int *) result.buffer;
-  unsigned int * end = toPixel + result.width * result.height / 2;  // width *must* be a multiple of 2!
+  unsigned int * fromPixel = (unsigned int *) i->memory;
+  unsigned int * toPixel   = (unsigned int *) o->memory;
+  unsigned int * end       = toPixel + result.width * result.height / 2;  // width *must* be a multiple of 2!
   while (toPixel < end)
   {
 	register unsigned int p = *fromPixel++;
@@ -2649,6 +2786,7 @@ PixelFormatUYVYChar::setYUV (void * pixel, unsigned int yuv) const
 
 PixelFormatYUYVChar::PixelFormatYUYVChar ()
 {
+  planes     = 1;
   depth      = 2;
   precedence = 1;  // same as UYVY
   monochrome = false;
@@ -2666,8 +2804,7 @@ PixelFormatYUYVChar::filter (const Image & image)
 	return result;
   }
 
-  result.width     = image.width;
-  result.height    = image.height;
+  result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatUYVYChar))
@@ -2685,11 +2822,13 @@ PixelFormatYUYVChar::filter (const Image & image)
 void
 PixelFormatYUYVChar::fromUYVYChar (const Image & image, Image & result) const
 {
-  result.buffer.grow (result.width * result.height * depth);
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
 
-  unsigned int * fromPixel = (unsigned int *) image.buffer;
-  unsigned int * toPixel = (unsigned int *) result.buffer;
-  unsigned int * end = toPixel + result.width * result.height / 2;
+  unsigned int * fromPixel = (unsigned int *) i->memory;
+  unsigned int * toPixel   = (unsigned int *) o->memory;
+  unsigned int * end       = toPixel + result.width * result.height / 2;
   while (toPixel < end)
   {
 	register unsigned int p = *fromPixel++;
@@ -2792,6 +2931,7 @@ PixelFormatYUYVChar::setYUV (void * pixel, unsigned int yuv) const
 
 PixelFormatUYVChar::PixelFormatUYVChar ()
 {
+  planes     = 1;
   depth      = 3;
   precedence = 1;  // same as UYVY
   monochrome = false;
@@ -2858,6 +2998,7 @@ const float twothirds = 2.0f / 3.0f;
 
 PixelFormatHLSFloat::PixelFormatHLSFloat ()
 {
+  planes     = 1;
   depth      = 3 * sizeof (float);
   precedence = 7;  // on par with RGBAFloat
   monochrome = false;

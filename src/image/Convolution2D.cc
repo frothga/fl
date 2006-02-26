@@ -7,6 +7,7 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC.
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -45,6 +46,9 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	return filter (image * (*format));
   }
 
+  PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
+  if (! pbp) throw "Convolution kernel must be packed";
+
   int lastH = width - 1;
   int lastV = height - 1;
   int midX = width / 2;
@@ -59,6 +63,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 		ImageOf<float> result (image.width, image.height, *format);
 		result.clear ();
 		ImageOf<float> that (image);
+		float * buffer = (float *) pbp->memory;
 
 		for (int y = midY; y < result.height - midY; y++)
 		{
@@ -69,7 +74,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 			{
 			  for (int h = 0; h <= lastH; h++)
 			  {
-				sum += ((float *) buffer)[v * width + h] * that (x - h + midX, y - v + midY);
+				sum += buffer[v * width + h] * that (x - h + midX, y - v + midY);
 			  }
 			}
 			result (x, y) = sum;
@@ -83,6 +88,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 		ImageOf<double> result (image.width, image.height, *format);
 		result.clear ();
 		ImageOf<double> that (image);
+		double * buffer = (double *) pbp->memory;
 
 		for (int y = midY; y < result.height - midY; y++)
 		{
@@ -93,7 +99,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 			{
 			  for (int h = 0; h <= lastH; h++)
 			  {
-				sum += ((double *) buffer)[v * width + h] * that (x - h + midX, y - v + midY);
+				sum += buffer[v * width + h] * that (x - h + midX, y - v + midY);
 			  }
 			}
 			result (x, y) = sum;
@@ -113,6 +119,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<float> result (image.width, image.height, *format);
 		ImageOf<float> that (image);
+		float * buffer = (float *) pbp->memory;
 
 		for (int y = 0; y < result.height; y++)
 		{
@@ -128,7 +135,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 			{
 			  for (int h = hl; h <= hh; h++)
 			  {
-				sum += ((float *) buffer)[v * width + h] * that (x - h + midX, y - v + midY);
+				sum += buffer[v * width + h] * that (x - h + midX, y - v + midY);
 			  }
 			}
 			result (x, y) = sum;
@@ -141,6 +148,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<double> result (image.width, image.height, *format);
 		ImageOf<double> that (image);
+		double * buffer = (double *) pbp->memory;
 
 		for (int y = midY; y < result.height - midY; y++)
 		{
@@ -156,7 +164,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 			{
 			  for (int h = hl; h <= hh; h++)
 			  {
-				sum += ((double *) buffer)[v * width + h] * that (x - h + midX, y - v + midY);
+				sum += buffer[v * width + h] * that (x - h + midX, y - v + midY);
 			  }
 			}
 			result (x, y) = sum;
@@ -176,6 +184,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<float> result (image.width, image.height, *format);
 		ImageOf<float> that (image);
+		float * buffer = (float *) pbp->memory;
 
 		for (int y = 0; y < result.height; y++)
 		{
@@ -192,7 +201,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 			{
 			  for (int h = hl; h <= hh; h++)
 			  {
-				float value = ((float *) buffer)[v * width + h];
+				float value = buffer[v * width + h];
 				sum += value * that (x - h + midX, y - v + midY);
 				weight += value;
 			  }
@@ -207,6 +216,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<double> result (image.width, image.height, *format);
 		ImageOf<double> that (image);
+		double * buffer = (double *) pbp->memory;
 
 		for (int y = midY; y < result.height - midY; y++)
 		{
@@ -223,7 +233,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 			{
 			  for (int h = hl; h <= hh; h++)
 			  {
-				double value = ((double *) buffer)[v * width + h];
+				double value = buffer[v * width + h];
 				sum += value * that (x - h + midX, y - v + midY);
 				weight += value;
 			  }
@@ -251,6 +261,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<float> result (image.width - lastH, image.height - lastV, *format);
 		ImageOf<float> that (image);
+		float * buffer = (float *) pbp->memory;
 
 		for (int y = 0; y < result.height; y++)
 		{
@@ -261,7 +272,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 			{
 			  for (int h = 0; h <= lastH; h++)
 			  {
-				sum += ((float *) buffer)[v * width + h] * that (x - h + lastH, y - v + lastV);
+				sum += buffer[v * width + h] * that (x - h + lastH, y - v + lastV);
 			  }
 			}
 			result (x, y) = sum;
@@ -274,6 +285,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<double> result (image.width - lastH, image.height - lastV, *format);
 		ImageOf<double> that (image);
+		double * buffer = (double *) pbp->memory;
 
 		for (int y = 0; y < result.height; y++)
 		{
@@ -284,7 +296,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 			{
 			  for (int h = 0; h <= lastH; h++)
 			  {
-				sum += ((double *) buffer)[v * width + h] * that (x - h + lastH, y - v + lastV);
+				sum += buffer[v * width + h] * that (x - h + lastH, y - v + lastV);
 			  }
 			}
 			result (x, y) = sum;
@@ -315,6 +327,9 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 	return response (image * (*format), p);
   }
 
+  PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
+  if (! pbp) throw "Convolution kernel must be packed";
+
   int lastH = width - 1;
   int lastV = height - 1;
   int midX = width / 2;
@@ -344,13 +359,14 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 	if (*format == GrayFloat)
 	{
 	  ImageOf<float> that (image);
+	  float * buffer = (float *) pbp->memory;
 	  float result = 0;
 	  float weight = 0;
 	  for (int v = vl; v <= vh; v++)
 	  {
 		for (int h = hl; h <= hh; h++)
 		{
-		  float value = ((float *) buffer)[v * width + h];
+		  float value = buffer[v * width + h];
 		  result += value * that (x + midX - h, y + midY - v);
 		  weight += value;
 		}
@@ -360,13 +376,14 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 	else if (*format == GrayDouble)
 	{
 	  ImageOf<double> that (image);
+	  double * buffer = (double *) pbp->memory;
 	  double result = 0;
 	  double weight = 0;
 	  for (int v = vl; v <= vh; v++)
 	  {
 		for (int h = hl; h <= hh; h++)
 		{
-		  double value = ((double *) buffer)[v * width + h];
+		  double value = buffer[v * width + h];
 		  result += value * that (x + midX - h, y + midY - v);
 		  weight += value;
 		}
@@ -383,12 +400,13 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 	if (*format == GrayFloat)
 	{
 	  ImageOf<float> that (image);
+	  float * buffer = (float *) pbp->memory;
 	  float result = 0;
 	  for (int v = vl; v <= vh; v++)
 	  {
 		for (int h = hl; h <= hh; h++)
 		{
-		  result += ((float *) buffer)[v * width + h] * that (x + midX - h, y + midY - v);
+		  result += buffer[v * width + h] * that (x + midX - h, y + midY - v);
 		}
 	  }
 	  return result;
@@ -396,12 +414,13 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 	else if (*format == GrayDouble)
 	{
 	  ImageOf<double> that (image);
+	  double * buffer = (double *) pbp->memory;
 	  double result = 0;
 	  for (int v = vl; v <= vh; v++)
 	  {
 		for (int h = hl; h <= hh; h++)
 		{
-		  result += ((double *) buffer)[v * width + h] * that (x + midX - h, y + midY - v);
+		  result += buffer[v * width + h] * that (x + midX - h, y + midY - v);
 		}
 	  }
 	  return result;
@@ -416,9 +435,12 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 void
 ConvolutionDiscrete2D::normalFloats ()
 {
+  PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
+  if (! pbp) throw "Convolution kernel must be packed";
+
   if (*format == GrayFloat)
   {
-	float * a   = (float *) buffer;
+	float * a   = (float *) pbp->memory;
 	float * end = a + width * height;
 	while (a < end)
 	{
@@ -431,7 +453,7 @@ ConvolutionDiscrete2D::normalFloats ()
   }
   else if (*format == GrayDouble)
   {
-	double * a   = (double *) buffer;
+	double * a   = (double *) pbp->memory;
 	double * end = a + width * height;
 	while (a < end)
 	{

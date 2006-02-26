@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -47,7 +50,7 @@ DescriptorPatch::value (const Image & image, const PointAffine & point)
   reduce.setPeg (point.x, point.y, width, width);
   ImageOf<float> patch = image * GrayFloat * reduce;
 
-  Vector<float> result (patch.buffer, width * width);
+  Vector<float> result (((PixelBufferPacked *) patch.buffer)->memory, width * width);
 
   return result;
 }
@@ -56,7 +59,7 @@ Image
 DescriptorPatch::patch (const Vector<float> & value)
 {
   Image result (width, width, GrayFloat);
-  result.buffer = value.data;
+  ((PixelBufferPacked *) result.buffer)->memory = value.data;
 
   return result;
 }

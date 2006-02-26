@@ -13,6 +13,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -124,15 +127,18 @@ ImageFileFormatTIFF::read (const std::string & fileName, Image & image) const
   {
 	throw "No PixelFormat available that matches file contents";
   }
+
+  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+  if (! buffer) image.buffer = buffer = new PixelBufferPacked;
   image.format = format;
   image.resize (w, h);
 
-  unsigned char * buffer = image.buffer;
+  unsigned char * p = (unsigned char *) buffer->memory;
   int stride = image.format->depth * w;
   for (int y = 0; y < h; y++)
   {
-	TIFFReadScanline (tif, buffer, y);
-	buffer += stride;
+	TIFFReadScanline (tif, p, y);
+	p += stride;
   }
 
   TIFFClose(tif);
@@ -171,6 +177,9 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
 	  return;
 	}
   }
+
+  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+  if (! buffer) throw "TIFF only handles packed buffers for now";
 
 
   TIFF * tif = TIFFOpen (fileName.c_str (), "w");
@@ -246,13 +255,13 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
 
   TIFFSetField (tif, TIFFTAG_COMPRESSION, COMPRESSION_LZW);
 
-  unsigned char * buffer = image.buffer;
-  int stride = image.format->depth * image.width;
+  unsigned char * p = (unsigned char *) buffer->memory;
+  int stride = image.format->depth * buffer->stride;
   TIFFSetField (tif, TIFFTAG_ROWSPERSTRIP, (int) ceil (8.0 * 1024 / stride));  // Manual recommends 8K strips
   for (int y = 0; y < image.height; y++)
   {
-	TIFFWriteScanline (tif, buffer, y, 0);
-	buffer += stride;
+	TIFFWriteScanline (tif, p, y, 0);
+    p += stride;
   }
 
   TIFFClose (tif);

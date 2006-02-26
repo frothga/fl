@@ -19,6 +19,7 @@ for details.
 12/2005 Fred Rothganger -- Fix problems with seek.
 01/2006 Fred Rothganger -- Protect against uninitialized packet.  Read/write
         timestamps in video file.  Pure seek on timestamp.
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -449,9 +450,10 @@ VideoInFileFFMPEG::extractImage (Image & image)
 	{
 	  image.format = &GrayChar;
 	  image.resize (cc->width, cc->height);
+	  ImageOf<unsigned char> that (image);
 	  for (int y = 0; y < cc->height; y++)
 	  {
-		memcpy (((unsigned char *) image.buffer) + y * cc->width, picture.data[0] + y * picture.linesize[0], cc->width);
+		memcpy (&that(0,y), picture.data[0] + y * picture.linesize[0], cc->width);
 	  }
 	}
 	else
@@ -488,9 +490,10 @@ VideoInFileFFMPEG::extractImage (Image & image)
 	{
 	  image.format = &GrayChar;
 	  image.resize (cc->width, cc->height);
+	  ImageOf<unsigned char> that (image);
 	  for (int y = 0; y < cc->height; y++)
 	  {
-		memcpy (((unsigned char *) image.buffer) + y * cc->width, picture.data[0] + y * picture.linesize[0], cc->width);
+		memcpy (&that(0,y), picture.data[0] + y * picture.linesize[0], cc->width);
 	  }
 	}
 	else
@@ -804,7 +807,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   // ...then let FFMPEG convert it.
   int destFormat = stream->codec->pix_fmt;
   AVPicture source;
-  source.data[0] = (unsigned char *) sourceImage.buffer;
+  source.data[0] = (unsigned char *) ((PixelBufferPacked *) sourceImage.buffer)->memory;
   source.linesize[0] = sourceImage.width * sourceImage.format->depth;
 
   AVFrame dest;

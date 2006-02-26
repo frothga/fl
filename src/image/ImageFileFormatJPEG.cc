@@ -12,6 +12,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -154,6 +157,9 @@ ImageFileFormatJPEG::read (std::istream & stream, Image & image) const
 
   jpeg_start_decompress (&cinfo);
 
+  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+  if (! buffer) image.buffer = buffer = new PixelBufferPacked;
+
   // Should do something more sophisticated here, like handle different color
   // spaces or different number of components.
   if (cinfo.output_components == 1)
@@ -166,11 +172,14 @@ ImageFileFormatJPEG::read (std::istream & stream, Image & image) const
   }
   image.resize (cinfo.output_width, cinfo.output_height);
 
+  char * p = (char *) buffer->memory;
+  int stride = buffer->stride * image.format->depth;
+  JSAMPROW row[1];
   while (cinfo.output_scanline < cinfo.output_height)
   {
-	JSAMPROW row[1];
-	row[0] = (JSAMPLE *) image (0, cinfo.output_scanline).pixel;
+	row[0] = (JSAMPLE *) p;
     jpeg_read_scanlines (&cinfo, row, 1);
+	p += stride;
   }
   jpeg_finish_decompress (&cinfo);
 
@@ -187,6 +196,9 @@ ImageFileFormatJPEG::write (std::ostream & stream, const Image & image) const
 	write (stream, temp);
 	return;
   }
+
+  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+  if (! buffer) throw "JPEG only handles packed buffers for now.";
 
   struct jpeg_compress_struct cinfo;
   struct jpeg_error_mgr jerr;
@@ -208,11 +220,14 @@ ImageFileFormatJPEG::write (std::ostream & stream, const Image & image) const
   //jpeg_set_quality (&cinfo, quality, TRUE);
 
   jpeg_start_compress (&cinfo, TRUE);
+  char * p = (char *) buffer->memory;
+  int stride = buffer->stride * image.format->depth;
+  JSAMPROW row[1];
   while (cinfo.next_scanline < cinfo.image_height)
   {
-	JSAMPROW row[1];
-    row[0] = (JSAMPLE *) image (0, cinfo.next_scanline).pixel;
+    row[0] = (JSAMPLE *) p;
     jpeg_write_scanlines (&cinfo, row, 1);
+	p += stride;
   }
   jpeg_finish_compress (&cinfo);
 

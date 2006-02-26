@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -24,12 +27,16 @@ Rescale::Rescale (double a, double b)
 
 Rescale::Rescale (const Image & image, bool useFullRange)
 {
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "Rescale only handles packed buffers for now";
+  void * start = (void *) imageBuffer->memory;
+
   double lo = INFINITY;
   double hi = -INFINITY;
 
   if (*image.format == GrayFloat)
   {
-	float * i = (float *) image.buffer;
+	float * i   = (float *) start;
 	float * end = i + image.width * image.height;
 	while (i < end)
 	{
@@ -39,7 +46,7 @@ Rescale::Rescale (const Image & image, bool useFullRange)
   }
   else if (*image.format == GrayDouble)
   {
-	double * i = (double *) image.buffer;
+	double * i   = (double *) start;
 	double * end = i + image.width * image.height;
 	while (i < end)
 	{
@@ -77,11 +84,15 @@ Rescale::Rescale (const Image & image, bool useFullRange)
 Image
 Rescale::filter (const Image & image)
 {
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "Rescale only handles packed buffers for now";
+  void * start = (void *) imageBuffer->memory;
+
   if (*image.format == GrayFloat)
   {
 	Image result (image.width, image.height, *image.format);
-	float * r = (float *) result.buffer;
-	float * i = (float *) image.buffer;
+	float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
+	float * i = (float *) start;
 	float * end = i + image.width * image.height;
 	while (i < end)
 	{
@@ -92,8 +103,8 @@ Rescale::filter (const Image & image)
   else if (*image.format == GrayDouble)
   {
 	Image result (image.width, image.height, *image.format);
-	double * r = (double *) result.buffer;
-	double * i = (double *) image.buffer;
+	double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
+	double * i = (double *) start;
 	double * end = i + image.width * image.height;
 	while (i < end)
 	{

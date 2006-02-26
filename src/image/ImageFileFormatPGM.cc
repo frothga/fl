@@ -13,6 +13,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -32,6 +35,8 @@ ImageFileFormatPGM::read (std::istream & stream, Image & image) const
   // Parse header...
 
   int gotParm = 0;
+  int width = 0;
+  int height = 0;
   while (stream.good ()  &&  gotParm < 4)
   {
 	// Eat all leading white space and comments
@@ -92,10 +97,10 @@ ImageFileFormatPGM::read (std::istream & stream, Image & image) const
 		}
 		break;
 	  case 1:
-		image.width = atoi (token.c_str ());
+		width = atoi (token.c_str ());
 		break;
 	  case 2:
-		image.height = atoi (token.c_str ());
+		height = atoi (token.c_str ());
 	}
   }
 
@@ -108,9 +113,10 @@ ImageFileFormatPGM::read (std::istream & stream, Image & image) const
   {
 	throw "Unable to finish reading image: stream bad.";
   }
-  int size = image.width * image.height * image.format->depth;
-  image.buffer.grow (size);
-  stream.read ((char *) image.buffer, size);
+  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+  if (! buffer) image.buffer = buffer = new PixelBufferPacked;
+  image.resize (width, height);
+  stream.read ((char *) buffer->memory, width * height * image.format->depth);
 }
 
 void
@@ -133,6 +139,9 @@ ImageFileFormatPGM::write (std::ostream & stream, const Image & image) const
 	}
   }
 
+  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+  if (! buffer) throw "PGM can only handle packed buffers for now";
+
   if (*image.format == GrayChar)
   {
 	stream << "P5" << endl;
@@ -142,7 +151,7 @@ ImageFileFormatPGM::write (std::ostream & stream, const Image & image) const
 	stream << "P6" << endl;
   }
   stream << image.width << " " << image.height << " 255" << endl;
-  stream.write ((char *) image.buffer, image.width * image.height * image.format->depth);
+  stream.write ((char *) buffer->memory, image.width * image.height * image.format->depth);
 }
 
 bool

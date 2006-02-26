@@ -6,6 +6,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -451,6 +454,9 @@ InterestMSER::run (const Image & image, InterestPointSet & result)
 	return;
   }
 
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "InterestMSER only handles packed buffers for now";
+
   width  = image.width;
   height = image.height;
   int imageSize = width * height;
@@ -460,14 +466,14 @@ InterestMSER::run (const Image & image, InterestPointSet & result)
   //   Pass 1 -- Determine size of each gray-level list
   int listSizes[257];  // includes a 0 at the end to help set up stop points
   memset (listSizes, 0, 257 * sizeof (int));
-  unsigned char * start = (unsigned char *) image.buffer;
+  unsigned char * start = (unsigned char *) imageBuffer->memory;
   unsigned char * end = start + imageSize;
   unsigned char * pixel = start;
   while (pixel < end)
   {
 	listSizes[*pixel++]++;
   }
-  ImageOf<int> sorted (image.width, image.height, RGBAChar);  // not really RGBAChar, but it gives us the right size pixels
+  ImageOf<int> sorted (width, height, RGBAChar);  // not really RGBAChar, but it gives us the right size pixels
   int * l = &sorted(0,0);
   for (int i = 0; i <= 256; i++)
   {

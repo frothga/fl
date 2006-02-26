@@ -17,6 +17,7 @@ for details.
 
 
 01/2006 Fred Rothganger -- Fix bugs in clip() related to openness of endpoints.
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -150,7 +151,7 @@ Transform::filter (const Image & image)
 	{
 	  ImageOf<float> result (w, h, GrayFloat);
 	  ImageOf<float> that (image);
-	  float * r = (float *) result.buffer;
+	  float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
 
 	  for (int toY = 0; toY < result.height; toY++)
 	  {
@@ -238,7 +239,7 @@ Transform::filter (const Image & image)
 	{
 	  ImageOf<double> result (w, h, GrayDouble);
 	  ImageOf<double> that (image);
-	  double * r = (double *) result.buffer;
+	  double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
 
 	  for (int toY = 0; toY < result.height; toY++)
 	  {
@@ -430,7 +431,7 @@ Transform::filter (const Image & image)
 	{
 	  ImageOf<float> result (w, h, GrayFloat);
 	  ImageOf<float> that (image);
-	  float * r = (float *) result.buffer;
+	  float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
 
 	  for (int toY = 0; toY < result.height; toY++)
 	  {
@@ -509,7 +510,7 @@ Transform::filter (const Image & image)
 	{
 	  ImageOf<double> result (w, h, GrayDouble);
 	  ImageOf<double> that (image);
-	  double * r = (double *) result.buffer;
+	  double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
 
 	  for (int toY = 0; toY < result.height; toY++)
 	  {

@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -49,10 +52,13 @@ DescriptorCombo::add (Descriptor * descriptor)
 Vector<float>
 DescriptorCombo::value (const Image & image, const PointAffine & point)
 {
-  if ((void *) image.buffer != lastBuffer  ||  image.timestamp != lastTime)
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "DescriptorCombo only handles packed buffers for now";
+
+  if ((void *) imageBuffer->memory != lastBuffer  ||  image.timestamp != lastTime)
   {
 	grayImage = image * GrayFloat;
-	lastBuffer = (void *) image.buffer;
+	lastBuffer = (void *) imageBuffer->memory;
 	lastTime = image.timestamp;
   }
 

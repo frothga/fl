@@ -7,6 +7,7 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -38,6 +39,9 @@ ImageFileFormatEPS::write (std::ostream & stream, const Image & image) const
 	return;
   }
 
+  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+  if (! buffer) throw "EPS only supports packed buffers for now.";
+
   // Determine aspect ratio
   const float vunits = 9.0 * 72;
   const float hunits = 6.5 * 72;
@@ -61,7 +65,7 @@ ImageFileFormatEPS::write (std::ostream & stream, const Image & image) const
 
   // Dump image as hex
   stream << hex;
-  unsigned char * begin = (unsigned char *) image.buffer;
+  unsigned char * begin = (unsigned char *) buffer->memory;
   int end = image.width * image.height;
   for (int i = 0; i < end; i++)
   {

@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -25,18 +28,23 @@ struct triad
 Image
 Rotate180::filter (const Image & image)
 {
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "Rotate180 can only handle packed buffers for now";
+
   Image result (image.width, image.height, *image.format);
   result.timestamp = image.timestamp;
 
-  int pixels = image.width * image.height;
-
   #define transfer(size) \
   { \
-	for (int i = 0; i < pixels; i++) \
-    { \
-	  ((size *) result.buffer)[i] = ((size *) image.buffer)[pixels - 1 - i]; \
+	size * dest   = (size *) ((PixelBufferPacked *) result.buffer)->memory; \
+	size * end    = (size *) imageBuffer->memory; \
+	size * source = end + (image.width * image.height - 1); \
+	while (source >= end) \
+	{ \
+	  *dest++ = *source--; \
 	} \
   }
+
   switch (image.format->depth)
   {
     case 8:

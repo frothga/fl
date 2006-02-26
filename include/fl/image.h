@@ -26,14 +26,17 @@ for details.
 #include <string>
 #include <vector>
 
+#include <assert.h>
+
 
 namespace fl
 {
   // Forward declaration for use by Image
+  class PixelBuffer;
   class PixelFormat;
   class Pixel;
   class ImageFileFormat;
-  
+
 
   // Image --------------------------------------------------------------------
 
@@ -45,7 +48,7 @@ namespace fl
 	Image (int width, int height);  ///< Allocates buffer of size width x height x GrayChar.depth bytes.
 	Image (int width, int height, const PixelFormat & format);  ///< Same as above, but with given PixelFormat
 	Image (const Image & that);  ///< Points our buffer to same location as "that" and copies all of its metadata.
-	Image (unsigned char * buffer, int width, int height, const PixelFormat & format);  ///< Binds to an external block of memory.
+	Image (void * block, int width, int height, const PixelFormat & format);  ///< Binds to an external block of memory.  Implies PixelBufferPacked.
 	Image (const std::string & fileName);  ///< Create image initialized with contents of file.
 
 	void read (const std::string & fileName);  ///< Read image from fileName.  Format will be determined automatically.
@@ -55,11 +58,11 @@ namespace fl
 
 	Image & operator <<= (const Image & that);  ///< Direct assignment by shallow copy.  Same semantics as "=".  By using a different operator than "=", we allow subclasses to inherit this function.
 	void copyFrom (const Image & that);  ///< Duplicates another Image.  Copy all raster info into private buffer, and copy all other metadata.
-	void copyFrom (unsigned char * buffer, int width, int height, const PixelFormat & format);  ///< Copy from a non-Image source.  Determine size of buffer in bytes as width x height x depth.
-	void attach (unsigned char * buffer, int width, int height, const PixelFormat & format);  ///< Binds to an external block of memory.
+	void copyFrom (void * block, int width, int height, const PixelFormat & format);  ///< Copy from a non-Image source.  Determine size of buffer in bytes as width x height x depth.
+	void attach (void * block, int width, int height, const PixelFormat & format);  ///< Binds to an external block of memory.
 	void detach ();  ///< Set the state of this image as if it has no buffer.  Releases (but only frees if appropriate) any memory.
 
-	void resize (int width, int height);  ///< Changes image to new size.  Any pixels that are still visible are aligned correctly.  Any newly exposed pixels are set to black.
+	void resize (int width, int height, bool preserve = false);
 	void bitblt (const Image & that, int toX = 0, int toY = 0, int fromX = 0, int fromY = 0, int width = -1, int height = -1);  ///< -1 for width or height means "maximum possible value"
 	void clear (unsigned int rgba = 0);  ///< Initialize buffer, if it exists, to given color.  In case rgba == 0, simply zeroes out memory, since this generally results in black in most pixel formats.
 
@@ -71,6 +74,7 @@ namespace fl
 	bool operator == (const Image & that) const;  ///< Determines if both images have exactly the same metadata and buffer.  This is a strong, but not perfect, indicator that no change has occurred to the contents between the construction of the respective objects.
 	bool operator != (const Image & that) const;  ///< Negated form of operator ==.
 
+	// Note that bounds checking for these accessor functions is the responsibility of the caller.
 	Pixel         operator () (int x, int y) const;  ///< Returns a Pixel object that wraps (x,y).
 	unsigned int  getRGBA  (int x, int y) const;
 	void          getRGBA  (int x, int y, float values[]) const;
@@ -86,32 +90,11 @@ namespace fl
 	void          setAlpha (int x, int y, unsigned char alpha);
 
 	// Data
-	Pointer             buffer;
-	const PixelFormat * format;
-	int                 width;  ///< The Image class guarantees that width * height is always non-negative and that the raster stored in buffer has enough allocated memory to contain width * height pixels.  (Of course, you can set this field directly, in which case the warranty is void. :)
-	int                 height;  ///< See width for interface guarantees.
-	double              timestamp;  ///< Time when image was captured.  If part of a video, then time when image should be displayed.
-  };
-
-  /**
-	 A simple wrap around Image that makes it easier to access pixels directly.
-   **/
-  template<class T>
-  class ImageOf : public Image
-  {
-  public:
-	// These constructors blindly wrap the constructors of Image, without
-	// regard to the size or type of data returned by operator (x,y).
-	ImageOf () {}
-	ImageOf (const PixelFormat & format) : Image (format) {}
-	ImageOf (int width, int height) : Image (width, height) {}
-	ImageOf (int width, int height, const PixelFormat & format) : Image (width, height, format) {}
-	ImageOf (const Image & that) : Image (that) {}
-
-	T & operator () (int x, int y) const
-	{
-	  return ((T *) buffer)[y * width + x];
-	}
+	PointerPoly<PixelBuffer> buffer;
+	const PixelFormat *      format;
+	int                      width;  ///< This should be viewed as cached information from the PixelBuffer.  Only make changes via resize().
+	int                      height;  ///< This should be viewed as cached information from the PixelBuffer.  Only make changes via resize().
+	double                   timestamp;  ///< Time when image was captured.  If part of a video, then time when image should be displayed.
   };
 
 
@@ -146,6 +129,252 @@ namespace fl
   operator *= (Image & image, const Filter & filter)
   {
 	return image = image * ((Filter &) filter);
+  }
+
+
+  // PixelBuffer --------------------------------------------------------------
+
+  /**
+	 An interface for various classes that manage the storage of image data.
+   **/
+  class PixelBuffer : public ReferenceCounted
+  {
+  public:
+	virtual ~PixelBuffer ();
+
+	/**
+	   Maps (x,y) coordinates to a pointer that tells the PixelFormat where
+	   to get the color information.  This can come in two forms:
+	   <OL>
+	   <LI>A direct pointer to a packed pixel containing all the color channels.
+	   <LI>A pointer to an array of pointers (similar to the "char * argv[]"
+	   typical in the interface of main()), each one addressing one of the
+	   color channels.  The member planes gives the number of entries in the
+	   array, analogous to the "int argv" in the interface to main().
+	   </OL>
+	**/
+	virtual void * pixel (int x, int y) = 0;
+	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false) = 0;  ///< Same semantics as Image::resize()
+	virtual PixelBuffer * duplicate () const = 0;  ///< Make a copy of self on the heap, with deap-copy semantics.
+	virtual void clear () = 0;  ///< Fill buffer(s) with zeros.
+	virtual bool operator == (const PixelBuffer & that) const;
+	bool operator != (const PixelBuffer & that) const
+	{
+	  return ! (*this == that);
+	}
+
+	/**
+	   The number of memory blocks used to store the data, and the number of
+	   entries in the array returned by pixel().  If this is a "packed"
+	   format, then the value is 1 and pixel() returns the pointer directly.
+	   If this is "planar", then the value will be larger than 1.  In the
+	   latter case, the value returned by pixel() will point to an array of
+	   pointers, one per channel.  This array will be stored local to the
+	   PixelBuffer object, and pixel() will not be thread-safe.
+	**/
+	int planes;
+  };
+
+  /**
+	 The default structure for most Images.  Each pixel contains its color
+	 channels contiguously, and pixels are arranged contiguously in memory.
+   **/
+  class PixelBufferPacked : public PixelBuffer
+  {
+  public:
+	PixelBufferPacked (int depth = 1);
+	PixelBufferPacked (int stride, int height, int depth);
+	PixelBufferPacked (void * buffer, int stride, int height, int depth);  ///< Binds to an external block of memory.
+	virtual ~PixelBufferPacked ();
+
+	virtual void * pixel (int x, int y);
+	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false);  ///< We assume that stride must now be set to width.  The alternative, if width < stride, would be to take no action.
+	virtual PixelBuffer * duplicate () const;
+	virtual void clear ();
+	virtual bool operator == (const PixelBuffer & that) const;
+
+	void copyFrom (void * buffer, int stride, int height, int depth);  ///< Makes a duplicate of the block of memory.
+
+	int stride;
+	int depth;
+	Pointer memory;
+  };
+
+  /**
+	 Each color channel is stored in a separate block of memory.  The blocks
+	 are not necessarily contiguous with each other, and they don't
+	 necessarily have stride == width.  This structure is typical for YUV
+	 data used in video processing (see VideoFileFormatFFMPEG).
+
+	 Assumes only three color channels.  Treats first channel as "full size",
+	 while the second and third channels have vertical and horizontal devisors.
+	 Assumes that the second and third channels have exactly the same geometry.
+	 Assumes that the depth of any given channel is exactly one byte.
+	 When resizing or intializing without specifying stride, determines a
+	 stride0 that is a multiple of 16 bytes.
+   **/
+  class PixelBufferPlanar : public PixelBuffer
+  {
+  public:
+	PixelBufferPlanar ();
+	PixelBufferPlanar (int stride, int height, int ratioH, int ratioV);
+	PixelBufferPlanar (void * buffer0, void * buffer1, void * buffer2, int stride, int height, int ratioH, int ratioV);
+	virtual ~PixelBufferPlanar ();
+
+	virtual void * pixel (int x, int y);
+	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false);  ///< Assumes that ratioH and ratioV are already set correctly.
+	virtual PixelBuffer * duplicate () const;
+	virtual void clear ();
+	virtual bool operator == (const PixelBuffer & that) const;
+
+	Pointer plane0;
+	Pointer plane1;
+	Pointer plane2;
+	int stride0;
+	int stride12;  ///< Can be derived from stride0 / ratioH, but more efficient to pre-compute it.
+	int ratioH;
+	int ratioV;
+
+	void * pixelArray[3];  ///< Temporary storage for marshalled addresses.  Not thread-safe.
+  };
+
+  /**
+	 A special structure just for the bizarre memory layout of IEEE 1394
+	 format 0 mode 2.  Even though this is technically a packed format and
+	 therefore should be handled by PixelBufferPacked and an appropriate
+	 PixelFormat, the fact that four pixels are packed into units of six bytes
+	 makes it impossible to use a single address to indicate which positions
+	 are referred to.  Instead, this PixelBuffer acts as a planar format,
+	 passing three pointers to the three channels.
+  **/
+  class PixelBufferUYYVYY : public PixelBuffer
+  {
+  public:
+	PixelBufferUYYVYY ();
+	PixelBufferUYYVYY (void * buffer, int width, int height);  ///< Binds to an external block of memory.
+	virtual ~PixelBufferUYYVYY ();
+
+	virtual void * pixel (int x, int y);
+	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false);
+	virtual PixelBuffer * duplicate () const;
+	virtual void clear ();
+	virtual bool operator == (const PixelBuffer & that) const;
+
+	Pointer buffer;
+	void * pixelArray[3];  ///< Temporary storage for marshalled addresses.  Not thread-safe.
+  };
+
+  /**
+	 Encapsulates an image that is too big to fit in memory.  Instead, the
+	 image resides on disk, and a subset of its blocks are kept in cache at
+	 any given time.
+   **/
+  class PixelBufferBig : public PixelBuffer
+  {
+  public:
+	PixelBufferBig ();
+	virtual ~PixelBufferBig ();
+  };
+
+
+  // ImageOf ------------------------------------------------------------------
+
+  /**
+	 An Image designed to make (x,y) style access to packed formats as
+	 efficient as possible.  To be maximally efficient, one should instead
+	 iterate over the buffer directly using pointers.
+   **/
+  template<class T>
+  class ImageOf : public Image
+  {
+  public:
+	// These constructors blindly wrap the constructors of Image, without
+	// regard to the size or type of data returned by operator (x,y).
+	ImageOf ()
+	{
+	  memory = 0;
+	}
+	ImageOf (const PixelFormat & format) : Image (format)
+	{
+	  memory = 0;
+	}
+	ImageOf (int width, int height) : Image (width, height)
+	{
+	  memory = (T *) buffer->pixel (0, 0);
+	}
+	ImageOf (int width, int height, const PixelFormat & format) : Image (width, height, format)
+	{
+	  memory = (T *) buffer->pixel (0, 0);
+	}
+	ImageOf (const Image & that) : Image (that)
+	{
+	  if (! (PixelBufferPacked *) buffer) throw "Can't wrap non-packed type images";
+	  memory = (T *) buffer->pixel (0, 0);
+	}
+
+	void read (const std::string & fileName)
+	{
+	  Image::read (fileName);
+  	  memory = (T *) buffer->pixel (0, 0);
+	}
+
+	void read (std::istream & stream)
+	{
+	  Image::read (stream);
+  	  memory = (T *) buffer->pixel (0, 0);
+	}
+
+	ImageOf<T> & operator = (const Image & that)
+	{
+	  Image::operator = (that);
+  	  memory = (T *) buffer->pixel (0, 0);
+	  return *this;
+	}
+
+	ImageOf<T> & operator <<= (const Image & that)
+	{
+	  Image::operator <<= (that);
+  	  memory = (T *) buffer->pixel (0, 0);
+	  return *this;
+	}
+
+	void copyFrom (const Image & that)
+	{
+	  Image::copyFrom (that);
+  	  memory = (T *) buffer->pixel (0, 0);
+	}
+
+	void copyFrom (void * block, int width, int height, const PixelFormat & format)
+	{
+	  Image::copyFrom (block, width, height, format);
+  	  memory = (T *) buffer->pixel (0, 0);
+	}
+
+	void attach (void * block, int width, int height, const PixelFormat & format)
+	{
+	  Image::attach (buffer, width, height, format);
+  	  memory = (T *) buffer->pixel (0, 0);
+	}
+
+	void resize (int width, int height, bool preserve = false)
+	{
+	  Image::resize (width, height, preserve);
+	  memory = (T *) buffer->pixel (0, 0);
+	}
+
+	T & operator () (int x, int y) const
+	{
+	  return memory[y * width + x];
+	}
+
+	T * memory;  ///< Points to the memory block held by Image::buffer, and must be constructed from it.
+  };
+
+  template<class T>
+  inline ImageOf<T> &
+  operator *= (ImageOf<T> & image, const Filter & filter)
+  {
+	return image = ((Filter &) filter).filter (image);
   }
 
 
@@ -213,7 +442,8 @@ namespace fl
 	virtual void          setGray  (void * pixel, float gray) const;
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;  ///< Ignored by default.  Formats that actually have an alpha channel must override this method.
 
-	int depth;  ///< Number of bytes in one pixel, including any padding
+	int planes;  ///< The number of entries in the array passed through the "pixel" parameter.  See PixelBuffer::planes for semantics.  This format must agree with the PixelBuffer on the meaning of the pixel pointer.
+	int depth;  ///< Number of bytes in one pixel, including any padding.  If planes > 1, then this field only describes the first plane.  The other planes should in general have the same size associated with a single pixel, but a single datum may be shared by more than 1 pixel.
 	int precedence;  ///< Imposes a (partial?) order on formats according to information content.  Bigger numbers have more information.
 	// The following two flags could be implemented several different ways.
 	// One alternative would be to make a more complicated class hierarchy
@@ -671,21 +901,12 @@ namespace fl
 
   // Image inlines ------------------------------------------------------------
 
-  inline Image &
-  Image::operator <<= (const Image & that)
-  {
-	buffer    = that.buffer;
-	format    = that.format;
-	width     = that.width;
-	height    = that.height;
-	timestamp = that.timestamp;
-	return *this;
-  }
-
   inline bool
   Image::operator == (const Image & that) const
   {
-	return    buffer    == that.buffer
+	bool buffersAllocated = buffer.memory  &&  that.buffer.memory;
+	bool buffersEqual = buffersAllocated ? *buffer == *that.buffer : buffer.memory == that.buffer.memory;
+	return    buffersEqual
 	       && format    == that.format
 	       && width     == that.width
 	       && height    == that.height
@@ -701,67 +922,91 @@ namespace fl
   inline Pixel
   Image::operator () (int x, int y) const
   {
-	return Pixel (*format, & ((char *) buffer)[(y * width + x) * format->depth]);
+	return Pixel (*format, buffer->pixel (x, y));
+  }
+
+  inline unsigned int
+  Image::getRGBA (int x, int y) const
+  {
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	return format->getRGBA (buffer->pixel (x, y));
   }
 
   inline void
   Image::getRGBA (int x, int y, float values[]) const
   {
-	format->getRGBA (& ((char *) buffer)[(y * width + x) * format->depth], values);
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->getRGBA (buffer->pixel (x, y), values);
   }
 
   inline unsigned int
   Image::getYUV (int x, int y) const
   {
-	return format->getYUV (& ((char *) buffer)[(y * width + x) * format->depth]);
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	return format->getYUV (buffer->pixel (x, y));
   }
 
   inline unsigned char
   Image::getGray (int x, int y) const
   {
-	return format->getGray (& ((char *) buffer)[(y * width + x) * format->depth]);
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	return format->getGray (buffer->pixel (x, y));
   }
 
   inline void
   Image::getGray (int x, int y, float & gray) const
   {
-	format->getGray (& ((char *) buffer)[(y * width + x) * format->depth], gray);
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->getGray (buffer->pixel (x, y), gray);
   }
 
   inline unsigned char
   Image::getAlpha (int x, int y) const
   {
-	return format->getAlpha (& ((char *) buffer)[(y * width + x) * format->depth]);
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	return format->getAlpha (buffer->pixel (x, y));
+  }
+
+  inline void
+  Image::setRGBA (int x, int y, unsigned int rgba)
+  {
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->setRGBA (buffer->pixel (x, y), rgba);
   }
 
   inline void
   Image::setRGBA (int x, int y, float values[])
   {
-	format->setRGBA (& ((char *) buffer)[(y * width + x) * format->depth], values);
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->setRGBA (buffer->pixel (x, y), values);
   }
 
   inline void
   Image::setYUV (int x, int y, unsigned int yuv)
   {
-	format->setYUV (& ((char *) buffer)[(y * width + x) * format->depth], yuv);
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->setYUV (buffer->pixel (x, y), yuv);
   }
 
   inline void
   Image::setGray (int x, int y, unsigned char gray)
   {
-	format->setGray (& ((char *) buffer)[(y * width + x) * format->depth], gray);
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->setGray (buffer->pixel (x, y), gray);
   }
 
   inline void
   Image::setGray (int x, int y, float gray)
   {
-	format->setGray (& ((char *) buffer)[(y * width + x) * format->depth], gray);
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->setGray (buffer->pixel (x, y), gray);
   }
 
   inline void
   Image::setAlpha (int x, int y, unsigned char alpha)
   {
-	format->setAlpha (& ((char *) buffer)[(y * width + x) * format->depth], alpha);
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->setAlpha (buffer->pixel (x, y), alpha);
   }
 }
 

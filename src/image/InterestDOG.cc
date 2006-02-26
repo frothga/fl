@@ -19,6 +19,7 @@ for details.
 
 01/2006 Fred Rothganger -- Improve efficiency of decimation and image
         difference.  Avoid unecessary image copies.  Add "fast" mode.
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -126,9 +127,9 @@ difference (const Image & a, const Image & b)
   int h = a.height;
   Image result (w, h, GrayFloat);
 
-  float * source1 = (float *) a.buffer;
-  float * source2 = (float *) b.buffer;
-  float * dest    = (float *) result.buffer;
+  float * source1 = (float *) ((PixelBufferPacked *) a     .buffer)->memory;
+  float * source2 = (float *) ((PixelBufferPacked *) b     .buffer)->memory;
+  float * dest    = (float *) ((PixelBufferPacked *) result.buffer)->memory;
   float * end     = dest + w * h;
   while (dest < end)
   {
@@ -145,8 +146,8 @@ static inline Image
 decimate (const Image & image)
 {
   Image result (image.width / 2, image.height / 2, GrayFloat);
-  float * fromPixel = (float *) image.buffer;
-  float * toPixel   = (float *) result.buffer;
+  float * fromPixel = (float *) ((PixelBufferPacked *) image .buffer)->memory;
+  float * toPixel   = (float *) ((PixelBufferPacked *) result.buffer)->memory;
   float * end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
@@ -178,14 +179,15 @@ upsample (const Image & image, int width, int height)
   */
 
   Image result (width, height, GrayFloat);
+  float * resultBuffer = (float *) ((PixelBufferPacked *) result.buffer)->memory;
 
   // Double the main body of the image
-  float * p00 = (float *) image.buffer;
+  float * p00 = (float *) ((PixelBufferPacked *) image.buffer)->memory;
   float * p10 = p00 + 1;
   float * p01 = p00 + image.width;
   float * p11 = p01 + 1;
 
-  float * q00 = (float *) result.buffer;
+  float * q00 = (float *) resultBuffer;
   float * q10 = q00 + 1;
   float * q01 = q00 + result.width;
   float * q11 = q01 + 1;
@@ -265,7 +267,7 @@ upsample (const Image & image, int width, int height)
   // Fill in right side
   if (width % 2)  // odd: copy an extra column of pixels
   {
-	float * q1 = (float *) result.buffer;
+	float * q1 = (float *) resultBuffer;
 	float * end = q1 + result.width * result.height;
 	q1 += (result.width - 1);
 	float * q0 = q1 - 1;

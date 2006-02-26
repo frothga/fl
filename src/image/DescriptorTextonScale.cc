@@ -13,6 +13,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -91,11 +94,14 @@ DescriptorTextonScale::initialize ()
 void
 DescriptorTextonScale::preprocess (const Image & image)
 {
-  if (lastBuffer == (void *) image.buffer  &&  lastTime == image.timestamp)
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "DescriptorTextonScale only handles packed buffers for now";
+
+  if (lastBuffer == (void *) imageBuffer->memory  &&  lastTime == image.timestamp)
   {
 	return;
   }
-  lastBuffer = (void *) image.buffer;
+  lastBuffer = (void *) imageBuffer->memory;
   lastTime = image.timestamp;
 
   ImageOf<float> work;
@@ -136,10 +142,10 @@ DescriptorTextonScale::preprocess (const Image & image)
 	// Scan thru the current scale level and the next scale level.  Compute
 	// the difference image and compare to the maxima image.  For any new
 	// maximum, store the current scale level.
-	unsigned int * s = (unsigned int *) scales.buffer;
-	float * w = (float *) work.buffer;
-	float * n = (float *) nextWork.buffer;
-	float * m = (float *) maxima.buffer;
+	unsigned int * s = (unsigned int *) ((PixelBufferPacked *) scales.buffer)->memory;
+	float * w = (float *) ((PixelBufferPacked *) work.buffer)->memory;
+	float * n = (float *) ((PixelBufferPacked *) nextWork.buffer)->memory;
+	float * m = (float *) ((PixelBufferPacked *) maxima.buffer)->memory;
 	float * end = m + image.width * image.height;
 	while (m < end)
 	{

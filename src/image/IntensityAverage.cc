@@ -4,6 +4,9 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -29,17 +32,22 @@ IntensityAverage::IntensityAverage (bool ignoreZeros)
 Image
 IntensityAverage::filter (const Image & image)
 {
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "AbsoluteValue can only handle packed buffers for now";
+  Pointer imageMemory = imageBuffer->memory;
+
   average = 0;
-  count = 0;
+  count = image.width * image.height;
   minimum = INFINITY;
   maximum = -INFINITY;
 
   #define addup(size) \
   { \
-	size * pixel = (size *) image.buffer; \
-	size * end   = pixel + image.width * image.height; \
+	size * pixel = (size *) imageMemory; \
+	size * end   = pixel + count; \
 	if (ignoreZeros) \
 	{ \
+	  count = 0; \
 	  while (pixel < end) \
 	  { \
 		if (*pixel != 0) \
@@ -60,7 +68,6 @@ IntensityAverage::filter (const Image & image)
 		maximum = max (maximum, (float) *pixel); \
 		average += *pixel++; \
 	  } \
-	  count = image.width * image.height; \
 	} \
   }
 

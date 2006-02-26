@@ -14,6 +14,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -49,11 +52,14 @@ DescriptorOrientationHistogram::DescriptorOrientationHistogram (istream & stream
 void
 DescriptorOrientationHistogram::computeGradient (const Image & image)
 {
-  if (lastBuffer == (void *) image.buffer  &&  lastTime == image.timestamp)
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "DescriptorOrientationHistogram only handles packed buffers for now";
+
+  if (lastBuffer == (void *) imageBuffer->memory  &&  lastTime == image.timestamp)
   {
 	return;
   }
-  lastBuffer = (void *) image.buffer;
+  lastBuffer = (void *) imageBuffer->memory;
   lastTime = image.timestamp;
 
   Image work = image * GrayFloat;

@@ -14,7 +14,8 @@ Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Use destroy option in gelss().
+02/2006 Fred Rothganger -- Use destroy option in gelss().  Change Image
+        structure.
 */
 
 
@@ -66,9 +67,10 @@ DescriptorFilters::prepareFilterMatrix ()
 	int oy = (patchHeight - filters[j].height) / 2;
 	temp.bitblt (filters[j], ox, oy);
 	temp *= rotation;
+	float * buffer = (float *) ((PixelBufferPacked *) temp.buffer)->memory;
 	for (int k = 0; k < patchWidth * patchHeight; k++)
 	{
-	  filterMatrix (j, k) = ((float *) temp.buffer)[k];
+	  filterMatrix (j, k) = buffer[k];
 	}
   }
 }
@@ -87,10 +89,13 @@ DescriptorFilters::value (const Image & image, const PointAffine & point)
 Image
 DescriptorFilters::patch (const Vector<float> & value)
 {
+  if (filterMatrix.rows () != filters.size ())
+  {
+	prepareFilterMatrix ();
+  }
   Vector<float> b = value / value.frob (2);
   Vector<float> x;
-  Matrix<float> A;
-  gelss (A, x, b, (float *) 0, false, true);
+  gelss (filterMatrix, x, b, (float *) 0, false, true);
   Image result;
   result.copyFrom ((unsigned char *) x.data, patchWidth, patchHeight, GrayFloat);
   return result;
@@ -110,7 +115,7 @@ DescriptorFilters::read (istream & stream)
 	stream.read ((char *) &width, sizeof (width));
 	stream.read ((char *) &height, sizeof (height));
 	Image image (width, height, GrayFloat);
-	stream.read ((char *) image.buffer, image.buffer.size ());
+	stream.read ((char *) ((PixelBufferPacked *) image.buffer)->memory, width * height * GrayFloat.depth);
 	filters.push_back (ConvolutionDiscrete2D (image));
   }
 }
@@ -124,9 +129,11 @@ DescriptorFilters::write (ostream & stream, bool withName)
   stream.write ((char *) &count, sizeof (count));
   for (int i = 0; i < count; i++)
   {
-	stream.write ((char *) &filters[i].width, sizeof (filters[i].width));
-	stream.write ((char *) &filters[i].height, sizeof (filters[i].height));
-	stream.write ((char *) filters[i].buffer, filters[i].buffer.size ());
+	int width  = filters[i].width;
+	int height = filters[i].height;
+	stream.write ((char *) &width,  sizeof (width));
+	stream.write ((char *) &height, sizeof (height));
+	stream.write ((char *) ((PixelBufferPacked *) filters[i].buffer)->memory, width * height * GrayFloat.depth);
   }
 }
 

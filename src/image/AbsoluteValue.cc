@@ -7,6 +7,7 @@ for details.
 
 
 12/2004 Fred Rothganger -- Add missing return value.
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -22,13 +23,17 @@ using namespace fl;
 Image
 AbsoluteValue::filter (const Image & image)
 {
+  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
+  if (! imageBuffer) throw "AbsoluteValue can only handle packed buffers for now";
+  Pointer imageMemory = imageBuffer->memory;
+
   if (*image.format == GrayFloat)
   {
 	Image result (image.width, image.height, GrayFloat);
 	result.timestamp = image.timestamp;
 
-	float * toPixel   = (float *) result.buffer;
-	float * fromPixel = (float *) image.buffer;
+	float * toPixel   = (float *) ((PixelBufferPacked *) result.buffer)->memory;
+	float * fromPixel = (float *) imageMemory;
 	float * end       = fromPixel + (image.width * image.height);
 
 	while (fromPixel < end)
@@ -43,8 +48,8 @@ AbsoluteValue::filter (const Image & image)
 	Image result (image.width, image.height, GrayDouble);
 	result.timestamp = image.timestamp;
 
-	double * toPixel   = (double *) result.buffer;
-	double * fromPixel = (double *) image.buffer;
+	double * toPixel   = (double *) ((PixelBufferPacked *) result.buffer)->memory;
+	double * fromPixel = (double *) imageMemory;
 	double * end       = fromPixel + (image.width * image.height);
 
 	while (fromPixel < end)

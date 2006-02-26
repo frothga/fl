@@ -7,6 +7,7 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
+02/2006 Fred Rothganger -- Change Image structure.
 */
 
 
@@ -61,25 +62,28 @@ ImageFileFormatMatlab::read (std::istream & stream, Image & image) const
     case 2:
 	  image.format = &GrayFloat;
 	  break;
+	case 4:
+	  image.format = &GrayShort;
+	  break;
     case 5:
 	  image.format = &GrayChar;
 	  break;
     default:
-	  // Should create formats GrayInt, GrayShort and GrayShortUnsigned to
-	  // handle remaining numeric formats.
 	  throw "No image format equivalent to numeric type.";
   }
 
   // Read data...
+  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+  if (! buffer) image.buffer = buffer = new PixelBufferPacked;
   image.resize (columns, rows);
   for (int x = 0; x < columns; x++)
   {
-	char * buffer = (char *) image.buffer;
-	buffer += x * image.format->depth;
+	char * p = (char *) buffer->memory;
+	p += x * image.format->depth;
 	for (int y = 0; y < rows; y++)
 	{
-	  stream.read (buffer, image.format->depth);
-	  buffer += columns * image.format->depth;
+	  stream.read (p, image.format->depth);
+	  p += columns * image.format->depth;
 	}
   }
 
@@ -87,7 +91,7 @@ ImageFileFormatMatlab::read (std::istream & stream, Image & image) const
   // specialty PixelFormats.
   if (numericType == 2)  // Convert int to float
   {
-	float * i = (float *) image.buffer;
+	float * i = (float *) buffer->memory;
 	int * j = (int *) i;
 	float * end = i + image.width * image.height;
 	while (i < end)
@@ -100,12 +104,14 @@ ImageFileFormatMatlab::read (std::istream & stream, Image & image) const
 void
 ImageFileFormatMatlab::write (std::ostream & stream, const Image & image) const
 {
-  // Write header ...
-
   int numericType;
   if (*image.format == GrayChar)
   {
 	numericType = 5;
+  }
+  else if (*image.format == GrayShort)
+  {
+	numericType = 4;
   }
   else if (*image.format == GrayFloat)
   {
@@ -117,10 +123,16 @@ ImageFileFormatMatlab::write (std::ostream & stream, const Image & image) const
   }
   else
   {
-	Image temp = image * GrayChar;
+	Image temp = image * GrayDouble;
 	write (stream, temp);
 	return;
   }
+
+  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+  if (! buffer) throw "Matlab format only handle packed buffers for now";
+
+  // Write header ...
+
   numericType *= 10;  // Recycle "numericType" as "type".  All other digits in type field should be zero.
   stream.write ((char *) &numericType, sizeof (numericType));
 
@@ -137,12 +149,12 @@ ImageFileFormatMatlab::write (std::ostream & stream, const Image & image) const
   // Write data...
   for (int x = 0; x < image.width; x++)
   {
-	char * buffer = (char *) image.buffer;
-	buffer += x * image.format->depth;
+	char * p = (char *) buffer->memory;
+	p += x * image.format->depth;
 	for (int y = 0; y < image.height; y++)
 	{
-	  stream.write (buffer, image.format->depth);
-	  buffer += image.width * image.format->depth;
+	  stream.write (p, image.format->depth);
+	  p += buffer->stride * image.format->depth;
 	}
   }
 }
