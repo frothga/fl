@@ -14,6 +14,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Guard against empty point set.
 */
 
 
@@ -46,8 +49,11 @@ InterestPointSet::~InterestPointSet ()
 void
 InterestPointSet::add (const multiset<PointInterest> & points)
 {
+  int pointSize = points.size ();
+  if (! pointSize) return;
+
   int rsize = size ();
-  resize (rsize + points.size ());
+  resize (rsize + pointSize);
   PointInterest ** r = & at (rsize);
   multiset<PointInterest>::const_iterator s = points.begin ();
   while (s != points.end ())
