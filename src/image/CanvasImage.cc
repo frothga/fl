@@ -134,8 +134,8 @@ CanvasImage::pen (const Point & p, unsigned int color)
 {
   if (lineWidth == 1)  // hack for simple line drawing
   {
-	int x = (int) rintf (p.x);
-	int y = (int) rintf (p.y);
+	int x = (int) rint (p.x);
+	int y = (int) rint (p.y);
 	if (x >= 0  &&  x < width  &&  y >= 0  &&  y < height) setRGBA (x, y, color);
   }
   else
