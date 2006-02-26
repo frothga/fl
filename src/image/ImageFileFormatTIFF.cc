@@ -277,31 +277,38 @@ ImageFileFormatTIFF::write (std::ostream & stream, const Image & image) const
   // blocks.  It could then estimate how many bytes to grab from stream.
 }
 
-bool
+float
 ImageFileFormatTIFF::isIn (std::istream & stream) const
 {
   string magic = "    ";  // 4 spaces
   getMagic (stream, magic);
 
-  bool result = magic.substr (0, 2) == "II"  ||  magic.substr (0, 2) == "MM";  // endian indicator
+  float result = 0;
+  if ( magic.substr (0, 2) == "II"  ||  magic.substr (0, 2) == "MM")  // endian indicator
+  {
+	result += 0.5;
+  }
   // Apparently, some implementation don't store the magic number 42 according
   // to the endian indicated by the first two bytes, so we have to handle the
   // wrong order as well.
-  result &= (magic[2] == '\x00'  ||  magic[2] == '\x2A')  &&  (magic[3] == '\x2A'  ||  magic[3] == '\x00');
+  if ((magic[2] == '\x00'  ||  magic[2] == '\x2A')  &&  (magic[3] == '\x2A'  ||  magic[3] == '\x00'))
+  {
+	result += 0.5;
+  }
 
   return result;
 }
 
-bool
+float
 ImageFileFormatTIFF::handles (const std::string & formatName) const
 {
   if (strcasecmp (formatName.c_str (), "tiff") == 0)
   {
-	return true;
+	return 1;
   }
   if (strcasecmp (formatName.c_str (), "tif") == 0)
   {
-	return true;
+	return 0.8;
   }
-  return false;
+  return 0;
 }

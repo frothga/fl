@@ -235,7 +235,7 @@ ImageFileFormatJPEG::write (std::ostream & stream, const Image & image) const
   delete dm;
 }
 
-bool
+float
 ImageFileFormatJPEG::isIn (std::istream & stream) const
 {
   // JFIF header: OxFF 0xD8 0xFF 0xE0 <skip 2 bytes> "JFIF" 0x00
@@ -244,25 +244,25 @@ ImageFileFormatJPEG::isIn (std::istream & stream) const
   getMagic (stream, magic);
   if (magic.substr (0, 4) == "\xFF\xD8\xFF\xE0"  &&  magic.substr (6, 4) == "JFIF")
   {
-	return true;
+	return 1;
   }
   if (magic.substr (0, 4) == "\xFF\xD8\xFF\xE1"  &&  magic.substr (6, 4) == "Exif")
   {
-	return true;
+	return 1;
   }
-  return false;
+  return 0;
 }
 
-bool
+float
 ImageFileFormatJPEG::handles (const std::string & formatName) const
 {
   if (strcasecmp (formatName.c_str (), "jpg") == 0)
   {
-	return true;
+	return 0.8;
   }
   if (strcasecmp (formatName.c_str (), "jpeg") == 0)
   {
-	return true;
+	return 1;
   }
-  return false;
+  return 0;
 }

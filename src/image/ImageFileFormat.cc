@@ -61,47 +61,68 @@ ImageFileFormat::write (const std::string & fileName, const Image & image) const
   write (ofs, image);
 }
 
-ImageFileFormat *
-ImageFileFormat::find (const std::string & fileName)
+float
+ImageFileFormat::find (const std::string & fileName, ImageFileFormat *& result)
 {
   ifstream ifs (fileName.c_str (), ios::binary);
-  ImageFileFormat * result = find (ifs);
-  if (! result)
-  {
-	string suffix = fileName.substr (fileName.find_last_of ('.') + 1);
-	result = findName (suffix);
-  }
-  return result;
-}
+  string suffix = fileName.substr (fileName.find_last_of ('.') + 1);
 
-ImageFileFormat *
-ImageFileFormat::find (std::istream & stream)
-{
-  vector<ImageFileFormat *>::reverse_iterator i;
-  for (i = formats.rbegin (); i != formats.rend (); i++)
+  float P = 0;
+  result = 0;
+  vector<ImageFileFormat *>::iterator it;
+  for (it = formats.begin (); it != formats.end (); it++)
   {
-	if ((*i)->isIn (stream))
+	// It might be better to combine isIn() and handles() in a single function
+	// that does its own mixing.
+	float q1 = (*it)->isIn (ifs);
+	float q2 = (*it)->handles (suffix);
+	float q = (q1 + q2) / 2.0f;
+	if (q >= P)
 	{
-	  return *i;
+	  P = q;
+	  result = *it;
 	}
   }
 
-  return NULL;
+  return P;
 }
 
-ImageFileFormat *
-ImageFileFormat::findName (const std::string & formatName)
+float
+ImageFileFormat::find (std::istream & stream, ImageFileFormat *& result)
 {
-  vector<ImageFileFormat *>::reverse_iterator i;
-  for (i = formats.rbegin (); i != formats.rend (); i++)
+  float P = 0;
+  result = 0;
+  vector<ImageFileFormat *>::iterator it;
+  for (it = formats.begin (); it != formats.end (); it++)
   {
-	if ((*i)->handles (formatName))
+	float q = (*it)->isIn (stream);
+	if (q >= P)
 	{
-	  return *i;
+	  P = q;
+	  result = *it;
 	}
   }
 
-  return NULL;
+  return P;
+}
+
+float
+ImageFileFormat::findName (const std::string & formatName, ImageFileFormat *& result)
+{
+  float P = 0;
+  result = 0;
+  vector<ImageFileFormat *>::iterator it;
+  for (it = formats.begin (); it != formats.end (); it++)
+  {
+	float q = (*it)->handles (formatName);
+	if (q >= P)
+	{
+	  P = q;
+	  result = *it;
+	}
+  }
+
+  return P;
 }
 
 /**

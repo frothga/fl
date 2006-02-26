@@ -93,7 +93,8 @@ Image::Image (const std::string & fileName)
 void
 Image::read (const std::string & fileName)
 {
-  ImageFileFormat * f = ImageFileFormat::find (fileName);
+  ImageFileFormat * f;
+  ImageFileFormat::find (fileName, f);
   if (! f)
   {
 	throw "Unrecognized file format for image.";
@@ -112,7 +113,8 @@ Image::read (istream & stream)
 {
   if (stream.good ())
   {
-	ImageFileFormat * f = ImageFileFormat::find (stream);
+	ImageFileFormat * f;
+	ImageFileFormat::find (stream, f);
 	if (! f)
 	{
 	  throw "Unrecognized file format for image.";
@@ -127,7 +129,8 @@ Image::read (istream & stream)
 void
 Image::write (const std::string & fileName, const std::string & formatName) const
 {
-  ImageFileFormat * f = ImageFileFormat::findName (formatName);
+  ImageFileFormat * f;
+  ImageFileFormat::findName (formatName, f);
   if (! f)
   {
 	throw "Unrecognized file format for image.";
@@ -139,7 +142,8 @@ Image::write (const std::string & fileName, const std::string & formatName) cons
 void
 Image::write (ostream & stream, const std::string & formatName) const
 {
-  ImageFileFormat * f = ImageFileFormat::findName (formatName);
+  ImageFileFormat * f;
+  ImageFileFormat::findName (formatName, f);
   if (! f)
   {
 	throw "Unrecognized file format for image.";

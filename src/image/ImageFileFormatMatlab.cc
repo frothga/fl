@@ -159,7 +159,7 @@ ImageFileFormatMatlab::write (std::ostream & stream, const Image & image) const
   }
 }
 
-bool
+float
 ImageFileFormatMatlab::isIn (std::istream & stream) const
 {
   string magic = "    ";  // 4 spaces = 4 bytes = 1 int
@@ -173,24 +173,24 @@ ImageFileFormatMatlab::isIn (std::istream & stream) const
   }
   catch (const char * error)
   {
-	return false;
+	return 0;
   }
 
-  return true;
+  return 1;
 }
 
-bool
+float
 ImageFileFormatMatlab::handles (const std::string & formatName) const
 {
   if (strcasecmp (formatName.c_str (), "mat") == 0)
   {
-	return true;
+	return 0.8;
   }
   if (strcasecmp (formatName.c_str (), "matlab") == 0)
   {
-	return true;
+	return 1;
   }
-  return false;
+  return 0;
 }
 
 void

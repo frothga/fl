@@ -840,12 +840,12 @@ namespace fl
 	virtual void read (std::istream & stream, Image & image) const = 0;
 	virtual void write (const std::string & fileName, const Image & image) const;
 	virtual void write (std::ostream & stream, const Image & image) const = 0;
-	virtual bool isIn (std::istream & stream) const = 0;  ///< Determines if this format is on the stream.  Always rewinds stream back to where it was when function was called.
-	virtual bool handles (const std::string & formatName) const = 0;  ///< Determines if this object handles the format with the given human readable name.
+	virtual float isIn (std::istream & stream) const = 0;  ///< Determines probability that this format is on the stream.  Always rewinds stream back to where it was when function was called.
+	virtual float handles (const std::string & formatName) const = 0;  ///< Determines probability that this object handles the format with the given human readable name.
 
-	static ImageFileFormat * find (const std::string & fileName);  ///< Determines what format the stream is in.
-	static ImageFileFormat * find (std::istream & stream);  ///< Ditto.  Always returns stream to original position.
-	static ImageFileFormat * findName (const std::string & formatName);  ///< Determines what format to use based on given name.
+	static float find (const std::string & fileName, ImageFileFormat *& result);  ///< Determines what format the stream is in.
+	static float find (std::istream & stream, ImageFileFormat *& result);  ///< Ditto.  Always returns stream to original position.
+	static float findName (const std::string & formatName, ImageFileFormat *& result);  ///< Determines what format to use based on given name.
 	static void getMagic (std::istream & stream, std::string & magic);  ///< Attempts to read magic.size () worth of bytes from stream and return them in magic.  Always returns stream to original position.
 
 	static std::vector<ImageFileFormat *> formats;
@@ -856,8 +856,8 @@ namespace fl
   public:
 	virtual void read (std::istream & stream, Image & image) const;
 	virtual void write (std::ostream & stream, const Image & image) const;
-	virtual bool isIn (std::istream & stream) const;
-	virtual bool handles (const std::string & formatName) const;
+	virtual float isIn (std::istream & stream) const;
+	virtual float handles (const std::string & formatName) const;
   };
 
   class ImageFileFormatEPS : public ImageFileFormat
@@ -865,8 +865,8 @@ namespace fl
   public:
 	virtual void read (std::istream & stream, Image & image) const;
 	virtual void write (std::ostream & stream, const Image & image) const;
-	virtual bool isIn (std::istream & stream) const;
-	virtual bool handles (const std::string & formatName) const;
+	virtual float isIn (std::istream & stream) const;
+	virtual float handles (const std::string & formatName) const;
   };
 
   class ImageFileFormatJPEG : public ImageFileFormat
@@ -874,8 +874,8 @@ namespace fl
   public:
 	virtual void read (std::istream & stream, Image & image) const;
 	virtual void write (std::ostream & stream, const Image & image) const;
-	virtual bool isIn (std::istream & stream) const;
-	virtual bool handles (const std::string & formatName) const;
+	virtual float isIn (std::istream & stream) const;
+	virtual float handles (const std::string & formatName) const;
   };
 
   class ImageFileFormatTIFF : public ImageFileFormat
@@ -887,8 +887,8 @@ namespace fl
 	virtual void read (std::istream & stream, Image & image) const;
 	virtual void write (const std::string & fileName, const Image & image) const;
 	virtual void write (std::ostream & stream, const Image & image) const;
-	virtual bool isIn (std::istream & stream) const;
-	virtual bool handles (const std::string & formatName) const;
+	virtual float isIn (std::istream & stream) const;
+	virtual float handles (const std::string & formatName) const;
   };
 
   class ImageFileFormatMatlab : public ImageFileFormat
@@ -896,8 +896,8 @@ namespace fl
   public:
 	virtual void read (std::istream & stream, Image & image) const;
 	virtual void write (std::ostream & stream, const Image & image) const;
-	virtual bool isIn (std::istream & stream) const;
-	virtual bool handles (const std::string & formatName) const;
+	virtual float isIn (std::istream & stream) const;
+	virtual float handles (const std::string & formatName) const;
 	void parseType (int type, int & numericType) const;
   };
 

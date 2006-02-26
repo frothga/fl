@@ -82,32 +82,32 @@ ImageFileFormatEPS::write (std::ostream & stream, const Image & image) const
   stream << "%%EOF" << endl;
 }
 
-bool
+float
 ImageFileFormatEPS::isIn (std::istream & stream) const
 {
   string magic = "    ";  // 4 spaces
   getMagic (stream, magic);
   if (magic == "%!PS")
   {
-	return true;
+	return 1;
   }
-  return false;
+  return 0;
 }
 
-bool
+float
 ImageFileFormatEPS::handles (const std::string & formatName) const
 {
   if (strcasecmp (formatName.c_str (), "eps") == 0)
   {
-	return true;
+	return 0.8;
   }
   if (strcasecmp (formatName.c_str (), "ps") == 0)
   {
-	return true;
+	return 0.7;
   }
   if (strcasecmp (formatName.c_str (), "epsf") == 0)
   {
-	return true;
+	return 0.8;
   }
-  return false;
+  return 0;
 }

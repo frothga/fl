@@ -154,32 +154,32 @@ ImageFileFormatPGM::write (std::ostream & stream, const Image & image) const
   stream.write ((char *) buffer->memory, image.width * image.height * image.format->depth);
 }
 
-bool
+float
 ImageFileFormatPGM::isIn (std::istream & stream) const
 {
   string magic = "  ";  // 2 spaces
   getMagic (stream, magic);
   if (magic == "P5")
   {
-	return true;
+	return 0.8;
   }
   if (magic == "P6")
   {
-	return true;
+	return 0.8;
   }
-  return false;
+  return 0;
 }
 
-bool
+float
 ImageFileFormatPGM::handles (const std::string & formatName) const
 {
   if (strcasecmp (formatName.c_str (), "pgm") == 0)
   {
-	return true;
+	return 0.9;
   }
   if (strcasecmp (formatName.c_str (), "ppm") == 0)
   {
-	return true;
+	return 0.9;
   }
-  return false;
+  return 0;
 }
