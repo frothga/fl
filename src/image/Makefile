@@ -18,6 +18,7 @@
 #
 # 01/2006 Fred Rothganger -- Move PixelFormat clases to separate file.
 # 02/2006 Fred Rothganger -- Build shared libraries.  Add distclean.
+#         Change Image structure.
 
 
 SOURCE_DIR := ../..
@@ -33,6 +34,7 @@ IMAGE_O = \
 	Image.o \
 	Pixel.o \
 	PixelFormat.o \
+	PixelBuffer.o \
 	Point.o \
 	ImageCache.o
 
@@ -119,14 +121,17 @@ $(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
 	$(LIBCOMMAND)
 
 
-test: test.o $(IMAGE_O) $(IMAGE_FILE_FORMAT_O) $(INTEREST_O) $(CONVOLVE_O) $(VIDEO_O) $(CANVAS_O) $(DESCRIPTOR_O)
+test: test.o $(OBJS)
+	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB)
+
+test2: test2.o $(OBJS)
 	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB)
 
 
 clean:
 	rm -f *~ *.o core core.* $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
 	rm -rf Debug Release
-	rm -f test$(EXESUF)
+	rm -f test$(EXESUF) test2$(EXESUF)
 
 distclean: clean
 	rm -f Dependencies
