@@ -15,7 +15,7 @@ Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Change Image structure.
+02/2006 Fred Rothganger -- Change Image structure.  Separate ImageFile.
 */
 
 
@@ -30,16 +30,32 @@ using namespace std;
 using namespace fl;
 
 
-// class ImageFileFormatTIFF --------------------------------------------------
+// class ImageFileTIFF --------------------------------------------------------
+
+class ImageFileTIFF : public ImageFile
+{
+public:
+  ImageFileTIFF (TIFF * tif)
+  {
+	this->tif = tif;
+  }
+  virtual ~ImageFileTIFF ();
+
+  virtual void read (Image & image);
+  virtual void write (const Image & image);
+
+  TIFF * tif;
+};
+
+ImageFileTIFF::~ImageFileTIFF ()
+{
+  TIFFClose (tif);
+}
 
 void
-ImageFileFormatTIFF::read (const std::string & fileName, Image & image) const
+ImageFileTIFF::read (Image & image)
 {
-  TIFF * tif = TIFFOpen (fileName.c_str (), "r");
-  if (! tif)
-  {
-	throw "Unable to open file.";
-  }
+  if (! tif) throw "ImageFileTIFF not open";
 
   bool ok = true;
 
@@ -140,24 +156,18 @@ ImageFileFormatTIFF::read (const std::string & fileName, Image & image) const
 	TIFFReadScanline (tif, p, y);
 	p += stride;
   }
-
-  TIFFClose(tif);
 }
 
 void
-ImageFileFormatTIFF::read (std::istream & stream, Image & image) const
+ImageFileTIFF::write (const Image & image)
 {
-  throw "Can't read TIFF on stream (limitation of libtiff and standard).";
-}
+  if (! tif) throw "ImageFileTIFF not open";
 
-void
-ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) const
-{
   if (image.format->monochrome)
   {
 	if (*image.format != GrayChar  &&  *image.format != GrayShort  &&  *image.format != GrayFloat  &&  *image.format != GrayDouble)
 	{
-	  write (fileName, image * GrayChar);
+	  write (image * GrayChar);
 	  return;
 	}
   }
@@ -165,7 +175,7 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
   {
 	if (*image.format != RGBAChar  &&  *image.format != RGBAShort  &&  *image.format != RGBAFloat)
 	{
-	  write (fileName, image * RGBAChar);
+	  write (image * RGBAChar);
 	  return;
 	}
   }
@@ -173,7 +183,7 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
   {
 	if (*image.format != RGBChar  &&  *image.format != RGBShort)
 	{
-	  write (fileName, image * RGBChar);
+	  write (image * RGBChar);
 	  return;
 	}
   }
@@ -181,8 +191,6 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
   PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
   if (! buffer) throw "TIFF only handles packed buffers for now";
 
-
-  TIFF * tif = TIFFOpen (fileName.c_str (), "w");
 
   TIFFSetField (tif, TIFFTAG_IMAGEWIDTH, image.width);
   TIFFSetField (tif, TIFFTAG_IMAGELENGTH, image.height);
@@ -263,18 +271,32 @@ ImageFileFormatTIFF::write (const std::string & fileName, const Image & image) c
 	TIFFWriteScanline (tif, p, y, 0);
     p += stride;
   }
-
-  TIFFClose (tif);
 }
 
-void
-ImageFileFormatTIFF::write (std::ostream & stream, const Image & image) const
-{
-  throw "Can't write TIFF on stream (limitation of libtiff and standard).";
 
-  // Actually, we could write entire TIFF to a temporary file, and then dump
-  // to stream.  Read could be modified to interpret the header and directory
-  // blocks.  It could then estimate how many bytes to grab from stream.
+// class ImageFileFormatTIFF --------------------------------------------------
+
+ImageFile *
+ImageFileFormatTIFF::open (const string & fileName, const string & mode) const
+{
+  TIFF * tif = TIFFOpen (fileName.c_str (), mode.c_str ());
+  if (! tif)
+  {
+	throw "Unable to open file.";
+  }
+  return new ImageFileTIFF (tif);
+}
+
+ImageFile *
+ImageFileFormatTIFF::open (istream & stream) const
+{
+  throw "ImageFileFormatTIFF does not yet support stream style I/O";
+}
+
+ImageFile *
+ImageFileFormatTIFF::open (ostream & stream) const
+{
+  throw "ImageFileFormatTIFF does not yet support stream style I/O";
 }
 
 float

@@ -93,14 +93,16 @@ Image::Image (const std::string & fileName)
 void
 Image::read (const std::string & fileName)
 {
-  ImageFileFormat * f;
-  ImageFileFormat::find (fileName, f);
-  if (! f)
+  ImageFileFormat * ff;
+  ImageFileFormat::find (fileName, ff);
+  if (! ff)
   {
 	throw "Unrecognized file format for image.";
   }
 
-  f->read (fileName, *this);
+  ImageFile * f = ff->open (fileName, "r");
+  f->read (*this);
+  delete f;
 
   // Use stat () to determine timestamp.
   struct stat info;
@@ -113,14 +115,16 @@ Image::read (istream & stream)
 {
   if (stream.good ())
   {
-	ImageFileFormat * f;
-	ImageFileFormat::find (stream, f);
-	if (! f)
+	ImageFileFormat * ff;
+	ImageFileFormat::find (stream, ff);
+	if (! ff)
 	{
 	  throw "Unrecognized file format for image.";
 	}
 
-	f->read (stream, *this);
+	ImageFile * f = ff->open (stream);
+	f->read (*this);
+	delete f;
   }
 
   timestamp = getTimestamp ();
@@ -129,27 +133,31 @@ Image::read (istream & stream)
 void
 Image::write (const std::string & fileName, const std::string & formatName) const
 {
-  ImageFileFormat * f;
-  ImageFileFormat::findName (formatName, f);
-  if (! f)
+  ImageFileFormat * ff;
+  ImageFileFormat::findName (formatName, ff);
+  if (! ff)
   {
 	throw "Unrecognized file format for image.";
   }
 
-  f->write (fileName, *this);
+  ImageFile * f = ff->open (fileName, "w");
+  f->write (*this);
+  delete f;
 }
 
 void
 Image::write (ostream & stream, const std::string & formatName) const
 {
-  ImageFileFormat * f;
-  ImageFileFormat::findName (formatName, f);
-  if (! f)
+  ImageFileFormat * ff;
+  ImageFileFormat::findName (formatName, ff);
+  if (! ff)
   {
 	throw "Unrecognized file format for image.";
   }
 
-  f->write (stream, *this);
+  ImageFile * f = ff->open (stream);
+  f->write (*this);
+  delete f;
 }
 
 Image &

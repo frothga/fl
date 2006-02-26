@@ -15,7 +15,8 @@ Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Change Image structure to use PixelBuffer.
+02/2006 Fred Rothganger -- Change Image structure to use PixelBuffer.  Separate
+        ImageFile.
 */
 
 
@@ -823,12 +824,23 @@ namespace fl
   // File formats -------------------------------------------------------------
 
   /**
-	 Danger!  Not thread-safe.  Need a mutex around modifications and accesses
-	 to static variable "formats".  Add if there's ever a need to create
-	 and destroy formats on the fly with multiple threads trying to access
-	 the list.
-	 Translation of the above: it is very unlikely that in practice there
-	 will be a problem with the "unsafe" version.  :)
+	 Interface for reading and writing Images.  While both reading and writing
+	 functions appear here, in general only one will work for any given
+	 open file and the other will throw exceptions if called.  However,
+	 there may be cases where an image file can be simultaneously readable
+	 and writable.
+   **/
+  class ImageFile
+  {
+  public:
+	virtual ~ImageFile ();
+
+	virtual void read (Image & image) = 0;
+	virtual void write (const Image & image) = 0;
+  };
+
+  /**
+	 \todo Add a mutex around the static variable formats.
   **/
   class ImageFileFormat
   {
@@ -836,10 +848,9 @@ namespace fl
 	ImageFileFormat ();
 	virtual ~ImageFileFormat ();
 
-	virtual void read (const std::string & fileName, Image & image) const;
-	virtual void read (std::istream & stream, Image & image) const = 0;
-	virtual void write (const std::string & fileName, const Image & image) const;
-	virtual void write (std::ostream & stream, const Image & image) const = 0;
+	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const = 0;
+	virtual ImageFile * open (std::istream & stream) const = 0;
+	virtual ImageFile * open (std::ostream & stream) const = 0;
 	virtual float isIn (std::istream & stream) const = 0;  ///< Determines probability that this format is on the stream.  Always rewinds stream back to where it was when function was called.
 	virtual float handles (const std::string & formatName) const = 0;  ///< Determines probability that this object handles the format with the given human readable name.
 
@@ -854,8 +865,9 @@ namespace fl
   class ImageFileFormatPGM : public ImageFileFormat
   {
   public:
-	virtual void read (std::istream & stream, Image & image) const;
-	virtual void write (std::ostream & stream, const Image & image) const;
+	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const;
+	virtual ImageFile * open (std::istream & stream) const;
+	virtual ImageFile * open (std::ostream & stream) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -863,8 +875,9 @@ namespace fl
   class ImageFileFormatEPS : public ImageFileFormat
   {
   public:
-	virtual void read (std::istream & stream, Image & image) const;
-	virtual void write (std::ostream & stream, const Image & image) const;
+	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const;
+	virtual ImageFile * open (std::istream & stream) const;
+	virtual ImageFile * open (std::ostream & stream) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -872,21 +885,24 @@ namespace fl
   class ImageFileFormatJPEG : public ImageFileFormat
   {
   public:
-	virtual void read (std::istream & stream, Image & image) const;
-	virtual void write (std::ostream & stream, const Image & image) const;
+	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const;
+	virtual ImageFile * open (std::istream & stream) const;
+	virtual ImageFile * open (std::ostream & stream) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
 
+  /**
+	 \todo This format can't read and write streams, so those two methods
+	 will throw an exception.  However, there does exist a streams-style
+	 interface to libtiff.
+  **/
   class ImageFileFormatTIFF : public ImageFileFormat
   {
   public:
-	// Note: This format can't read and write streams, so those two methods
-	// will throw an exception.
-	virtual void read (const std::string & fileName, Image & image) const;
-	virtual void read (std::istream & stream, Image & image) const;
-	virtual void write (const std::string & fileName, const Image & image) const;
-	virtual void write (std::ostream & stream, const Image & image) const;
+	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const;
+	virtual ImageFile * open (std::istream & stream) const;
+	virtual ImageFile * open (std::ostream & stream) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -894,11 +910,11 @@ namespace fl
   class ImageFileFormatMatlab : public ImageFileFormat
   {
   public:
-	virtual void read (std::istream & stream, Image & image) const;
-	virtual void write (std::ostream & stream, const Image & image) const;
+	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const;
+	virtual ImageFile * open (std::istream & stream) const;
+	virtual ImageFile * open (std::ostream & stream) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
-	void parseType (int type, int & numericType) const;
   };
 
 

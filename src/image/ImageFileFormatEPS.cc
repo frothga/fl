@@ -7,22 +7,52 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
-02/2006 Fred Rothganger -- Change Image structure.
+02/2006 Fred Rothganger -- Change Image structure.  Separate ImageFile.
 */
 
 
 #include "fl/image.h"
 #include "fl/string.h"
 
+#include <fstream>
+
 
 using namespace std;
 using namespace fl;
 
 
-// class ImageFileFormatEPS ---------------------------------------------------
+// class ImageFileEPS ---------------------------------------------------------
+
+class ImageFileEPS : public ImageFile
+{
+public:
+  ImageFileEPS (istream * in, ostream * out, bool ownStream = false)
+  {
+	this->in = in;
+	this->out = out;
+	this->ownStream = ownStream;
+  }
+  ~ImageFileEPS ();
+
+  virtual void read (Image & image);
+  virtual void write (const Image & image);
+
+  istream * in;
+  ostream * out;
+  bool ownStream;
+};
+
+ImageFileEPS::~ImageFileEPS ()
+{
+  if (ownStream)
+  {
+	if (in) delete in;
+	if (out) delete out;
+  }
+}
 
 void
-ImageFileFormatEPS::read (std::istream & stream, Image & image) const
+ImageFileEPS::read (Image & image)
 {
   throw "There's no way we are going to read an EPS!";
 
@@ -30,12 +60,13 @@ ImageFileFormatEPS::read (std::istream & stream, Image & image) const
 }
 
 void
-ImageFileFormatEPS::write (std::ostream & stream, const Image & image) const
+ImageFileEPS::write (const Image & image)
 {
+  if (! out) throw "ImageFileEPS not open for writing";
+
   if (*image.format != GrayChar)
   {
-	Image temp = image * GrayChar;
-	write (stream, temp);
+	write (image * GrayChar);
 	return;
   }
 
@@ -52,34 +83,62 @@ ImageFileFormatEPS::write (std::ostream & stream, const Image & image) const
   float h = image.width * scale;
 
   // Header
-  stream << "%!PS-Adobe-2.0" << endl;
-  stream << "%%BoundingBox: 72 72 " << (h + 72) << " " << (v + 72) << " " << endl;
-  stream << "%%EndComments" << endl;
-  stream << endl;
-  stream << "72 72 translate" << endl;
-  stream << h << " " << v << " scale" << endl;
-  stream << "/grays 1000 string def" << endl;
-  stream << image.width << " " << image.height << " 8" << endl;
-  stream << "[" << image.width << " 0 0 " << -image.height << " 0 " << image.height << "]" << endl;
-  stream << "{ currentfile grays readhexstring pop } image" << endl;
+  (*out) << "%!PS-Adobe-2.0" << endl;
+  (*out) << "%%BoundingBox: 72 72 " << (h + 72) << " " << (v + 72) << " " << endl;
+  (*out) << "%%EndComments" << endl;
+  (*out) << endl;
+  (*out) << "72 72 translate" << endl;
+  (*out) << h << " " << v << " scale" << endl;
+  (*out) << "/grays 1000 string def" << endl;
+  (*out) << image.width << " " << image.height << " 8" << endl;
+  (*out) << "[" << image.width << " 0 0 " << -image.height << " 0 " << image.height << "]" << endl;
+  (*out) << "{ currentfile grays readhexstring pop } image" << endl;
 
   // Dump image as hex
-  stream << hex;
+  (*out) << hex;
   unsigned char * begin = (unsigned char *) buffer->memory;
   int end = image.width * image.height;
   for (int i = 0; i < end; i++)
   {
 	if (i % 35 == 0)
 	{
-	  stream << endl;
+	  (*out) << endl;
 	}
-	stream << (int) begin[i];
+	(*out) << (int) begin[i];
   }
-  stream << endl;
+  (*out) << endl;
 
   // Trailer
-  stream << "%%Trailer" << endl;
-  stream << "%%EOF" << endl;
+  (*out) << "%%Trailer" << endl;
+  (*out) << "%%EOF" << endl;
+}
+
+
+// class ImageFileFormatEPS ---------------------------------------------------
+
+ImageFile *
+ImageFileFormatEPS::open (const string & fileName, const string & mode) const
+{
+  if (mode == "r")
+  {
+	return new ImageFileEPS (new ifstream (fileName.c_str (), ios::binary), 0, true);
+  }
+  else
+  {
+	return new ImageFileEPS (0, new ofstream (fileName.c_str (), ios::binary), true);
+  }
+}
+
+ImageFile *
+ImageFileFormatEPS::open (std::istream & stream) const
+{
+  return new ImageFileEPS (&stream, 0);
+}
+
+ImageFile *
+ImageFileFormatEPS::open (std::ostream & stream) const
+{
+  return new ImageFileEPS (0, &stream);
 }
 
 float

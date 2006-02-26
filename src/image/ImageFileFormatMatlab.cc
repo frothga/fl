@@ -7,23 +7,93 @@ for details.
 
 
 12/2004 Fred Rothganger -- Compilability fix for MSVC
-02/2006 Fred Rothganger -- Change Image structure.
+02/2006 Fred Rothganger -- Change Image structure.  Separate ImageFile.
 */
 
 
 #include "fl/image.h"
 #include "fl/string.h"
 
+#include <fstream>
+
 
 using namespace std;
 using namespace fl;
 
 
-// class ImageFileFormatMatlab ------------------------------------------------
+// Supporting routine ---------------------------------------------------------
+
+static void
+parseType (int type, int & numericType)
+{
+  if (type >= 10000  ||  type < 0)
+  {
+	throw "Type number out of range";
+  }
+
+  int n = type / 1000;
+  if (n > 4)
+  {
+	throw "Machine id out of range";
+  }
+  type %= 1000;
+
+  n = type / 100;
+  if (n)
+  {
+	throw "Type number out of range";
+  }
+  type %= 100;
+
+  numericType = type / 10;
+  if (numericType > 5)
+  {
+	throw "Numeric type id out of range";
+  }
+  type %= 10;
+
+  if (type > 2)
+  {
+	throw "Matrix type id out of range";
+  }
+}
+
+
+// class ImageFileMatlab ------------------------------------------------------
+
+class ImageFileMatlab : public ImageFile
+{
+public:
+  ImageFileMatlab (istream * in, ostream * out, bool ownStream = false)
+  {
+	this->in = in;
+	this->out = out;
+	this->ownStream = ownStream;
+  }
+  ~ImageFileMatlab ();
+
+  virtual void read (Image & image);
+  virtual void write (const Image & image);
+
+  istream * in;
+  ostream * out;
+  bool ownStream;
+};
+
+ImageFileMatlab::~ImageFileMatlab ()
+{
+  if (ownStream)
+  {
+	if (in) delete in;
+	if (out) delete out;
+  }
+}
 
 void
-ImageFileFormatMatlab::read (std::istream & stream, Image & image) const
+ImageFileMatlab::read (Image & image)
 {
+  if (! in) throw "ImageFileMatlab not open for reading";
+
   // Parse header...
 
   int type;
@@ -32,19 +102,19 @@ ImageFileFormatMatlab::read (std::istream & stream, Image & image) const
   int imaginaryFlag;
   int nameLength;
 
-  stream.read ((char *) &type, sizeof (type));
-  stream.read ((char *) &rows, sizeof (rows));
-  stream.read ((char *) &columns, sizeof (columns));
-  stream.read ((char *) &imaginaryFlag, sizeof (imaginaryFlag));
-  stream.read ((char *) &nameLength, sizeof (nameLength));
+  in->read ((char *) &type, sizeof (type));
+  in->read ((char *) &rows, sizeof (rows));
+  in->read ((char *) &columns, sizeof (columns));
+  in->read ((char *) &imaginaryFlag, sizeof (imaginaryFlag));
+  in->read ((char *) &nameLength, sizeof (nameLength));
 
   const int maxNameLength = 2000;
-  if (! stream.good ()  ||  nameLength > maxNameLength)
+  if (! in->good ()  ||  nameLength > maxNameLength)
   {
 	throw "Can't finish reading Matlab file becasue stream is bad.";
   }
   char name[maxNameLength];
-  stream.read (name, nameLength);
+  in->read (name, nameLength);
 
   if (imaginaryFlag)
   {
@@ -82,7 +152,7 @@ ImageFileFormatMatlab::read (std::istream & stream, Image & image) const
 	p += x * image.format->depth;
 	for (int y = 0; y < rows; y++)
 	{
-	  stream.read (p, image.format->depth);
+	  in->read (p, image.format->depth);
 	  p += columns * image.format->depth;
 	}
   }
@@ -102,8 +172,10 @@ ImageFileFormatMatlab::read (std::istream & stream, Image & image) const
 }
 
 void
-ImageFileFormatMatlab::write (std::ostream & stream, const Image & image) const
+ImageFileMatlab::write (const Image & image)
 {
+  if (! out) throw "ImageFileMatlab not open for writing";
+
   int numericType;
   if (*image.format == GrayChar)
   {
@@ -124,7 +196,7 @@ ImageFileFormatMatlab::write (std::ostream & stream, const Image & image) const
   else
   {
 	Image temp = image * GrayDouble;
-	write (stream, temp);
+	write (temp);
 	return;
   }
 
@@ -134,17 +206,17 @@ ImageFileFormatMatlab::write (std::ostream & stream, const Image & image) const
   // Write header ...
 
   numericType *= 10;  // Recycle "numericType" as "type".  All other digits in type field should be zero.
-  stream.write ((char *) &numericType, sizeof (numericType));
+  out->write ((char *) &numericType, sizeof (numericType));
 
-  stream.write ((char *) &image.height, sizeof (image.height));
-  stream.write ((char *) &image.width, sizeof (image.width));
+  out->write ((char *) &image.height, sizeof (image.height));
+  out->write ((char *) &image.width, sizeof (image.width));
   int imaginaryFlag = 0;
-  stream.write ((char *) &imaginaryFlag, sizeof (imaginaryFlag));
+  out->write ((char *) &imaginaryFlag, sizeof (imaginaryFlag));
 
   string bogusName = "bogusName";
   int nameLength = bogusName.size () + 1;
-  stream.write ((char *) &nameLength, sizeof (nameLength));
-  stream.write (bogusName.c_str (), nameLength);
+  out->write ((char *) &nameLength, sizeof (nameLength));
+  out->write (bogusName.c_str (), nameLength);
 
   // Write data...
   for (int x = 0; x < image.width; x++)
@@ -153,10 +225,38 @@ ImageFileFormatMatlab::write (std::ostream & stream, const Image & image) const
 	p += x * image.format->depth;
 	for (int y = 0; y < image.height; y++)
 	{
-	  stream.write (p, image.format->depth);
+	  out->write (p, image.format->depth);
 	  p += buffer->stride * image.format->depth;
 	}
   }
+}
+
+
+// class ImageFileFormatMatlab ------------------------------------------------
+
+ImageFile *
+ImageFileFormatMatlab::open (const string & fileName, const string & mode) const
+{
+  if (mode == "r")
+  {
+	return new ImageFileMatlab (new ifstream (fileName.c_str (), ios::binary), 0, true);
+  }
+  else
+  {
+	return new ImageFileMatlab (0, new ofstream (fileName.c_str (), ios::binary), true);
+  }
+}
+
+ImageFile *
+ImageFileFormatMatlab::open (std::istream & stream) const
+{
+  return new ImageFileMatlab (&stream, 0);
+}
+
+ImageFile *
+ImageFileFormatMatlab::open (std::ostream & stream) const
+{
+  return new ImageFileMatlab (0, &stream);
 }
 
 float
@@ -191,39 +291,4 @@ ImageFileFormatMatlab::handles (const std::string & formatName) const
 	return 1;
   }
   return 0;
-}
-
-void
-ImageFileFormatMatlab::parseType (int type, int & numericType) const
-{
-  if (type >= 10000  ||  type < 0)
-  {
-	throw "Type number out of range";
-  }
-
-  int n = type / 1000;
-  if (n > 4)
-  {
-	throw "Machine id out of range";
-  }
-  type %= 1000;
-
-  n = type / 100;
-  if (n)
-  {
-	throw "Type number out of range";
-  }
-  type %= 100;
-
-  numericType = type / 10;
-  if (numericType > 5)
-  {
-	throw "Numeric type id out of range";
-  }
-  type %= 10;
-
-  if (type > 2)
-  {
-	throw "Matrix type id out of range";
-  }
 }

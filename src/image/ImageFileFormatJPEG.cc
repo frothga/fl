@@ -14,12 +14,14 @@ Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Change Image structure.
+02/2006 Fred Rothganger -- Change Image structure.  Separate ImageFile.
 */
 
 
 #include "fl/image.h"
 #include "fl/string.h"
+
+#include <fstream>
 
 extern "C"
 {
@@ -133,11 +135,41 @@ term_source (j_decompress_ptr cinfo)
 }
 
 
-// class ImageFileFormatJPEG --------------------------------------------------
+// class ImageFileJPEG --------------------------------------------------------
+
+class ImageFileJPEG : public ImageFile
+{
+public:
+  ImageFileJPEG (istream * in, ostream * out, bool ownStream = false)
+  {
+	this->in = in;
+	this->out = out;
+	this->ownStream = ownStream;
+  }
+  ~ImageFileJPEG ();
+
+  virtual void read (Image & image);
+  virtual void write (const Image & image);
+
+  istream * in;
+  ostream * out;
+  bool ownStream;
+};
+
+ImageFileJPEG::~ImageFileJPEG ()
+{
+  if (ownStream)
+  {
+	if (in) delete in;
+	if (out) delete out;
+  }
+}
 
 void
-ImageFileFormatJPEG::read (std::istream & stream, Image & image) const
+ImageFileJPEG::read (Image & image)
 {
+  if (! in) throw "ImageFileJPEG not open for reading";
+
   struct jpeg_decompress_struct cinfo;
   struct jpeg_error_mgr jerr;
   cinfo.err = jpeg_std_error (&jerr);
@@ -150,7 +182,7 @@ ImageFileFormatJPEG::read (std::istream & stream, Image & image) const
   sm->jsm.skip_input_data = skip_input_data;
   sm->jsm.resync_to_restart = jpeg_resync_to_restart;
   sm->jsm.term_source = term_source;
-  sm->stream = &stream;
+  sm->stream = in;
   cinfo.src = (jpeg_source_mgr *) sm;
 
   jpeg_read_header (&cinfo, TRUE);
@@ -188,12 +220,14 @@ ImageFileFormatJPEG::read (std::istream & stream, Image & image) const
 }
 
 void
-ImageFileFormatJPEG::write (std::ostream & stream, const Image & image) const
+ImageFileJPEG::write (const Image & image)
 {
+  if (! out) throw "ImageFileJPEG not open for writing";
+
   if (*image.format != RGBChar)
   {
 	Image temp = image * RGBChar;
-	write (stream, temp);
+	write (temp);
 	return;
   }
 
@@ -209,7 +243,7 @@ ImageFileFormatJPEG::write (std::ostream & stream, const Image & image) const
   dm->jdm.init_destination = init_destination;
   dm->jdm.empty_output_buffer = empty_output_buffer;
   dm->jdm.term_destination = term_destination;
-  dm->stream = &stream;
+  dm->stream = out;
   cinfo.dest = (jpeg_destination_mgr *) dm;
 
   cinfo.image_width      = image.width;
@@ -233,6 +267,33 @@ ImageFileFormatJPEG::write (std::ostream & stream, const Image & image) const
 
   jpeg_destroy_compress (&cinfo);
   delete dm;
+}
+
+// class ImageFileFormatJPEG --------------------------------------------------
+
+ImageFile *
+ImageFileFormatJPEG::open (const string & fileName, const string & mode) const
+{
+  if (mode == "r")
+  {
+	return new ImageFileJPEG (new ifstream (fileName.c_str (), ios::binary), 0, true);
+  }
+  else
+  {
+	return new ImageFileJPEG (0, new ofstream (fileName.c_str (), ios::binary), true);
+  }
+}
+
+ImageFile *
+ImageFileFormatJPEG::open (std::istream & stream) const
+{
+  return new ImageFileJPEG (&stream, 0);
+}
+
+ImageFile *
+ImageFileFormatJPEG::open (std::ostream & stream) const
+{
+  return new ImageFileJPEG (0, &stream);
 }
 
 float

@@ -15,35 +15,67 @@ Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Change Image structure.
+02/2006 Fred Rothganger -- Change Image structure.  Separate ImageFile.
 */
 
 
 #include "fl/image.h"
 #include "fl/string.h"
 
+#include <fstream>
+
 
 using namespace std;
 using namespace fl;
 
 
-// class ImageFileFormatPGM ---------------------------------------------------
+// class ImageFilePGM ---------------------------------------------------------
+
+class ImageFilePGM : public ImageFile
+{
+public:
+  ImageFilePGM (istream * in, ostream * out, bool ownStream = false)
+  {
+	this->in = in;
+	this->out = out;
+	this->ownStream = ownStream;
+  }
+  ~ImageFilePGM ();
+
+  virtual void read (Image & image);
+  virtual void write (const Image & image);
+
+  istream * in;
+  ostream * out;
+  bool ownStream;
+};
+
+ImageFilePGM::~ImageFilePGM ()
+{
+  if (ownStream)
+  {
+	if (in) delete in;
+	if (out) delete out;
+  }
+}
 
 void
-ImageFileFormatPGM::read (std::istream & stream, Image & image) const
+ImageFilePGM::read (Image & image)
 {
+  if (! in) throw "ImageFilePGM not open for reading";
+
   // Parse header...
 
   int gotParm = 0;
   int width = 0;
   int height = 0;
-  while (stream.good ()  &&  gotParm < 4)
+  while (in->good ()  &&  gotParm < 4)
   {
 	// Eat all leading white space and comments
 	bool comment = false;
-	while (stream.good ())
+	while (in->good ())
 	{
-	  int c = stream.get ();
+	  int c = in->get ();
 	  if (c == '\r'  ||  c == '\n')
 	  {
 		comment = false;
@@ -60,7 +92,7 @@ ImageFileFormatPGM::read (std::istream & stream, Image & image) const
 		}
 		if (! comment)
 		{
-		  stream.unget ();
+		  in->unget ();
 		  break;
 		}
 	  }
@@ -68,12 +100,12 @@ ImageFileFormatPGM::read (std::istream & stream, Image & image) const
 
 	// Build up one token
 	string token;
-	while (stream.good ()  &&  token.size () < 70)
+	while (in->good ()  &&  token.size () < 70)
 	{
-	  int c = stream.get ();
+	  int c = in->get ();
 	  if (c == '\n'  ||  c == '\r'  ||  c == ' '  ||  c == '\t')  // whitespace ends token
 	  {
-		stream.unget ();
+		in->unget ();
 		break;
 	  }
 	  token += c;
@@ -106,27 +138,29 @@ ImageFileFormatPGM::read (std::istream & stream, Image & image) const
 
   // Assuming P5 or P6, the above parser leaves one unconsumed whitespace
   // before the data block.
-  stream.get ();
+  in->get ();
 
   // Read data
-  if (! stream.good ())
+  if (! in->good ())
   {
 	throw "Unable to finish reading image: stream bad.";
   }
   PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
   if (! buffer) image.buffer = buffer = new PixelBufferPacked;
   image.resize (width, height);
-  stream.read ((char *) buffer->memory, width * height * image.format->depth);
+  in->read ((char *) buffer->memory, width * height * image.format->depth);
 }
 
 void
-ImageFileFormatPGM::write (std::ostream & stream, const Image & image) const
+ImageFilePGM::write (const Image & image)
 {
+  if (! out) throw "ImageFilePGM not open for writing";
+
   if (image.format->monochrome)
   {
 	if (*image.format != GrayChar)
 	{
-	  write (stream, image * GrayChar);
+	  write (image * GrayChar);
 	  return;
 	}
   }
@@ -134,7 +168,7 @@ ImageFileFormatPGM::write (std::ostream & stream, const Image & image) const
   {
 	if (*image.format != RGBChar)
 	{
-	  write (stream, image * RGBChar);
+	  write (image * RGBChar);
 	  return;
 	}
   }
@@ -144,14 +178,42 @@ ImageFileFormatPGM::write (std::ostream & stream, const Image & image) const
 
   if (*image.format == GrayChar)
   {
-	stream << "P5" << endl;
+	(*out) << "P5" << endl;
   }
   else  // RGBChar
   {
-	stream << "P6" << endl;
+	(*out) << "P6" << endl;
   }
-  stream << image.width << " " << image.height << " 255" << endl;
-  stream.write ((char *) buffer->memory, image.width * image.height * image.format->depth);
+  (*out) << image.width << " " << image.height << " 255" << endl;
+  out->write ((char *) buffer->memory, image.width * image.height * image.format->depth);
+}
+
+
+// class ImageFileFormatPGM ---------------------------------------------------
+
+ImageFile *
+ImageFileFormatPGM::open (const string & fileName, const string & mode) const
+{
+  if (mode == "r")
+  {
+	return new ImageFilePGM (new ifstream (fileName.c_str (), ios::binary), 0, true);
+  }
+  else
+  {
+	return new ImageFilePGM (0, new ofstream (fileName.c_str (), ios::binary), true);
+  }
+}
+
+ImageFile *
+ImageFileFormatPGM::open (std::istream & stream) const
+{
+  return new ImageFilePGM (&stream, 0);
+}
+
+ImageFile *
+ImageFileFormatPGM::open (std::ostream & stream) const
+{
+  return new ImageFilePGM (0, &stream);
 }
 
 float

@@ -25,6 +25,13 @@ using namespace std;
 using namespace fl;
 
 
+// class ImageFile ------------------------------------------------------------
+
+ImageFile::~ImageFile ()
+{
+}
+
+
 // class ImageFileFormat ------------------------------------------------------
 
 vector<ImageFileFormat *> ImageFileFormat::formats;
@@ -47,22 +54,8 @@ ImageFileFormat::~ImageFileFormat ()
   }
 }
 
-void
-ImageFileFormat::read (const std::string & fileName, Image & image) const
-{
-  ifstream ifs (fileName.c_str (), ios::binary);
-  read (ifs, image);
-}
-
-void
-ImageFileFormat::write (const std::string & fileName, const Image & image) const
-{
-  ofstream ofs (fileName.c_str (), ios::binary);
-  write (ofs, image);
-}
-
 float
-ImageFileFormat::find (const std::string & fileName, ImageFileFormat *& result)
+ImageFileFormat::find (const string & fileName, ImageFileFormat *& result)
 {
   ifstream ifs (fileName.c_str (), ios::binary);
   string suffix = fileName.substr (fileName.find_last_of ('.') + 1);
@@ -88,7 +81,7 @@ ImageFileFormat::find (const std::string & fileName, ImageFileFormat *& result)
 }
 
 float
-ImageFileFormat::find (std::istream & stream, ImageFileFormat *& result)
+ImageFileFormat::find (istream & stream, ImageFileFormat *& result)
 {
   float P = 0;
   result = 0;
@@ -107,7 +100,7 @@ ImageFileFormat::find (std::istream & stream, ImageFileFormat *& result)
 }
 
 float
-ImageFileFormat::findName (const std::string & formatName, ImageFileFormat *& result)
+ImageFileFormat::findName (const string & formatName, ImageFileFormat *& result)
 {
   float P = 0;
   result = 0;
@@ -137,7 +130,7 @@ ImageFileFormat::findName (const std::string & formatName, ImageFileFormat *& re
    of underlying state.
  **/
 void
-ImageFileFormat::getMagic (std::istream & stream, std::string & magic)
+ImageFileFormat::getMagic (istream & stream, string & magic)
 {
   int position = stream.tellg ();
   stream.read ((char *) magic.c_str (), magic.size ());
