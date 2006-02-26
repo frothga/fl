@@ -168,6 +168,8 @@ Image::operator <<= (const Image & that)
   width     = that.width;
   height    = that.height;
   timestamp = that.timestamp;
+
+  return *this;
 }
 
 void
