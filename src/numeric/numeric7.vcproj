@@ -136,6 +136,10 @@
 				FileType="0">
 			</File>
 			<File
+				RelativePath=".\dgelsd.cc"
+				FileType="0">
+			</File>
+			<File
 				RelativePath=".\dgelss.cc"
 				FileType="0">
 			</File>
@@ -309,6 +313,10 @@
 			</File>
 			<File
 				RelativePath=".\sgeev.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\sgelsd.cc"
 				FileType="0">
 			</File>
 			<File
