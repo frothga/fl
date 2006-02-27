@@ -826,17 +826,94 @@ namespace fl
   /**
 	 Interface for reading and writing Images.  While both reading and writing
 	 functions appear here, in general only one will work for any given
-	 open file and the other will throw exceptions if called.  However,
-	 there may be cases where an image file can be simultaneously readable
-	 and writable.
+	 open file and the other will throw exceptions if called.
+
+	 Metadata -- There are get() and set() functions for accessing named
+	 values associated with or stored in the file.  Some of these entries
+	 may control the behavior of the storage or retrieval process, and others
+	 may be descriptive information actually stored in the file.  This
+	 interface makes no distinction between the two; the individual image
+	 codecs determine the semantics of the entries.  When writing a file,
+	 you should set all the metadata first before calling the write() method.
+	 If you specify a metadata entry that is not present or not recognized
+	 by the codec, it will silently ignore the request.  In addition, the
+	 get() methods will leave the value parameter unmodified, allowing you
+	 to set a fallback value before making the get() call.
+
+	 Big images -- Some very large rasters are typically broken up into
+	 blocks.  The read() and write() functions include optional parameters
+	 that allow you specify a portion of the full raster.  The most efficient
+	 strategy in this case is to address an integer number of blocks and
+	 position the image at a block boundary.  However, this is not required.
+	 There are some reserved metadata entries for specifying or querying
+	 block structure:
+	 <ul>
+	 <li>width -- total horizontal pixels.  Same semantics as Image::width.
+	 <li>height -- total vertical pixels.  Same semantics as Image::height.
+	 <li>blockWidth -- horizontal pixels in one block.  If the image is
+	 stored in stripped format, then this will be the same as "width".
+	 <li>blockHeight -- vertical pixels in one tile
+	 <li>blocksHorizontal -- width of the raster in blocks (as opposed
+	 to pixels).  That is, the number of blocks that lie in a row across
+	 the image.
+	 <li>blocksVertical -- height of the raster in blocks
+	 <li>
+	 </ul>
+	 These entries will always have the semantics described above, regardless
+	 of the image codec.  The image codec may also specify other entries
+	 with the same meanings.
+
+	 Coordinates -- Some codecs (namely TIFF) allow a rich set of image
+	 origins and axis orientations.  These apply only to the display of
+	 images.  As far as the image raster is concerned, these mean nothing.
+	 There are simply two axis that start at zero and count up.
+	 In memory, the raster is stored in row-major order.  To simplify the
+	 description of this interface, assume the most common arrangement:
+	 the origin is in the upper-left corner, x increases to the right and
+	 y increases downward.
    **/
   class ImageFile
   {
   public:
 	virtual ~ImageFile ();
 
-	virtual void read (Image & image) = 0;
-	virtual void write (const Image & image) = 0;
+	/**
+	   Fill in image with pixels from the file.  This function by default
+	   retrieves the entire raster.  However, if the codec supports big
+	   images, is possible to select just a portion of it by using the
+	   optional parameters.  If the codec does not support big images,
+	   it will silently ignore the optional parameters and retrieve the
+	   entire raster.
+	   \param x The horizontal start position in the raster.
+	   \param y The vertical start position in the raster.
+	   \param width The number of horizontal pixels to retrieve.  If 0 (the
+	   default) then retrieve all the image that lies to the right of the
+	   start position.
+	   \param height The number of vertical pixels to retrieve.  If 0 (the
+	   default) then retrieve all the image that lies below the start
+	   position.
+	**/
+	virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0) = 0;
+
+	/**
+	   Place the contents of image into a raster in the file.  If you are
+	   writing a big raster (one that uses multiple blocks), you should
+	   specify the block-related metadata before writing.  Only
+	   "blocksVertical" and "blocksHoizontal" need be set.  The others will
+	   be inferred from the size of the first image.
+	   If you do not set the block counts, then they will default to 1, and
+	   the image will be treated as the entire raster.  If all you want to do
+	   is just write a single image and be done with it, then don't worry
+	   about blocks and everything will work as expected.
+	   \param x The horizontal start position in the raster.
+	   \param y The vertical start position in the raster.
+	**/
+	virtual void write (const Image & image, int x = 0, int y = 0) = 0;
+
+	virtual void get (const std::string & name, double & value);
+	virtual void get (const std::string & name, std::string & value);
+	virtual void set (const std::string & name, double value);
+	virtual void set (const std::string & name, const std::string & value);
   };
 
   /**
