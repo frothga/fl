@@ -925,9 +925,8 @@ namespace fl
 	ImageFileFormat ();
 	virtual ~ImageFileFormat ();
 
-	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const = 0;
-	virtual ImageFile * open (std::istream & stream) const = 0;
-	virtual ImageFile * open (std::ostream & stream) const = 0;
+	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const = 0;
+	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const = 0;
 	virtual float isIn (std::istream & stream) const = 0;  ///< Determines probability that this format is on the stream.  Always rewinds stream back to where it was when function was called.
 	virtual float handles (const std::string & formatName) const = 0;  ///< Determines probability that this object handles the format with the given human readable name.
 
@@ -942,9 +941,8 @@ namespace fl
   class ImageFileFormatPGM : public ImageFileFormat
   {
   public:
-	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const;
-	virtual ImageFile * open (std::istream & stream) const;
-	virtual ImageFile * open (std::ostream & stream) const;
+	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -952,9 +950,8 @@ namespace fl
   class ImageFileFormatEPS : public ImageFileFormat
   {
   public:
-	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const;
-	virtual ImageFile * open (std::istream & stream) const;
-	virtual ImageFile * open (std::ostream & stream) const;
+	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -962,9 +959,8 @@ namespace fl
   class ImageFileFormatJPEG : public ImageFileFormat
   {
   public:
-	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const;
-	virtual ImageFile * open (std::istream & stream) const;
-	virtual ImageFile * open (std::ostream & stream) const;
+	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -972,9 +968,17 @@ namespace fl
   class ImageFileFormatTIFF : public ImageFileFormat
   {
   public:
-	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const;
-	virtual ImageFile * open (std::istream & stream) const;
-	virtual ImageFile * open (std::ostream & stream) const;
+	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
+	virtual float isIn (std::istream & stream) const;
+	virtual float handles (const std::string & formatName) const;
+  };
+
+  class ImageFileFormatNITF : public ImageFileFormat
+  {
+  public:
+	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -982,9 +986,8 @@ namespace fl
   class ImageFileFormatMatlab : public ImageFileFormat
   {
   public:
-	virtual ImageFile * open (const std::string & fileName, const std::string & mode) const;
-	virtual ImageFile * open (std::istream & stream) const;
-	virtual ImageFile * open (std::ostream & stream) const;
+	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
