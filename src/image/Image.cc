@@ -94,13 +94,13 @@ void
 Image::read (const std::string & fileName)
 {
   ImageFileFormat * ff;
-  ImageFileFormat::find (fileName, ff);
-  if (! ff)
+  float P = ImageFileFormat::find (fileName, ff);
+  if (P == 0.0f  ||  ! ff)
   {
 	throw "Unrecognized file format for image.";
   }
 
-  ImageFile * f = ff->open (fileName, "r");
+  ImageFile * f = ff->open (*(new ifstream (fileName.c_str (), ios::binary)), true);
   f->read (*this);
   delete f;
 
@@ -116,8 +116,8 @@ Image::read (istream & stream)
   if (stream.good ())
   {
 	ImageFileFormat * ff;
-	ImageFileFormat::find (stream, ff);
-	if (! ff)
+	float P = ImageFileFormat::find (stream, ff);
+	if (P == 0.0f  ||  ! ff)
 	{
 	  throw "Unrecognized file format for image.";
 	}
@@ -134,13 +134,13 @@ void
 Image::write (const std::string & fileName, const std::string & formatName) const
 {
   ImageFileFormat * ff;
-  ImageFileFormat::findName (formatName, ff);
-  if (! ff)
+  float P = ImageFileFormat::findName (formatName, ff);
+  if (P == 0.0f  ||  ! ff)
   {
 	throw "Unrecognized file format for image.";
   }
 
-  ImageFile * f = ff->open (fileName, "w");
+  ImageFile * f = ff->open (*(new ofstream (fileName.c_str (), ios::binary)), true);
   f->write (*this);
   delete f;
 }
@@ -149,8 +149,8 @@ void
 Image::write (ostream & stream, const std::string & formatName) const
 {
   ImageFileFormat * ff;
-  ImageFileFormat::findName (formatName, ff);
-  if (! ff)
+  float P = ImageFileFormat::findName (formatName, ff);
+  if (P == 0.0f  ||  ! ff)
   {
 	throw "Unrecognized file format for image.";
   }
