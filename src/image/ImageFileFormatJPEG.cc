@@ -272,28 +272,15 @@ ImageFileJPEG::write (const Image & image, int x, int y)
 // class ImageFileFormatJPEG --------------------------------------------------
 
 ImageFile *
-ImageFileFormatJPEG::open (const string & fileName, const string & mode) const
+ImageFileFormatJPEG::open (std::istream & stream, bool ownStream) const
 {
-  if (mode == "r")
-  {
-	return new ImageFileJPEG (new ifstream (fileName.c_str (), ios::binary), 0, true);
-  }
-  else
-  {
-	return new ImageFileJPEG (0, new ofstream (fileName.c_str (), ios::binary), true);
-  }
+  return new ImageFileJPEG (&stream, 0, ownStream);
 }
 
 ImageFile *
-ImageFileFormatJPEG::open (std::istream & stream) const
+ImageFileFormatJPEG::open (std::ostream & stream, bool ownStream) const
 {
-  return new ImageFileJPEG (&stream, 0);
-}
-
-ImageFile *
-ImageFileFormatJPEG::open (std::ostream & stream) const
-{
-  return new ImageFileJPEG (0, &stream);
+  return new ImageFileJPEG (0, &stream, ownStream);
 }
 
 float

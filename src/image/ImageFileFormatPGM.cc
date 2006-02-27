@@ -192,28 +192,15 @@ ImageFilePGM::write (const Image & image, int x, int y)
 // class ImageFileFormatPGM ---------------------------------------------------
 
 ImageFile *
-ImageFileFormatPGM::open (const string & fileName, const string & mode) const
+ImageFileFormatPGM::open (std::istream & stream, bool ownStream) const
 {
-  if (mode == "r")
-  {
-	return new ImageFilePGM (new ifstream (fileName.c_str (), ios::binary), 0, true);
-  }
-  else
-  {
-	return new ImageFilePGM (0, new ofstream (fileName.c_str (), ios::binary), true);
-  }
+  return new ImageFilePGM (&stream, 0, ownStream);
 }
 
 ImageFile *
-ImageFileFormatPGM::open (std::istream & stream) const
+ImageFileFormatPGM::open (std::ostream & stream, bool ownStream) const
 {
-  return new ImageFilePGM (&stream, 0);
-}
-
-ImageFile *
-ImageFileFormatPGM::open (std::ostream & stream) const
-{
-  return new ImageFilePGM (0, &stream);
+  return new ImageFilePGM (0, &stream, ownStream);
 }
 
 float

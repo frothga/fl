@@ -117,28 +117,15 @@ ImageFileEPS::write (const Image & image, int x, int y)
 // class ImageFileFormatEPS ---------------------------------------------------
 
 ImageFile *
-ImageFileFormatEPS::open (const string & fileName, const string & mode) const
+ImageFileFormatEPS::open (std::istream & stream, bool ownStream) const
 {
-  if (mode == "r")
-  {
-	return new ImageFileEPS (new ifstream (fileName.c_str (), ios::binary), 0, true);
-  }
-  else
-  {
-	return new ImageFileEPS (0, new ofstream (fileName.c_str (), ios::binary), true);
-  }
+  return new ImageFileEPS (&stream, 0, ownStream);
 }
 
 ImageFile *
-ImageFileFormatEPS::open (std::istream & stream) const
+ImageFileFormatEPS::open (std::ostream & stream, bool ownStream) const
 {
-  return new ImageFileEPS (&stream, 0);
-}
-
-ImageFile *
-ImageFileFormatEPS::open (std::ostream & stream) const
-{
-  return new ImageFileEPS (0, &stream);
+  return new ImageFileEPS (0, &stream, ownStream);
 }
 
 float

@@ -36,9 +36,10 @@ using namespace fl;
 class ImageFileTIFF : public ImageFile
 {
 public:
-  ImageFileTIFF (TIFF * tif)
+  ImageFileTIFF (TIFF * tif, ios * stream)
   {
 	this->tif = tif;
+	this->stream = stream;
   }
   virtual ~ImageFileTIFF ();
 
@@ -46,11 +47,13 @@ public:
   virtual void write (const Image & image, int x = 0, int y = 0);
 
   TIFF * tif;
+  ios * stream;
 };
 
 ImageFileTIFF::~ImageFileTIFF ()
 {
   TIFFClose (tif);
+  if (stream) delete stream;
 }
 
 void
@@ -276,36 +279,25 @@ ImageFileTIFF::write (const Image & image, int x, int y)
 // class ImageFileFormatTIFF --------------------------------------------------
 
 ImageFile *
-ImageFileFormatTIFF::open (const string & fileName, const string & mode) const
-{
-  TIFF * tif = TIFFOpen (fileName.c_str (), mode.c_str ());
-  if (! tif)
-  {
-	throw "Unable to open file.";
-  }
-  return new ImageFileTIFF (tif);
-}
-
-ImageFile *
-ImageFileFormatTIFF::open (istream & stream) const
+ImageFileFormatTIFF::open (istream & stream, bool ownStream) const
 {
   TIFF * tif = TIFFStreamOpen ("", &stream);
   if (! tif)
   {
 	throw "Unable to open file.";
   }
-  return new ImageFileTIFF (tif);
+  return new ImageFileTIFF (tif, ownStream ? &stream : 0);
 }
 
 ImageFile *
-ImageFileFormatTIFF::open (ostream & stream) const
+ImageFileFormatTIFF::open (ostream & stream, bool ownStream) const
 {
   TIFF * tif = TIFFStreamOpen ("", &stream);
   if (! tif)
   {
 	throw "Unable to open file.";
   }
-  return new ImageFileTIFF (tif);
+  return new ImageFileTIFF (tif, ownStream ? &stream : 0);
 }
 
 float
@@ -314,20 +306,21 @@ ImageFileFormatTIFF::isIn (std::istream & stream) const
   string magic = "    ";  // 4 spaces
   getMagic (stream, magic);
 
-  float result = 0;
-  if ( magic.substr (0, 2) == "II"  ||  magic.substr (0, 2) == "MM")  // endian indicator
-  {
-	result += 0.5;
-  }
   // Apparently, some implementation don't store the magic number 42 according
   // to the endian indicated by the first two bytes, so we have to handle the
   // wrong order as well.
-  if ((magic[2] == '\x00'  ||  magic[2] == '\x2A')  &&  (magic[3] == '\x2A'  ||  magic[3] == '\x00'))
+  if (magic.substr (0, 2) == "II")  // little endian
   {
-	result += 0.5;
+	if (magic[2] == '\x2A'  &&  magic[3] == '\x00') return 1;
+	if (magic[2] == '\x00'  &&  magic[3] == '\x2A') return 0.8;
+  }
+  if (magic.substr (0, 2) == "MM")  // big endian
+  {
+	if (magic[2] == '\x2A'  &&  magic[3] == '\x00') return 0.8;
+	if (magic[2] == '\x00'  &&  magic[3] == '\x2A') return 1;
   }
 
-  return result;
+  return 0;
 }
 
 float

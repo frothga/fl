@@ -235,28 +235,15 @@ ImageFileMatlab::write (const Image & image, int x, int y)
 // class ImageFileFormatMatlab ------------------------------------------------
 
 ImageFile *
-ImageFileFormatMatlab::open (const string & fileName, const string & mode) const
+ImageFileFormatMatlab::open (std::istream & stream, bool ownStream) const
 {
-  if (mode == "r")
-  {
-	return new ImageFileMatlab (new ifstream (fileName.c_str (), ios::binary), 0, true);
-  }
-  else
-  {
-	return new ImageFileMatlab (0, new ofstream (fileName.c_str (), ios::binary), true);
-  }
+  return new ImageFileMatlab (&stream, 0, ownStream);
 }
 
 ImageFile *
-ImageFileFormatMatlab::open (std::istream & stream) const
+ImageFileFormatMatlab::open (std::ostream & stream, bool ownStream) const
 {
-  return new ImageFileMatlab (&stream, 0);
-}
-
-ImageFile *
-ImageFileFormatMatlab::open (std::ostream & stream) const
-{
-  return new ImageFileMatlab (0, &stream);
+  return new ImageFileMatlab (0, &stream, ownStream);
 }
 
 float
