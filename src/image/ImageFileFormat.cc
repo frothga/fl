@@ -12,6 +12,9 @@ Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+02/2006 Fred Rothganger -- Separate ImageFile.
 */
 
 
@@ -28,6 +31,26 @@ using namespace fl;
 // class ImageFile ------------------------------------------------------------
 
 ImageFile::~ImageFile ()
+{
+}
+
+void
+ImageFile::get (const std::string & name, double & value)
+{
+}
+
+void
+ImageFile::get (const std::string & name, std::string & value)
+{
+}
+
+void
+ImageFile::set (const std::string & name, double value)
+{
+}
+
+void
+ImageFile::set (const std::string & name, const std::string & value)
 {
 }
 

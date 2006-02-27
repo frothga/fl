@@ -42,8 +42,8 @@ public:
   }
   virtual ~ImageFileTIFF ();
 
-  virtual void read (Image & image);
-  virtual void write (const Image & image);
+  virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
+  virtual void write (const Image & image, int x = 0, int y = 0);
 
   TIFF * tif;
 };
@@ -54,7 +54,7 @@ ImageFileTIFF::~ImageFileTIFF ()
 }
 
 void
-ImageFileTIFF::read (Image & image)
+ImageFileTIFF::read (Image & image, int x, int y, int width, int height)
 {
   if (! tif) throw "ImageFileTIFF not open";
 
@@ -72,8 +72,6 @@ ImageFileTIFF::read (Image & image)
   ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
   uint16 photometric;
   ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PHOTOMETRIC, &photometric);
-  uint16 orientation;
-  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_ORIENTATION, &orientation);
   uint16 planarConfig;
   ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PLANARCONFIG, &planarConfig);
   uint16 extra;
@@ -160,7 +158,7 @@ ImageFileTIFF::read (Image & image)
 }
 
 void
-ImageFileTIFF::write (const Image & image)
+ImageFileTIFF::write (const Image & image, int x, int y)
 {
   if (! tif) throw "ImageFileTIFF not open";
 

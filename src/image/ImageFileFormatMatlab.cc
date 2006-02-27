@@ -72,8 +72,8 @@ public:
   }
   ~ImageFileMatlab ();
 
-  virtual void read (Image & image);
-  virtual void write (const Image & image);
+  virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
+  virtual void write (const Image & image, int x = 0, int y = 0);
 
   istream * in;
   ostream * out;
@@ -90,7 +90,7 @@ ImageFileMatlab::~ImageFileMatlab ()
 }
 
 void
-ImageFileMatlab::read (Image & image)
+ImageFileMatlab::read (Image & image, int x, int y, int width, int height)
 {
   if (! in) throw "ImageFileMatlab not open for reading";
 
@@ -172,7 +172,7 @@ ImageFileMatlab::read (Image & image)
 }
 
 void
-ImageFileMatlab::write (const Image & image)
+ImageFileMatlab::write (const Image & image, int x, int y)
 {
   if (! out) throw "ImageFileMatlab not open for writing";
 

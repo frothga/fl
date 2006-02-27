@@ -148,8 +148,8 @@ public:
   }
   ~ImageFileJPEG ();
 
-  virtual void read (Image & image);
-  virtual void write (const Image & image);
+  virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
+  virtual void write (const Image & image, int x = 0, int y = 0);
 
   istream * in;
   ostream * out;
@@ -166,7 +166,7 @@ ImageFileJPEG::~ImageFileJPEG ()
 }
 
 void
-ImageFileJPEG::read (Image & image)
+ImageFileJPEG::read (Image & image, int x, int y, int width, int height)
 {
   if (! in) throw "ImageFileJPEG not open for reading";
 
@@ -220,7 +220,7 @@ ImageFileJPEG::read (Image & image)
 }
 
 void
-ImageFileJPEG::write (const Image & image)
+ImageFileJPEG::write (const Image & image, int x, int y)
 {
   if (! out) throw "ImageFileJPEG not open for writing";
 

@@ -34,8 +34,8 @@ public:
   }
   ~ImageFileEPS ();
 
-  virtual void read (Image & image);
-  virtual void write (const Image & image);
+  virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
+  virtual void write (const Image & image, int x = 0, int y = 0);
 
   istream * in;
   ostream * out;
@@ -52,7 +52,7 @@ ImageFileEPS::~ImageFileEPS ()
 }
 
 void
-ImageFileEPS::read (Image & image)
+ImageFileEPS::read (Image & image, int x, int y, int width, int height)
 {
   throw "There's no way we are going to read an EPS!";
 
@@ -60,7 +60,7 @@ ImageFileEPS::read (Image & image)
 }
 
 void
-ImageFileEPS::write (const Image & image)
+ImageFileEPS::write (const Image & image, int x, int y)
 {
   if (! out) throw "ImageFileEPS not open for writing";
 

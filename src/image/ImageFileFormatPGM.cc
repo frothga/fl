@@ -42,8 +42,8 @@ public:
   }
   ~ImageFilePGM ();
 
-  virtual void read (Image & image);
-  virtual void write (const Image & image);
+  virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
+  virtual void write (const Image & image, int x = 0, int y = 0);
 
   istream * in;
   ostream * out;
@@ -60,7 +60,7 @@ ImageFilePGM::~ImageFilePGM ()
 }
 
 void
-ImageFilePGM::read (Image & image)
+ImageFilePGM::read (Image & image, int x, int y, int ignorewidth, int ignoreheight)
 {
   if (! in) throw "ImageFilePGM not open for reading";
 
@@ -152,7 +152,7 @@ ImageFilePGM::read (Image & image)
 }
 
 void
-ImageFilePGM::write (const Image & image)
+ImageFilePGM::write (const Image & image, int x, int y)
 {
   if (! out) throw "ImageFilePGM not open for writing";
 
