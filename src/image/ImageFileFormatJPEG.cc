@@ -21,8 +21,6 @@ for details.
 #include "fl/image.h"
 #include "fl/string.h"
 
-#include <fstream>
-
 extern "C"
 {
   #include <jpeglib.h>

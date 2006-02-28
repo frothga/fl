@@ -14,8 +14,6 @@ for details.
 #include "fl/image.h"
 #include "fl/string.h"
 
-#include <fstream>
-
 
 using namespace std;
 using namespace fl;
