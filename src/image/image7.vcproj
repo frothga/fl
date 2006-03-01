@@ -292,6 +292,10 @@
 				FileType="0">
 			</File>
 			<File
+				RelativePath=".\ImageFileFormatNITF.cc"
+				FileType="0">
+			</File>
+			<File
 				RelativePath=".\ImageFileFormatPGM.cc"
 				FileType="0">
 			</File>
@@ -357,6 +361,10 @@
 			</File>
 			<File
 				RelativePath=".\Pixel.cc"
+				FileType="0">
+			</File>
+			<File
+				RelativePath=".\PixelBuffer.cc"
 				FileType="0">
 			</File>
 			<File
