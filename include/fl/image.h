@@ -968,6 +968,7 @@ namespace fl
   class ImageFileFormatTIFF : public ImageFileFormat
   {
   public:
+	ImageFileFormatTIFF ();  ///< To initialize libgeotiff, if it is available.
 	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
 	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
