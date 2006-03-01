@@ -25,6 +25,10 @@ for details.
 
 #include <tiffio.h>
 #include <tiffio.hxx>
+#ifdef HAVE_GEOTIFF
+#  include <xtiffio.h>
+#  include <geotiff.h>
+#endif
 
 
 using namespace std;
@@ -40,18 +44,31 @@ public:
   {
 	this->tif = tif;
 	this->stream = stream;
+
+#   ifdef HAVE_GEOTIFF
+	gtif = GTIFNew (tif);
+#   endif
   }
   virtual ~ImageFileTIFF ();
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
+  virtual void get (const string & name, double & value);
+  virtual void get (const string & name, string & value);
+
   TIFF * tif;
   ios * stream;
+# ifdef HAVE_GEOTIFF
+  GTIF * gtif;
+# endif
 };
 
 ImageFileTIFF::~ImageFileTIFF ()
 {
+# ifdef HAVE_GEOTIFF
+  GTIFFree (gtif);
+# endif
   TIFFClose (tif);
   if (stream) delete stream;
 }
@@ -275,8 +292,34 @@ ImageFileTIFF::write (const Image & image, int x, int y)
   }
 }
 
+void
+ImageFileTIFF::get (const string & name, double & value)
+{
+}
+
+void
+ImageFileTIFF::get (const string & name, string & value)
+{
+  if (name == "GTCitationGeoKey")
+  {
+	int length = GTIFKeyInfo (gtif, GTCitationGeoKey, 0, 0);
+	if (length > 0)
+	{
+	  value.resize (length);
+	  GTIFKeyGet (gtif, GTCitationGeoKey, (void *) value.c_str (), 0, length);
+	}
+  }
+}
+
 
 // class ImageFileFormatTIFF --------------------------------------------------
+
+ImageFileFormatTIFF::ImageFileFormatTIFF ()
+{
+# ifdef HAVE_GEOTIFF
+  _XTIFFInitialize ();
+# endif
+}
 
 ImageFile *
 ImageFileFormatTIFF::open (istream & stream, bool ownStream) const
