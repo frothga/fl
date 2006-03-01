@@ -18,16 +18,16 @@
 #
 # 01/2006 Fred Rothganger -- Move PixelFormat clases to separate file.
 # 02/2006 Fred Rothganger -- Build shared libraries.  Add distclean.
-#         Change Image structure.
+#         Change Image structure.  Add ImageFileFormatNITF and support GeoTIFF.
 
 
 SOURCE_DIR := ../..
 -include $(SOURCE_DIR)/Config
 
 MODULE = Image
-CPPFLAGS += $(X_INC) $(MPEG_INC) $(FT_INC)
+CPPFLAGS += $(X_INC) $(MPEG_INC) $(FT_INC) $(GTIFF_INC)
 VPATH = $(SOURCE_LIB)
-LOADLIBS = -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric $(MPEG_LIB) $(TIFF_LIB) $(JPEG_LIB) $(FT_LIB)
+LOADLIBS = -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric $(MPEG_LIB) $(TIFF_LIB) $(JPEG_LIB) $(FT_LIB) $(GTIFF_LIB)
 
 
 IMAGE_O = \
@@ -44,7 +44,8 @@ IMAGE_FILE_FORMAT_O = \
 	ImageFileFormatEPS.o \
 	ImageFileFormatJPEG.o \
 	ImageFileFormatTIFF.o \
-	ImageFileFormatMatlab.o
+	ImageFileFormatMatlab.o \
+	ImageFileFormatNITF.o
 
 CANVAS_O = \
 	Canvas.o \
@@ -125,13 +126,13 @@ test: test.o $(OBJS)
 	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB)
 
 junk: junk.o $(OBJS)
-	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB)
+	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB) $(GTIFF_LIB)
 
 
 clean:
-	rm -f *~ *.o core core.* $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
+	rm -f *~ *.o core core.* *.core $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
 	rm -rf Debug Release
-	rm -f test$(EXESUF) test2$(EXESUF)
+	rm -f test$(EXESUF) junk$(EXESUF)
 
 distclean: clean
 	rm -f Dependencies
