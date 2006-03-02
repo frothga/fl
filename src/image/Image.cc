@@ -14,8 +14,6 @@ for details.
 #include "fl/image.h"
 #include "fl/time.h"
 
-#include <stdio.h>
-#include <sys/stat.h>
 #include <assert.h>
 #include <fstream>
 
@@ -93,71 +91,30 @@ Image::Image (const std::string & fileName)
 void
 Image::read (const std::string & fileName)
 {
-  ImageFileFormat * ff;
-  float P = ImageFileFormat::find (fileName, ff);
-  if (P == 0.0f  ||  ! ff)
-  {
-	throw "Unrecognized file format for image.";
-  }
-
-  ImageFile * f = ff->open (*(new ifstream (fileName.c_str (), ios::binary)), true);
-  f->read (*this);
-  delete f;
-
-  // Use stat () to determine timestamp.
-  struct stat info;
-  stat (fileName.c_str (), &info);
-  timestamp = info.st_mtime;  // Does this need more work to align it with getTimestamp () values?
+  ImageFile file (fileName, "r");
+  file.read (*this);
 }
 
 void
 Image::read (istream & stream)
 {
-  if (stream.good ())
-  {
-	ImageFileFormat * ff;
-	float P = ImageFileFormat::find (stream, ff);
-	if (P == 0.0f  ||  ! ff)
-	{
-	  throw "Unrecognized file format for image.";
-	}
-
-	ImageFile * f = ff->open (stream);
-	f->read (*this);
-	delete f;
-  }
-
+  ImageFile file (stream);
+  file.read (*this);
   timestamp = getTimestamp ();
 }
 
 void
 Image::write (const std::string & fileName, const std::string & formatName) const
 {
-  ImageFileFormat * ff;
-  float P = ImageFileFormat::findName (formatName, ff);
-  if (P == 0.0f  ||  ! ff)
-  {
-	throw "Unrecognized file format for image.";
-  }
-
-  ImageFile * f = ff->open (*(new ofstream (fileName.c_str (), ios::binary)), true);
-  f->write (*this);
-  delete f;
+  ImageFile file (fileName, "w", formatName);
+  file.write (*this);
 }
 
 void
 Image::write (ostream & stream, const std::string & formatName) const
 {
-  ImageFileFormat * ff;
-  float P = ImageFileFormat::findName (formatName, ff);
-  if (P == 0.0f  ||  ! ff)
-  {
-	throw "Unrecognized file format for image.";
-  }
-
-  ImageFile * f = ff->open (stream);
-  f->write (*this);
-  delete f;
+  ImageFile file (stream, formatName);
+  file.write (*this);
 }
 
 Image &
