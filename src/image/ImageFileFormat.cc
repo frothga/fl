@@ -19,39 +19,132 @@ for details.
 
 
 #include "fl/image.h"
+#include "fl/math.h"
 
 
 #include <fstream>
+#include <stdio.h>
+#include <sys/stat.h>
 
 
 using namespace std;
 using namespace fl;
 
 
+// class ImageFileDelegate ------------------------------------------------------------
+
+ImageFileDelegate::~ImageFileDelegate ()
+{
+}
+
+void
+ImageFileDelegate::get (const std::string & name, double & value)
+{
+}
+
+void
+ImageFileDelegate::get (const std::string & name, std::string & value)
+{
+}
+
+void
+ImageFileDelegate::set (const std::string & name, double value)
+{
+}
+
+void
+ImageFileDelegate::set (const std::string & name, const std::string & value)
+{
+}
+
+
 // class ImageFile ------------------------------------------------------------
 
-ImageFile::~ImageFile ()
+ImageFile::ImageFile (const std::string & fileName, const std::string & mode, const std::string & formatName)
 {
+  if (mode == "w")  // write
+  {
+	string suffix = formatName;
+	if (! suffix.size ())
+	{
+	  suffix = fileName.substr (fileName.find_last_of ('.') + 1);
+	}
+
+	ImageFileFormat * ff;
+	float P = ImageFileFormat::findName (suffix, ff);
+	if (P == 0.0f  ||  ! ff) throw "Unrecognized file format for image.";
+	delegate = ff->open (*(new ofstream (fileName.c_str (), ios::binary)), true);
+	timestamp = NAN;
+  }
+  else  // read
+  {
+	ImageFileFormat * ff;
+	float P = ImageFileFormat::find (fileName, ff);
+	if (P == 0.0f  ||  ! ff) throw "Unrecognized file format for image.";
+	delegate = ff->open (*(new ifstream (fileName.c_str (), ios::binary)), true);
+
+	// Use stat () to determine timestamp.
+	struct stat info;
+	stat (fileName.c_str (), &info);
+	timestamp = info.st_mtime;  // Does this need more work to align it with getTimestamp () values?
+  }
+}
+
+ImageFile::ImageFile (std::istream & stream)
+{
+  if (! stream.good ()) throw "Can't read image due to bad stream";
+
+  ImageFileFormat * ff;
+  float P = ImageFileFormat::find (stream, ff);
+  if (P == 0.0f  ||  ! ff) throw "Unrecognized file format for image.";
+  delegate = ff->open (stream);
+  timestamp = NAN;
+}
+
+ImageFile::ImageFile (std::ostream & stream, const std::string & formatName)
+{
+  ImageFileFormat * ff;
+  float P = ImageFileFormat::findName (formatName, ff);
+  if (P == 0.0f  ||  ! ff) throw "Unrecognized file format for image.";
+  delegate = ff->open (stream);
+  timestamp = NAN;
+}
+
+void
+ImageFile::read (Image & image, int x, int y, int width, int height)
+{
+  delegate->read (image, x, y, width, height);
+  if (! isnan (timestamp)) image.timestamp = timestamp;
+}
+
+void
+ImageFile::write (const Image & image, int x, int y)
+{
+  delegate->write (image, x, y);
 }
 
 void
 ImageFile::get (const std::string & name, double & value)
 {
+  delegate->get (name, value);
 }
 
 void
 ImageFile::get (const std::string & name, std::string & value)
 {
+  delegate->get (name, value);
 }
 
 void
 ImageFile::set (const std::string & name, double value)
 {
+  delegate->set (name, value);
 }
 
 void
 ImageFile::set (const std::string & name, const std::string & value)
 {
+  delegate->set (name, value);
 }
 
 
@@ -147,10 +240,7 @@ ImageFileFormat::findName (const string & formatName, ImageFileFormat *& result)
    Some streams can go bad at this point because they don't support
    seekg().  One possibility is to use sputbackc() to return magic
    to the stream.  This could still fail if magic straddles the
-   boundary between buffer loads.  Another possibility is to have
-   ImageFileFormat::find() wrap the given stream in a special stream
-   that can always put back at least 16 or so characters regardless
-   of underlying state.
+   boundary between buffer loads.
  **/
 void
 ImageFileFormat::getMagic (istream & stream, string & magic)
