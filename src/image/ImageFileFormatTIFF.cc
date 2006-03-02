@@ -35,12 +35,12 @@ using namespace std;
 using namespace fl;
 
 
-// class ImageFileTIFF --------------------------------------------------------
+// class ImageFileDelegateTIFF ------------------------------------------------
 
-class ImageFileTIFF : public ImageFile
+class ImageFileDelegateTIFF : public ImageFileDelegate
 {
 public:
-  ImageFileTIFF (TIFF * tif, ios * stream)
+  ImageFileDelegateTIFF (TIFF * tif, ios * stream)
   {
 	this->tif = tif;
 	this->stream = stream;
@@ -49,7 +49,7 @@ public:
 	gtif = GTIFNew (tif);
 #   endif
   }
-  virtual ~ImageFileTIFF ();
+  virtual ~ImageFileDelegateTIFF ();
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
@@ -64,7 +64,7 @@ public:
 # endif
 };
 
-ImageFileTIFF::~ImageFileTIFF ()
+ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
 {
 # ifdef HAVE_GEOTIFF
   GTIFFree (gtif);
@@ -74,9 +74,9 @@ ImageFileTIFF::~ImageFileTIFF ()
 }
 
 void
-ImageFileTIFF::read (Image & image, int x, int y, int width, int height)
+ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 {
-  if (! tif) throw "ImageFileTIFF not open";
+  if (! tif) throw "ImageFileDelegateTIFF not open";
 
   bool ok = true;
 
@@ -178,9 +178,9 @@ ImageFileTIFF::read (Image & image, int x, int y, int width, int height)
 }
 
 void
-ImageFileTIFF::write (const Image & image, int x, int y)
+ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 {
-  if (! tif) throw "ImageFileTIFF not open";
+  if (! tif) throw "ImageFileDelegateTIFF not open";
 
   if (image.format->monochrome)
   {
@@ -292,13 +292,60 @@ ImageFileTIFF::write (const Image & image, int x, int y)
   }
 }
 
-void
-ImageFileTIFF::get (const string & name, double & value)
+enum tagtype
 {
+  ttuint32,
+  ttuint16,
+  ttint,
+  ttchar
+};
+
+struct TIFFmapping
+{
+  char *  name;
+  ttag_t  tag;
+  tagtype type;
+};
+
+static TIFFmapping TIFFmap[] =
+{
+  {"ImageLength", TIFFTAG_IMAGELENGTH, ttuint32},
+  {"ImageWidth",  TIFFTAG_IMAGEWIDTH,  ttuint32},
+  {0, 0}
+};
+
+static inline TIFFmapping *
+findTag (const string & name, TIFFmapping * map)
+{
+  while (map->name)
+  {
+	if (name == map->name) return map;
+	map++;
+  }
+  return 0;
 }
 
 void
-ImageFileTIFF::get (const string & name, string & value)
+ImageFileDelegateTIFF::get (const string & name, double & value)
+{
+  TIFFmapping * m = findTag (name, TIFFmap);
+  if (! m) return;
+  switch (m->type)
+  {
+	case ttuint32:
+	{
+	  unsigned int v;
+	  if (TIFFGetField (tif, m->tag, &v))
+	  {
+		value = v;
+	  }
+	  break;
+	}
+  }
+}
+
+void
+ImageFileDelegateTIFF::get (const string & name, string & value)
 {
   if (name == "GTCitationGeoKey")
   {
@@ -321,7 +368,7 @@ ImageFileFormatTIFF::ImageFileFormatTIFF ()
 # endif
 }
 
-ImageFile *
+ImageFileDelegate *
 ImageFileFormatTIFF::open (istream & stream, bool ownStream) const
 {
   TIFF * tif = TIFFStreamOpen ("", &stream);
@@ -329,10 +376,10 @@ ImageFileFormatTIFF::open (istream & stream, bool ownStream) const
   {
 	throw "Unable to open file.";
   }
-  return new ImageFileTIFF (tif, ownStream ? &stream : 0);
+  return new ImageFileDelegateTIFF (tif, ownStream ? &stream : 0);
 }
 
-ImageFile *
+ImageFileDelegate *
 ImageFileFormatTIFF::open (ostream & stream, bool ownStream) const
 {
   TIFF * tif = TIFFStreamOpen ("", &stream);
@@ -340,7 +387,7 @@ ImageFileFormatTIFF::open (ostream & stream, bool ownStream) const
   {
 	throw "Unable to open file.";
   }
-  return new ImageFileTIFF (tif, ownStream ? &stream : 0);
+  return new ImageFileDelegateTIFF (tif, ownStream ? &stream : 0);
 }
 
 float
