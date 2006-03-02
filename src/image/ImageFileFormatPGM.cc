@@ -27,18 +27,18 @@ using namespace std;
 using namespace fl;
 
 
-// class ImageFilePGM ---------------------------------------------------------
+// class ImageFileDelegatePGM -------------------------------------------------
 
-class ImageFilePGM : public ImageFile
+class ImageFileDelegatePGM : public ImageFileDelegate
 {
 public:
-  ImageFilePGM (istream * in, ostream * out, bool ownStream = false)
+  ImageFileDelegatePGM (istream * in, ostream * out, bool ownStream = false)
   {
 	this->in = in;
 	this->out = out;
 	this->ownStream = ownStream;
   }
-  ~ImageFilePGM ();
+  ~ImageFileDelegatePGM ();
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
@@ -48,7 +48,7 @@ public:
   bool ownStream;
 };
 
-ImageFilePGM::~ImageFilePGM ()
+ImageFileDelegatePGM::~ImageFileDelegatePGM ()
 {
   if (ownStream)
   {
@@ -58,9 +58,9 @@ ImageFilePGM::~ImageFilePGM ()
 }
 
 void
-ImageFilePGM::read (Image & image, int x, int y, int ignorewidth, int ignoreheight)
+ImageFileDelegatePGM::read (Image & image, int x, int y, int ignorewidth, int ignoreheight)
 {
-  if (! in) throw "ImageFilePGM not open for reading";
+  if (! in) throw "ImageFileDelegatePGM not open for reading";
 
   // Parse header...
 
@@ -150,9 +150,9 @@ ImageFilePGM::read (Image & image, int x, int y, int ignorewidth, int ignoreheig
 }
 
 void
-ImageFilePGM::write (const Image & image, int x, int y)
+ImageFileDelegatePGM::write (const Image & image, int x, int y)
 {
-  if (! out) throw "ImageFilePGM not open for writing";
+  if (! out) throw "ImageFileDelegatePGM not open for writing";
 
   if (image.format->monochrome)
   {
@@ -189,16 +189,16 @@ ImageFilePGM::write (const Image & image, int x, int y)
 
 // class ImageFileFormatPGM ---------------------------------------------------
 
-ImageFile *
+ImageFileDelegate *
 ImageFileFormatPGM::open (std::istream & stream, bool ownStream) const
 {
-  return new ImageFilePGM (&stream, 0, ownStream);
+  return new ImageFileDelegatePGM (&stream, 0, ownStream);
 }
 
-ImageFile *
+ImageFileDelegate *
 ImageFileFormatPGM::open (std::ostream & stream, bool ownStream) const
 {
-  return new ImageFilePGM (0, &stream, ownStream);
+  return new ImageFileDelegatePGM (0, &stream, ownStream);
 }
 
 float

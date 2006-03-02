@@ -57,18 +57,18 @@ parseType (int type, int & numericType)
 }
 
 
-// class ImageFileMatlab ------------------------------------------------------
+// class ImageFileDelegateMatlab ----------------------------------------------
 
-class ImageFileMatlab : public ImageFile
+class ImageFileDelegateMatlab : public ImageFileDelegate
 {
 public:
-  ImageFileMatlab (istream * in, ostream * out, bool ownStream = false)
+  ImageFileDelegateMatlab (istream * in, ostream * out, bool ownStream = false)
   {
 	this->in = in;
 	this->out = out;
 	this->ownStream = ownStream;
   }
-  ~ImageFileMatlab ();
+  ~ImageFileDelegateMatlab ();
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
@@ -78,7 +78,7 @@ public:
   bool ownStream;
 };
 
-ImageFileMatlab::~ImageFileMatlab ()
+ImageFileDelegateMatlab::~ImageFileDelegateMatlab ()
 {
   if (ownStream)
   {
@@ -88,9 +88,9 @@ ImageFileMatlab::~ImageFileMatlab ()
 }
 
 void
-ImageFileMatlab::read (Image & image, int x, int y, int width, int height)
+ImageFileDelegateMatlab::read (Image & image, int x, int y, int width, int height)
 {
-  if (! in) throw "ImageFileMatlab not open for reading";
+  if (! in) throw "ImageFileDelegateMatlab not open for reading";
 
   // Parse header...
 
@@ -170,9 +170,9 @@ ImageFileMatlab::read (Image & image, int x, int y, int width, int height)
 }
 
 void
-ImageFileMatlab::write (const Image & image, int x, int y)
+ImageFileDelegateMatlab::write (const Image & image, int x, int y)
 {
-  if (! out) throw "ImageFileMatlab not open for writing";
+  if (! out) throw "ImageFileDelegateMatlab not open for writing";
 
   int numericType;
   if (*image.format == GrayChar)
@@ -232,16 +232,16 @@ ImageFileMatlab::write (const Image & image, int x, int y)
 
 // class ImageFileFormatMatlab ------------------------------------------------
 
-ImageFile *
+ImageFileDelegate *
 ImageFileFormatMatlab::open (std::istream & stream, bool ownStream) const
 {
-  return new ImageFileMatlab (&stream, 0, ownStream);
+  return new ImageFileDelegateMatlab (&stream, 0, ownStream);
 }
 
-ImageFile *
+ImageFileDelegate *
 ImageFileFormatMatlab::open (std::ostream & stream, bool ownStream) const
 {
-  return new ImageFileMatlab (0, &stream, ownStream);
+  return new ImageFileDelegateMatlab (0, &stream, ownStream);
 }
 
 float

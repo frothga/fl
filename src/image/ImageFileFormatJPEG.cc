@@ -133,18 +133,18 @@ term_source (j_decompress_ptr cinfo)
 }
 
 
-// class ImageFileJPEG --------------------------------------------------------
+// class ImageFileDelegateJPEG ------------------------------------------------
 
-class ImageFileJPEG : public ImageFile
+class ImageFileDelegateJPEG : public ImageFileDelegate
 {
 public:
-  ImageFileJPEG (istream * in, ostream * out, bool ownStream = false)
+  ImageFileDelegateJPEG (istream * in, ostream * out, bool ownStream = false)
   {
 	this->in = in;
 	this->out = out;
 	this->ownStream = ownStream;
   }
-  ~ImageFileJPEG ();
+  ~ImageFileDelegateJPEG ();
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
@@ -154,7 +154,7 @@ public:
   bool ownStream;
 };
 
-ImageFileJPEG::~ImageFileJPEG ()
+ImageFileDelegateJPEG::~ImageFileDelegateJPEG ()
 {
   if (ownStream)
   {
@@ -164,9 +164,9 @@ ImageFileJPEG::~ImageFileJPEG ()
 }
 
 void
-ImageFileJPEG::read (Image & image, int x, int y, int width, int height)
+ImageFileDelegateJPEG::read (Image & image, int x, int y, int width, int height)
 {
-  if (! in) throw "ImageFileJPEG not open for reading";
+  if (! in) throw "ImageFileDelegateJPEG not open for reading";
 
   struct jpeg_decompress_struct cinfo;
   struct jpeg_error_mgr jerr;
@@ -218,9 +218,9 @@ ImageFileJPEG::read (Image & image, int x, int y, int width, int height)
 }
 
 void
-ImageFileJPEG::write (const Image & image, int x, int y)
+ImageFileDelegateJPEG::write (const Image & image, int x, int y)
 {
-  if (! out) throw "ImageFileJPEG not open for writing";
+  if (! out) throw "ImageFileDelegateJPEG not open for writing";
 
   if (*image.format != RGBChar)
   {
@@ -269,16 +269,16 @@ ImageFileJPEG::write (const Image & image, int x, int y)
 
 // class ImageFileFormatJPEG --------------------------------------------------
 
-ImageFile *
+ImageFileDelegate *
 ImageFileFormatJPEG::open (std::istream & stream, bool ownStream) const
 {
-  return new ImageFileJPEG (&stream, 0, ownStream);
+  return new ImageFileDelegateJPEG (&stream, 0, ownStream);
 }
 
-ImageFile *
+ImageFileDelegate *
 ImageFileFormatJPEG::open (std::ostream & stream, bool ownStream) const
 {
-  return new ImageFileJPEG (0, &stream, ownStream);
+  return new ImageFileDelegateJPEG (0, &stream, ownStream);
 }
 
 float

@@ -824,7 +824,26 @@ namespace fl
   // File formats -------------------------------------------------------------
 
   /**
-	 Interface for reading and writing Images.  While both reading and writing
+	 Helper class for ImageFile that actually implements the methods for a
+	 specific codec.
+  **/
+  class ImageFileDelegate : public ReferenceCounted
+  {
+  public:
+	virtual ~ImageFileDelegate ();
+
+	virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0) = 0;
+	virtual void write (const Image & image, int x = 0, int y = 0) = 0;
+
+	virtual void get (const std::string & name, double & value);
+	virtual void get (const std::string & name, std::string & value);
+	virtual void set (const std::string & name, double value);
+	virtual void set (const std::string & name, const std::string & value);
+  };
+
+  /**
+	 Read or write an image stored in a file or stream.
+	 While both reading and writing
 	 functions appear here, in general only one will work for any given
 	 open file and the other will throw exceptions if called.
 
@@ -875,7 +894,16 @@ namespace fl
   class ImageFile
   {
   public:
-	virtual ~ImageFile ();
+	/**
+	   Open a file for reading or writing.  When writing, the file suffix
+	   indicates the format, but the formatName may optionally override this.
+	   When reading, the format is determined primarily by the magic string at
+	   the start of the file.  The file suffix provides secondary guidance,
+	   and the formatName is ignored.
+	 **/
+	ImageFile (const std::string & fileName, const std::string & mode = "r", const std::string & formatName = "");
+	ImageFile (std::istream & stream);
+	ImageFile (std::ostream & stream, const std::string & formatName = "pgm");
 
 	/**
 	   Fill in image with pixels from the file.  This function by default
@@ -893,7 +921,7 @@ namespace fl
 	   default) then retrieve all the image that lies below the start
 	   position.
 	**/
-	virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0) = 0;
+	void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
 
 	/**
 	   Place the contents of image into a raster in the file.  If you are
@@ -908,12 +936,15 @@ namespace fl
 	   \param x The horizontal start position in the raster.
 	   \param y The vertical start position in the raster.
 	**/
-	virtual void write (const Image & image, int x = 0, int y = 0) = 0;
+	void write (const Image & image, int x = 0, int y = 0);
 
-	virtual void get (const std::string & name, double & value);
-	virtual void get (const std::string & name, std::string & value);
-	virtual void set (const std::string & name, double value);
-	virtual void set (const std::string & name, const std::string & value);
+	void get (const std::string & name, double & value);
+	void get (const std::string & name, std::string & value);
+	void set (const std::string & name, double value);
+	void set (const std::string & name, const std::string & value);
+
+	PointerPoly<ImageFileDelegate> delegate;
+	double timestamp;  ///< When it can be determined from the filesystem, apply it to the image.
   };
 
   /**
@@ -925,8 +956,8 @@ namespace fl
 	ImageFileFormat ();
 	virtual ~ImageFileFormat ();
 
-	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const = 0;
-	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const = 0;
+	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const = 0;
+	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const = 0;
 	virtual float isIn (std::istream & stream) const = 0;  ///< Determines probability that this format is on the stream.  Always rewinds stream back to where it was when function was called.
 	virtual float handles (const std::string & formatName) const = 0;  ///< Determines probability that this object handles the format with the given human readable name.
 
@@ -941,8 +972,8 @@ namespace fl
   class ImageFileFormatPGM : public ImageFileFormat
   {
   public:
-	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
-	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -950,8 +981,8 @@ namespace fl
   class ImageFileFormatEPS : public ImageFileFormat
   {
   public:
-	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
-	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -959,8 +990,8 @@ namespace fl
   class ImageFileFormatJPEG : public ImageFileFormat
   {
   public:
-	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
-	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -969,8 +1000,8 @@ namespace fl
   {
   public:
 	ImageFileFormatTIFF ();  ///< To initialize libgeotiff, if it is available.
-	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
-	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -978,8 +1009,8 @@ namespace fl
   class ImageFileFormatNITF : public ImageFileFormat
   {
   public:
-	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
-	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };
@@ -987,8 +1018,8 @@ namespace fl
   class ImageFileFormatMatlab : public ImageFileFormat
   {
   public:
-	virtual ImageFile * open (std::istream & stream, bool ownStream = false) const;
-	virtual ImageFile * open (std::ostream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
 	virtual float handles (const std::string & formatName) const;
   };

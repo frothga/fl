@@ -19,18 +19,18 @@ using namespace std;
 using namespace fl;
 
 
-// class ImageFileEPS ---------------------------------------------------------
+// class ImageFileDelegateEPS -------------------------------------------------
 
-class ImageFileEPS : public ImageFile
+class ImageFileDelegateEPS : public ImageFileDelegate
 {
 public:
-  ImageFileEPS (istream * in, ostream * out, bool ownStream = false)
+  ImageFileDelegateEPS (istream * in, ostream * out, bool ownStream = false)
   {
 	this->in = in;
 	this->out = out;
 	this->ownStream = ownStream;
   }
-  ~ImageFileEPS ();
+  ~ImageFileDelegateEPS ();
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
@@ -40,7 +40,7 @@ public:
   bool ownStream;
 };
 
-ImageFileEPS::~ImageFileEPS ()
+ImageFileDelegateEPS::~ImageFileDelegateEPS ()
 {
   if (ownStream)
   {
@@ -50,7 +50,7 @@ ImageFileEPS::~ImageFileEPS ()
 }
 
 void
-ImageFileEPS::read (Image & image, int x, int y, int width, int height)
+ImageFileDelegateEPS::read (Image & image, int x, int y, int width, int height)
 {
   throw "There's no way we are going to read an EPS!";
 
@@ -58,9 +58,9 @@ ImageFileEPS::read (Image & image, int x, int y, int width, int height)
 }
 
 void
-ImageFileEPS::write (const Image & image, int x, int y)
+ImageFileDelegateEPS::write (const Image & image, int x, int y)
 {
-  if (! out) throw "ImageFileEPS not open for writing";
+  if (! out) throw "ImageFileDelegateEPS not open for writing";
 
   if (*image.format != GrayChar)
   {
@@ -114,16 +114,16 @@ ImageFileEPS::write (const Image & image, int x, int y)
 
 // class ImageFileFormatEPS ---------------------------------------------------
 
-ImageFile *
+ImageFileDelegate *
 ImageFileFormatEPS::open (std::istream & stream, bool ownStream) const
 {
-  return new ImageFileEPS (&stream, 0, ownStream);
+  return new ImageFileDelegateEPS (&stream, 0, ownStream);
 }
 
-ImageFile *
+ImageFileDelegate *
 ImageFileFormatEPS::open (std::ostream & stream, bool ownStream) const
 {
-  return new ImageFileEPS (0, &stream, ownStream);
+  return new ImageFileDelegateEPS (0, &stream, ownStream);
 }
 
 float
