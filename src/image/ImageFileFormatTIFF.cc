@@ -304,66 +304,29 @@ struct GTIFmapping
   geokey_t key;
 };
 
+#undef ValuePair
+#define ValuePair(a,b) {#a, (geokey_t) b},
+
 static GTIFmapping GTIFmap[] =
 {
-  {"GTModelType",              GTModelTypeGeoKey},
-  {"GTRasterType",             GTRasterTypeGeoKey},
-  {"GTCitation",               GTCitationGeoKey},
-  {"GeographicType",           GeographicTypeGeoKey},
-  {"GeogCitation",             GeogCitationGeoKey},
-  {"GeogGeodeticDatum",        GeogGeodeticDatumGeoKey},
-  {"GeogPrimeMeridian",        GeogPrimeMeridianGeoKey},
-  {"GeogLinearUnits",          GeogLinearUnitsGeoKey},
-  {"GeogLinearUnitSize",       GeogLinearUnitSizeGeoKey},
-  {"GeogAngularUnits",         GeogAngularUnitsGeoKey},
-  {"GeogAngularUnitSize",      GeogAngularUnitSizeGeoKey},
-  {"GeogEllipsoid",            GeogEllipsoidGeoKey},
-  {"GeogSemiMajorAxis",        GeogSemiMajorAxisGeoKey},
-  {"GeogSemiMinorAxis",        GeogSemiMinorAxisGeoKey},
-  {"GeogInvFlattening",        GeogInvFlatteningGeoKey},
-  {"GeogAzimuthUnits",         GeogAzimuthUnitsGeoKey},
-  {"GeogPrimeMeridian",        GeogPrimeMeridianLongGeoKey},
-  {"ProjectedCSType",          ProjectedCSTypeGeoKey},
-  {"PCSCitation",              PCSCitationGeoKey},
-  {"Projection",               ProjectionGeoKey},
-  {"ProjCoordTrans",           ProjCoordTransGeoKey},
-  {"ProjLinearUnits",          ProjLinearUnitsGeoKey},
-  {"ProjLinearUnitSize",       ProjLinearUnitSizeGeoKey},
-  {"ProjStdParallel1",         ProjStdParallel1GeoKey},
-  {"ProjStdParallel",          ProjStdParallelGeoKey},
-  {"ProjStdParallel2",         ProjStdParallel2GeoKey},
-  {"ProjNatOriginLong",        ProjNatOriginLongGeoKey},
-  {"ProjOriginLong",           ProjOriginLongGeoKey},
-  {"ProjNatOriginLat",         ProjNatOriginLatGeoKey},
-  {"ProjOriginLat",            ProjOriginLatGeoKey},
-  {"ProjFalseEasting",         ProjFalseEastingGeoKey},
-  {"ProjFalseNorthing",        ProjFalseNorthingGeoKey},
-  {"ProjFalseOriginLong",      ProjFalseOriginLongGeoKey},
-  {"ProjFalseOriginLat",       ProjFalseOriginLatGeoKey},
-  {"ProjFalseOriginEasting",   ProjFalseOriginEastingGeoKey},
-  {"ProjFalseOriginNorthing",  ProjFalseOriginNorthingGeoKey},
-  {"ProjCenterLong",           ProjCenterLongGeoKey},
-  {"ProjCenterLat",            ProjCenterLatGeoKey},
-  {"ProjCenterEasting",        ProjCenterEastingGeoKey},
-  {"ProjCenterNorthing",       ProjCenterNorthingGeoKey},
-  {"ProjScaleAtNatOrigin",     ProjScaleAtNatOriginGeoKey},
-  {"ProjScaleAtOrigin",        ProjScaleAtOriginGeoKey},
-  {"ProjScaleAtCenter",        ProjScaleAtCenterGeoKey},
-  {"ProjAzimuthAngle",         ProjAzimuthAngleGeoKey},
-  {"ProjStraightVertPoleLong", ProjStraightVertPoleLongGeoKey},
-  {"VerticalCSType",           VerticalCSTypeGeoKey},
-  {"VerticalCitation",         VerticalCitationGeoKey},
-  {"VerticalDatum",            VerticalDatumGeoKey},
-  {"VerticalUnits",            VerticalUnitsGeoKey},
+# include <geokeys.inc>
   {0}
 };
 
 static inline GTIFmapping *
 findTag (const string & name, GTIFmapping * map)
 {
+  char buffer[100];
   while (map->name)
   {
 	if (name == map->name) return map;
+
+	// Hack to get rid of "GeoKey" at end of map->name
+	int length = strlen (map->name);
+	strcpy (buffer, map->name);
+	buffer[max (0, length - 6)] = 0;
+	if (name == buffer) return map;
+
 	map++;
   }
   return 0;
