@@ -22,6 +22,7 @@ for details.
 #include "fl/image.h"
 #include "fl/string.h"
 #include "fl/math.h"
+#include "fl/lapack.h"
 
 #include <tiffio.h>
 #include <tiffio.hxx>
@@ -29,6 +30,8 @@ for details.
 #  include <xtiffio.h>
 #  include <geotiff.h>
 #endif
+
+#include <strstream>
 
 
 using namespace std;
@@ -293,120 +296,6 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
   }
 }
 
-enum tagtype
-{
-  TTYPE_INT,
-  TTYPE_SHORT,
-  TTYPE_SINT,
-  TTYPE_ASCII,
-  TTYPE_FLOAT,
-  TTYPE_DOUBLE,
-  TTYPE_VECTORINT,
-  TTYPE_VECTORFLOAT,
-  TTYPE_VECTORDOUBLE
-};
-
-struct TIFFmapping
-{
-  char *  name;
-  ttag_t  tag;
-  tagtype type;
-};
-
-static TIFFmapping TIFFmap[] =
-{
-  // Standard TIFF tags -------------------------------------------------------
-  {"Artist",                    TIFFTAG_ARTIST,                 TTYPE_ASCII},
-  {"BadFaxLines",               TIFFTAG_BADFAXLINES,            TTYPE_INT},
-  {"BitsPerSample",             TIFFTAG_BITSPERSAMPLE,          TTYPE_SHORT},
-  {"CleanFaxData",              TIFFTAG_CLEANFAXDATA,           TTYPE_SHORT},
-  //{"ColorMap",                  TIFFTAG_COLORMAP,               TTYPE_},
-  {"Compression",               TIFFTAG_COMPRESSION,            TTYPE_SHORT},
-  {"ConsecutiveBadFaxLines",    TIFFTAG_CONSECUTIVEBADFAXLINES, TTYPE_INT},
-  {"Copyright",                 TIFFTAG_COPYRIGHT,              TTYPE_ASCII},
-  {"DataType",                  TIFFTAG_DATATYPE,               TTYPE_SHORT},
-  {"DateTime",                  TIFFTAG_DATETIME,               TTYPE_ASCII},
-  {"DocumentName",              TIFFTAG_DOCUMENTNAME,           TTYPE_ASCII},
-  //{"DotRange",                  TIFFTAG_DOTRANGE,               TTYPE_},
-  //{"ExtraSamples",              TIFFTAG_EXTRASAMPLES,           TTYPE_},
-  {"FaxMode",                   TIFFTAG_FAXMODE,                TTYPE_SINT},
-  {"FillOrder",                 TIFFTAG_FILLORDER,              TTYPE_SHORT},
-  {"Group3Options",             TIFFTAG_GROUP3OPTIONS,          TTYPE_INT},
-  {"Group4Options",             TIFFTAG_GROUP4OPTIONS,          TTYPE_INT},
-  //{"HalftoneHints",             TIFFTAG_HALFTONEHINTS,          TTYPE_),
-  {"HostComputer",              TIFFTAG_HOSTCOMPUTER,           TTYPE_ASCII},
-  {"ImageDepth",                TIFFTAG_IMAGEDEPTH,             TTYPE_INT},
-  {"ImageDescription",          TIFFTAG_IMAGEDESCRIPTION,       TTYPE_ASCII},
-  {"ImageLength",               TIFFTAG_IMAGELENGTH,            TTYPE_INT},
-  {"ImageWidth",                TIFFTAG_IMAGEWIDTH,             TTYPE_INT},
-  {"InkNames",                  TIFFTAG_INKNAMES,               TTYPE_ASCII},
-  {"InkSet",                    TIFFTAG_INKSET,                 TTYPE_SHORT},
-  //{"JPEGTables",                TIFFTAG_JPEGTABLES,             TTYPE_},
-  {"JPEGQuality",               TIFFTAG_JPEGQUALITY,            TTYPE_SINT},
-  {"JPEGColorMode",             TIFFTAG_JPEGCOLORMODE,          TTYPE_SINT},
-  {"JPEGTablesMode",            TIFFTAG_JPEGTABLESMODE,         TTYPE_SINT},
-  {"Make",                      TIFFTAG_MAKE,                   TTYPE_ASCII},
-  {"Matteing",                  TIFFTAG_MATTEING,               TTYPE_SHORT},
-  {"MaxSampleValue",            TIFFTAG_MAXSAMPLEVALUE,         TTYPE_SHORT},
-  {"MinSampleValue",            TIFFTAG_MINSAMPLEVALUE,         TTYPE_SHORT},
-  {"Model",                     TIFFTAG_MODEL,                  TTYPE_ASCII},
-  {"Orientation",               TIFFTAG_ORIENTATION,            TTYPE_SHORT},
-  {"PageName",                  TIFFTAG_PAGENAME,               TTYPE_ASCII},
-  {"PageNumber",                TIFFTAG_PAGENUMBER,             TTYPE_SHORT},
-  {"Photometric",               TIFFTAG_PHOTOMETRIC,            TTYPE_SHORT},
-  {"PlanarConfig",              TIFFTAG_PLANARCONFIG,           TTYPE_SHORT},
-  {"Predictor",                 TIFFTAG_PREDICTOR,              TTYPE_SHORT},
-  {"PrimaryChromacities",       TIFFTAG_PRIMARYCHROMATICITIES,  TTYPE_VECTORFLOAT},
-  {"ReferenceBlackWhite",       TIFFTAG_REFERENCEBLACKWHITE,    TTYPE_VECTORFLOAT},
-  {"ResolutionUnit",            TIFFTAG_RESOLUTIONUNIT,         TTYPE_SHORT},
-  {"RowsPerStrip",              TIFFTAG_ROWSPERSTRIP,           TTYPE_INT},
-  {"SampleFormat",              TIFFTAG_SAMPLEFORMAT,           TTYPE_SHORT},
-  {"SamplesPerPixel",           TIFFTAG_SAMPLESPERPIXEL,        TTYPE_SHORT},
-  {"SMinSampleValue",           TIFFTAG_SMINSAMPLEVALUE,        TTYPE_DOUBLE},
-  {"SMaxSampleValue",           TIFFTAG_SMAXSAMPLEVALUE,        TTYPE_DOUBLE},
-  {"Software",                  TIFFTAG_SOFTWARE,               TTYPE_ASCII},
-  {"StoNits",                   TIFFTAG_STONITS,                TTYPE_VECTORDOUBLE},
-  {"StripByteCounts",           TIFFTAG_STRIPBYTECOUNTS,        TTYPE_VECTORINT},
-  {"StripOffsets",              TIFFTAG_STRIPOFFSETS,           TTYPE_VECTORINT},
-  {"SubFileType",               TIFFTAG_SUBFILETYPE,            TTYPE_INT},
-  //{"SubIFD",                    TIFFTAG_SUBIFD,                 TTYPE_},
-  {"TargetPrinter",             TIFFTAG_TARGETPRINTER,          TTYPE_ASCII},
-  {"Thresholding",              TIFFTAG_THRESHHOLDING,          TTYPE_SHORT},
-  {"TileByteCounts",            TIFFTAG_TILEBYTECOUNTS,         TTYPE_VECTORINT},
-  {"TileDepth",                 TIFFTAG_TILEDEPTH,              TTYPE_INT},
-  {"TileLength",                TIFFTAG_TILELENGTH,             TTYPE_INT},
-  {"TileOffsets",               TIFFTAG_TILEOFFSETS,            TTYPE_VECTORINT},
-  {"TileWidth",                 TIFFTAG_TILEWIDTH,              TTYPE_INT},
-  //{"TransferFunction",          TIFFTAG_TRANSFERFUNCTION,       TTYPE_},
-  {"WhitePoint",                TIFFTAG_WHITEPOINT,             TTYPE_VECTORFLOAT},
-  {"XPosition",                 TIFFTAG_XPOSITION,              TTYPE_FLOAT},
-  {"XResolution",               TIFFTAG_XRESOLUTION,            TTYPE_FLOAT},
-  {"YCbCrCoefficients",         TIFFTAG_YCBCRCOEFFICIENTS,      TTYPE_VECTORFLOAT},
-  {"YCbCrPositioning",          TIFFTAG_YCBCRPOSITIONING,       TTYPE_SHORT},
-  {"YCbCrSubsampling",          TIFFTAG_YCBCRSUBSAMPLING,       TTYPE_SHORT},
-  {"YPosition",                 TIFFTAG_YPOSITION,              TTYPE_FLOAT},
-  {"YResolution",               TIFFTAG_YRESOLUTION,            TTYPE_FLOAT},
-  //{"ICCProfile",                TIFFTAG_ICCPROFILE,             TTYPE_},
-
-  // GeoTIFF tags -------------------------------------------------------------
-  {"ModelTransformation",       34264,                          TTYPE_VECTORDOUBLE},
-  {"ModelTiepoint",             33922,                          TTYPE_VECTORDOUBLE},
-  {"ModelPixelScale",           33550,                          TTYPE_VECTORDOUBLE},
-
-  {0}
-};
-
-static inline TIFFmapping *
-findTag (const string & name, TIFFmapping * map)
-{
-  while (map->name)
-  {
-	if (name == map->name) return map;
-	map++;
-  }
-  return 0;
-}
-
 #ifdef HAVE_GEOTIFF
 
 struct GTIFmapping
@@ -485,159 +374,44 @@ findTag (const string & name, GTIFmapping * map)
 void
 ImageFileDelegateTIFF::get (const string & name, double & value)
 {
-  TIFFmapping * m = findTag (name, TIFFmap);
-  if (m)
+  Matrix<double> v;
+  get (name, v);
+  if (v.rows () > 0  &&  v.columns () > 0)
   {
-	switch (m->type)
-	{
-	  case TTYPE_INT:
-	  {
-		unsigned int v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v)) value = v;
-		return;
-	  }
-	  case TTYPE_SHORT:
-	  {
-		unsigned short v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v)) value = v;
-		return;
-	  }
-	  case TTYPE_SINT:
-	  {
-		int v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v)) value = v;
-		return;
-	  }
-	  case TTYPE_ASCII:
-	  {
-		char * v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v)) value = atof (v);
-		return;
-	  }
-	  case TTYPE_FLOAT:
-	  {
-		float v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v)) value = v;
-		return;
-	  }
-	  case TTYPE_DOUBLE:
-	  {
-		double v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v)) value = v;
-		return;
-	  }
-	}
+	value = v(0,0);
   }
-
-# ifdef HAVE_GEOTIFF
-  GTIFmapping * g = findTag (name, GTIFmap);
-  if (g)
-  {
-	int size;
-	tagtype_t type;
-	int length = GTIFKeyInfo (gtif, g->key, &size, &type);
-	switch (type)
-	{
-	  case TYPE_SHORT:
-	  {
-		unsigned short v;
-		if (GTIFKeyGet (gtif, g->key, &v, 0, 1)) value = v;
-		return;
-	  }
-	  case TYPE_DOUBLE:
-	  {
-		double v;
-		if (GTIFKeyGet (gtif, g->key, &v, 0, 1)) value = v;
-		return;
-	  }
-	  case TYPE_ASCII:
-	  {
-		string v;
-		v.resize (length);
-		if (GTIFKeyGet (gtif, g->key, (void *) v.c_str (), 0, length))
-		{
-		  value = atof (v.c_str ());
-		}
-		return;
-	  }
-	}
-  }
-# endif
 }
 
 void
 ImageFileDelegateTIFF::get (const string & name, string & value)
 {
-  char buffer[100];
-
-  TIFFmapping * m = findTag (name, TIFFmap);
-  if (m)
+  const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
+  if (fi)
   {
-	switch (m->type)
+	if (fi->field_type == TIFF_ASCII)
 	{
-	  case TTYPE_INT:
+	  char * v;
+	  if (TIFFGetFieldDefaulted (tif, fi->field_tag, &v)) value = v;
+	}
+	else
+	{
+	  Matrix<double> v;
+	  get (name, v);
+	  if (v.rows () > 0  &&  v.columns () > 0)
 	  {
-		unsigned int v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
-		{
-		  sprintf (buffer, "%u", v);
-		  value = buffer;
-		}
-		return;
-	  }
-	  case TTYPE_SHORT:
-	  {
-		unsigned short v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
-		{
-		  sprintf (buffer, "%hu", v);
-		  value = buffer;
-		}
-		return;
-	  }
-	  case TTYPE_SINT:
-	  {
-		int v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
-		{
-		  sprintf (buffer, "%i", v);
-		  value = buffer;
-		}
-		return;
-	  }
-	  case TTYPE_ASCII:
-	  {
-		char * v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v)) value = v;
-		return;
-	  }
-	  case TTYPE_FLOAT:
-	  {
-		float v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
-		{
-		  sprintf (buffer, "%f", v);
-		  value = buffer;
-		}
-		return;
-	  }
-	  case TTYPE_DOUBLE:
-	  {
-		double v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
-		{
-		  sprintf (buffer, "%lf", v);
-		  value = buffer;
-		}
-		return;
+		strstream sv;
+		sv << v;
+		value = sv.str ();
 	  }
 	}
+	return;
   }
 
 # ifdef HAVE_GEOTIFF
   GTIFmapping * g = findTag (name, GTIFmap);
   if (g)
   {
+	char buffer[100];
 	int size;
 	tagtype_t type;
 	int length = GTIFKeyInfo (gtif, g->key, &size, &type);
@@ -677,14 +451,14 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 void
 ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 {
-  if (name == "ModelTransformation")
+  if (name == "GeoTransformationMatrix")
   {
 	unsigned short count;
 	double * v;
-	bool found = TIFFGetField (tif, 34264, &count, &v);
+	bool found = TIFFGetField (tif, 34264, &count, &v);  // GeoTransformationMatrix
 	if (! found)
 	{
-	  found = TIFFGetField (tif, 33920, &count, &v)  &&  count == 16;
+	  found = TIFFGetField (tif, 33920, &count, &v)  &&  count == 16;  // Intergraph TransformationMatrix
 	}
 	if (found)
 	{
@@ -694,106 +468,283 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 
 	if (TIFFGetField (tif, 33922, &count, &v)) // ModelTiepoint
 	{
-	  if (count == 6)  // exactly one tiepoint
+	  int points = count / 6;
+	  if (points == 1)  // exactly one point indicates direct computation of transformation
 	  {
 		double * o;
 		if (TIFFGetField (tif, 33550, &count, &o)) // ModelPixelScale
 		{
+		  value.resize (4, 4);
+		  value.clear ();
+		  value(0,0) = o[0];
+		  value(1,1) = -o[1];
+		  value(2,2) = o[2];
+		  value(0,3) = v[3] - v[0] * o[0];
+		  value(1,3) = v[4] + v[1] * o[1];
+		  value(2,3) = v[5] - v[2] * o[2];
+		  value(3,3) = 1;
 		}
 	  }
-	  else if (count >= 3)
+	  else if (points >= 3)  // 3 or more tiepoints, so solve for transformation using least squares
 	  {
-		// Solve for affine transformation
+		// First determine level of model to compute
+		bool allzero = true;
+		double * p = &v[2];
+		for (int i = 0; i < 2 * points; i++)
+		{
+		  allzero &= *p == 0;
+		  p += 3;
+		}
+
+		if (allzero)  // solve just 6 parameters
+		{
+		  // Find center of each point cloud
+		  Vector<double> centerIJ (2);
+		  Vector<double> centerXY (2);
+		  centerIJ.clear ();
+		  centerXY.clear ();
+		  p = v;
+		  for (int i = 0; i < points; i++)
+		  {
+			centerIJ[0] += *p++;
+			centerIJ[1] += *p++;
+			p++;
+			centerXY[0] += *p++;
+			centerXY[1] += *p++;
+			p++;
+		  }
+		  centerIJ /= points;
+		  centerXY /= points;
+
+		  // Build least squares problem for 2x2 xform
+		  Matrix<double> AT (points, 2);
+		  Matrix<double> BT (points, 2);
+		  p = v;
+		  for (int i = 0; i < points; i++)
+		  {
+			AT(i,0) = *p++ - centerIJ[0];
+			AT(i,1) = *p++ - centerIJ[1];
+			p++;
+			BT(i,0) = *p++ - centerXY[0];
+			BT(i,1) = *p++ - centerXY[1];
+			p++;
+		  }
+		  Matrix<double> X;
+		  gelss (AT, X, BT, (double *) 0, true, true);
+
+		  // Assemble result
+		  value.resize (4, 4);
+		  value.clear ();
+		  value.region (0, 0) = ~X;
+		  value.region (0, 3) = centerXY - value.region (0, 0, 1, 1) * centerIJ;
+		  value(3,3) = 1;
+		}
+		else if (points >= 4)  // solve all 12 parameters
+		{
+		  // Find center of each point cloud
+		  Vector<double> centerIJK (3);
+		  Vector<double> centerXYZ (3);
+		  centerIJK.clear ();
+		  centerXYZ.clear ();
+		  p = v;
+		  for (int i = 0; i < points; i++)
+		  {
+			centerIJK[0] += *p++;
+			centerIJK[1] += *p++;
+			centerIJK[2] += *p++;
+			centerXYZ[0] += *p++;
+			centerXYZ[1] += *p++;
+			centerXYZ[2] += *p++;
+		  }
+		  centerIJK /= points;
+		  centerXYZ /= points;
+
+		  // Build least squares problem for 3x3 xform
+		  Matrix<double> AT (points, 3);
+		  Matrix<double> BT (points, 3);
+		  p = v;
+		  for (int i = 0; i < points; i++)
+		  {
+			AT(i,0) = *p++ - centerIJK[0];
+			AT(i,1) = *p++ - centerIJK[1];
+			AT(i,2) = *p++ - centerIJK[2];
+			BT(i,0) = *p++ - centerXYZ[0];
+			BT(i,1) = *p++ - centerXYZ[1];
+			BT(i,2) = *p++ - centerXYZ[2];
+		  }
+		  Matrix<double> X;
+		  gelss (AT, X, BT, (double *) 0, true, true);
+
+		  // Assemble result
+		  value.resize (4, 4);
+		  value.clear ();
+		  value.region (0, 0) = ~X;
+		  value.region (0, 3) = centerXYZ - value.region (0, 0, 2, 2) * centerIJK;
+		  value(3,3) = 1;
+		}
 	  }
 	}
 
 	return;
   }
 
-  TIFFmapping * m = findTag (name, TIFFmap);
-  if (m)
+  const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
+  if (fi)
   {
-	switch (m->type)
+	int count = fi->field_readcount;
+
+	if (count == 1)
 	{
-	  case TTYPE_INT:
-	  {
-		unsigned int v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
-		{
-		  value.resize (1, 1);
-		  value(0,0) = v;
-		}
-		return;
+#     define grabSingle(type) \
+	  { \
+		type v; \
+		if (TIFFGetFieldDefaulted (tif, fi->field_tag, &v)) \
+		{ \
+		  value.resize (1, 1); \
+		  value(0,0) = v; \
+		} \
+		return; \
 	  }
-	  case TTYPE_SHORT:
+
+	  switch (fi->field_type)
+	  {
+		case TIFF_BYTE:
+		  grabSingle (uint8);
+		case TIFF_SBYTE:
+		  grabSingle (int8);
+		case TIFF_SHORT:
+		  grabSingle (uint16);
+		case TIFF_SSHORT:
+		  grabSingle (int16);
+		case TIFF_LONG:
+		case TIFF_IFD:
+		  grabSingle (uint32);
+		case TIFF_SLONG:
+		  grabSingle (int32);
+		case TIFF_RATIONAL:
+		case TIFF_SRATIONAL:
+		case TIFF_FLOAT:
+		  grabSingle (float);
+		case TIFF_DOUBLE:
+		  grabSingle (double);
+	  }
+	  return;
+	}
+
+	int rows = 1;
+	if (fi->field_readcount == TIFF_SPP)
+	{
+	  uint16 spp;
+	  TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLESPERPIXEL, &spp);
+	  rows = spp;
+	}
+	if (name == "GeoTiePoints") rows = 6;
+
+	void * data;
+	bool found = false;
+	if (count > 1)
+	{
+	  found = TIFFGetFieldDefaulted (tif, fi->field_tag, &data);
+	}
+	else if (fi->field_passcount)
+	{
+	  if (fi->field_readcount == TIFF_VARIABLE2)
+	  {
+		uint32 c;
+		found = TIFFGetFieldDefaulted (tif, fi->field_tag, &c, &data);
+		count = c;
+	  }
+	  else
+	  {
+		uint16 c;
+		found = TIFFGetFieldDefaulted (tif, fi->field_tag, &c, &data);
+		count = c;
+	  }
+	}
+	if (! found) return;
+
+	if (fi->field_type != TIFF_DOUBLE)
+	{
+	  if (rows == 1) value.resize (count, 1);
+	  else           value.resize (rows, count / rows);
+	}
+
+#   define convertVector(type) \
+	for (int i = 0; i < count; i++) \
+	{ \
+	  value[i] = ((type *) data)[i]; \
+	} \
+	return;
+
+	switch (fi->field_type)
+	{
+	  case TIFF_BYTE:
+		convertVector (uint8);
+	  case TIFF_SBYTE:
+		convertVector (int8);
+	  case TIFF_SHORT:
+		convertVector (uint16);
+	  case TIFF_SSHORT:
+		convertVector (int16);
+	  case TIFF_LONG:
+	  case TIFF_IFD:
+		convertVector (uint32);
+	  case TIFF_SLONG:
+		convertVector (int32);
+	  case TIFF_RATIONAL:
+	  case TIFF_SRATIONAL:
+	  case TIFF_FLOAT:
+		convertVector (float);
+	  case TIFF_DOUBLE:
+		if (rows == 1) value = Matrix<double> ((double *) data, count, 1);
+		else           value = Matrix<double> ((double *) data, rows, count / rows);
+		return;
+	}
+  }
+
+# ifdef HAVE_GEOTIFF
+  GTIFmapping * g = findTag (name, GTIFmap);
+  if (g)
+  {
+	int size;
+	tagtype_t type;
+	int length = GTIFKeyInfo (gtif, g->key, &size, &type);
+	switch (type)
+	{
+	  case TYPE_SHORT:
 	  {
 		unsigned short v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
+		if (GTIFKeyGet (gtif, g->key, &v, 0, 1))
 		{
 		  value.resize (1, 1);
 		  value(0,0) = v;
 		}
 		return;
 	  }
-	  case TTYPE_SINT:
-	  {
-		int v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
-		{
-		  value.resize (1, 1);
-		  value(0,0) = v;
-		}
-		return;
-	  }
-	  case TTYPE_ASCII:
-	  {
-		char * v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
-		{
-		  value.resize (1, 1);
-		  value(0,0) = atof (v);
-		}
-		return;
-	  }
-	  case TTYPE_FLOAT:
-	  {
-		float v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
-		{
-		  value.resize (1, 1);
-		  value(0,0) = v;
-		}
-		return;
-	  }
-	  case TTYPE_DOUBLE:
+	  case TYPE_DOUBLE:
 	  {
 		double v;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &v))
+		if (GTIFKeyGet (gtif, g->key, &v, 0, 1))
 		{
 		  value.resize (1, 1);
 		  value(0,0) = v;
 		}
 		return;
 	  }
-	  case TTYPE_VECTORDOUBLE:
+	  case TYPE_ASCII:
 	  {
-		unsigned short count;
-		void * data;
-		if (TIFFGetFieldDefaulted (tif, m->tag, &count, &data))
+		string v;
+		v.resize (length);
+		if (GTIFKeyGet (gtif, g->key, (void *) v.c_str (), 0, length))
 		{
-		  if (name == "ModelTiepoint")
-		  {
-			value = Matrix<double> ((double *) data, 6, count / 6);
-		  }
-		  else
-		  {
-			value = Matrix<double> ((double *) data, count, 1);
-		  }
+		  value.resize (1, 1);
+		  value(0,0) = atof (v.c_str ());
 		}
 		return;
 	  }
 	}
   }
+# endif
 }
 
 
