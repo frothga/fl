@@ -25,6 +25,7 @@ for details.
 
 
 #include "fl/pointer.h"
+#include "fl/matrix.h"
 
 #include <iostream>
 #include <string>
@@ -837,8 +838,10 @@ namespace fl
 
 	virtual void get (const std::string & name, double & value);
 	virtual void get (const std::string & name, std::string & value);
+	virtual void get (const std::string & name, Matrix<double> & value);
 	virtual void set (const std::string & name, double value);
 	virtual void set (const std::string & name, const std::string & value);
+	virtual void set (const std::string & name, const Matrix<double> & value);
   };
 
   /**
@@ -940,8 +943,10 @@ namespace fl
 
 	void get (const std::string & name, double & value);
 	void get (const std::string & name, std::string & value);
+	void get (const std::string & name, Matrix<double> & value);
 	void set (const std::string & name, double value);
 	void set (const std::string & name, const std::string & value);
+	void set (const std::string & name, const Matrix<double> & value);
 
 	PointerPoly<ImageFileDelegate> delegate;
 	double timestamp;  ///< When it can be determined from the filesystem, apply it to the image.
