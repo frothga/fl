@@ -897,6 +897,11 @@ namespace fl
   class ImageFile
   {
   public:
+	ImageFile ();
+	ImageFile (const std::string & fileName, const std::string & mode = "r", const std::string & formatName = "");
+	ImageFile (std::istream & stream);
+	ImageFile (std::ostream & stream, const std::string & formatName = "pgm");
+
 	/**
 	   Open a file for reading or writing.  When writing, the file suffix
 	   indicates the format, but the formatName may optionally override this.
@@ -904,9 +909,10 @@ namespace fl
 	   the start of the file.  The file suffix provides secondary guidance,
 	   and the formatName is ignored.
 	 **/
-	ImageFile (const std::string & fileName, const std::string & mode = "r", const std::string & formatName = "");
-	ImageFile (std::istream & stream);
-	ImageFile (std::ostream & stream, const std::string & formatName = "pgm");
+	void open (const std::string & fileName, const std::string & mode = "r", const std::string & formatName = "");
+	void open (std::istream & stream);
+	void open (std::ostream & stream, const std::string & formatName = "pgm");
+	void close ();
 
 	/**
 	   Fill in image with pixels from the file.  This function by default

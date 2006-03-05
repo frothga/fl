@@ -70,7 +70,27 @@ ImageFileDelegate::set (const std::string & name, const Matrix<double> & value)
 
 // class ImageFile ------------------------------------------------------------
 
-ImageFile::ImageFile (const std::string & fileName, const std::string & mode, const std::string & formatName)
+ImageFile::ImageFile ()
+{
+}
+
+ImageFile::ImageFile (const string & fileName, const string & mode, const string & formatName)
+{
+  open (fileName, mode, formatName);
+}
+
+ImageFile::ImageFile (istream & stream)
+{
+  open (stream);
+}
+
+ImageFile::ImageFile (ostream & stream, const string & formatName)
+{
+  open (stream, formatName);
+}
+
+void
+ImageFile::open (const std::string & fileName, const string & mode, const string & formatName)
 {
   if (mode == "w")  // write
   {
@@ -100,7 +120,8 @@ ImageFile::ImageFile (const std::string & fileName, const std::string & mode, co
   }
 }
 
-ImageFile::ImageFile (std::istream & stream)
+void
+ImageFile::open (istream & stream)
 {
   if (! stream.good ()) throw "Can't read image due to bad stream";
 
@@ -111,7 +132,8 @@ ImageFile::ImageFile (std::istream & stream)
   timestamp = NAN;
 }
 
-ImageFile::ImageFile (std::ostream & stream, const std::string & formatName)
+void
+ImageFile::open (ostream & stream, const string & formatName)
 {
   ImageFileFormat * ff;
   float P = ImageFileFormat::findName (formatName, ff);
@@ -121,8 +143,15 @@ ImageFile::ImageFile (std::ostream & stream, const std::string & formatName)
 }
 
 void
+ImageFile::close ()
+{
+  delegate.detach ();
+}
+
+void
 ImageFile::read (Image & image, int x, int y, int width, int height)
 {
+  if (! delegate.memory) throw "ImageFile not open";
   delegate->read (image, x, y, width, height);
   if (! isnan (timestamp)) image.timestamp = timestamp;
 }
@@ -130,42 +159,49 @@ ImageFile::read (Image & image, int x, int y, int width, int height)
 void
 ImageFile::write (const Image & image, int x, int y)
 {
+  if (! delegate.memory) throw "ImageFile not open";
   delegate->write (image, x, y);
 }
 
 void
 ImageFile::get (const std::string & name, double & value)
 {
+  if (! delegate.memory) throw "ImageFile not open";
   delegate->get (name, value);
 }
 
 void
 ImageFile::get (const std::string & name, std::string & value)
 {
+  if (! delegate.memory) throw "ImageFile not open";
   delegate->get (name, value);
 }
 
 void
 ImageFile::get (const std::string & name, Matrix<double> & value)
 {
+  if (! delegate.memory) throw "ImageFile not open";
   delegate->get (name, value);
 }
 
 void
 ImageFile::set (const std::string & name, double value)
 {
+  if (! delegate.memory) throw "ImageFile not open";
   delegate->set (name, value);
 }
 
 void
 ImageFile::set (const std::string & name, const std::string & value)
 {
+  if (! delegate.memory) throw "ImageFile not open";
   delegate->set (name, value);
 }
 
 void
 ImageFile::set (const std::string & name, const Matrix<double> & value)
 {
+  if (! delegate.memory) throw "ImageFile not open";
   delegate->set (name, value);
 }
 
