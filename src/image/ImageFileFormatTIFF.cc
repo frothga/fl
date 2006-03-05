@@ -60,6 +60,9 @@ public:
   virtual void get (const string & name, double & value);
   virtual void get (const string & name, string & value);
   virtual void get (const string & name, Matrix<double> & value);
+  virtual void set (const string & name, double value);
+  virtual void set (const string & name, const string & value);
+  virtual void set (const string & name, const Matrix<double> & value);
 
   TIFF * tif;
   ios * stream;
@@ -71,6 +74,10 @@ public:
 ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
 {
 # ifdef HAVE_GEOTIFF
+  if (ostream * bogus = dynamic_cast<ostream *> (stream))
+  {
+	GTIFWriteKeys (gtif);
+  }
   GTIFFree (gtif);
 # endif
   TIFFClose (tif);
@@ -284,8 +291,6 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 	}
   }
 
-  TIFFSetField (tif, TIFFTAG_COMPRESSION, COMPRESSION_LZW);
-
   unsigned char * p = (unsigned char *) buffer->memory;
   int stride = image.format->depth * buffer->stride;
   TIFFSetField (tif, TIFFTAG_ROWSPERSTRIP, (int) ceil (8.0 * 1024 / stride));  // Manual recommends 8K strips
@@ -295,44 +300,6 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
     p += stride;
   }
 }
-
-#ifdef HAVE_GEOTIFF
-
-struct GTIFmapping
-{
-  char *   name;
-  geokey_t key;
-};
-
-#undef ValuePair
-#define ValuePair(a,b) {#a, (geokey_t) b},
-
-static GTIFmapping GTIFmap[] =
-{
-# include <geokeys.inc>
-  {0}
-};
-
-static inline GTIFmapping *
-findTag (const string & name, GTIFmapping * map)
-{
-  char buffer[100];
-  while (map->name)
-  {
-	if (name == map->name) return map;
-
-	// Hack to get rid of "GeoKey" at end of map->name
-	int length = strlen (map->name);
-	strcpy (buffer, map->name);
-	buffer[max (0, length - 6)] = 0;
-	if (name == buffer) return map;
-
-	map++;
-  }
-  return 0;
-}
-
-#endif
 
 void
 ImageFileDelegateTIFF::get (const string & name, double & value)
@@ -362,7 +329,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	  get (name, v);
 	  if (v.rows () > 0  &&  v.columns () > 0)
 	  {
-		strstream sv;
+		ostrstream sv;
 		sv << v;
 		value = sv.str ();
 	  }
@@ -371,19 +338,20 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
   }
 
 # ifdef HAVE_GEOTIFF
-  GTIFmapping * g = findTag (name, GTIFmap);
-  if (g)
+  int key = GTIFKeyCode ((char *) name.c_str ());
+  if (key < 0) key = GTIFKeyCode ((char *) (name + "GeoKey").c_str ());
+  if (key >= 0)
   {
 	char buffer[100];
 	int size;
 	tagtype_t type;
-	int length = GTIFKeyInfo (gtif, g->key, &size, &type);
+	int length = GTIFKeyInfo (gtif, (geokey_t) key, &size, &type);
 	switch (type)
 	{
 	  case TYPE_SHORT:
 	  {
-		unsigned short v;
-		if (GTIFKeyGet (gtif, g->key, &v, 0, 1))
+		uint16 v;
+		if (GTIFKeyGet (gtif, (geokey_t) key, &v, 0, 1))
 		{
 		  sprintf (buffer, "%hu", v);
 		  value = buffer;
@@ -393,7 +361,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	  case TYPE_DOUBLE:
 	  {
 		double v;
-		if (GTIFKeyGet (gtif, g->key, &v, 0, 1))
+		if (GTIFKeyGet (gtif, (geokey_t) key, &v, 0, 1))
 		{
 		  sprintf (buffer, "%lf", v);
 		  value = buffer;
@@ -403,7 +371,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	  case TYPE_ASCII:
 	  {
 		value.resize (length);
-		GTIFKeyGet (gtif, g->key, (void *) value.c_str (), 0, length);
+		GTIFKeyGet (gtif, (geokey_t) key, (void *) value.c_str (), 0, length);
 		return;
 	  }
 	}
@@ -416,7 +384,7 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 {
   if (name == "GeoTransformationMatrix")
   {
-	unsigned short count;
+	uint16 count;
 	double * v;
 	bool found = TIFFGetField (tif, 34264, &count, &v);  // GeoTransformationMatrix
 	if (! found)
@@ -632,7 +600,7 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 	  else           value.resize (rows, count / rows);
 	}
 
-#   define convertVector(type) \
+#   define readVector(type) \
 	for (int i = 0; i < count; i++) \
 	{ \
 	  value[i] = ((type *) data)[i]; \
@@ -642,22 +610,22 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 	switch (fi->field_type)
 	{
 	  case TIFF_BYTE:
-		convertVector (uint8);
+		readVector (uint8);
 	  case TIFF_SBYTE:
-		convertVector (int8);
+		readVector (int8);
 	  case TIFF_SHORT:
-		convertVector (uint16);
+		readVector (uint16);
 	  case TIFF_SSHORT:
-		convertVector (int16);
+		readVector (int16);
 	  case TIFF_LONG:
 	  case TIFF_IFD:
-		convertVector (uint32);
+		readVector (uint32);
 	  case TIFF_SLONG:
-		convertVector (int32);
+		readVector (int32);
 	  case TIFF_RATIONAL:
 	  case TIFF_SRATIONAL:
 	  case TIFF_FLOAT:
-		convertVector (float);
+		readVector (float);
 	  case TIFF_DOUBLE:
 		if (rows == 1) value = Matrix<double> ((double *) data, count, 1);
 		else           value = Matrix<double> ((double *) data, rows, count / rows);
@@ -666,18 +634,19 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
   }
 
 # ifdef HAVE_GEOTIFF
-  GTIFmapping * g = findTag (name, GTIFmap);
-  if (g)
+  int key = GTIFKeyCode ((char *) name.c_str ());
+  if (key < 0) key = GTIFKeyCode ((char *) (name + "GeoKey").c_str ());
+  if (key >= 0)
   {
 	int size;
 	tagtype_t type;
-	int length = GTIFKeyInfo (gtif, g->key, &size, &type);
+	int length = GTIFKeyInfo (gtif, (geokey_t) key, &size, &type);
 	switch (type)
 	{
 	  case TYPE_SHORT:
 	  {
-		unsigned short v;
-		if (GTIFKeyGet (gtif, g->key, &v, 0, 1))
+		uint16 v;
+		if (GTIFKeyGet (gtif, (geokey_t) key, &v, 0, 1))
 		{
 		  value.resize (1, 1);
 		  value(0,0) = v;
@@ -687,7 +656,7 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 	  case TYPE_DOUBLE:
 	  {
 		double v;
-		if (GTIFKeyGet (gtif, g->key, &v, 0, 1))
+		if (GTIFKeyGet (gtif, (geokey_t) key, &v, 0, 1))
 		{
 		  value.resize (1, 1);
 		  value(0,0) = v;
@@ -698,12 +667,211 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 	  {
 		string v;
 		v.resize (length);
-		if (GTIFKeyGet (gtif, g->key, (void *) v.c_str (), 0, length))
+		if (GTIFKeyGet (gtif, (geokey_t) key, (void *) v.c_str (), 0, length))
 		{
 		  value.resize (1, 1);
 		  value(0,0) = atof (v.c_str ());
 		}
 		return;
+	  }
+	}
+  }
+# endif
+}
+
+void
+ImageFileDelegateTIFF::set (const string & name, double value)
+{
+  Matrix<double> v (1, 1);
+  v(0,0) = value;
+  set (name, v);
+}
+
+void
+ImageFileDelegateTIFF::set (const string & name, const string & value)
+{
+  const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
+  if (fi)
+  {
+	if (fi->field_type == TIFF_ASCII)
+	{
+	  TIFFSetField (tif, fi->field_tag, (char *) value.c_str ());
+	}
+	else
+	{
+	  set (name, atof (value.c_str ()));
+	}
+	return;
+  }
+
+# ifdef HAVE_GEOTIFF
+  int key = GTIFKeyCode ((char *) name.c_str ());
+  if (key < 0) key = GTIFKeyCode ((char *) (name + "GeoKey").c_str ());
+  if (key >= 0)
+  {
+	int size;
+	tagtype_t type;
+	int length = GTIFKeyInfo (gtif, (geokey_t) key, &size, &type);
+	switch (type)
+	{
+	  case TYPE_SHORT:
+	  {
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, (uint16) atoi (value.c_str ()));
+		break;
+	  }
+	  case TYPE_DOUBLE:
+	  {
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, atof (value.c_str ()));
+		break;
+	  }
+	  case TYPE_ASCII:
+	  {
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_ASCII, value.size (), value.c_str ());
+	  }
+	}
+  }
+# endif
+}
+
+void
+ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
+{
+  if (name == "GeoTransformationMatrix")
+  {
+	Matrix<double> v = ~value;
+	TIFFSetField (tif, 34264, (uint16) 16, &v(0,0));
+	return;
+  }
+
+  const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
+  if (fi)
+  {
+	int count = value.rows () * value.columns ();
+	if (! count) throw "Emptry matrix";
+
+	void * data = 0;
+	ostrstream adata;
+
+#   define writeVector(type) \
+	data = malloc (count * sizeof (type)); \
+	for (int i = 0; i < count; i++) \
+	{ \
+	  ((type *) data)[i] = (type) rint (value[i]); \
+	} \
+	break;
+
+	switch (fi->field_type)
+	{
+	  case TIFF_BYTE:
+		writeVector (uint8);
+	  case TIFF_SBYTE:
+		writeVector (int8);
+	  case TIFF_SHORT:
+		writeVector (uint16);
+	  case TIFF_SSHORT:
+		writeVector (int16);
+	  case TIFF_LONG:
+	  case TIFF_IFD:
+		writeVector (uint32);
+	  case TIFF_SLONG:
+		writeVector (int32);
+	  case TIFF_RATIONAL:
+	  case TIFF_SRATIONAL:
+	  case TIFF_FLOAT:
+		data = malloc (count * sizeof (float));
+		for (int i = 0; i < count; i++)
+		{
+		  ((float *) data)[i] = value[i];
+		}
+		break;
+	  case TIFF_DOUBLE:
+		data = &value(0,0);
+		break;
+	  case TIFF_ASCII:
+		adata << value;
+		data = adata.str ();
+	}
+
+	if (fi->field_passcount)
+	{
+	  if (fi->field_writecount == TIFF_VARIABLE2)
+	  {
+		TIFFSetField (tif, fi->field_tag, (uint32) count, data);
+	  }
+	  else
+	  {
+		TIFFSetField (tif, fi->field_tag, (uint16) count, data);
+	  }
+	}
+	else
+	{
+	  if (fi->field_writecount == 1)
+	  {
+		switch (fi->field_type)
+		{
+		  case TIFF_BYTE:
+			TIFFSetField (tif, fi->field_tag, *(uint8 *) data);
+			break;
+		  case TIFF_SBYTE:
+			TIFFSetField (tif, fi->field_tag, *(int8 *) data);
+			break;
+		  case TIFF_SHORT:
+			TIFFSetField (tif, fi->field_tag, *(uint16 *) data);
+			break;
+		  case TIFF_SSHORT:
+			TIFFSetField (tif, fi->field_tag, *(int16 *) data);
+			break;
+		  case TIFF_LONG:
+		  case TIFF_IFD:
+			TIFFSetField (tif, fi->field_tag, *(uint32 *) data);
+			break;
+		  case TIFF_SLONG:
+			TIFFSetField (tif, fi->field_tag, *(int32 *) data);
+			break;
+		  case TIFF_RATIONAL:
+		  case TIFF_SRATIONAL:
+		  case TIFF_FLOAT:
+			TIFFSetField (tif, fi->field_tag, *(float *) data);
+			break;
+		  case TIFF_DOUBLE:
+			TIFFSetField (tif, fi->field_tag, *(double *) data);
+		}
+	  }
+	  else
+	  {
+		TIFFSetField (tif, fi->field_tag, data);
+	  }
+	}
+
+	if (data  &&  fi->field_type != TIFF_DOUBLE  &&  fi->field_type != TIFF_ASCII) free (data);
+	return;
+  }
+
+# ifdef HAVE_GEOTIFF
+  int key = GTIFKeyCode ((char *) name.c_str ());
+  if (key < 0) key = GTIFKeyCode ((char *) (name + "GeoKey").c_str ());
+  if (key >= 0)
+  {
+	int size;
+	tagtype_t type;
+	int length = GTIFKeyInfo (gtif, (geokey_t) key, &size, &type);
+	switch (type)
+	{
+	  case TYPE_SHORT:
+	  {
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, (uint16) rint (value(0,0)));
+		break;
+	  }
+	  case TYPE_DOUBLE:
+	  {
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_DOUBLE, 1, value(0,0));
+		break;
+	  }
+	  case TYPE_ASCII:
+	  {
+		ostrstream data;
+		data << value;
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_ASCII, data.pcount (), data.str ());
 	  }
 	}
   }
