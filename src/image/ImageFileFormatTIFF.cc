@@ -120,7 +120,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   }
   if (planarConfig != PLANARCONFIG_CONTIG)
   {
-	throw "Can't handle planar formats";
+	throw "Can't yet handle planar formats";
   }
   if (extra > 1)
   {
@@ -178,13 +178,48 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   if (! buffer) image.buffer = buffer = new PixelBufferPacked;
   image.format = format;
   image.resize (w, h);
-
-  unsigned char * p = (unsigned char *) buffer->memory;
   int stride = image.format->depth * w;
-  for (int y = 0; y < h; y++)
+
+  if (TIFFIsTiled (tif))
   {
-	TIFFReadScanline (tif, p, y);
-	p += stride;
+	uint32 blockWidth;
+	TIFFGetField (tif, TIFFTAG_TILEWIDTH, &blockWidth);
+	uint32 blockHeight;
+	TIFFGetField (tif, TIFFTAG_TILELENGTH, &blockHeight);
+
+	Image temp (blockWidth, blockHeight, *image.format);
+	tsize_t size = blockWidth * blockHeight * image.format->depth;
+	tdata_t buf = (tdata_t) ((PixelBufferPacked *) temp.buffer)->memory;
+
+	ttile_t tile = 0;
+	for (int y = 0; y < image.height; y += blockHeight)
+	{
+	  for (int x = 0; x < image.width; x += blockWidth)
+	  {
+		TIFFReadEncodedTile (tif, tile++, buf, size);
+		image.bitblt (temp, x, y, 0, 0, min ((int) blockWidth, image.width - x), min ((int) blockHeight, image.height - y));
+	  }
+	}
+  }
+  else  // strip organization
+  {
+	uint32 rowsPerStrip;
+	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
+
+	int fullStrips = image.height / rowsPerStrip;
+	int stripStride = stride * rowsPerStrip;
+	unsigned char * p = (unsigned char *) buffer->memory;
+	for (int s = 0; s < fullStrips; s++)
+	{
+	  TIFFReadEncodedStrip (tif, s, p, stripStride);
+	  p += stripStride;
+	}
+
+	int spareRows = image.height - fullStrips * rowsPerStrip;
+	if (spareRows)
+	{
+	  TIFFReadEncodedStrip (tif, fullStrips, p, spareRows * stride);
+	}
   }
 }
 
@@ -291,13 +326,76 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 	}
   }
 
-  unsigned char * p = (unsigned char *) buffer->memory;
-  int stride = image.format->depth * buffer->stride;
-  TIFFSetField (tif, TIFFTAG_ROWSPERSTRIP, (int) ceil (8.0 * 1024 / stride));  // Manual recommends 8K strips
-  for (int y = 0; y < image.height; y++)
+  if (TIFFIsTiled (tif))
   {
-	TIFFWriteScanline (tif, p, y, 0);
-    p += stride;
+	uint32 blockWidth;
+	TIFFGetField (tif, TIFFTAG_TILEWIDTH, &blockWidth);
+	uint32 blockHeight;
+	TIFFGetField (tif, TIFFTAG_TILELENGTH, &blockHeight);
+
+	Image temp (blockWidth, blockHeight, *image.format);
+	tsize_t size = blockWidth * blockHeight * image.format->depth;
+	int tempStride = blockWidth * image.format->depth;
+
+	ttile_t tile = 0;
+	for (int y = 0; y < image.height; y += blockHeight)
+	{
+	  for (int x = 0; x < image.width; x += blockWidth)
+	  {
+		int w = min ((int) blockWidth, image.width - x);
+		int h = min ((int) blockHeight, image.height - y);
+		temp.bitblt (image, 0, 0, x, y, w, h);
+		unsigned char * buf = (unsigned char *) ((PixelBufferPacked *) temp.buffer)->memory;
+
+		// Fill out partial block in a way that is friendly to compression.
+		//   Fill bottom portion with black.
+		int n = blockHeight - h;
+		if (n)
+		{
+		  memset (buf + (h * tempStride), 0, n * tempStride);
+		}
+		//   Fill right side with copies of last pixel in row.
+		int m = blockWidth - w;
+		if (m)
+		{
+		  unsigned char * a = buf + ((w - 1) * image.format->depth);
+		  unsigned char * b = a + image.format->depth;
+		  int count = m * image.format->depth;
+		  for (int i = 0; i < h; i++)
+		  {
+			unsigned char * aa = a;
+			unsigned char * bb = b;
+			unsigned char * end = b + count;
+			while (bb < end) *bb++ = *aa++;
+			a += tempStride;
+			b += tempStride;
+		  }
+		}
+
+		TIFFWriteEncodedTile (tif, tile++, buf, size);
+	  }
+	}
+  }
+  else  // strip organization
+  {
+	int stride = image.format->depth * buffer->stride;
+	int rowsPerStrip = (int) ceil (8192.0 / stride);  // Manual recommends 8K strips
+	TIFFSetField (tif, TIFFTAG_ROWSPERSTRIP, (uint32) rowsPerStrip);
+
+	int fullStrips = image.height / rowsPerStrip;
+	int stripStride = stride * rowsPerStrip;
+	unsigned char * p = (unsigned char *) buffer->memory;
+	for (int s = 0; s < fullStrips; s++)
+	{
+	  TIFFWriteEncodedStrip (tif, s, p, stripStride);
+	  p += stripStride;
+	}
+
+	int spareRows = image.height - fullStrips * rowsPerStrip;
+	if (spareRows)
+	{
+	  TIFFWriteEncodedStrip (tif, fullStrips, p, spareRows * stride);
+	}
   }
 }
 
@@ -516,6 +614,29 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 	  }
 	}
 
+	return;
+  }
+
+  if (name == "width")
+  {
+	get ("ImageWidth", value);
+	return;
+  }
+  if (name == "height")
+  {
+	get ("ImageLength", value);
+	return;
+  }
+  if (name == "blockWidth")
+  {
+	if (TIFFIsTiled (tif)) get ("TileWidth",  value);
+	else                   get ("ImageWidth", value);
+	return;
+  }
+  if (name == "blockHeight")
+  {
+	if (TIFFIsTiled (tif)) get ("TileLength",   value);
+	else                   get ("RowsPerStrip", value);
 	return;
   }
 
@@ -740,6 +861,27 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
   {
 	Matrix<double> v = ~value;
 	TIFFSetField (tif, 34264, (uint16) 16, &v(0,0));
+	return;
+  }
+
+  if (name == "width")
+  {
+	set ("ImageWidth", value);
+	return;
+  }
+  if (name == "height")
+  {
+	set ("ImageLength", value);
+	return;
+  }
+  if (name == "blockWidth")
+  {
+	set ("TileWidth", value);
+	return;
+  }
+  if (name == "blockHeight")
+  {
+	set ("TileLength", value);
 	return;
   }
 
