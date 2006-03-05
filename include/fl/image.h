@@ -873,12 +873,8 @@ namespace fl
 	 <li>width -- total horizontal pixels.  Same semantics as Image::width.
 	 <li>height -- total vertical pixels.  Same semantics as Image::height.
 	 <li>blockWidth -- horizontal pixels in one block.  If the image is
-	 stored in stripped format, then this will be the same as "width".
+	 stored in "strips", then this will be the same as width.
 	 <li>blockHeight -- vertical pixels in one tile
-	 <li>blocksHorizontal -- width of the raster in blocks (as opposed
-	 to pixels).  That is, the number of blocks that lie in a row across
-	 the image.
-	 <li>blocksVertical -- height of the raster in blocks
 	 <li>
 	 </ul>
 	 These entries will always have the semantics described above, regardless
@@ -933,17 +929,17 @@ namespace fl
 	void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
 
 	/**
-	   Place the contents of image into a raster in the file.  If you are
+	   Place the contents of image into this file's raster.  If you are
 	   writing a big raster (one that uses multiple blocks), you should
-	   specify the block-related metadata before writing.  Only
-	   "blocksVertical" and "blocksHoizontal" need be set.  The others will
-	   be inferred from the size of the first image.
-	   If you do not set the block counts, then they will default to 1, and
-	   the image will be treated as the entire raster.  If all you want to do
-	   is just write a single image and be done with it, then don't worry
-	   about blocks and everything will work as expected.
-	   \param x The horizontal start position in the raster.
-	   \param y The vertical start position in the raster.
+	   specify imageWidth and imageHeight before writing.  The block size
+	   will be set to the size of the given image.  If you do not specify
+	   imageWidth and imageHeight, and do not specify the position for the
+	   given image, then this function will treat the given image as the
+	   entire raster, which is the common case.
+	   \param x The horizontal start position in the raster.  This should
+	   be an integer multiple of image.width.
+	   \param y The vertical start position in the raster.  This should be
+	   an integer multiple of image.height.
 	**/
 	void write (const Image & image, int x = 0, int y = 0);
 
