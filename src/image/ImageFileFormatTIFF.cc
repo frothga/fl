@@ -60,6 +60,8 @@ public:
 #   ifdef HAVE_GEOTIFF
 	gtif = GTIFNew (tif);
 #   endif
+
+	format = 0;
   }
   virtual ~ImageFileDelegateTIFF ();
 
@@ -78,6 +80,8 @@ public:
 # ifdef HAVE_GEOTIFF
   GTIF * gtif;
 # endif
+
+  const PixelFormat * format;  ///< For writing
 };
 
 ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
@@ -211,7 +215,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   width  = max (width,  0);
   height = max (height, 0);
   image.resize (width, height);
-  if (! width * height) return;
+  if (! width  ||  ! height) return;
 
   unsigned char * imageMemory = (unsigned char *) buffer->memory;
   int stride = image.format->depth * width;
@@ -226,10 +230,10 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	// If the requested image is anything other than exactly the union of a
 	// set of blocks in the file, then must use temporary storage to read in
 	// blocks.
-	Image temp (*image.format);
-	if (x % blockWidth  ||  y % blockHeight  ||  width != blockWidth  ||  height % blockHeight) temp.resize (blockWidth, blockHeight);
+	Image block (*image.format);
+	if (x % blockWidth  ||  y % blockHeight  ||  width != blockWidth  ||  height % blockHeight) block.resize (blockWidth, blockHeight);
 	tsize_t blockSize = blockWidth * blockHeight * image.format->depth;
-	tdata_t blockBuffer = (tdata_t) ((PixelBufferPacked *) temp.buffer)->memory;
+	tdata_t blockBuffer = (tdata_t) ((PixelBufferPacked *) block.buffer)->memory;
 
 	for (int oy = 0; oy < height;)  // output y: position in output image
 	{
@@ -251,7 +255,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		else
 		{
 		  TIFFReadEncodedTile (tif, tile, blockBuffer, blockSize);
-		  image.bitblt (temp, ox, oy, ix, iy, w, h);
+		  image.bitblt (block, ox, oy, ix, iy, w, h);
 		}
 
 		ox += w;
@@ -265,10 +269,10 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	uint32 rowsPerStrip;
 	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
 
-	Image temp (*image.format);
-	if (x  ||  y % rowsPerStrip  ||  width != imageWidth  ||  (height % rowsPerStrip  &&  y + height != imageHeight)) temp.resize (imageWidth, rowsPerStrip);
+	Image block (*image.format);
+	if (x  ||  y % rowsPerStrip  ||  width != imageWidth  ||  (height % rowsPerStrip  &&  y + height != imageHeight)) block.resize (imageWidth, rowsPerStrip);
 	tsize_t blockSize = imageWidth * rowsPerStrip * image.format->depth;
-	tdata_t blockBuffer = (tdata_t) ((PixelBufferPacked *) temp.buffer)->memory;
+	tdata_t blockBuffer = (tdata_t) ((PixelBufferPacked *) block.buffer)->memory;
 
 	for (int oy = 0; oy < height;)
 	{
@@ -284,7 +288,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	  else
 	  {
 		TIFFReadEncodedStrip (tif, strip, blockBuffer, blockSize);
-		image.bitblt (temp, 0, oy, x, iy, width, h);
+		image.bitblt (block, 0, oy, x, iy, width, h);
 	  }
 
 	  oy += h;
@@ -292,178 +296,256 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   }
 }
 
+inline void
+fillBlock (unsigned char * block, int stride, int depth, int width, int height, int x1, int x2, int y1, int y2)
+{
+  // Fill top of block with black
+  if (y1 > 0)
+  {
+	memset (block, 0, y1 * stride);
+  }
+
+  // Fill bottom of block with black
+  int m = height - y2;
+  if (m)
+  {
+	memset (block + y2 * stride, 0, m * stride);
+  }
+
+  // Fill left side with copies of first pixel in row.
+  if (x1 > 0)
+  {
+	unsigned char * a = block + (y1 * stride + (x1 + 1) * depth - 1);
+	unsigned char * b = a - depth;
+	int count = x1 * depth;
+	for (int i = y1; i < y2; i++)
+	{
+	  unsigned char * aa = a;
+	  unsigned char * bb = b;
+	  unsigned char * end = b - count;
+	  while (bb > end) *bb-- = *aa--;
+	  a += stride;
+	  b += stride;
+	}
+  }
+
+  // Fill right side with copies of last pixel in row.
+  int n = width - x2;
+  if (n)
+  {
+	unsigned char * a = block + (y1 * stride + (x2 - 1) * depth);
+	unsigned char * b = a + depth;
+	int count = n * depth;
+	for (int i = y1; i < y2; i++)
+	{
+	  unsigned char * aa = a;
+	  unsigned char * bb = b;
+	  unsigned char * end = b + count;
+	  while (bb < end) *bb++ = *aa++;
+	  a += stride;
+	  b += stride;
+	}
+  }
+}
+
+/**
+   \todo Allow negative coordinates for x and y.
+**/
 void
 ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 {
   if (! tif) throw "ImageFileDelegateTIFF not open";
+  if (x < 0  ||  y < 0) throw "Target coordinates must be non-negative";
 
-  if (image.format->monochrome)
+  if (! format)  // signals need for one-time setup, including other tags besides pixel format
   {
-	if (*image.format != GrayChar  &&  *image.format != GrayShort  &&  *image.format != GrayFloat  &&  *image.format != GrayDouble)
-	{
-	  write (image * GrayChar);
-	  return;
-	}
-  }
-  else if (image.format->hasAlpha)
-  {
-	if (*image.format != RGBAChar  &&  *image.format != RGBAShort  &&  *image.format != RGBAFloat)
-	{
-	  write (image * RGBAChar);
-	  return;
-	}
-  }
-  else  // Three color channels
-  {
-	if (*image.format != RGBChar  &&  *image.format != RGBShort)
-	{
-	  write (image * RGBChar);
-	  return;
-	}
-  }
+	format = image.format;
 
-  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
-  if (! buffer) throw "TIFF only handles packed buffers for now";
+	if (format->monochrome)
+	{
+	  TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 1);
+	  TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
 
-
-  TIFFSetField (tif, TIFFTAG_IMAGEWIDTH, image.width);
-  TIFFSetField (tif, TIFFTAG_IMAGELENGTH, image.height);
-  TIFFSetField (tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
-  TIFFSetField (tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-
-  if (image.format->monochrome)
-  {
-	TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 1);
-	TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
-
-	if (*image.format == GrayChar)
-	{
-	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
-	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
-	}
-	else if (*image.format == GrayShort)
-	{
-	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 16);
-	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
-	}
-	else if (*image.format == GrayFloat)
-	{
-	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 32);
-	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
-	}
-	else if (*image.format == GrayDouble)
-	{
-	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 64);
-	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
-	}
-  }
-  else if (image.format->hasAlpha)
-  {
-	TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 4);
-	TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
-
-	if (*image.format == RGBAChar)
-	{
-	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
-	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
-	}
-	else if (*image.format == RGBAShort)
-	{
-	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 16);
-	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
-	}
-	else  // RGBAFloat
-	{
-	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 32);
-	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
-	}
-  }
-  else  // 3 color channels
-  {
-	TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 3);
-	TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
-
-	if (*image.format == RGBChar)
-	{
-	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
-	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
-	}
-	else  // RGBShort
-	{
-	  TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 16);
-	  TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
-	}
-  }
-
-  if (TIFFIsTiled (tif))
-  {
-	uint32 blockWidth;
-	TIFFGetField (tif, TIFFTAG_TILEWIDTH, &blockWidth);
-	uint32 blockHeight;
-	TIFFGetField (tif, TIFFTAG_TILELENGTH, &blockHeight);
-
-	Image temp (blockWidth, blockHeight, *image.format);
-	tsize_t size = blockWidth * blockHeight * image.format->depth;
-	int tempStride = blockWidth * image.format->depth;
-
-	ttile_t tile = 0;
-	for (int y = 0; y < image.height; y += blockHeight)
-	{
-	  for (int x = 0; x < image.width; x += blockWidth)
+	  if (*format == GrayShort)
 	  {
-		int w = min ((int) blockWidth, image.width - x);
-		int h = min ((int) blockHeight, image.height - y);
-		temp.bitblt (image, 0, 0, x, y, w, h);
-		unsigned char * buf = (unsigned char *) ((PixelBufferPacked *) temp.buffer)->memory;
-
-		// Fill out partial block in a way that is friendly to compression.
-		//   Fill bottom portion with black.
-		int n = blockHeight - h;
-		if (n)
-		{
-		  memset (buf + (h * tempStride), 0, n * tempStride);
-		}
-		//   Fill right side with copies of last pixel in row.
-		int m = blockWidth - w;
-		if (m)
-		{
-		  unsigned char * a = buf + ((w - 1) * image.format->depth);
-		  unsigned char * b = a + image.format->depth;
-		  int count = m * image.format->depth;
-		  for (int i = 0; i < h; i++)
-		  {
-			unsigned char * aa = a;
-			unsigned char * bb = b;
-			unsigned char * end = b + count;
-			while (bb < end) *bb++ = *aa++;
-			a += tempStride;
-			b += tempStride;
-		  }
-		}
-
-		TIFFWriteEncodedTile (tif, tile++, buf, size);
+		TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 16);
+		TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
 	  }
+	  else if (*format == GrayFloat)
+	  {
+		TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 32);
+		TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
+	  }
+	  else if (*format == GrayDouble)
+	  {
+		TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 64);
+		TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
+	  }
+	  else
+	  {
+		format = &GrayChar;
+		TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
+		TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	  }
+	}
+	else if (format->hasAlpha)
+	{
+	  TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 4);
+	  TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
+
+	  if (*format == RGBAShort)
+	  {
+		TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 16);
+		TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	  }
+	  else if (*format == RGBAFloat)
+	  {
+		TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 32);
+		TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
+	  }
+	  else
+	  {
+		format = &RGBAChar;
+		TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
+		TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	  }
+	}
+	else  // Three color channels
+	{
+	  TIFFSetField (tif, TIFFTAG_SAMPLESPERPIXEL, 3);
+	  TIFFSetField (tif, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
+
+	  if (*format == RGBShort)
+	  {
+		TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 16);
+		TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	  }
+	  else
+	  {
+		format = &RGBChar;
+		TIFFSetField (tif, TIFFTAG_BITSPERSAMPLE, 8);
+		TIFFSetField (tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
+	  }
+	}
+
+	TIFFSetField (tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
+	TIFFSetField (tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+  }
+
+  Image work = image * *format;
+
+  PixelBufferPacked * buffer = (PixelBufferPacked *) work.buffer;
+  if (! buffer) throw "TIFF only handles packed buffers for now";
+  unsigned char * workBuffer = (unsigned char *) buffer->memory;
+  int stride = format->depth * work.width;
+
+  uint32 imageWidth  = 0;
+  uint32 imageHeight = 0;
+  TIFFGetField (tif, TIFFTAG_IMAGEWIDTH, &imageWidth);
+  TIFFGetField (tif, TIFFTAG_IMAGELENGTH, &imageHeight);
+  if (! imageWidth)
+  {
+	imageWidth = work.width;
+	TIFFSetField (tif, TIFFTAG_IMAGEWIDTH, imageWidth);
+  }
+  if (! imageHeight)
+  {
+	imageHeight = work.height;
+	TIFFSetField (tif, TIFFTAG_IMAGELENGTH, imageHeight);
+  }
+
+  int width  = min (work.width,  (int) imageWidth  - x);
+  int height = min (work.height, (int) imageHeight - y);
+  if (width <= 0  ||  height <= 0) return;
+
+  if (TIFFIsTiled (tif)  ||  imageWidth > work.width)  // non-clamped width, since it is the hint for block size
+  {
+	uint32 blockWidth = 0;
+	uint32 blockHeight = 0;
+	TIFFGetField (tif, TIFFTAG_TILEWIDTH, &blockWidth);
+	TIFFGetField (tif, TIFFTAG_TILELENGTH, &blockHeight);
+	if (! blockWidth  ||  ! blockHeight)
+	{
+	  if (! blockWidth)  blockWidth  = work.width;  // non-clamped value
+	  if (! blockHeight) blockHeight = work.height;  // ditto
+	  TIFFDefaultTileSize (tif, &blockWidth, &blockHeight);
+	  TIFFSetField (tif, TIFFTAG_TILEWIDTH, blockWidth);
+	  TIFFSetField (tif, TIFFTAG_TILELENGTH, blockHeight);
+	}
+
+	Image block (*format);
+	if (x % blockWidth  ||  y % blockHeight  ||  work.width != blockWidth  ||  height % blockHeight) block.resize (blockWidth, blockHeight);
+	unsigned char * blockBuffer = (unsigned char *) ((PixelBufferPacked *) block.buffer)->memory;
+	tsize_t blockSize = blockWidth * blockHeight * format->depth;
+	int blockStride = blockWidth * format->depth;
+
+	for (int iy = 0; iy < height;)  // input y: position in given image
+	{
+	  int ry = iy + y;  // working y in raster
+	  int oy = ry % blockHeight;  // output y: offset from top of block
+	  int h = min ((int) blockHeight - oy, height - iy);  // height of usable portion of block
+
+	  for (int ix = 0; ix < width;)
+	  {
+		int rx = ix + x;
+		int ox = rx % blockWidth;
+		int w = min ((int) blockWidth - ox, width - ix);
+
+		ttile_t tile = TIFFComputeTile (tif, rx, ry, 0, 0);
+		if (w == work.width  &&  h == blockHeight)
+		{
+		  TIFFWriteEncodedTile (tif, tile, workBuffer + iy * stride, blockSize);
+		}
+		else
+		{
+		  block.bitblt (work, ox, oy, ix, iy, w, h);
+		  fillBlock (blockBuffer, blockStride, format->depth, blockWidth, blockHeight, ox, ox + w, oy, oy + h);
+		  TIFFWriteEncodedTile (tif, tile, blockBuffer, blockSize);
+		}
+
+		ix += w;
+	  }
+
+	  iy += h;
 	}
   }
   else  // strip organization
   {
-	int stride = image.format->depth * buffer->stride;
-	int rowsPerStrip = (int) ceil (8192.0 / stride);  // Manual recommends 8K strips
-	TIFFSetField (tif, TIFFTAG_ROWSPERSTRIP, (uint32) rowsPerStrip);
-
-	int fullStrips = image.height / rowsPerStrip;
-	int stripStride = stride * rowsPerStrip;
-	unsigned char * p = (unsigned char *) buffer->memory;
-	for (int s = 0; s < fullStrips; s++)
+	int stride = format->depth * buffer->stride;
+	uint32 rowsPerStrip = 0;
+	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
+	if (! rowsPerStrip)
 	{
-	  TIFFWriteEncodedStrip (tif, s, p, stripStride);
-	  p += stripStride;
+	  rowsPerStrip = (uint32) ceil (8192.0 / stride);  // Manual recommends 8K strips
+	  TIFFSetField (tif, TIFFTAG_ROWSPERSTRIP, rowsPerStrip);
 	}
 
-	int spareRows = image.height - fullStrips * rowsPerStrip;
-	if (spareRows)
+	Image block (*format);
+	if (x  ||  y % rowsPerStrip  ||  work.width != imageWidth  ||  (height % rowsPerStrip  &&  y + height != imageHeight)) block.resize (imageWidth, rowsPerStrip);
+	unsigned char * blockBuffer = (unsigned char *) ((PixelBufferPacked *) block.buffer)->memory;
+	int blockStride = imageWidth * format->depth;
+
+	for (int iy = 0; iy < height;)
 	{
-	  TIFFWriteEncodedStrip (tif, fullStrips, p, spareRows * stride);
+	  int ry = iy + y;
+	  int oy = ry % rowsPerStrip;
+	  int strip = ry / rowsPerStrip;
+	  int h = min ((int) rowsPerStrip - oy, height - iy);
+	  int rows = strip * rowsPerStrip + h == imageHeight ? h : rowsPerStrip;
+	  int blockSize = rows * blockStride;
+
+	  if (work.width == imageWidth  &&  x == 0  &&  oy == 0)
+	  {
+		TIFFWriteEncodedStrip (tif, strip, workBuffer + iy * stride, blockSize);
+	  }
+	  else
+	  {
+		block.bitblt (work, x, oy, 0, iy, width, h);
+		fillBlock (blockBuffer, blockStride, format->depth, imageWidth, rows, x, x + width, oy, oy + h);
+		TIFFWriteEncodedStrip (tif, strip, blockBuffer, blockSize);
+	  }
+
+	  iy += h;
 	}
   }
 }
