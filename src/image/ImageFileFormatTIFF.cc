@@ -106,9 +106,10 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 
   bool ok = true;
 
-  uint32 w, h;
-  ok &= TIFFGetField (tif, TIFFTAG_IMAGEWIDTH, &w);
-  ok &= TIFFGetField (tif, TIFFTAG_IMAGELENGTH, &h);
+  uint32 imageWidth;
+  uint32 imageHeight;
+  ok &= TIFFGetField (tif, TIFFTAG_IMAGEWIDTH, &imageWidth);
+  ok &= TIFFGetField (tif, TIFFTAG_IMAGELENGTH, &imageHeight);
 
   uint16 samplesPerPixel;
   ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLESPERPIXEL, &samplesPerPixel);
@@ -192,8 +193,28 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
   if (! buffer) image.buffer = buffer = new PixelBufferPacked;
   image.format = format;
-  image.resize (w, h);
-  int stride = image.format->depth * w;
+
+  if (! width ) width  = imageWidth  - x;
+  if (! height) height = imageHeight - y;
+  if (x < 0)
+  {
+	width += x;
+	x = 0;
+  }
+  if (y < 0)
+  {
+	height += y;
+	y = 0;
+  }
+  width  = min (width,  (int) imageWidth  - x);
+  height = min (height, (int) imageHeight - y);
+  width  = max (width,  0);
+  height = max (height, 0);
+  image.resize (width, height);
+  if (! width * height) return;
+
+  unsigned char * imageMemory = (unsigned char *) buffer->memory;
+  int stride = image.format->depth * width;
 
   if (TIFFIsTiled (tif))
   {
@@ -202,18 +223,41 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	uint32 blockHeight;
 	TIFFGetField (tif, TIFFTAG_TILELENGTH, &blockHeight);
 
-	Image temp (blockWidth, blockHeight, *image.format);
-	tsize_t size = blockWidth * blockHeight * image.format->depth;
-	tdata_t buf = (tdata_t) ((PixelBufferPacked *) temp.buffer)->memory;
+	// If the requested image is anything other than exactly the union of a
+	// set of blocks in the file, then must use temporary storage to read in
+	// blocks.
+	Image temp (*image.format);
+	if (x % blockWidth  ||  y % blockHeight  ||  width != blockWidth  ||  height % blockHeight) temp.resize (blockWidth, blockHeight);
+	tsize_t blockSize = blockWidth * blockHeight * image.format->depth;
+	tdata_t blockBuffer = (tdata_t) ((PixelBufferPacked *) temp.buffer)->memory;
 
-	ttile_t tile = 0;
-	for (int y = 0; y < image.height; y += blockHeight)
+	for (int oy = 0; oy < height;)  // output y: position in output image
 	{
-	  for (int x = 0; x < image.width; x += blockWidth)
+	  int ry = oy + y;  // working y in raster
+	  int iy = ry % blockHeight;  // input y: offset from top of block
+	  int h = min ((int) blockHeight - iy, height - oy);  // height of usable portion of block
+
+	  for (int ox = 0; ox < width;)
 	  {
-		TIFFReadEncodedTile (tif, tile++, buf, size);
-		image.bitblt (temp, x, y, 0, 0, min ((int) blockWidth, image.width - x), min ((int) blockHeight, image.height - y));
+		int rx = ox + x;
+		int ix = rx % blockWidth;
+		int w = min ((int) blockWidth - ix, width - ox);
+
+		ttile_t tile = TIFFComputeTile (tif, rx, ry, 0, 0);
+		if (w == width  &&  h == blockHeight)
+		{
+		  TIFFReadEncodedTile (tif, tile, imageMemory + oy * stride, blockSize);
+		}
+		else
+		{
+		  TIFFReadEncodedTile (tif, tile, blockBuffer, blockSize);
+		  image.bitblt (temp, ox, oy, ix, iy, w, h);
+		}
+
+		ox += w;
 	  }
+
+	  oy += h;
 	}
   }
   else  // strip organization
@@ -221,19 +265,29 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	uint32 rowsPerStrip;
 	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
 
-	int fullStrips = image.height / rowsPerStrip;
-	int stripStride = stride * rowsPerStrip;
-	unsigned char * p = (unsigned char *) buffer->memory;
-	for (int s = 0; s < fullStrips; s++)
-	{
-	  TIFFReadEncodedStrip (tif, s, p, stripStride);
-	  p += stripStride;
-	}
+	Image temp (*image.format);
+	if (x  ||  y % rowsPerStrip  ||  width != imageWidth  ||  (height % rowsPerStrip  &&  y + height != imageHeight)) temp.resize (imageWidth, rowsPerStrip);
+	tsize_t blockSize = imageWidth * rowsPerStrip * image.format->depth;
+	tdata_t blockBuffer = (tdata_t) ((PixelBufferPacked *) temp.buffer)->memory;
 
-	int spareRows = image.height - fullStrips * rowsPerStrip;
-	if (spareRows)
+	for (int oy = 0; oy < height;)
 	{
-	  TIFFReadEncodedStrip (tif, fullStrips, p, spareRows * stride);
+	  int ry = oy + y;
+	  int iy = ry % rowsPerStrip;
+	  int strip = ry / rowsPerStrip;
+	  int h = min ((int) rowsPerStrip - iy, height - oy);
+
+	  if (width == imageWidth  &&  iy == 0)
+	  {
+		TIFFReadEncodedStrip (tif, strip, imageMemory + oy * stride, h * stride);
+	  }
+	  else
+	  {
+		TIFFReadEncodedStrip (tif, strip, blockBuffer, blockSize);
+		image.bitblt (temp, 0, oy, x, iy, width, h);
+	  }
+
+	  oy += h;
 	}
   }
 }
