@@ -182,6 +182,8 @@ Image::detach ()
 void
 Image::resize (int width, int height, bool preserve)
 {
+  width  = max (width,  0);
+  height = max (height, 0);
   buffer->resize (width, height, *format, preserve);
   this->width  = width;
   this->height = height;
