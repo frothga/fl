@@ -33,6 +33,15 @@ for details.
 
 #include <strstream>
 
+#include <fcntl.h>
+// On Cygwin, O_WRONLY == 1, but fcntl() returns 2 for that state, so can't
+// use O_WRONLY directly in comparisons.  Not sure if this is the case for
+// all posix systems, or just peculiar to Cygwin.
+#ifdef __CYGWIN__
+#  undef O_WRONLY
+#  define O_WRONLY _FWRITE
+#endif
+
 
 using namespace std;
 using namespace fl;
@@ -73,14 +82,20 @@ public:
 
 ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
 {
-# ifdef HAVE_GEOTIFF
-  if (ostream * bogus = dynamic_cast<ostream *> (stream))
+  if (tif)
   {
-	GTIFWriteKeys (gtif);
+#   ifdef HAVE_GEOTIFF
+	if (gtif)
+	{
+	  if (TIFFGetMode (tif) & O_WRONLY)
+	  {
+		GTIFWriteKeys (gtif);
+	  }
+	  GTIFFree (gtif);
+	}
+#   endif
+	TIFFClose (tif);
   }
-  GTIFFree (gtif);
-# endif
-  TIFFClose (tif);
   if (stream) delete stream;
 }
 
@@ -441,8 +456,8 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
   if (key >= 0)
   {
 	char buffer[100];
-	int size;
-	tagtype_t type;
+	int size = 0;
+	tagtype_t type = TYPE_UNKNOWN;
 	int length = GTIFKeyInfo (gtif, (geokey_t) key, &size, &type);
 	switch (type)
 	{
@@ -759,8 +774,8 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
   if (key < 0) key = GTIFKeyCode ((char *) (name + "GeoKey").c_str ());
   if (key >= 0)
   {
-	int size;
-	tagtype_t type;
+	int size = 0;
+	tagtype_t type = TYPE_UNKNOWN;
 	int length = GTIFKeyInfo (gtif, (geokey_t) key, &size, &type);
 	switch (type)
 	{
@@ -800,6 +815,85 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 # endif
 }
 
+#ifdef HAVE_GEOTIFF
+
+struct GTIFmapping
+{
+  geokey_t key;
+  tagtype_t type;
+};
+
+/**
+   \todo The GTIFKeyInfo() query does not work when writing, because it bails
+   out if the key is not already in the directory.  This table is a hack to
+   compensate for that lack.  It would be better is this functionality were
+   moved into libgeotiff itself.
+ **/
+static GTIFmapping GTIFmap[] =
+{
+  {GTModelTypeGeoKey,              TYPE_SHORT},
+  {GTRasterTypeGeoKey,             TYPE_SHORT},
+  {GTCitationGeoKey,               TYPE_ASCII},
+  {GeographicTypeGeoKey,           TYPE_SHORT},
+  {GeogCitationGeoKey,             TYPE_ASCII},
+  {GeogGeodeticDatumGeoKey,        TYPE_SHORT},
+  {GeogPrimeMeridianGeoKey,        TYPE_SHORT},
+  {GeogLinearUnitsGeoKey,          TYPE_SHORT},
+  {GeogLinearUnitSizeGeoKey,       TYPE_SHORT},
+  {GeogAngularUnitsGeoKey,         TYPE_SHORT},
+  {GeogAngularUnitSizeGeoKey,      TYPE_SHORT},
+  {GeogEllipsoidGeoKey,            TYPE_SHORT},
+  {GeogSemiMajorAxisGeoKey,        TYPE_SHORT},
+  {GeogSemiMinorAxisGeoKey,        TYPE_SHORT},
+  {GeogInvFlatteningGeoKey,        TYPE_SHORT},
+  {GeogAzimuthUnitsGeoKey,         TYPE_SHORT},
+  {GeogPrimeMeridianLongGeoKey,    TYPE_SHORT},
+  {ProjectedCSTypeGeoKey,          TYPE_SHORT},
+  {PCSCitationGeoKey,              TYPE_ASCII},
+  {ProjectionGeoKey,               TYPE_SHORT},
+  {ProjCoordTransGeoKey,           TYPE_SHORT},
+  {ProjLinearUnitsGeoKey,          TYPE_SHORT},
+  {ProjLinearUnitSizeGeoKey,       TYPE_SHORT},
+  {ProjStdParallel1GeoKey,         TYPE_SHORT},
+  {ProjStdParallelGeoKey,          TYPE_SHORT},
+  {ProjStdParallel2GeoKey,         TYPE_SHORT},
+  {ProjNatOriginLongGeoKey,        TYPE_SHORT},
+  {ProjOriginLongGeoKey,           TYPE_SHORT},
+  {ProjNatOriginLatGeoKey,         TYPE_SHORT},
+  {ProjOriginLatGeoKey,            TYPE_SHORT},
+  {ProjFalseEastingGeoKey,         TYPE_SHORT},
+  {ProjFalseNorthingGeoKey,        TYPE_SHORT},
+  {ProjFalseOriginLongGeoKey,      TYPE_SHORT},
+  {ProjFalseOriginLatGeoKey,       TYPE_SHORT},
+  {ProjFalseOriginEastingGeoKey,   TYPE_SHORT},
+  {ProjFalseOriginNorthingGeoKey,  TYPE_SHORT},
+  {ProjCenterLongGeoKey,           TYPE_SHORT},
+  {ProjCenterLatGeoKey,            TYPE_SHORT},
+  {ProjCenterEastingGeoKey,        TYPE_SHORT},
+  {ProjCenterNorthingGeoKey,       TYPE_SHORT},
+  {ProjScaleAtNatOriginGeoKey,     TYPE_SHORT},
+  {ProjScaleAtOriginGeoKey,        TYPE_SHORT},
+  {ProjScaleAtCenterGeoKey,        TYPE_SHORT},
+  {ProjAzimuthAngleGeoKey,         TYPE_SHORT},
+  {ProjStraightVertPoleLongGeoKey, TYPE_SHORT},
+  {VerticalCSTypeGeoKey,           TYPE_SHORT},
+  {VerticalCitationGeoKey,         TYPE_ASCII},
+  {VerticalDatumGeoKey,            TYPE_SHORT},
+  {VerticalUnitsGeoKey,            TYPE_SHORT},
+  {(geokey_t) 0}
+};
+
+static inline tagtype_t
+findType (geokey_t key)
+{
+  GTIFmapping * map = GTIFmap;
+  while (map->key  &&  map->key != key) map++;
+  if (map->key) return map->type;
+  return TYPE_UNKNOWN;
+}
+
+#endif
+
 void
 ImageFileDelegateTIFF::set (const string & name, double value)
 {
@@ -830,14 +924,13 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
   if (key < 0) key = GTIFKeyCode ((char *) (name + "GeoKey").c_str ());
   if (key >= 0)
   {
-	int size;
-	tagtype_t type;
-	int length = GTIFKeyInfo (gtif, (geokey_t) key, &size, &type);
-	switch (type)
+	switch (findType ((geokey_t) key))
 	{
 	  case TYPE_SHORT:
 	  {
-		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, (uint16) atoi (value.c_str ()));
+		int v = GTIFValueCode ((geokey_t) key, (char *) value.c_str ());
+		if (v < 0) v = atoi (value.c_str ());
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, (uint16) v);
 		break;
 	  }
 	  case TYPE_DOUBLE:
@@ -994,10 +1087,7 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
   if (key < 0) key = GTIFKeyCode ((char *) (name + "GeoKey").c_str ());
   if (key >= 0)
   {
-	int size;
-	tagtype_t type;
-	int length = GTIFKeyInfo (gtif, (geokey_t) key, &size, &type);
-	switch (type)
+	switch (findType ((geokey_t) key))
 	{
 	  case TYPE_SHORT:
 	  {
