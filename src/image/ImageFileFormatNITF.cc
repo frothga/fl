@@ -14,138 +14,967 @@ using namespace fl;
 
 // NITF structure -------------------------------------------------------------
 
-class nitfLUT
+/**
+   Record in maps used by nitfHeader to guide parsing.
+ **/
+struct nitfMapping
+{
+  char * name;  ///< NITF standard field name.  If null, then end of table.
+  int    size;  ///< byte count
+
+  /**
+	 A terse string that indicates the kind of data in this field.
+	 <ul>
+	 <li>"c" -- The name field refers to a combination of nitfItem subclass and nitfMapping table.
+	 <li>"A" -- ASCII
+	 <li>"N" -- Integer
+	 <li>"F" -- Float
+	 </ul>
+  **/
+  char * type;
+  char * defaultValue;  ///< Blank if standard default for given type.
+};
+
+class nitfItem
 {
 public:
-  nitfLUT (int NELUT)
+  nitfItem (nitfMapping * map)
   {
-	this->NELUT = NELUT;
-	table = new unsigned char[NELUT];
+	this->map = map;
+	data = 0;
   }
 
-  ~nitfLUT ()
+  virtual ~nitfItem ()
   {
-	delete table;
+	if (data) free (data);
   }
 
-  void read (istream & stream)
+  virtual void read (istream & stream)
   {
-	stream.read ((char *) table, NELUT);
+	data = (char *) malloc (map->size);
+	stream.read (data, map->size);
+
+	//string bob (data, map->size);
+	//cerr << "read item: " << map->name << " = " << bob << endl;
   }
 
-  int NELUT;
-  unsigned char * table;
+  virtual void write (ostream & stream)
+  {
+	if (! data)
+	{
+	  data = (char *) malloc (map->size);
+	  if (map->defaultValue[1])  // longer than a single character; must be exactly map->size chars long
+	  {
+		memcpy (data, map->defaultValue, map->size);
+	  }
+	  else  // one character long; use character to fill field
+	  {
+		memset (data, map->defaultValue[0], map->size);
+	  }
+	}
+	stream.write ((char *) data, map->size);
+  }
+
+  virtual bool contains (const string & name)
+  {
+	return name == map->name;
+  }
+
+  virtual void get (const string & name, string & value)
+  {
+	value.assign (data, map->size);
+  }
+
+  virtual void get (const string & name, double & value)
+  {
+	string temp (data, map->size);
+	value = atof (temp.c_str ());
+  }
+
+  virtual void get (const string & name, int & value)
+  {
+	string temp (data, map->size);
+	value = atoi (temp.c_str ());
+  }
+
+  virtual void set (const string & name, const string & value)
+  {
+	int length = value.size ();
+	if (length >= map->size)
+	{
+	  memcpy (data, (char *) value.c_str (), map->size);
+	}
+	else
+	{
+	  switch (map->type[0])
+	  {
+		case 'A':
+		case 'F':
+		  memcpy (data, (char *) value.c_str (), length);
+		  memset (data + length, ' ', map->size - length);
+		  break;
+		case 'N':
+		  int pad = map->size - length;
+		  memset (data, '0', pad);
+		  memcpy (data + pad, (char *) value.c_str (), length);
+	  }
+	}
+  }
+
+  virtual void set (const string & name, double value)
+  {
+	char buffer[256];
+	if (map->type[0] == 'F')
+	{
+	  sprintf (buffer, "%lf", value);
+	  set (name, buffer);
+	}
+	else
+	{
+	  long long v = (long long) rint (value);
+	  sprintf (buffer, "%0*lli", map->size, v);
+	  memcpy (data, buffer, map->size);
+	}
+  }
+
+  virtual void set (const string & name, int value)
+  {
+	char buffer[256];
+	if (map->type[0] == 'F')
+	{
+	  sprintf (buffer, "%i", value);
+	  set (name, buffer);
+	}
+	else
+	{
+	  sprintf (buffer, "%0*i", map->size, value);
+	  memcpy (data, buffer, map->size);
+	}
+  }
+
+  nitfMapping * map;
+  char * data;
+
+  static nitfItem * factory (nitfMapping * m);
 };
+
+/**
+   Generic reader/writer of a contiguous section of NITF metadata items.
+ **/
+class nitfItemSet : public nitfItem
+{
+public:
+  nitfItemSet (nitfMapping * map)
+  : nitfItem (map)
+  {
+	nitfMapping * m = map;
+	while (m->name)
+	{
+	  data.push_back (nitfItem::factory (m++));
+	}
+  }
+
+  virtual ~nitfItemSet ()
+  {
+	for (int i = 0; i < data.size (); i++)
+	{
+	  delete data[i];
+	}
+  }
+
+  virtual void read (istream & stream)
+  {
+	for (int i = 0; i < data.size (); i++)
+	{
+	  data[i]->read (stream);
+	}
+  }
+
+  virtual void write (ostream & stream)
+  {
+	for (int i = 0; i < data.size (); i++)
+	{
+	  data[i]->write (stream);
+	}
+  }
+
+  nitfItem * find (const string & name)
+  {
+	for (int i = 0; i < data.size (); i++)
+	{
+	  if (data[i]->contains (name)) return data[i];
+	}
+	return 0;
+  }
+
+  virtual bool contains (const string & name)
+  {
+	if (find (name)) return true;
+	return false;
+  }
+
+  virtual void get (const string & name, string & value)
+  {
+	nitfItem * item = find (name);
+	if (item) item->get (name, value);
+  }
+
+  virtual void get (const string & name, double & value)
+  {
+	nitfItem * item = find (name);
+	if (item) item->get (name, value);
+  }
+
+  virtual void get (const string & name, int & value)
+  {
+	nitfItem * item = find (name);
+	if (item) item->get (name, value);
+  }
+
+  virtual void set (const string & name, const string & value)
+  {
+	nitfItem * item = find (name);
+	if (item) item->set (name, value);
+  }
+
+  virtual void set (const string & name, double value)
+  {
+	nitfItem * item = find (name);
+	if (item) item->set (name, value);
+  }
+
+  virtual void set (const string & name, int value)
+  {
+	nitfItem * item = find (name);
+	if (item) item->set (name, value);
+  }
+
+  vector<nitfItem *> data;
+};
+
+class nitfRepeat : public nitfItem
+{
+public:
+  nitfRepeat (nitfMapping * map)
+  : nitfItem (map)
+  {
+	countItem = nitfItem::factory (map);
+  }
+
+  virtual ~nitfRepeat ()
+  {
+	delete countItem;
+	for (int i = 0; i < data.size (); i++)
+	{
+	  delete data[i];
+	}
+  }
+
+  virtual void read (istream & stream)
+  {
+	countItem->read (stream);
+	int count;
+	countItem->get (map->name, count);
+
+	for (int i = 0; i < count; i++)
+	{
+	  nitfItemSet * s = new nitfItemSet (&map[1]);
+	  s->read (stream);
+	  data.push_back (s);
+	}
+  }
+
+  virtual void write (ostream & stream)
+  {
+	int count = data.size ();
+	countItem->set (map->name, count);
+	countItem->write (stream);
+
+	for (int i = 0; i < count; i++)
+	{
+	  data[i]->write (stream);
+	}
+  }
+
+  void split (const string & name, string & root, int & index)
+  {
+	int position = name.find_first_of ("0123456789");
+	if (position == string::npos)
+	{
+	  root = name;
+	  index = 0;
+	}
+	else
+	{
+	  root = name.substr (0, position);
+	  index = atoi (name.substr (position).c_str ());
+	}
+  }
+
+  virtual bool contains (const string & name)
+  {
+	string root;
+	int index;
+	split (name, root, index);
+
+	if (countItem->contains (root)) return true;
+
+	nitfMapping * m = &map[1];
+	while (m->name)
+	{
+	  if (root == m->name) return true;
+	  m++;
+	}
+	return false;
+  }
+
+  virtual void get (const string & name, string & value)
+  {
+	string root;
+	int index;
+	split (name, root, index);
+	if (countItem->contains (root))
+	{
+	  countItem->get (root, value);
+	}
+	else if (index > 0  &&  index <= data.size ())
+	{
+	  data[index-1]->get (root, value);
+	}
+  }
+
+  virtual void get (const string & name, double & value)
+  {
+	string root;
+	int index;
+	split (name, root, index);
+	if (countItem->contains (root))
+	{
+	  countItem->get (root, value);
+	}
+	else if (index > 0  &&  index <= (int) data.size ())
+	{
+	  data[index-1]->get (root, value);
+	}
+  }
+
+  virtual void get (const string & name, int & value)
+  {
+	string root;
+	int index;
+	split (name, root, index);
+	if (countItem->contains (root))
+	{
+	  countItem->get (root, value);
+	}
+	else if (index > 0  &&  index <= (int) data.size ())
+	{
+	  data[index-1]->get (root, value);
+	}
+  }
+
+  virtual void set (const string & name, const string & value)
+  {
+	string root;
+	int index;
+	split (name, root, index);
+	if (index < 1) return;
+
+	while (data.size () < index)
+	{
+	  data.push_back (new nitfItemSet (&map[1]));
+	}
+
+	data[index-1]->set (root, value);
+  }
+
+  virtual void set (const string & name, double value)
+  {
+	string root;
+	int index;
+	split (name, root, index);
+	if (index < 1) return;
+
+	while (data.size () < index)
+	{
+	  data.push_back (new nitfItemSet (&map[1]));
+	}
+
+	data[index-1]->set (root, value);
+  }
+
+  virtual void set (const string & name, int value)
+  {
+	string root;
+	int index;
+	split (name, root, index);
+	if (index < 1) return;
+
+	while (data.size () < index)
+	{
+	  data.push_back (new nitfItemSet (&map[1]));
+	}
+
+	data[index-1]->set (root, value);
+  }
+
+  nitfItem * countItem;
+  vector<nitfItemSet *> data;
+};
+
+class nitfGeoloc : public nitfItemSet
+{
+public:
+  nitfGeoloc (nitfMapping * map)
+  : nitfItemSet (map)
+  {
+  }
+
+  virtual void read (istream & stream)
+  {
+	data[0]->read (stream);
+	if (data[0]->data[0] != ' ')
+	{
+	  for (int i = 1; i < data.size (); i++)
+	  {
+		data[i]->read (stream);
+	  }
+	}
+  }
+
+  virtual void write (ostream & stream)
+  {
+	data[0]->write (stream);
+	if (data[1]->data)
+	{
+	  for (int i = 1; i < data.size (); i++)
+	  {
+		data[i]->write (stream);
+	  }
+	}
+  }
+};
+
+class nitfCompression : public nitfItemSet
+{
+public:
+  nitfCompression (nitfMapping * map)
+  : nitfItemSet (map),
+	ICcodes ("C1|C3|C4|C5|C8|M1|M3|M4|M5|M8|I1")
+  {
+  }
+
+  virtual void read (istream & stream)
+  {
+	data[0]->read (stream);
+	string IC (data[0]->data, 2);
+	if (ICcodes.find (IC) != string::npos)
+	{
+	  for (int i = 1; i < data.size (); i++)
+	  {
+		data[i]->read (stream);
+	  }
+	}
+  }
+
+  virtual void write (ostream & stream)
+  {
+	data[0]->write (stream);
+	string IC (data[0]->data, 2);
+	if (ICcodes.find (IC) != string::npos)
+	{
+	  for (int i = 1; i < data.size (); i++)
+	  {
+		data[i]->write (stream);
+	  }
+	}
+  }
+
+  string ICcodes;  ///< that require a COMRAT field
+};
+
+class nitfExtendableCount : public nitfItem
+{
+public:
+  nitfExtendableCount (nitfMapping * map)
+  : nitfItem (map)
+  {
+  }
+
+  virtual void read (istream & stream)
+  {
+	char buffer[50];
+	stream.read (buffer, map->size);
+	buffer[map->size] = 0;
+	count = atoi (buffer);
+	if (! count)
+	{
+	  stream.read (buffer, map[1].size);
+	  buffer[map[1].size] = 0;
+	  count = atoi (buffer);
+	}
+  }
+
+  virtual void write (ostream & stream)
+  {
+	char buffer[50];
+	if (count < pow (10, map->size))
+	{
+	  sprintf (buffer, "%i", count);
+	}
+	else
+	{
+	  sprintf (buffer, "%0*i", map->size + map[1].size, count);
+	}
+	stream << buffer;
+  }
+
+  virtual bool contains (const string & name)
+  {
+	nitfMapping * m = map;
+	while (m->name)
+	{
+	  if (name == m->name) return true;
+	  m++;
+	}
+	return false;
+  }
+
+  virtual void get (const string & name, string & value)
+  {
+	char buffer[50];
+	sprintf (buffer, "%i", count);
+	value = buffer;
+  }
+
+  virtual void get (const string & name, double & value)
+  {
+	value = count;
+  }
+
+  virtual void get (const string & name, int & value)
+  {
+	value = count;
+  }
+
+  virtual void set (const string & name, const string & value)
+  {
+	count = atoi (value.c_str ());
+  }
+
+  virtual void set (const string & name, double value)
+  {
+	count = (int) rint (value);
+  }
+
+  virtual void set (const string & name, int value)
+  {
+	count = (int) rint (value);
+  }
+
+  int count;
+};
+
+class nitfLUT : public nitfItem
+{
+public:
+  nitfLUT (nitfMapping * map)
+  : nitfItem (map)
+  {
+	lut = 0;
+  }
+
+  virtual ~nitfLUT ()
+  {
+	if (lut) free (lut);
+  }
+
+  virtual void read (istream & stream)
+  {
+	char buffer[10];
+	stream.read (buffer, 1);
+	buffer[1] = 0;
+	NLUTS = atoi (buffer);
+	if (NLUTS)
+	{
+	  stream.read (buffer, 5);
+	  buffer[5] = 0;
+	  NELUT = atoi (buffer);
+
+	  int count = NLUTS * NELUT;
+	  lut = (unsigned char *) malloc (count);
+	  stream.read ((char *) lut, count);
+	}
+  }
+
+  virtual void write (ostream & stream)
+  {
+	stream << NLUTS;
+	if (NLUTS)
+	{
+	  char buffer[10];
+	  sprintf (buffer, "%05i", NELUT);
+	  stream.write (buffer, 5);
+	  int count = NLUTS * NELUT;
+	  stream.write ((char *) lut, count);
+	}
+  }
+
+  virtual bool contains (const string & name)
+  {
+	return name == "NLUTS"  ||  name == "NELUT"  ||  name == "LUTD";
+  }
+
+  virtual void get (const string & name, string & value)
+  {
+	char buffer[10];
+	if (name == "NLUTS")
+	{
+	  sprintf (buffer, "%i", NLUTS);
+	  value = buffer;
+	}
+	else if (name == "NELUT")
+	{
+	  sprintf (buffer, "%05i", NELUT);
+	  value = buffer;
+	}
+	else if (name == "LUTD")
+	{
+	  value.assign ((char *) lut, NLUTS * NELUT);
+	}
+  }
+
+  virtual void get (const string & name, double & value)
+  {
+	if (name == "NLUTS")
+	{
+	  value = NLUTS;
+	}
+	else if (name == "NELUT")
+	{
+	  value = NELUT;
+	}
+  }
+
+  virtual void get (const string & name, int & value)
+  {
+	if (name == "NLUTS")
+	{
+	  value = NLUTS;
+	}
+	else if (name == "NELUT")
+	{
+	  value = NELUT;
+	}
+  }
+
+  virtual void set (const string & name, const string & value)
+  {
+	if (name == "NLUTS")
+	{
+	  NLUTS = atoi (value.c_str ());
+	}
+	else if (name == "NELUT")
+	{
+	  NELUT = atoi (value.c_str ());
+	}
+	throw "must resize lut";
+  }
+
+  virtual void set (const string & name, double value)
+  {
+	if (name == "NLUTS")
+	{
+	  NLUTS = (int) rint (value);
+	}
+	else if (name == "NELUT")
+	{
+	  NELUT = (int) rint (value);
+	}
+	throw "must resize lut";
+  }
+
+  virtual void set (const string & name, int value)
+  {
+	if (name == "NLUTS")
+	{
+	  NLUTS = value;
+	}
+	else if (name == "NELUT")
+	{
+	  NELUT = value;
+	}
+	throw "must resize lut";
+  }
+
+  int NLUTS;
+  int NELUT;
+  unsigned char * lut;  ///< an NELUT by NLUTS matrix
+};
+
+static nitfMapping mapIS[] =
+{
+  {"NUMI", 3,  "N", "0"},
+  {"LISH", 6,  "N", "9"},
+  {"LI",   10, "N", "9"},
+  {0}
+};
+
+static nitfMapping mapGS[] =
+{
+  {"NUMS", 3, "N", "0"},
+  {"LSSH", 4, "N", "9"},
+  {"LS",   6, "N", "9"},
+  {0}
+};
+
+static nitfMapping mapTS[] =
+{
+  {"NUMT", 3, "N", "0"},
+  {"LTSH", 4, "N", "9"},
+  {"LT",   5, "N", "9"},
+  {0}
+};
+
+static nitfMapping mapDES[] =
+{
+  {"NUMDES", 3, "N", "0"},
+  {"LDSH",   4, "N", "9"},
+  {"LD",     9, "N", "9"},
+  {0}
+};
+
+static nitfMapping mapRES[] =
+{
+  {"NUMRES", 3, "N", "0"},
+  {"LRESH",  4, "N", "9"},
+  {"LRE",    7, "N", "9"},
+  {0}
+};
+
+static nitfMapping mapFileHeader[] =
+{
+  {"FHDR",    4, "A", "NITF"},
+  {"FVER",    5, "A", "02.10"},
+  {"CLEVEL",  2, "N", "9"},
+  {"STYPE",   4, "A", "BF01"},
+  {"OSTAID", 10, "A", " "},
+  {"FDT",    14, "N", "9"},
+  {"FTITLE", 80, "A", " "},
+  {"FSCLAS",  1, "A", "U"},
+  {"FSCLSY",  2, "A", " "},
+  {"FSCODE", 11, "A", " "},
+  {"FSCTLH",  2, "A", " "},
+  {"FSREL",  20, "A", " "},
+  {"FSDCTP",  2, "A", " "},
+  {"FSDCDT",  8, "A", " "},
+  {"FSDCXM",  4, "A", " "},
+  {"FSDG",    1, "A", " "},
+  {"FSDGDT",  8, "A", " "},
+  {"FSCLTX", 43, "A", " "},
+  {"FSCATP",  1, "A", " "},
+  {"FSAUT",  40, "A", " "},
+  {"FSCRSN",  1, "A", " "},
+  {"FSSRDT",  8, "A", " "},
+  {"FSCTLN", 15, "A", " "},
+  {"FSCOP",   5, "N", "0"},
+  {"FSCPYS",  5, "N", "0"},
+  {"ENCRYP",  1, "N", "0"},
+  {"FBKGC",   3, "A", "\0x00\0x00\0x00"},
+  {"ONAME",  24, "A", " "},
+  {"OPHONE", 18, "A", " "},
+  {"FL",     12, "N", "9"},
+  {"HL",      6, "N", "9"},
+  {"IS",      0, "c"},
+  {"GS",      0, "c"},
+  {"NUMX",    3, "N", "0"},
+  {"TS",      0, "c"},
+  {"DES",     0, "c"},
+  {"RES",     0, "c"},
+  {0}
+};
+
+static nitfMapping mapGeoloc[] =
+{
+  {"ICORDS",   1, "A", " "},
+  {"IGEOLO1", 15, "A", " "},
+  {"IGEOLO2", 15, "A", " "},
+  {"IGEOLO3", 15, "A", " "},
+  {"IGEOLO4", 15, "A", " "},
+  {0}
+};
+
+static nitfMapping mapIcom[] =
+{
+  {"NICOM",    1, "N", "0"},
+  {"ICOM",    80, "A", " "},
+  {0}
+};
+
+static nitfMapping mapCompression[] =
+{
+  {"IC",       2, "A", "NC"},
+  {"COMRAT",   4, "A", " "},
+  {0}
+};
+
+static nitfMapping mapBandCount[] =
+{
+  {"NBANDS",   1, "N", "0"},
+  {"XBANDS",   5, "N", "0"},
+  {0}
+};
+
+static nitfMapping mapBand[] =
+{
+  {"bandcount", 0, "c"},
+  {"IREPBAND",  2, "A", " "},
+  {"ISUBCAT",   6, "A", " "},
+  {"IFC",       1, "A", "N"},
+  {"IMFLT",     3, "A", " "},
+  {"lut",       0, "c"},
+  {0}
+};
+
+static nitfMapping mapImageHeader[] =
+{
+  {"IM",      2, "A", "IM"},
+  {"IID1",   10, "A", " "},
+  {"IDATIM", 14, "N", "9"},
+  {"TGTID",  17, "A", " "},
+  {"IID2",   80, "A", " "},
+  {"ISCLAS",  1, "A", " "},
+  {"ISCLSY",  2, "A", " "},
+  {"ISCODE", 11, "A", " "},
+  {"ISCTLH",  2, "A", " "},
+  {"ISREL",  20, "A", " "},
+  {"ISDCTP",  2, "A", " "},
+  {"ISDCDT",  8, "A", " "},
+  {"ISDCXM",  4, "A", " "},
+  {"ISDG",    1, "A", " "},
+  {"ISDGDT",  8, "A", " "},
+  {"ISCLTX", 43, "A", " "},
+  {"ISCATP",  1, "A", " "},
+  {"ISCAUT", 40, "A", " "},
+  {"ISCRSN",  1, "A", " "},
+  {"ISSRDT",  8, "A", " "},
+  {"ISCTLN", 15, "A", " "},
+  {"ENCRYP",  1, "N", "0"},
+  {"ISORCE", 42, "A", " "},
+  {"NROWS",   8, "N", "9"},
+  {"NCOLS",   8, "N", "9"},
+  {"PVTYPE",  3, "A", "INT"},
+  {"IREP",    8, "A", "MONO    "},
+  {"ICAT",    8, "A", "VIS     "},
+  {"ABPP",    2, "N", "9"},
+  {"PJUST",   1, "A", "R"},
+  {"geoloc",      0, "c"},
+  {"icom",        0, "c"},
+  {"compression", 0, "c"},
+  {"band",        0, "c"},
+  {"ISYNC",   1, "N", "0"},
+  {"IMODE",   1, "A", "P"},
+  {"NBPR",    4, "N", "1"},
+  {"NBPC",    4, "N", "1"},
+  {"NPPBH",   4, "N", "0"},
+  {"NPPBV",   4, "N", "0"},
+  {"NBPP",    2, "N", "9"},
+  {"IDLVL",   3, "N", "001"},
+  {"IALVL",   3, "N", "0"},
+  {"ILOC",   10, "N", "0"},
+  {"IMAG",    4, "F", "1.0 "},
+  // user and extension headers go here
+  {0}
+};
+
+enum nitfItemID
+{
+  idItem,
+  idRepeat,
+  idItemSet,
+  idGeoloc,
+  idCompression,
+  idExtendableCount,
+  idLUT
+};
+
+struct nitfTypeMapping
+{
+  char *        name;
+  nitfItemID    id;
+  nitfMapping * map;  ///< alternate map
+};
+
+nitfTypeMapping typeMap[] =
+{
+  {"IS",          idRepeat,          mapIS},
+  {"GS",          idRepeat,          mapGS},
+  {"TS",          idRepeat,          mapTS},
+  {"DES",         idRepeat,          mapDES},
+  {"RES",         idRepeat,          mapRES},
+  {"geoloc",      idGeoloc,          mapGeoloc},
+  {"icom",        idRepeat,          mapIcom},
+  {"compression", idCompression,     mapCompression},
+  {"band",        idRepeat,          mapBand},
+  {"bandcount",   idExtendableCount, mapBandCount},
+  {"lut",         idLUT,             0},
+  {0}
+};
+
+nitfItem *
+nitfItem::factory (nitfMapping * m)
+{
+  if (m->type[0] == 'A'  ||  m->type[0] == 'N'  ||  m->type[0] == 'F')
+  {
+	return new nitfItem (m);
+  }
+
+  if (m->type[0] != 'c') throw "Expected class type";  // error in map tables
+
+  nitfTypeMapping * t = typeMap;
+  while (t->name)
+  {
+	if (strcmp (t->name, m->name) == 0)
+	{
+	  nitfMapping * mm = t->map ? t->map : m;
+	  switch (t->id)
+	  {
+		case idItem:            return new nitfItem            (mm);
+		case idRepeat:          return new nitfRepeat          (mm);
+		case idItemSet:         return new nitfItemSet         (mm);
+		case idGeoloc:          return new nitfGeoloc          (mm);
+		case idCompression:     return new nitfCompression     (mm);
+		case idExtendableCount: return new nitfExtendableCount (mm);
+		case idLUT:             return new nitfLUT             (mm);
+	  }
+	}
+	t++;
+  }
+
+  throw "Can't find typeMap entry!";  // error in map tables
+}
 
 class nitfImageMask
 {
 public:
 };
 
-class nitfImageBand
+class nitfImageSection
 {
 public:
-  ~nitfImageBand ()
+  nitfImageSection ()
+  : header (mapImageHeader)
   {
-	for (int i = 0; i < luts.size (); i++)
-	{
-	  delete luts[i];
-	}
   }
 
   void get (const string & name, string & value)
   {
-	if (name == "NLUTS")
-	{
-	  value.assign (&required[12], 5);
-	}
+	header.get (name, value);
   }
 
   void get (const string & name, int & value)
   {
-	string sv;
-	get (name, sv);
-	value = atoi (sv.c_str ());
-  }
-
-  void read (istream & stream)
-  {
-	stream.read (required, sizeof (required));
-
-	int NLUTS;
-	get ("NLUTS", NLUTS);
-	int NELUT = 0;
-	char buffer[10];
-	if (NLUTS)
-	{
-	  stream.read (buffer, 5);
-	  buffer[5] = 0;
-	  NELUT = atoi (buffer);
-	}
-	for (int i = 0; i < NLUTS; i++)
-	{
-	  nitfLUT * l = new nitfLUT (NELUT);
-	  luts.push_back (l);
-	  l->read (stream);
-	}
-  }
-
-  char required[17];
-  vector<nitfLUT *> luts;
-};
-
-class nitfImageHeader
-{
-public:
-  ~nitfImageHeader ()
-  {
-	for (int i = 0; i < bands.size (); i++)
-	{
-	  delete bands[i];
-	}
-  }
-
-  void get (const string & name, string & value)
-  {
-	if (name == "IM")
-	{
-	  value.assign (&required[0], 2);
-	}
-	else if (name == "ICORDS")
-	{
-	  value.assign (&required[371], 1);
-	}
-	else if (name == "IREP")
-	{
-	  value.assign (&required[352], 8);
-	}
-	else if (name == "NROWS")
-	{
-	  value.assign (&required[333], 8);
-	}
-	else if (name == "NCOLS")
-	{
-	  value.assign (&required[341], 8);
-	}
-	else if (name == "PVTYPE")
-	{
-	  value.assign (&required[349], 3);
-	}
-	else if (name == "NBPP")
-	{
-	  value.assign (&required2[18], 2);
-	}
-	else if (name == "ABPP")
-	{
-	  value.assign (&required[368], 2);
-	}
-  }
-
-  void get (const string & name, int & value)
-  {
-	string sv;
-	get (name, sv);
-	value = atoi (sv.c_str ());
+	header.get (name, value);
   }
 
   void read (istream & stream, Image & image, int x, int y, int width, int height)
@@ -154,6 +983,8 @@ public:
 	get ("NROWS", NROWS);
 	int NCOLS;
 	get ("NCOLS", NCOLS);
+	string IC;
+	get ("IC", IC);
 
 	if (IC[0] == 'N'  &&  IC[1] == 'C')
 	{
@@ -166,16 +997,11 @@ public:
 	  string PVTYPE;
 	  get ("PVTYPE", PVTYPE);
 
-	  int ABPP;
-	  get ("ABPP", ABPP);
-	  cerr << "NBPP" << NBPP << endl;
-	  cerr << "ABPP" << ABPP << endl;
-
 	  if (IREP == "MONO    ")
 	  {
 		if (PVTYPE == "INT");
 		{
-		  switch (ABPP)  // should be NBPP!!!!!!!
+		  switch (NBPP)
 		  {
 			case 8:
 			  format = &GrayChar;
@@ -201,76 +1027,24 @@ public:
   void read (istream & stream)
   {
 	offset = stream.tellg ();
-	stream.read (required, sizeof (required));
-
-	string IM;
-	get ("IM", IM);
-	if (IM != "IM") throw "Not an image subheader";
-
-	string ICORDS;
-	get ("ICORDS", ICORDS);
-	if (ICORDS != " ")
-	{
-	  stream.read (IGEOLO, sizeof (IGEOLO));
-	}
-
-	char buffer[80];
-	stream.read (buffer, 1);
-	buffer[1] = 0;
-	int NICOM = atoi (buffer);
-	string line;
-	for (int i = 0; i < NICOM; i++)
-	{
-	  stream.read (buffer, sizeof (buffer));
-	  line.assign (buffer, sizeof (buffer));
-	  trim (line);  // this will also remove leading spaces; maybe a bad idea
-	  if (i) comments += "\n";
-	  comments += line;
-	}
-
-	stream.read (IC, sizeof (IC));
-	if (   (IC[0] == 'I'  &&  IC[1] == '1')
-		|| (   (IC[0] == 'C'  ||  IC[0] == 'M')
-			&& (IC[1] == '1'  ||  IC[1] == '3'  ||  IC[1] == '4'  ||  IC[1] == '5'  ||  IC[1] == '8')))
-	{
-	  stream.read (COMRAT, sizeof (COMRAT));
-	}
-
-	stream.read (buffer, 1);
-	buffer[1] = 0;
-	if (buffer[0] == '0')
-	{
-	  stream.read (buffer, 5);
-	  buffer[5] = 0;
-	}
-	NBANDS = atoi (buffer);
-
-	for (int i = 0; i < NBANDS; i++)
-	{
-	  nitfImageBand * b = new nitfImageBand;
-	  bands.push_back (b);
-	  b->read (stream);
-	}
-
-	stream.read (required2, sizeof (required2));
+	header.read (stream);
   }
 
   int LISH;
   int LI;
   int offset;
-  char required[372];
-  char IGEOLO[60];
-  string comments;
-  char IC[2];
-  char COMRAT[4];
-  int NBANDS;
-  vector<nitfImageBand *> bands;
-  char required2[45];
+
+  nitfItemSet header;
 };
 
 class nitfFileHeader
 {
 public:
+  nitfFileHeader ()
+  : header (mapFileHeader)
+  {
+  }
+
   ~nitfFileHeader ()
   {
 	for (int i = 0; i < images.size (); i++)
@@ -281,54 +1055,36 @@ public:
 
   void get (const string & name, string & value)
   {
-	if (name == "HL")
-	{
-	  value.assign (&required[354], 6);
-	}
-	else if (name == "NUMI")
-	{
-	  value.assign (&required[360], 3);
-	}
+	header.get (name, value);
   }
 
   void get (const string & name, int & value)
   {
-	string sv;
-	get (name, sv);
-	value = atoi (sv.c_str ());
+	header.get (name, value);
   }
 
   void read (istream & stream)
   {
-	stream.read (required, sizeof (required));
+	header.read (stream);
 
-	int HL;
-	get ("HL", HL);
+	int offset;
+	get ("HL", offset);
 
 	int NUMI;
 	get ("NUMI", NUMI);
 	for (int i = 0; i < NUMI; i++)
 	{
-	  nitfImageHeader * h = new nitfImageHeader;
+	  nitfImageSection * h = new nitfImageSection;
 	  images.push_back (h);
-
-	  char buffer[11];
-	  stream.read (buffer, 6);
-	  buffer[6] = 0;
-	  h->LISH = atoi (buffer);
-	  stream.read (buffer, 10);
-	  buffer[10] = 0;
-	  h->LI = atoi (buffer);
-	}
-
-	// After parsing all the file header info, parse each segment header
-	int offset = HL;
-	for (int i = 0; i < images.size (); i++)
-	{
-	  nitfImageHeader * h = images[i];
 
 	  stream.seekg (offset);
 	  h->read (stream);
+
+	  char buffer[10];
+	  sprintf (buffer, "LISH%03i", i+1);
+	  get (buffer, h->LISH);
+	  sprintf (buffer, "LI%03i", i+1);
+	  get (buffer, h->LI);
 	  offset += h->LISH + h->LI;
 	}
   }
@@ -337,10 +1093,9 @@ public:
   {
   }
 
-  char required[363];  ///< Initial portion of the header that must be read in before recursive descent parsing can start.
-  vector<nitfImageHeader *> images;
+  nitfItemSet header;
+  vector<nitfImageSection *> images;
 };
-
 
 
 // class ImageFileDelegateNITF ------------------------------------------------
