@@ -312,38 +312,32 @@ fillBlock (unsigned char * block, int stride, int depth, int width, int height, 
 	memset (block + y2 * stride, 0, m * stride);
   }
 
-  // Fill left side with copies of first pixel in row.
+  // Fill left side with black
   if (x1 > 0)
   {
-	unsigned char * a = block + (y1 * stride + (x1 + 1) * depth - 1);
-	unsigned char * b = a - depth;
+	unsigned char * a = block + y1 * stride;
 	int count = x1 * depth;
 	for (int i = y1; i < y2; i++)
 	{
 	  unsigned char * aa = a;
-	  unsigned char * bb = b;
-	  unsigned char * end = b - count;
-	  while (bb > end) *bb-- = *aa--;
+	  unsigned char * end = a + count;
+	  while (aa < end) *aa++ = 0;
 	  a += stride;
-	  b += stride;
 	}
   }
 
-  // Fill right side with copies of last pixel in row.
+  // Fill right side with black
   int n = width - x2;
   if (n)
   {
-	unsigned char * a = block + (y1 * stride + (x2 - 1) * depth);
-	unsigned char * b = a + depth;
+	unsigned char * a = block + (y1 * stride + x2 * depth);
 	int count = n * depth;
 	for (int i = y1; i < y2; i++)
 	{
 	  unsigned char * aa = a;
-	  unsigned char * bb = b;
-	  unsigned char * end = b + count;
-	  while (bb < end) *bb++ = *aa++;
+	  unsigned char * end = a + count;
+	  while (aa < end) *aa++ = 0;
 	  a += stride;
-	  b += stride;
 	}
   }
 }
@@ -445,12 +439,12 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
   TIFFGetField (tif, TIFFTAG_IMAGELENGTH, &imageHeight);
   if (! imageWidth)
   {
-	imageWidth = work.width;
+	imageWidth = x + work.width;
 	TIFFSetField (tif, TIFFTAG_IMAGEWIDTH, imageWidth);
   }
   if (! imageHeight)
   {
-	imageHeight = work.height;
+	imageHeight = y + work.height;
 	TIFFSetField (tif, TIFFTAG_IMAGELENGTH, imageHeight);
   }
 
@@ -492,7 +486,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 		int w = min ((int) blockWidth - ox, width - ix);
 
 		ttile_t tile = TIFFComputeTile (tif, rx, ry, 0, 0);
-		if (w == work.width  &&  h == blockHeight)
+		if (w == work.width  &&  w == blockWidth  &&  h == blockHeight)
 		{
 		  TIFFWriteEncodedTile (tif, tile, workBuffer + iy * stride, blockSize);
 		}
