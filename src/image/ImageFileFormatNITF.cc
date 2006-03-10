@@ -8,8 +8,50 @@ Created 2/26/2006
 #include "fl/string.h"
 
 
+#ifdef _MSC_VER
+   // MSVC generally compiles to i86.  Deal with other cases (such as alpha)
+   // as they come up.
+#  define __LITTLE_ENDIAN 1234
+#  define __BYTE_ORDER __LITTLE_ENDIAN
+#else
+#  include <sys/param.h>
+#endif
+
+
 using namespace std;
 using namespace fl;
+
+
+// Utility functions ----------------------------------------------------------
+
+static inline void
+bswap (unsigned int & x)
+{
+# ifdef _MSC_VER
+  unsigned int y = x;  // Haven't yet figured out how to get MS inline assembler to directly access x.
+  __asm
+  {
+	mov   eax, y
+	bswap eax
+	mov   y, eax
+  }
+  x = y;
+# else
+  __asm ("bswap %0" : "=r" (x) : "0" (x));
+# endif
+}
+
+static inline void
+bswap (unsigned short & x)
+{
+# ifdef _MSC_VER
+  unsigned short y = x;
+  __asm ror x, 8
+  x = y;
+# else
+  __asm ("rorw $8, %0" : "=q" (x) : "0" (x));
+# endif
+}
 
 
 // NITF structure -------------------------------------------------------------
@@ -54,8 +96,8 @@ public:
 	data = (char *) malloc (map->size);
 	stream.read (data, map->size);
 
-	//string bob (data, map->size);
-	//cerr << "read item: " << map->name << " = " << bob << endl;
+	string bob (data, map->size);
+	cerr << "read item: " << map->name << " = " << bob << endl;
   }
 
   virtual void write (ostream & stream)
@@ -569,7 +611,7 @@ public:
 
   virtual void set (const string & name, int value)
   {
-	count = (int) rint (value);
+	count = value;
   }
 
   int count;
@@ -954,17 +996,21 @@ nitfItem::factory (nitfMapping * m)
   throw "Can't find typeMap entry!";  // error in map tables
 }
 
-class nitfImageMask
-{
-public:
-};
-
 class nitfImageSection
 {
 public:
   nitfImageSection ()
   : header (mapImageHeader)
   {
+	BMRBND = 0;
+	format = 0;
+	ownFormat = false;
+  }
+
+  ~nitfImageSection ()
+  {
+	if (BMRBND) free (BMRBND);
+	if (ownFormat  &&  format) delete format;
   }
 
   void get (const string & name, string & value)
@@ -979,60 +1025,277 @@ public:
 
   void read (istream & stream, Image & image, int x, int y, int width, int height)
   {
-	int NROWS;
-	get ("NROWS", NROWS);
-	int NCOLS;
-	get ("NCOLS", NCOLS);
-	string IC;
-	get ("IC", IC);
-
-	if (IC[0] == 'N'  &&  IC[1] == 'C')
+	if (IC[0] == 'N')  // no compression
 	{
-	  PixelFormat * format = 0;
+	  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+	  if (! buffer) image.buffer = buffer = new PixelBufferPacked;
+	  image.format = format;
 
-	  string IREP;
-	  get ("IREP", IREP);
-	  int NBPP;
-	  get ("NBPP", NBPP);
-	  string PVTYPE;
-	  get ("PVTYPE", PVTYPE);
-
-	  if (IREP == "MONO    ")
+	  if (! width ) width  = NCOLS - x;
+	  if (! height) height = NROWS - y;
+	  if (x < 0)
 	  {
-		if (PVTYPE == "INT");
+		width += x;
+		x = 0;
+	  }
+	  if (y < 0)
+	  {
+		height += y;
+		y = 0;
+	  }
+	  width  = min (width,  (int) NCOLS - x);
+	  height = min (height, (int) NROWS - y);
+	  width  = max (width,  0);
+	  height = max (height, 0);
+	  image.resize (width, height);
+	  if (! width  ||  ! height) return;
+
+	  char * imageMemory = (char *) buffer->memory;
+	  int stride = format->depth * width;
+
+	  // If the requested image is anything other than exactly the union of a
+	  // set of blocks in the file, then must use temporary storage to read in
+	  // blocks.
+	  Image block (*image.format);
+	  if (x % NPPBH  ||  y % NPPBV  ||  width != NPPBH  ||  height % NPPBV) block.resize (NPPBH, NPPBV);
+	  int blockSize = NPPBH * NPPBV * format->depth;
+	  char * blockBuffer = (char *) ((PixelBufferPacked *) block.buffer)->memory;
+
+	  for (int oy = 0; oy < height;)  // output y: position in output image
+	  {
+		int ry = oy + y;  // working y in raster
+		int by = ry / NPPBV;  // vertical block number
+		int iy = ry % NPPBV;  // input y: offset from top of block
+		int h = min ((int) NPPBV - iy, height - oy);  // height of usable portion of block
+
+		for (int ox = 0; ox < width;)
 		{
-		  switch (NBPP)
+		  int rx = ox + x;
+		  int bx = rx / NPPBH;
+		  int ix = rx % NPPBH;
+		  int w = min ((int) NPPBH - ix, width - ox);
+
+		  int blockIndex = by * NBPR + bx;
+		  // Should also deal with multiple bands here, in the case of planar formats
+
+		  unsigned int blockAddress;
+		  if (BMRBND)
 		  {
-			case 8:
-			  format = &GrayChar;
-			  break;
-			case 16:
-			  format = &GrayShort;
-			  break;
+			blockAddress = BMRBND[blockIndex];
+			if (blockAddress == 0xFFFFFFFF)
+			{
+			  blockAddress = 0;
+			}
+			else
+			{
+			  blockAddress += offset;
+			}
 		  }
+		  else
+		  {
+			blockAddress = offset + blockIndex * blockSize;
+		  }
+
+		  if (w == width  &&  h == NPPBV)
+		  {
+			if (blockAddress)
+			{
+			  stream.seekg (blockAddress);
+			  stream.read (imageMemory + oy * stride, blockSize);
+			}
+			else
+			{
+			  memset (imageMemory + oy * stride, 0, blockSize);
+			}
+		  }
+		  else
+		  {
+			if (blockAddress)
+			{
+			  stream.seekg (blockAddress);
+			  stream.read (blockBuffer, blockSize);
+			}
+			else
+			{
+			  memset (blockBuffer, 0, blockSize);
+			}
+			image.bitblt (block, ox, oy, ix, iy, w, h);
+		  }
+
+		  ox += w;
 		}
+
+		oy += h;
 	  }
 
-	  if (! format) throw "Can't match format";
-
-	  image.format = format;
-	  image.resize (NROWS, NCOLS);
-	  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
-
-	  stream.seekg (offset + LISH);
-	  stream.read ((char *) buffer->memory, NROWS * NCOLS * format->depth);
+	  // Must do endian conversion for gray formats
+	  if (*format == GrayShort)
+	  {
+		unsigned short * p = (unsigned short *) imageMemory;
+		unsigned short * end = p + width * height;
+		while (p < end)
+		{
+		  bswap (*p++);
+		}
+	  }
+	  else if (*format == GrayFloat)
+	  {
+		unsigned int * p = (unsigned int *) imageMemory;
+		unsigned int * end = p + width * height;
+		while (p < end)
+		{
+		  bswap (*p++);
+		}
+	  }
+	  else if (*format == GrayDouble)
+	  {
+		// need a 64-bit bswap!!!
+	  }
 	}
   }
 
   void read (istream & stream)
   {
 	offset = stream.tellg ();
+	offset += LISH;
+
 	header.read (stream);
+
+	header.get ("IC",     IC);
+	header.get ("IMODE",  IMODE);
+	header.get ("NBANDS", NBANDS);
+	header.get ("NBPR",   NBPR);
+	header.get ("NBPC",   NBPC);
+	header.get ("NROWS",  NROWS);
+	header.get ("NCOLS",  NCOLS);
+	header.get ("NPPBH",  NPPBH);
+	header.get ("NPPBV",  NPPBV);
+
+
+	// Determine PixelFormat
+	string IREP;
+	get ("IREP", IREP);
+	int NBPP;
+	get ("NBPP", NBPP);
+	string PVTYPE;
+	get ("PVTYPE", PVTYPE);
+
+	if (IREP == "MONO    ")
+	{
+	  if (PVTYPE == "INT"  ||  PVTYPE == "SI ")  // should distinguish signed from unsigned, but currently don't have signed PixelFormats
+	  {
+		switch (NBPP)
+		{
+		  case 8:
+			format = &GrayChar;
+			break;
+		  case 16:
+			format = &GrayShort;
+			break;
+		}
+	  }
+	  else if (PVTYPE == "R  ")
+	  {
+		switch (NBPP)
+		{
+		  case 32:
+			format = &GrayFloat;
+			break;
+		  case 64:
+			format = &GrayDouble;
+			break;
+		}
+	  }
+	}
+	else if (IREP == "RGB     ")
+	{
+	  // This is too simplistic.  Should take into account the band layout as well.
+
+	  if (PVTYPE == "INT"  ||  PVTYPE == "SI ")  // should distinguish signed from unsigned, but currently don't have signed PixelFormats
+	  {
+		if (NBPP == 8) format = &RGBChar;
+	  }
+	}
+
+	if (! format) throw "Can't match format";
+	cerr << "format = " << typeid (*format).name () << endl;
+
+
+	// Parse block mask if it exists
+	if (IC[0] == 'M'  ||  IC[1] == 'M')
+	{
+	  stream.seekg (offset);
+	  IMDATOFF = 0;
+	  stream.read ((char *) &IMDATOFF, 4);
+	  if (! IMDATOFF) throw "failed to read IMDATOFF";
+#     if __BYTE_ORDER == __LITTLE_ENDIAN
+	  bswap (IMDATOFF);
+#     endif
+	  offset += IMDATOFF;
+	  cerr << "IMDATOFF = " << IMDATOFF << endl;
+
+	  BMRLNTH = 0;
+	  TMRLNTH = 0;
+	  TPXCDLNTH = 0;
+#     if __BYTE_ORDER == __LITTLE_ENDIAN
+	  stream.read (((char *) &BMRLNTH) + 1, 1);
+	  stream.read (((char *) &BMRLNTH) + 0, 1);
+	  stream.read (((char *) &TMRLNTH) + 1, 1);
+	  stream.read (((char *) &TMRLNTH) + 0, 1);
+	  stream.read (((char *) &TPXCDLNTH) + 1, 1);
+	  stream.read (((char *) &TPXCDLNTH) + 0, 1);
+#     else
+	  stream.read ((char *) &BMRLNTH, 2);
+	  stream.read ((char *) &TMRLNTH, 2);
+	  stream.read ((char *) &TPXCDLNTH, 2);
+#     endif
+	  cerr << "BMRLNTH = " << BMRLNTH << endl;
+	  cerr << "TMRLNTH = " << TMRLNTH << endl;
+	  cerr << "TPXCDLNTH = " << TPXCDLNTH << endl;
+
+	  stream.seekg ((istream::off_type) ceil (TPXCDLNTH / 8.0), ios_base::cur);  // skip the TPXCD if it exists
+
+	  if (BMRLNTH)
+	  {
+		int size = NBPR * NBPC;
+		if (IMODE == "S") size *= NBANDS;
+		BMRBND = (unsigned int *) malloc (size * sizeof (unsigned int));
+		stream.read ((char *) BMRBND, size * sizeof (unsigned int));
+
+#       if __BYTE_ORDER == __LITTLE_ENDIAN
+		cerr << "BMRBND before = " << BMRBND[0] << endl;
+		for (int i = 0; i < size; i++)
+		{
+		  bswap (BMRBND[i]);
+		}
+		cerr << "BMRBND after = " << BMRBND[0] << endl;
+#       endif
+	  }
+	}
   }
 
   int LISH;
   int LI;
-  int offset;
+  unsigned int offset;
+
+  string IC;
+  string IMODE;
+  int NBPR;
+  int NBPC;
+  int NBANDS;
+  int NROWS;
+  int NCOLS;
+  int NPPBH;
+  int NPPBV;
+
+  unsigned int IMDATOFF;
+  unsigned short BMRLNTH;
+  unsigned short TMRLNTH;
+  unsigned short TPXCDLNTH;
+  unsigned int * BMRBND;
+
+  PixelFormat * format;
+  bool ownFormat;  ///< If true, we should manage the lifespan of format.
 
   nitfItemSet header;
 };
@@ -1077,14 +1340,15 @@ public:
 	  nitfImageSection * h = new nitfImageSection;
 	  images.push_back (h);
 
-	  stream.seekg (offset);
-	  h->read (stream);
-
 	  char buffer[10];
 	  sprintf (buffer, "LISH%03i", i+1);
 	  get (buffer, h->LISH);
 	  sprintf (buffer, "LI%03i", i+1);
 	  get (buffer, h->LI);
+
+	  stream.seekg (offset);
+	  h->read (stream);
+
 	  offset += h->LISH + h->LI;
 	}
   }
