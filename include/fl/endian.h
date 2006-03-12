@@ -95,10 +95,10 @@ bswap (unsigned int x)
 static inline void
 bswap (unsigned short * x, unsigned int count = 1)
 {
-  __asm ("bswap16_top:"
+  __asm ("1:"
 		 "rorw   $8, (%0);"
 		 "addl   $2, %0;"
-		 "loopl  bswap16_top;"
+		 "loopl  1b;"
 		 :
 		 : "r" (x), "c" (count));
 }
@@ -106,12 +106,12 @@ bswap (unsigned short * x, unsigned int count = 1)
 static inline void
 bswap (unsigned int * x, unsigned int count = 1)
 {
-  __asm ("bswap32_top:"
+  __asm ("1:"
 		 "movl   (%0), %%eax;"
 		 "bswap  %%eax;"
 		 "movl   %%eax, (%0);"
 		 "addl   $4, %0;"
-		 "loopl  bswap32_top;"
+		 "loopl  1b;"
 		 :
 		 : "r" (x), "c" (count)
 		 : "eax");
@@ -123,12 +123,12 @@ bswap (unsigned int * x, unsigned int count = 1)
 static inline void
 bswap (unsigned long long * x, unsigned int count = 1)
 {
-  __asm ("bswap64_top:"
+  __asm ("1:"
 		 "mov    (%0), %%rax;"
 		 "bswap  %%rax;"
 		 "mov    %%rax, (%0);"
 		 "add    $8, %0;"
-		 "loop   bswap64_top;"
+		 "loop   1b;"
 		 :
 		 : "r" (x), "c" (count)
 		 : "rax");
@@ -139,7 +139,7 @@ bswap (unsigned long long * x, unsigned int count = 1)
 static inline void
 bswap (unsigned long long * x, unsigned int count = 1)
 {
-  __asm ("bswap64_top:"
+  __asm ("1:"
 		 "movl   (%0), %%eax;"
 		 "movl   4(%0), %%edx;"
 		 "bswap  %%eax;"
@@ -147,7 +147,7 @@ bswap (unsigned long long * x, unsigned int count = 1)
 		 "movl   %%edx, (%0);"
 		 "movl   %%eax, 4(%0);"
 		 "addl   $8, %0;"
-		 "loopl  bswap64_top;"
+		 "loopl  1b;"
 		 :
 		 : "r" (x), "c" (count)
 		 : "eax", "edx");
