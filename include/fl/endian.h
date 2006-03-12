@@ -13,8 +13,8 @@ Created 3/11/2006 to machine endian related defines and functions
 
 // MSVC generally compiles to i86.  Deal with other cases (such as alpha)
 // as they come up.
-#define __LITTLE_ENDIAN 1234
-#define __BYTE_ORDER __LITTLE_ENDIAN
+#define LITTLE_ENDIAN 1234
+#define BYTE_ORDER    LITTLE_ENDIAN
 
 static inline unsigned int
 bswap (unsigned int x)
@@ -29,32 +29,51 @@ bswap (unsigned int x)
 }
 
 static inline void
-bswap (unsigned int * x, unsigned int count = 1)
-{
-  __asm
-  {
-	mov   ebx, x
-	mov   ecx, count
-	top:
-	mov   eax, [ebx]
-	bswap eax
-	mov   [ebx], eax
-	add   ebx, 4
-	loop  top
-  }
-}
-
-static inline void
 bswap (unsigned short * x, unsigned int count = 1)
 {
   __asm
   {
 	mov  ebx, x
 	mov  ecx, count
-	top:
+	bswap16_top:
 	ror  WORD PTR [ebx], 8
 	add  ebx, 2
-	loop top
+	loop bswap16_top
+  }
+}
+
+static inline void
+bswap (unsigned int * x, unsigned int count = 1)
+{
+  __asm
+  {
+	mov   ebx, x
+	mov   ecx, count
+	bswap32_top:
+	mov   eax, [ebx]
+	bswap eax
+	mov   [ebx], eax
+	add   ebx, 4
+	loop  bswap32_top
+  }
+}
+
+static inline void
+bswap (unsigned long long * x, unsigned int count = 1)
+{
+  __asm
+  {
+	mov   ebx, x
+	mov   ecx, count
+	bswap32_top:
+	mov   eax, [ebx]
+	mov   edx, [ebx+4]
+	bswap eax
+	bswap edx
+	mov   [ebx], edx
+	mov   [ebx+4], eax
+	add   ebx, 8
+	loop  bswap32_top
   }
 }
 
@@ -64,6 +83,8 @@ bswap (unsigned short * x, unsigned int count = 1)
 
 #include <sys/param.h>
 
+#ifdef i386
+
 static inline unsigned int
 bswap (unsigned int x)
 {
@@ -72,14 +93,76 @@ bswap (unsigned int x)
 }
 
 static inline void
+bswap (unsigned short * x, unsigned int count = 1)
+{
+  __asm ("bswap16_top:"
+		 "rorw   $8, (%0);"
+		 "addl   $2, %0;"
+		 "loopl  bswap16_top;"
+		 :
+		 : "r" (x), "c" (count));
+}
+
+static inline void
 bswap (unsigned int * x, unsigned int count = 1)
 {
-  unsigned int * end = x + count;
-  while (x < end)
-  {
-	__asm ("bswap %0" : "=r" (*x) : "0" (*x));
-	x++;
-  }
+  __asm ("bswap32_top:"
+		 "movl   (%0), %%eax;"
+		 "bswap  %%eax;"
+		 "movl   %%eax, (%0);"
+		 "addl   $4, %0;"
+		 "loopl  bswap32_top;"
+		 :
+		 : "r" (x), "c" (count)
+		 : "eax");
+}
+
+#ifdef ARCH_X86_64
+
+/// \todo Test this code!
+static inline void
+bswap (unsigned long long * x, unsigned int count = 1)
+{
+  __asm ("bswap64_top:"
+		 "mov    (%0), %%rax;"
+		 "bswap  %%rax;"
+		 "mov    %%rax, (%0);"
+		 "add    $8, %0;"
+		 "loop   bswap64_top;"
+		 :
+		 : "r" (x), "c" (count)
+		 : "rax");
+}
+
+#else  // 32-bit x86
+
+static inline void
+bswap (unsigned long long * x, unsigned int count = 1)
+{
+  __asm ("bswap64_top:"
+		 "movl   (%0), %%eax;"
+		 "movl   4(%0), %%edx;"
+		 "bswap  %%eax;"
+		 "bswap  %%edx;"
+		 "movl   %%edx, (%0);"
+		 "movl   %%eax, 4(%0);"
+		 "addl   $8, %0;"
+		 "loopl  bswap64_top;"
+		 :
+		 : "r" (x), "c" (count)
+		 : "eax", "edx");
+}
+
+#endif  // select x64 version of bswap(long long)
+
+#else   // not an x86 CPU, so use generic routines
+
+#include <byteswap.h>
+
+static inline unsigned int
+bswap (unsigned int x)
+{
+  return bswap_32 (x);
 }
 
 static inline void
@@ -88,20 +171,36 @@ bswap (unsigned short * x, unsigned int count = 1)
   unsigned short * end = x + count;
   while (x < end)
   {
-	__asm ("rorw $8, %0" : "=q" (*x) : "0" (*x));
+	*x = bswap_16 (*x);
 	x++;
   }
 }
 
-
-#endif  // select compiler
-
+static inline void
+bswap (unsigned int * x, unsigned int count = 1)
+{
+  unsigned int * end = x + count;
+  while (x < end)
+  {
+	*x = bswap_32 (*x);
+	x++;
+  }
+}
 
 static inline void
 bswap (unsigned long long * x, unsigned int count = 1)
 {
-  throw "Need to write 64-bit bswap";
+  unsigned long long * end = x + count;
+  while (x < end)
+  {
+	*x = bswap_64 (*x);
+	x++;
+  }
 }
+
+#endif  // select CPU architecture
+
+#endif  // select compiler
 
 
 #endif
