@@ -6,52 +6,11 @@ Created 2/26/2006
 
 #include "fl/image.h"
 #include "fl/string.h"
-
-
-#ifdef _MSC_VER
-   // MSVC generally compiles to i86.  Deal with other cases (such as alpha)
-   // as they come up.
-#  define __LITTLE_ENDIAN 1234
-#  define __BYTE_ORDER __LITTLE_ENDIAN
-#else
-#  include <sys/param.h>
-#endif
+#include "fl/endian.h"
 
 
 using namespace std;
 using namespace fl;
-
-
-// Utility functions ----------------------------------------------------------
-
-static inline void
-bswap (unsigned int & x)
-{
-# ifdef _MSC_VER
-  unsigned int y = x;  // Haven't yet figured out how to get MS inline assembler to directly access x.
-  __asm
-  {
-	mov   eax, y
-	bswap eax
-	mov   y, eax
-  }
-  x = y;
-# else
-  __asm ("bswap %0" : "=r" (x) : "0" (x));
-# endif
-}
-
-static inline void
-bswap (unsigned short & x)
-{
-# ifdef _MSC_VER
-  unsigned short y = x;
-  __asm ror x, 8
-  x = y;
-# else
-  __asm ("rorw $8, %0" : "=q" (x) : "0" (x));
-# endif
-}
 
 
 // NITF structure -------------------------------------------------------------
@@ -1128,29 +1087,21 @@ public:
 		oy += h;
 	  }
 
+#     if BYTE_ORDER == LITTLE_ENDIAN
 	  // Must do endian conversion for gray formats
 	  if (*format == GrayShort)
 	  {
-		unsigned short * p = (unsigned short *) imageMemory;
-		unsigned short * end = p + width * height;
-		while (p < end)
-		{
-		  bswap (*p++);
-		}
+		bswap ((unsigned short *) imageMemory, width * height);
 	  }
 	  else if (*format == GrayFloat)
 	  {
-		unsigned int * p = (unsigned int *) imageMemory;
-		unsigned int * end = p + width * height;
-		while (p < end)
-		{
-		  bswap (*p++);
-		}
+		bswap ((unsigned int *) imageMemory, width * height);
 	  }
 	  else if (*format == GrayDouble)
 	  {
-		// need a 64-bit bswap!!!
+		bswap ((unsigned long long *) imageMemory, width * height);
 	  }
+#     endif
 	}
   }
 
@@ -1228,8 +1179,8 @@ public:
 	  IMDATOFF = 0;
 	  stream.read ((char *) &IMDATOFF, 4);
 	  if (! IMDATOFF) throw "failed to read IMDATOFF";
-#     if __BYTE_ORDER == __LITTLE_ENDIAN
-	  bswap (IMDATOFF);
+#     if BYTE_ORDER == LITTLE_ENDIAN
+	  bswap (&IMDATOFF);
 #     endif
 	  offset += IMDATOFF;
 	  cerr << "IMDATOFF = " << IMDATOFF << endl;
@@ -1237,7 +1188,7 @@ public:
 	  BMRLNTH = 0;
 	  TMRLNTH = 0;
 	  TPXCDLNTH = 0;
-#     if __BYTE_ORDER == __LITTLE_ENDIAN
+#     if BYTE_ORDER == LITTLE_ENDIAN
 	  stream.read (((char *) &BMRLNTH) + 1, 1);
 	  stream.read (((char *) &BMRLNTH) + 0, 1);
 	  stream.read (((char *) &TMRLNTH) + 1, 1);
@@ -1262,12 +1213,9 @@ public:
 		BMRBND = (unsigned int *) malloc (size * sizeof (unsigned int));
 		stream.read ((char *) BMRBND, size * sizeof (unsigned int));
 
-#       if __BYTE_ORDER == __LITTLE_ENDIAN
+#       if BYTE_ORDER == LITTLE_ENDIAN
 		cerr << "BMRBND before = " << BMRBND[0] << endl;
-		for (int i = 0; i < size; i++)
-		{
-		  bswap (BMRBND[i]);
-		}
+		bswap (BMRBND, size);
 		cerr << "BMRBND after = " << BMRBND[0] << endl;
 #       endif
 	  }

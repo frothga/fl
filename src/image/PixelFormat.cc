@@ -20,45 +20,20 @@ for details.
 
 01/2006 Fred Rothganger -- Moved PixelFormat code into separate file.
 02/2006 Fred Rothganger -- Change Image structure.
+03/2006 Fred Rothganger -- Move endian code to endian.h
 */
 
 
 #include "fl/image.h"
 #include "fl/pi.h"
 #include "fl/math.h"
+#include "fl/endian.h"
 
 #include <algorithm>
 
 
 // Include for tracing
 //#include <iostream>
-
-
-#ifdef _MSC_VER
-   // MSVC generally compiles to i86.  Deal with other cases (such as alpha)
-   // as they come up.
-#  define __LITTLE_ENDIAN 1234
-#  define __BYTE_ORDER __LITTLE_ENDIAN
-#else
-#  include <sys/param.h>
-#endif
-
-static inline unsigned int
-bswap (unsigned int x)
-{
-# ifdef _MSC_VER
-  // Could probably make the MS version more efficient by taking advantage of the calling convention to avoid redundant loads/saves.
-  __asm
-  {
-	mov   eax, x
-	bswap eax
-	mov   x, eax
-  }
-# else
-  __asm ("bswap %0" : "=r" (x) : "0" (x));
-# endif
-  return x;
-}
 
 
 using namespace std;
@@ -80,7 +55,7 @@ PixelFormatUYVChar    fl::UYVChar;
 PixelFormatHLSFloat   fl::HLSFloat;
 
 // These "bits" formats must be endian independent.
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 PixelFormatRGBABits   fl::BGRChar (3, 0xFF0000, 0xFF00, 0xFF, 0x0);
 #else
 PixelFormatRGBABits   fl::BGRChar (3, 0xFF, 0xFF00, 0xFF0000, 0x0);
@@ -108,7 +83,7 @@ union Int2Char
   unsigned int  all;
   struct
   {
-#   if __BYTE_ORDER == __LITTLE_ENDIAN
+#   if BYTE_ORDER == LITTLE_ENDIAN
 	unsigned char piece0;
 	unsigned char piece1;
 	unsigned char piece2;
@@ -122,7 +97,7 @@ union Int2Char
   };
 };
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 #  define endianAdjustFromPixel
 #else
 #  define endianAdjustFromPixel fromPixel--;
@@ -2116,7 +2091,7 @@ PixelFormatRGBABits::setAlpha (void * pixel, unsigned char alpha) const
 // class PixelFormatRGBAChar ---------------------------------------------------
 
 PixelFormatRGBAChar::PixelFormatRGBAChar ()
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 : PixelFormatRGBABits (4, 0xFF, 0xFF00, 0xFF0000, 0xFF000000)
 #else
 : PixelFormatRGBABits (4, 0xFF000000, 0xFF0000, 0xFF00, 0xFF)
@@ -2257,7 +2232,7 @@ PixelFormatRGBAChar::fromRGBChar (const Image & image, Image & result) const
 unsigned int
 PixelFormatRGBAChar::getRGBA (void * pixel) const
 {
-# if __BYTE_ORDER == __LITTLE_ENDIAN
+# if BYTE_ORDER == LITTLE_ENDIAN
   return bswap (*((unsigned int *) pixel));
 # else
   return *((unsigned int *) pixel);
@@ -2273,7 +2248,7 @@ PixelFormatRGBAChar::getAlpha (void * pixel) const
 void
 PixelFormatRGBAChar::setRGBA (void * pixel, unsigned int rgba) const
 {
-# if __BYTE_ORDER == __LITTLE_ENDIAN
+# if BYTE_ORDER == LITTLE_ENDIAN
   *((unsigned int *) pixel) = bswap (rgba);
 # else
   *((unsigned int *) pixel) = rgba;
@@ -2290,7 +2265,7 @@ PixelFormatRGBAChar::setAlpha (void * pixel, unsigned char alpha) const
 // class PixelFormatRGBChar ---------------------------------------------------
 
 PixelFormatRGBChar::PixelFormatRGBChar ()
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 : PixelFormatRGBABits (3, 0xFF, 0xFF00, 0xFF0000, 0x0)
 #else
 : PixelFormatRGBABits (3, 0xFF0000, 0xFF00, 0xFF, 0x0)
@@ -2451,7 +2426,7 @@ PixelFormatRGBChar::fromRGBAChar (const Image & image, Image & result) const
 unsigned int
 PixelFormatRGBChar::getRGBA  (void * pixel) const
 {
-# if __BYTE_ORDER == __LITTLE_ENDIAN
+# if BYTE_ORDER == LITTLE_ENDIAN
   return bswap (*((unsigned int *) pixel)) | 0xFF;
 # else
   return *((unsigned int *) pixel) | 0xFF;
