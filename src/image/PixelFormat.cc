@@ -23,6 +23,9 @@ for details.
 03/2006 Fred Rothganger -- Move endian code to endian.h
 
 $Log$
+Revision 1.30  2006/03/13 03:50:19  Fred
+Remove comment from RGBABits::fromGrayChar() on the assumption that the alpha problem is now fixed.
+
 Revision 1.29  2006/03/13 03:24:06  Fred
 Add more fromGrayShort() functions.  Fix input size in RGBABits::fromGrayShort().
 
@@ -1793,7 +1796,6 @@ PixelFormatRGBABits::filter (const Image & image)
   } \
 }
 
-// fromGrayChar () produces a bogus alpha channel!  Fix it.
 void
 PixelFormatRGBABits::fromGrayChar (const Image & image, Image & result) const
 {
