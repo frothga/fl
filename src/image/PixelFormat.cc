@@ -396,7 +396,11 @@ PixelFormatGrayChar::filter (const Image & image)
   result.resize (image.width, image.height, depth);
   result.timestamp = image.timestamp;
 
-  if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
+  if (typeid (* image.format) == typeid (PixelFormatGrayShort))
+  {
+	fromGrayShort (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
   {
 	fromGrayFloat (image, result);
   }
@@ -418,6 +422,40 @@ PixelFormatGrayChar::filter (const Image & image)
   }
 
   return result;
+}
+
+void
+PixelFormatGrayChar::fromGrayShort (const Image & image, Image & result) const
+{
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
+
+  unsigned short * fromPixel = (unsigned short *) i->memory;
+  unsigned char *  toPixel   = (unsigned char *)  o->memory;
+  unsigned char *  end       = toPixel + result.width * result.height;
+  int grayShift = ((PixelFormatGrayShort *) image.format)->grayShift - 8;
+  if (grayShift > 0)
+  {
+	while (toPixel < end)
+	{
+	  *toPixel++ = (unsigned char) (*fromPixel++ << grayShift);
+	}
+  }
+  else if (grayShift < 0)
+  {
+	while (toPixel < end)
+	{
+	  *toPixel++ = (unsigned char) (*fromPixel++ >> -grayShift);
+	}
+  }
+  else  // grayShift == 0
+  {
+	while (toPixel < end)
+	{
+	  *toPixel++ = (unsigned char) *fromPixel++;
+	}
+  }
 }
 
 void
@@ -658,13 +696,18 @@ PixelFormatGrayChar::setGray (void * pixel, float gray) const
 
 // class PixelFormatGrayShort -------------------------------------------------
 
-PixelFormatGrayShort::PixelFormatGrayShort ()
+PixelFormatGrayShort::PixelFormatGrayShort (unsigned short grayMask)
 {
   planes     = 1;
   depth      = 2;
   precedence = 2;  // Above GrayChar and UYVY, but below everything else
   monochrome = true;
   hasAlpha   = false;
+
+  this->grayMask = grayMask;
+  grayShift = 0;
+  while (grayMask >>= 1) {grayShift++;}
+  grayShift = 15 - grayShift;
 }
 
 Image
@@ -713,7 +756,7 @@ PixelFormatGrayShort::fromGrayChar (const Image & image, Image & result) const
   unsigned short * end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	*toPixel++ = (*fromPixel << 8) + *fromPixel;
+	*toPixel++ = (((*fromPixel << 8) + *fromPixel) >> grayShift) & grayMask;
 	fromPixel++;
   }
 }
@@ -732,7 +775,7 @@ PixelFormatGrayShort::fromGrayFloat (const Image & image, Image & result) const
   {
 	float p = min (max (*fromPixel++, 0.0f), 1.0f);
 	delinearize (p);
-	*toPixel++ = (unsigned short) (p * 65535);
+	*toPixel++ = (unsigned short) (p * grayMask);
   }
 }
 
@@ -750,7 +793,7 @@ PixelFormatGrayShort::fromGrayDouble (const Image & image, Image & result) const
   {
 	double p = min (max (*fromPixel++, 0.0), 1.0);
 	delinearize (p);
-	*toPixel++ = (unsigned short) (p * 65535);
+	*toPixel++ = (unsigned short) (p * grayMask);
   }
 }
 
@@ -769,7 +812,7 @@ PixelFormatGrayShort::fromAny (const Image & image, Image & result) const
 	while (dest < end)
 	{
 	  unsigned short p = sourceFormat->getGray (source);
-	  *dest++ = (p << 8) + p;
+	  *dest++ = (((p << 8) + p) >> grayShift) & grayMask;
 	  source += sourceDepth;
 	}
   }
@@ -780,7 +823,7 @@ PixelFormatGrayShort::fromAny (const Image & image, Image & result) const
 	  for (int x = 0; x < image.width; x++)
 	  {
 		unsigned short p = sourceFormat->getGray (image.buffer->pixel (x, y));
-		*dest++ = (p << 8) + p;
+		*dest++ = (((p << 8) + p) >> grayShift) & grayMask;
 	  }
 	}
   }
@@ -796,9 +839,9 @@ PixelFormatGrayShort::operator == (const PixelFormat & that) const
   if (const PixelFormatRGBABits * other = dynamic_cast<const PixelFormatRGBABits *> (& that))
   {
 	return    other->depth     == depth
-	       && other->redMask   == 0xFFFF
-	       && other->greenMask == 0xFFFF
-	       && other->blueMask  == 0xFFFF;
+	       && other->redMask   == grayMask
+	       && other->greenMask == grayMask
+	       && other->blueMask  == grayMask;
   }
   return false;
 }
@@ -806,7 +849,7 @@ PixelFormatGrayShort::operator == (const PixelFormat & that) const
 unsigned int
 PixelFormatGrayShort::getRGBA (void * pixel) const
 {
-  unsigned int t = *((unsigned short *) pixel) & 0xFF00;
+  unsigned int t = (*((unsigned short *) pixel) << grayShift) & 0xFF00;
   return (t << 16) | (t << 8) | t | 0xFF;
 }
 
@@ -814,7 +857,7 @@ void
 PixelFormatGrayShort::getXYZ (void * pixel, float values[]) const
 {
   values[0] = 0;
-  values[1] = *((unsigned short *) pixel) / 65535.0f;
+  values[1] = *((unsigned short *) pixel) / (float) grayMask;
   values[2] = 0;
 
   linearize (values[1]);
@@ -823,13 +866,15 @@ PixelFormatGrayShort::getXYZ (void * pixel, float values[]) const
 unsigned char
 PixelFormatGrayShort::getGray (void * pixel) const
 {
-  return *((unsigned short *) pixel) >> 8;
+  if (grayShift == 8) return *((unsigned short *) pixel);
+  if (grayShift > 8)  return *((unsigned short *) pixel) << (grayShift - 8);
+  return *((unsigned short *) pixel) >> (8 - grayShift);
 }
 
 void
 PixelFormatGrayShort::getGray (void * pixel, float & gray) const
 {
-  gray = *((unsigned short *) pixel) / 65535.0f;
+  gray = *((unsigned short *) pixel) / (float) grayMask;
   linearize (gray);
 }
 
@@ -840,7 +885,8 @@ PixelFormatGrayShort::setRGBA (void * pixel, unsigned int rgba) const
   unsigned int g = (rgba &   0xFF0000) >> 8;
   unsigned int b =  rgba &     0xFF00;
 
-  *((unsigned short *) pixel) = (r * redWeight + g * greenWeight + b * blueWeight) / totalWeight;
+  unsigned short t = (r * redWeight + g * greenWeight + b * blueWeight) / totalWeight;
+  *((unsigned short *) pixel) = (t >> grayShift) & grayMask;
 }
 
 void
@@ -849,13 +895,13 @@ PixelFormatGrayShort::setXYZ (void * pixel, float values[]) const
   // Convert Y value to non-linear form
   float v = min (max (values[1], 0.0f), 1.0f);
   delinearize (v);
-  *((unsigned short *) pixel) = (unsigned short) rint (65535 * v);
+  *((unsigned short *) pixel) = (unsigned short) rint (grayMask * v);
 }
 
 void
 PixelFormatGrayShort::setGray (void * pixel, unsigned char gray) const
 {
-  *((unsigned short *) pixel) = gray << 8;
+  *((unsigned short *) pixel) = ((gray << 8 + gray) >> grayShift) & grayMask;
 }
 
 void
@@ -863,7 +909,7 @@ PixelFormatGrayShort::setGray (void * pixel, float gray) const
 {
   gray = min (max (gray, 0.0f), 1.0f);
   delinearize (gray);
-  *((unsigned short *) pixel) = (unsigned short) rint (65535 * gray);
+  *((unsigned short *) pixel) = (unsigned short) rint (grayMask * gray);
 }
 
 
@@ -952,9 +998,10 @@ PixelFormatGrayFloat::fromGrayShort (const Image & image, Image & result) const
   unsigned short * fromPixel = (unsigned short *) i->memory;
   float *          toPixel   = (float *)          o->memory;
   float *          end       = toPixel + result.width * result.height;
+  float grayMask = ((PixelFormatGrayShort *) image.format)->grayMask;
   while (toPixel < end)
   {
-	float v = *fromPixel++ / 65535.0f;
+	float v = *fromPixel++ / grayMask;
 	linearize (v);
 	*toPixel++ = v;
   }
@@ -1922,9 +1969,9 @@ PixelFormatRGBABits::operator == (const PixelFormat & that) const
   }
   if (const PixelFormatGrayShort * other = dynamic_cast<const PixelFormatGrayShort *> (& that))
   {
-	return    redMask   == 0xFFFF
-	       && greenMask == 0xFFFF
-	       && blueMask  == 0xFFFF;
+	return    redMask   == other->grayMask
+	       && greenMask == other->grayMask
+	       && blueMask  == other->grayMask;
   }
   return false;
 }
@@ -2349,13 +2396,28 @@ PixelFormatRGBChar::fromGrayShort (const Image & image, Image & result) const
   unsigned short * fromPixel = (unsigned short *) i->memory;
   unsigned char *  toPixel   = (unsigned char *)  o->memory;
   unsigned char *  end       = toPixel + result.width * result.height * depth;
-  while (toPixel < end)
+  int grayShift = ((PixelFormatGrayShort *) image.format)->grayShift - 8;
+  if (grayShift > 0)
   {
-	unsigned char t = *fromPixel++ >> 8;
-	toPixel[0] = t;
-	toPixel[1] = t;
-	toPixel[2] = t;
-	toPixel += 3;
+	while (toPixel < end)
+	{
+	  unsigned char t = *fromPixel++ << grayShift;
+	  toPixel[0] = t;
+	  toPixel[1] = t;
+	  toPixel[2] = t;
+	  toPixel += 3;
+	}
+  }
+  else
+  {
+	while (toPixel < end)
+	{
+	  unsigned char t = *fromPixel++ >> grayShift;
+	  toPixel[0] = t;
+	  toPixel[1] = t;
+	  toPixel[2] = t;
+	  toPixel += 3;
+	}
   }
 }
 
