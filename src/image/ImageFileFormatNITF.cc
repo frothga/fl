@@ -434,7 +434,7 @@ public:
   virtual void read (istream & stream)
   {
 	data[0]->read (stream);
-	if (data[0]->data[0] != ' ')
+	if (data[0]->data[0] != map->defaultValue[0])
 	{
 	  for (int i = 1; i < data.size (); i++)
 	  {
@@ -713,6 +713,35 @@ public:
   unsigned char * lut;  ///< an NELUT by NLUTS matrix
 };
 
+class nitfSecurityDowngrade : public nitfItemSet
+{
+public:
+  nitfSecurityDowngrade (nitfMapping * map)
+  : nitfItemSet (map)
+  {
+  }
+
+  virtual void read (istream & stream)
+  {
+	data[0]->read (stream);
+	string FSDWNG (data[0]->data, 6);
+	if (FSDWNG == "999998")
+	{
+	  data[1]->read (stream);
+	}
+  }
+
+  virtual void write (ostream & stream)
+  {
+	data[0]->write (stream);
+	string FSDWNG (data[0]->data, 6);
+	if (FSDWNG == "999998")
+	{
+	  data[1]->write (stream);
+	}
+  }
+};
+
 static nitfMapping mapIS[] =
 {
   {"NUMI", 3,  "N", "0"},
@@ -753,7 +782,7 @@ static nitfMapping mapRES[] =
   {0}
 };
 
-static nitfMapping mapFileHeader[] =
+static nitfMapping mapFileHeader0210[] =
 {
   {"FHDR",    4, "A", "NITF"},
   {"FVER",    5, "A", "02.10"},
@@ -795,7 +824,42 @@ static nitfMapping mapFileHeader[] =
   {0}
 };
 
-static nitfMapping mapGeoloc[] =
+static nitfMapping mapDowngradeFile[] =
+{
+  {"FSDWNG",  6, "N", "9"},
+  {"FSDEVT", 40, "A", " "},  // Must be filled explicitly.  Default value indicates error condition.
+  {0}
+};
+
+static nitfMapping mapFileHeader0200[] =
+{
+  {"FHDR",    4, "A", "NITF"},
+  {"FVER",    5, "A", "02.10"},
+  {"CLEVEL",  2, "N", "9"},
+  {"STYPE",   4, "A", "BF01"},
+  {"OSTAID", 10, "A", " "},
+  {"FDT",    14, "N", "9"},
+  {"FTITLE", 80, "A", " "},
+  {"FSCLAS",  1, "A", "U"},
+  {"FSCODE", 40, "A", " "},
+  {"FSCTLH", 40, "A", " "},
+  {"FSREL",  40, "A", " "},
+  {"FSAUT",  20, "A", " "},
+  {"FSCTLN", 20, "A", " "},
+  {"fdowngrade", 0, "c"},
+  {"FSCOP",   5, "N", "0"},
+  {"FSCPYS",  5, "N", "0"},
+  {"ENCRYP",  1, "N", "0"},
+  {"ONAME",  27, "A", " "},
+  {"OPHONE", 18, "A", " "},
+  {"FL",     12, "N", "9"},
+  {"HL",      6, "N", "9"},
+  {"IS",         0, "c"},
+  // Add rest of header when needed.
+  {0}
+};
+
+static nitfMapping mapGeoloc0210[] =
 {
   {"ICORDS",   1, "A", " "},
   {"IGEOLO1", 15, "A", " "},
@@ -826,7 +890,7 @@ static nitfMapping mapBandCount[] =
   {0}
 };
 
-static nitfMapping mapBand[] =
+static nitfMapping mapBand0210[] =
 {
   {"bandcount", 0, "c"},
   {"IREPBAND",  2, "A", " "},
@@ -837,7 +901,7 @@ static nitfMapping mapBand[] =
   {0}
 };
 
-static nitfMapping mapImageHeader[] =
+static nitfMapping mapImageHeader0210[] =
 {
   {"IM",      2, "A", "IM"},
   {"IID1",   10, "A", " "},
@@ -869,10 +933,10 @@ static nitfMapping mapImageHeader[] =
   {"ICAT",    8, "A", "VIS     "},
   {"ABPP",    2, "N", "9"},
   {"PJUST",   1, "A", "R"},
-  {"geoloc",      0, "c"},
+  {"geoloc0210",  0, "c"},
   {"icom",        0, "c"},
   {"compression", 0, "c"},
-  {"band",        0, "c"},
+  {"band0210",    0, "c"},
   {"ISYNC",   1, "N", "0"},
   {"IMODE",   1, "A", "P"},
   {"NBPR",    4, "N", "1"},
@@ -888,6 +952,76 @@ static nitfMapping mapImageHeader[] =
   {0}
 };
 
+static nitfMapping mapDowngradeImage[] =
+{
+  {"ISDWNG",  6, "N", "9"},
+  {"ISDEVT", 40, "A", " "},
+  {0}
+};
+
+static nitfMapping mapGeoloc0200[] =
+{
+  {"ICORDS",   1, "A", "N"},
+  {"IGEOLO1", 15, "A", " "},
+  {"IGEOLO2", 15, "A", " "},
+  {"IGEOLO3", 15, "A", " "},
+  {"IGEOLO4", 15, "A", " "},
+  {0}
+};
+
+static nitfMapping mapBand0200[] =
+{
+  {"NBANDS",    1, "N", "1"},
+  {"IREPBAND",  2, "A", " "},
+  {"ISUBCAT",   6, "A", " "},
+  {"IFC",       1, "A", "N"},
+  {"IMFLT",     3, "A", " "},
+  {"lut",       0, "c"},
+  {0}
+};
+
+static nitfMapping mapImageHeader0200[] =
+{
+  {"IM",      2, "A", "IM"},
+  {"IID1",   10, "A", " "},
+  {"IDATIM", 14, "N", "9"},
+  {"TGTID",  17, "A", " "},
+  {"ITITLE", 80, "A", " "},
+  {"ISCLAS",  1, "A", " "},
+  {"ISCODE", 40, "A", " "},
+  {"ISCTLH", 40, "A", " "},
+  {"ISREL",  40, "A", " "},
+  {"ISCAUT", 20, "A", " "},
+  {"ISCTLN", 20, "A", " "},
+  {"idowngrade",  0, "c"},
+  {"ENCRYP",  1, "N", "0"},
+  {"ISORCE", 42, "A", " "},
+  {"NROWS",   8, "N", "9"},
+  {"NCOLS",   8, "N", "9"},
+  {"PVTYPE",  3, "A", "INT"},
+  {"IREP",    8, "A", "MONO    "},
+  {"ICAT",    8, "A", "VIS     "},
+  {"ABPP",    2, "N", "9"},
+  {"PJUST",   1, "A", "R"},
+  {"geoloc0200",  0, "c"},
+  {"icom",        0, "c"},
+  {"compression", 0, "c"},
+  {"band0200",    0, "c"},
+  {"ISYNC",   1, "N", "0"},
+  {"IMODE",   1, "A", "P"},
+  {"NBPR",    4, "N", "1"},
+  {"NBPC",    4, "N", "1"},
+  {"NPPBH",   4, "N", "0"},
+  {"NPPBV",   4, "N", "0"},
+  {"NBPP",    2, "N", "9"},
+  {"IDLVL",   3, "N", "001"},
+  {"IALVL",   3, "N", "0"},
+  {"ILOC",   10, "N", "0"},
+  {"IMAG",    4, "F", "1.0 "},
+  // Add rest of header when needed.
+  {0}
+};
+
 enum nitfItemID
 {
   idItem,
@@ -896,7 +1030,8 @@ enum nitfItemID
   idGeoloc,
   idCompression,
   idExtendableCount,
-  idLUT
+  idLUT,
+  idDowngrade
 };
 
 struct nitfTypeMapping
@@ -913,12 +1048,16 @@ nitfTypeMapping typeMap[] =
   {"TS",          idRepeat,          mapTS},
   {"DES",         idRepeat,          mapDES},
   {"RES",         idRepeat,          mapRES},
-  {"geoloc",      idGeoloc,          mapGeoloc},
+  {"geoloc0210",  idGeoloc,          mapGeoloc0210},
+  {"geoloc0200",  idGeoloc,          mapGeoloc0200},
   {"icom",        idRepeat,          mapIcom},
   {"compression", idCompression,     mapCompression},
-  {"band",        idRepeat,          mapBand},
+  {"band0210",    idRepeat,          mapBand0210},
+  {"band0200",    idRepeat,          mapBand0200},
   {"bandcount",   idExtendableCount, mapBandCount},
   {"lut",         idLUT,             0},
+  {"fdowngrade",  idDowngrade,       mapDowngradeFile},
+  {"idowngrade",  idDowngrade,       mapDowngradeImage},
   {0}
 };
 
@@ -940,13 +1079,14 @@ nitfItem::factory (nitfMapping * m)
 	  nitfMapping * mm = t->map ? t->map : m;
 	  switch (t->id)
 	  {
-		case idItem:            return new nitfItem            (mm);
-		case idRepeat:          return new nitfRepeat          (mm);
-		case idItemSet:         return new nitfItemSet         (mm);
-		case idGeoloc:          return new nitfGeoloc          (mm);
-		case idCompression:     return new nitfCompression     (mm);
-		case idExtendableCount: return new nitfExtendableCount (mm);
-		case idLUT:             return new nitfLUT             (mm);
+		case idItem:            return new nitfItem              (mm);
+		case idRepeat:          return new nitfRepeat            (mm);
+		case idItemSet:         return new nitfItemSet           (mm);
+		case idGeoloc:          return new nitfGeoloc            (mm);
+		case idCompression:     return new nitfCompression       (mm);
+		case idExtendableCount: return new nitfExtendableCount   (mm);
+		case idLUT:             return new nitfLUT               (mm);
+		case idDowngrade:       return new nitfSecurityDowngrade (mm);
 	  }
 	}
 	t++;
@@ -958,28 +1098,69 @@ nitfItem::factory (nitfMapping * m)
 class nitfImageSection
 {
 public:
-  nitfImageSection ()
-  : header (mapImageHeader)
+  nitfImageSection (const string & version)
   {
 	BMRBND = 0;
 	format = 0;
 	ownFormat = false;
+
+	header = 0;
+	if (version == "NITF02.10"  ||  version == "NSIF01.00")
+	{
+	  header = new nitfItemSet (mapImageHeader0210);
+	}
+	else if (version == "NITF02.00")
+	{
+	  header = new nitfItemSet (mapImageHeader0200);
+	}
+	else
+	{
+	  throw "Unknown file version";
+	}
   }
 
   ~nitfImageSection ()
   {
+	if (header) delete header;
 	if (BMRBND) free (BMRBND);
 	if (ownFormat  &&  format) delete format;
   }
 
   void get (const string & name, string & value)
   {
-	header.get (name, value);
+	header->get (name, value);
   }
 
   void get (const string & name, int & value)
   {
-	header.get (name, value);
+	header->get (name, value);
+  }
+
+  /**
+	 \param band If IMODE is anything other than S, then this parameter must
+	 always zero.
+   **/
+  void read (istream & stream, char * block, unsigned int blockSize, int bx, int by, int band)
+  {
+	int blockIndex = band * NBPR * NBPC + by * NBPR + bx;
+
+	unsigned int blockAddress;
+	if (BMRBND)
+	{
+	  blockAddress = BMRBND[blockIndex];
+	  if (blockAddress == 0xFFFFFFFF)
+	  {
+		memset (block, 0, blockSize);
+		return;
+	  }
+	}
+	else
+	{
+	  blockAddress = blockIndex * blockSize;
+	}
+
+	stream.seekg (offset + blockAddress);
+	stream.read (block, blockSize);
   }
 
   void read (istream & stream, Image & image, int x, int y, int width, int height)
@@ -1034,50 +1215,13 @@ public:
 		  int ix = rx % NPPBH;
 		  int w = min ((int) NPPBH - ix, width - ox);
 
-		  int blockIndex = by * NBPR + bx;
-		  // Should also deal with multiple bands here, in the case of planar formats
-
-		  unsigned int blockAddress;
-		  if (BMRBND)
-		  {
-			blockAddress = BMRBND[blockIndex];
-			if (blockAddress == 0xFFFFFFFF)
-			{
-			  blockAddress = 0;
-			}
-			else
-			{
-			  blockAddress += offset;
-			}
-		  }
-		  else
-		  {
-			blockAddress = offset + blockIndex * blockSize;
-		  }
-
 		  if (w == width  &&  h == NPPBV)
 		  {
-			if (blockAddress)
-			{
-			  stream.seekg (blockAddress);
-			  stream.read (imageMemory + oy * stride, blockSize);
-			}
-			else
-			{
-			  memset (imageMemory + oy * stride, 0, blockSize);
-			}
+			read (stream, imageMemory + oy * stride, blockSize, bx, by, 0);
 		  }
 		  else
 		  {
-			if (blockAddress)
-			{
-			  stream.seekg (blockAddress);
-			  stream.read (blockBuffer, blockSize);
-			}
-			else
-			{
-			  memset (blockBuffer, 0, blockSize);
-			}
+			read (stream, blockBuffer, blockSize, bx, by, 0);
 			image.bitblt (block, ox, oy, ix, iy, w, h);
 		  }
 
@@ -1110,17 +1254,17 @@ public:
 	offset = stream.tellg ();
 	offset += LISH;
 
-	header.read (stream);
+	header->read (stream);
 
-	header.get ("IC",     IC);
-	header.get ("IMODE",  IMODE);
-	header.get ("NBANDS", NBANDS);
-	header.get ("NBPR",   NBPR);
-	header.get ("NBPC",   NBPC);
-	header.get ("NROWS",  NROWS);
-	header.get ("NCOLS",  NCOLS);
-	header.get ("NPPBH",  NPPBH);
-	header.get ("NPPBV",  NPPBV);
+	header->get ("IC",     IC);
+	header->get ("IMODE",  IMODE);
+	header->get ("NBANDS", NBANDS);
+	header->get ("NBPR",   NBPR);
+	header->get ("NBPC",   NBPC);
+	header->get ("NROWS",  NROWS);
+	header->get ("NCOLS",  NCOLS);
+	header->get ("NPPBH",  NPPBH);
+	header->get ("NPPBV",  NPPBV);
 
 
 	// Determine PixelFormat
@@ -1245,15 +1389,15 @@ public:
   PixelFormat * format;
   bool ownFormat;  ///< If true, we should manage the lifespan of format.
 
-  nitfItemSet header;
+  nitfItemSet * header;
 };
 
 class nitfFileHeader
 {
 public:
   nitfFileHeader ()
-  : header (mapFileHeader)
   {
+	header = 0;
   }
 
   ~nitfFileHeader ()
@@ -1262,21 +1406,43 @@ public:
 	{
 	  delete images[i];
 	}
+	if (header) delete header;
   }
 
   void get (const string & name, string & value)
   {
-	header.get (name, value);
+	header->get (name, value);
   }
 
   void get (const string & name, int & value)
   {
-	header.get (name, value);
+	header->get (name, value);
   }
+
+  // set() must instantiate an appropriate version of the header
 
   void read (istream & stream)
   {
-	header.read (stream);
+	// Probe for file version, but rewind so file header can parse it as well
+	char buffer[10];
+	int startOffset = stream.tellg ();
+	stream.read (buffer, 9);
+	stream.seekg (startOffset);
+	version.assign (buffer, 9);
+
+	if (version == "NITF02.10"  ||  version == "NSIF01.00")
+	{
+	  header = new nitfItemSet (mapFileHeader0210);
+	}
+	else if (version == "NITF02.00")
+	{
+	  header = new nitfItemSet (mapFileHeader0200);
+	}
+	else
+	{
+	  throw "Unknown file version";
+	}
+	header->read (stream);
 
 	int offset;
 	get ("HL", offset);
@@ -1285,10 +1451,9 @@ public:
 	get ("NUMI", NUMI);
 	for (int i = 0; i < NUMI; i++)
 	{
-	  nitfImageSection * h = new nitfImageSection;
+	  nitfImageSection * h = new nitfImageSection (version);
 	  images.push_back (h);
 
-	  char buffer[10];
 	  sprintf (buffer, "LISH%03i", i+1);
 	  get (buffer, h->LISH);
 	  sprintf (buffer, "LI%03i", i+1);
@@ -1305,7 +1470,8 @@ public:
   {
   }
 
-  nitfItemSet header;
+  string version;
+  nitfItemSet * header;
   vector<nitfImageSection *> images;
 };
 
@@ -1392,9 +1558,14 @@ ImageFileFormatNITF::isIn (std::istream & stream) const
 {
   string magic = "         ";  // 9 spaces
   getMagic (stream, magic);
-  if (magic == "NITF02.10")  // that's all we handle for now
+  if (magic.substr (0, 4) == "NITF")
   {
-	return 1;
+	if (magic.substr (4) == "02.10") return 1;
+	if (magic.substr (4) == "02.00") return 1;
+  }
+  if (magic.substr (0, 4) == "NSIF")
+  {
+	if (magic.substr (4) == "01.00") return 1;
   }
   return 0;
 }
@@ -1406,7 +1577,15 @@ ImageFileFormatNITF::handles (const std::string & formatName) const
   {
 	return 1;
   }
+  if (strcasecmp (formatName.c_str (), "nsif") == 0)
+  {
+	return 1;
+  }
   if (strcasecmp (formatName.c_str (), "ntf") == 0)
+  {
+	return 0.9;
+  }
+  if (strcasecmp (formatName.c_str (), "nsf") == 0)
   {
 	return 0.9;
   }
