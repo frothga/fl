@@ -21,6 +21,17 @@ for details.
 01/2006 Fred Rothganger -- Moved PixelFormat code into separate file.
 02/2006 Fred Rothganger -- Change Image structure.
 03/2006 Fred Rothganger -- Move endian code to endian.h
+
+$Log$
+Revision 1.29  2006/03/13 03:24:06  Fred
+Add more fromGrayShort() functions.  Fix input size in RGBABits::fromGrayShort().
+
+Suppress alpha channel in RGBABits::fromGrayChar() and fromGrayShort().
+
+Fix sign on grayShift in RGBChar::fromGrayShort().
+
+Experimet with RCS log to replace manually maintained revision history at head of file.
+
 */
 
 
@@ -1281,6 +1292,10 @@ PixelFormatGrayDouble::filter (const Image & image)
   {
 	fromGrayChar (image, result);
   }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayShort))
+  {
+	fromGrayShort (image, result);
+  }
   else if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
   {
 	fromGrayFloat (image, result);
@@ -1318,6 +1333,25 @@ PixelFormatGrayDouble::fromGrayChar (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	double v = *fromPixel++ / 255.0;
+	linearize (v);
+	*toPixel++ = v;
+  }
+}
+
+void
+PixelFormatGrayDouble::fromGrayShort (const Image & image, Image & result) const
+{
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
+
+  unsigned short * fromPixel = (unsigned short *) i->memory;
+  double *         toPixel   = (double *)         o->memory;
+  double *         end       = toPixel + result.width * result.height;
+  double grayMask = ((PixelFormatGrayShort *) image.format)->grayMask;
+  while (toPixel < end)
+  {
+	double v = *fromPixel++ / grayMask;
 	linearize (v);
 	*toPixel++ = v;
   }
@@ -1606,6 +1640,10 @@ PixelFormatRGBABits::filter (const Image & image)
   {
 	fromGrayChar (image, result);
   }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayShort))
+  {
+	fromGrayShort (image, result);
+  }
   else if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
   {
 	fromGrayFloat (image, result);
@@ -1767,7 +1805,7 @@ PixelFormatRGBABits::fromGrayChar (const Image & image, Image & result) const
   int greenShift;
   int blueShift;
   int alphaShift;
-  shift (0xFF, 0xFF, 0xFF, 0xFF, redShift, greenShift, blueShift, alphaShift);
+  shift (0xFF, 0xFF, 0xFF, 0, redShift, greenShift, blueShift, alphaShift);
   redShift *= -1;
   greenShift *= -1;
   blueShift *= -1;
@@ -1776,17 +1814,52 @@ PixelFormatRGBABits::fromGrayChar (const Image & image, Image & result) const
   switch (depth)
   {
     case 1:
-	  Bits2Bits (char, char, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
+	  Bits2Bits (char, char, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
 	  break;
     case 2:
-	  Bits2Bits (char, short, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
+	  Bits2Bits (char, short, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
 	  break;
     case 3:
-	  Bits2OddBits (char, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
+	  Bits2OddBits (char, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
 	  break;
     case 4:
     default:
-	  Bits2Bits (char, int, 0xFF, 0xFF, 0xFF, 0xFF, redMask, greenMask, blueMask, alphaMask);
+	  Bits2Bits (char, int, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
+  }
+}
+
+void
+PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
+{
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (i  &&  o);
+
+  int redShift;
+  int greenShift;
+  int blueShift;
+  int alphaShift;
+  unsigned int grayMask = ((PixelFormatGrayShort *) image.format)->grayMask;
+  shift (grayMask, grayMask, grayMask, grayMask, redShift, greenShift, blueShift, alphaShift);
+  redShift *= -1;
+  greenShift *= -1;
+  blueShift *= -1;
+  alphaShift *= -1;
+
+  switch (depth)
+  {
+    case 1:
+	  Bits2Bits (short, char, grayMask, grayMask, grayMask, 0, redMask, greenMask, blueMask, alphaMask);
+	  break;
+    case 2:
+	  Bits2Bits (short, short, grayMask, grayMask, grayMask, 0, redMask, greenMask, blueMask, alphaMask);
+	  break;
+    case 3:
+	  Bits2OddBits (short, grayMask, grayMask, grayMask, 0, redMask, greenMask, blueMask, alphaMask);
+	  break;
+    case 4:
+    default:
+	  Bits2Bits (short, int, grayMask, grayMask, grayMask, 0, redMask, greenMask, blueMask, alphaMask);
   }
 }
 
@@ -2412,7 +2485,7 @@ PixelFormatRGBChar::fromGrayShort (const Image & image, Image & result) const
   {
 	while (toPixel < end)
 	{
-	  unsigned char t = *fromPixel++ >> grayShift;
+	  unsigned char t = *fromPixel++ >> -grayShift;
 	  toPixel[0] = t;
 	  toPixel[1] = t;
 	  toPixel[2] = t;
