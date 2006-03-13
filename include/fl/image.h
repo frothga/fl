@@ -466,6 +466,7 @@ namespace fl
 	PixelFormatGrayChar ();
 
 	virtual Image filter (const Image & image);
+	void fromGrayShort  (const Image & image, Image & result) const;
 	void fromGrayFloat  (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
 	void fromRGBAChar   (const Image & image, Image & result) const;
@@ -487,7 +488,7 @@ namespace fl
   class PixelFormatGrayShort : public PixelFormat
   {
   public:
-	PixelFormatGrayShort ();
+	PixelFormatGrayShort (unsigned short grayMask = 0xFFFF);
 
 	virtual Image filter (const Image & image);
 	void fromGrayChar   (const Image & image, Image & result) const;
@@ -505,6 +506,9 @@ namespace fl
 	virtual void          setXYZ  (void * pixel, float values[]) const;
 	virtual void          setGray (void * pixel, unsigned char gray) const;
 	virtual void          setGray (void * pixel, float gray) const;
+
+	unsigned short grayMask;  ///< Indicates what (contiguous) bit in the pixel actually carry intensity info.
+	int grayShift;  ///< How many bits to shift grayMask to align the msb with bit 15.
   };
 
   class PixelFormatGrayFloat : public PixelFormat
@@ -540,6 +544,7 @@ namespace fl
 
 	virtual Image filter (const Image & image);
 	void fromGrayChar  (const Image & image, Image & result) const;
+	void fromGrayShort (const Image & image, Image & result) const;
 	void fromGrayFloat (const Image & image, Image & result) const;
 	void fromRGBAChar  (const Image & image, Image & result) const;
 	void fromRGBChar   (const Image & image, Image & result) const;
@@ -574,6 +579,7 @@ namespace fl
 
 	virtual Image filter (const Image & image);
 	void fromGrayChar   (const Image & image, Image & result) const;
+	void fromGrayShort  (const Image & image, Image & result) const;
 	void fromGrayFloat  (const Image & image, Image & result) const;
 	void fromGrayDouble (const Image & image, Image & result) const;
 	void fromRGBABits   (const Image & image, Image & result) const;
