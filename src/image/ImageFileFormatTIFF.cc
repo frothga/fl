@@ -248,7 +248,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		int w = min ((int) blockWidth - ix, width - ox);
 
 		ttile_t tile = TIFFComputeTile (tif, rx, ry, 0, 0);
-		if (w == width  &&  h == blockHeight)
+		if (w == width  &&  w == blockWidth  &&  h == blockHeight)
 		{
 		  TIFFReadEncodedTile (tif, tile, imageMemory + oy * stride, blockSize);
 		}
