@@ -55,8 +55,8 @@ public:
 	data = (char *) malloc (map->size);
 	stream.read (data, map->size);
 
-	string bob (data, map->size);
-	cerr << "read item: " << map->name << " = " << bob << endl;
+	//string bob (data, map->size);
+	//cerr << "read item: " << map->name << " = " << bob << endl;
   }
 
   virtual void write (ostream & stream)
@@ -1270,10 +1270,14 @@ public:
 	// Determine PixelFormat
 	string IREP;
 	get ("IREP", IREP);
-	int NBPP;
-	get ("NBPP", NBPP);
 	string PVTYPE;
 	get ("PVTYPE", PVTYPE);
+	int NBPP;
+	get ("NBPP", NBPP);
+	int ABPP;
+	get ("ABPP", ABPP);
+	string PJUST;
+	get ("PJUST", PJUST);
 
 	if (IREP == "MONO    ")
 	{
@@ -1285,7 +1289,24 @@ public:
 			format = &GrayChar;
 			break;
 		  case 16:
-			format = &GrayShort;
+			if (ABPP == 16)
+			{
+			  format = &GrayShort;
+			}
+			else
+			{
+			  unsigned short grayMask = 0xFFFF;
+			  if (PJUST == "L")
+			  {
+				grayMask <<= (16 - ABPP);
+			  }
+			  else
+			  {
+				grayMask >>= (16 - ABPP);
+			  }
+			  format = new PixelFormatGrayShort (grayMask);
+			  ownFormat = true;
+			}
 			break;
 		}
 	  }
@@ -1313,7 +1334,7 @@ public:
 	}
 
 	if (! format) throw "Can't match format";
-	cerr << "format = " << typeid (*format).name () << endl;
+	//cerr << "format = " << typeid (*format).name () << endl;
 
 
 	// Parse block mask if it exists
