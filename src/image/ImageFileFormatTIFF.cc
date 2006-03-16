@@ -62,17 +62,21 @@ public:
 #   endif
 
 	format = 0;
+	ownFormat = false;
   }
   virtual ~ImageFileDelegateTIFF ();
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
-  virtual void get (const string & name, double & value);
   virtual void get (const string & name, string & value);
+  virtual void get (const string & name, int & value);
+  virtual void get (const string & name, double & value);
   virtual void get (const string & name, Matrix<double> & value);
-  virtual void set (const string & name, double value);
+
   virtual void set (const string & name, const string & value);
+  virtual void set (const string & name, int value);
+  virtual void set (const string & name, double value);
   virtual void set (const string & name, const Matrix<double> & value);
 
   TIFF * tif;
@@ -81,11 +85,14 @@ public:
   GTIF * gtif;
 # endif
 
-  const PixelFormat * format;  ///< For writing
+  const PixelFormat * format;
+  bool ownFormat;
 };
 
 ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
 {
+  if (ownFormat  &&  format) delete format;
+
   if (tif)
   {
 #   ifdef HAVE_GEOTIFF
@@ -138,7 +145,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	throw "Can't handle color palettes, transparency masks, etc.";
 	// But we should handle the YCbCr and L*a*b* color spaces.
   }
-  if (planarConfig != PLANARCONFIG_CONTIG)
+  if (planarConfig != PLANARCONFIG_CONTIG  &&  samplesPerPixel > 1)
   {
 	throw "Can't yet handle planar formats";
   }
@@ -147,7 +154,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	throw "No PixelFormats currently support more than one channel beyond three colors.";
   }
 
-  PixelFormat * format = 0;
+  format = 0;
   switch (bitsPerSample)
   {
 	case 8:
@@ -167,8 +174,22 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	  switch (samplesPerPixel)
 	  {
 		case 1:
-		  format = &GrayShort;
+		{
+		  int maxValue = 0;
+		  get ("SMaxSampleValue", maxValue);
+		  if (maxValue == 0xFFFF  ||  maxValue == 0)
+		  {
+			format = &GrayShort;
+		  }
+		  else
+		  {
+			unsigned short mask = 0;
+			while (mask < maxValue  &&  mask < 0xFFFF) mask = (mask << 1) | 0x1;
+			format = new PixelFormatGrayShort (mask);
+			ownFormat = true;
+		  }
 		  break;
+		}
 		case 3:
 		  format = &RGBShort;
 		  break;
@@ -510,7 +531,22 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
 	if (! rowsPerStrip)
 	{
-	  rowsPerStrip = (uint32) ceil (8192.0 / stride);  // Manual recommends 8K strips
+	  // There given image must be covered by an integral number of strips.
+	  const int targetSize = 8192;  // Manual recommends 8K strips
+	  int bestDistance = INT_MAX;
+	  for (int rows = 1; rows <= work.height / 2; rows++)
+	  {
+		int size = rows * stride;
+		int distance = abs (size - 8192);
+		cerr << rows << " " << size << " " << distance << endl;
+		if (work.height % rows == 0  &&  distance < bestDistance)
+		{
+		  cerr << "     accepted" << endl;
+		  bestDistance = distance;
+		  rowsPerStrip = rows;
+		}
+		if (rowsPerStrip  &&  size > targetSize) break;  // Since it won't get any better
+	  }
 	  TIFFSetField (tif, TIFFTAG_ROWSPERSTRIP, rowsPerStrip);
 	}
 
@@ -545,17 +581,6 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 }
 
 void
-ImageFileDelegateTIFF::get (const string & name, double & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = v(0,0);
-  }
-}
-
-void
 ImageFileDelegateTIFF::get (const string & name, string & value)
 {
   const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
@@ -568,6 +593,24 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	}
 	else
 	{
+	  if (name == "Compression")
+	  {
+		// Attempt to look up codec name
+		uint16 v;
+		if (TIFFGetFieldDefaulted (tif, fi->field_tag, &v))
+		{
+		  TIFFCodec * codec = TIFFGetConfiguredCODECs ();
+		  while (codec->name)
+		  {
+			if (v == codec->scheme)
+			{
+			  value = codec->name;
+			  return;
+			}
+			codec++;
+		  }
+		}
+	  }
 	  Matrix<double> v;
 	  get (name, v);
 	  if (v.rows () > 0  &&  v.columns () > 0)
@@ -620,6 +663,28 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	}
   }
 # endif
+}
+
+void
+ImageFileDelegateTIFF::get (const string & name, int & value)
+{
+  Matrix<double> v;
+  get (name, v);
+  if (v.rows () > 0  &&  v.columns () > 0)
+  {
+	value = (int) rint (v(0,0));
+  }
+}
+
+void
+ImageFileDelegateTIFF::get (const string & name, double & value)
+{
+  Matrix<double> v;
+  get (name, v);
+  if (v.rows () > 0  &&  v.columns () > 0)
+  {
+	value = v(0,0);
+  }
 }
 
 void
@@ -789,6 +854,18 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
   if (fi)
   {
 	int count = fi->field_readcount;
+	TIFFDataType fieldType = fi->field_type;
+
+	// Compensate for differences between field info and actual behavior of TIFFGetField().
+	if (name == "SMinSampleValue"  ||  name == "SMaxSampleValue")
+	{
+	  count = 1;
+	  fieldType = TIFF_DOUBLE;
+	}
+	else if (name == "MinSampleValue"  ||  name == "MaxSampleValue")
+	{
+	  count = 1;
+	}
 
 	if (count == 1)
 	{
@@ -803,7 +880,7 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 		return; \
 	  }
 
-	  switch (fi->field_type)
+	  switch (fieldType)
 	  {
 		case TIFF_BYTE:
 		  grabSingle (uint8);
@@ -860,7 +937,7 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 	}
 	if (! found) return;
 
-	if (fi->field_type != TIFF_DOUBLE)
+	if (fieldType != TIFF_DOUBLE)
 	{
 	  if (rows == 1) value.resize (count, 1);
 	  else           value.resize (rows, count / rows);
@@ -873,7 +950,7 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 	} \
 	return;
 
-	switch (fi->field_type)
+	switch (fieldType)
 	{
 	  case TIFF_BYTE:
 		readVector (uint8);
@@ -1025,14 +1102,6 @@ findType (geokey_t key)
 #endif
 
 void
-ImageFileDelegateTIFF::set (const string & name, double value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
 ImageFileDelegateTIFF::set (const string & name, const string & value)
 {
   const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
@@ -1044,6 +1113,20 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 	}
 	else
 	{
+	  if (name == "Compression")
+	  {
+		// Attempt to look up codec name
+		TIFFCodec * codec = TIFFGetConfiguredCODECs ();
+		while (codec->name)
+		{
+		  if (value == codec->name)
+		  {
+			set (name, codec->scheme);
+			return;
+		  }
+		  codec++;
+		}
+	  }
 	  set (name, atof (value.c_str ()));
 	}
 	return;
@@ -1075,6 +1158,22 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 	}
   }
 # endif
+}
+
+void
+ImageFileDelegateTIFF::set (const string & name, int value)
+{
+  Matrix<double> v (1, 1);
+  v(0,0) = value;
+  set (name, v);
+}
+
+void
+ImageFileDelegateTIFF::set (const string & name, double value)
+{
+  Matrix<double> v (1, 1);
+  v(0,0) = value;
+  set (name, v);
 }
 
 void
