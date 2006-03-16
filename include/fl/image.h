@@ -842,11 +842,14 @@ namespace fl
 	virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0) = 0;
 	virtual void write (const Image & image, int x = 0, int y = 0) = 0;
 
-	virtual void get (const std::string & name, double & value);
 	virtual void get (const std::string & name, std::string & value);
+	virtual void get (const std::string & name, int & value);
+	virtual void get (const std::string & name, double & value);
 	virtual void get (const std::string & name, Matrix<double> & value);
-	virtual void set (const std::string & name, double value);
+
 	virtual void set (const std::string & name, const std::string & value);
+	virtual void set (const std::string & name, int value);
+	virtual void set (const std::string & name, double value);
 	virtual void set (const std::string & name, const Matrix<double> & value);
   };
 
@@ -949,11 +952,14 @@ namespace fl
 	**/
 	void write (const Image & image, int x = 0, int y = 0);
 
-	void get (const std::string & name, double & value);
 	void get (const std::string & name, std::string & value);
+	void get (const std::string & name, int & value);
+	void get (const std::string & name, double & value);
 	void get (const std::string & name, Matrix<double> & value);
-	void set (const std::string & name, double value);
+
 	void set (const std::string & name, const std::string & value);
+	void set (const std::string & name, int value);
+	void set (const std::string & name, double value);
 	void set (const std::string & name, const Matrix<double> & value);
 
 	PointerPoly<ImageFileDelegate> delegate;
