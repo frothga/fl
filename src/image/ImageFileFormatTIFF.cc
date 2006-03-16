@@ -639,8 +639,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 		uint16 v;
 		if (GTIFKeyGet (gtif, (geokey_t) key, &v, 0, 1))
 		{
-		  sprintf (buffer, "%hu", v);
-		  value = buffer;
+		  value = GTIFValueName ((geokey_t) key, v);
 		}
 		return;
 	  }
