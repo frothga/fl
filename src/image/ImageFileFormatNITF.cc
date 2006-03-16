@@ -7,6 +7,7 @@ Created 2/26/2006
 #include "fl/image.h"
 #include "fl/string.h"
 #include "fl/endian.h"
+#include "fl/lapack.h"
 
 
 using namespace std;
@@ -1126,12 +1127,22 @@ public:
 	if (ownFormat  &&  format) delete format;
   }
 
+  bool contains (const string & name)
+  {
+	return header->contains (name);
+  }
+
   void get (const string & name, string & value)
   {
 	header->get (name, value);
   }
 
   void get (const string & name, int & value)
+  {
+	header->get (name, value);
+  }
+
+  void get (const string & name, double & value)
   {
 	header->get (name, value);
   }
@@ -1215,7 +1226,7 @@ public:
 		  int ix = rx % NPPBH;
 		  int w = min ((int) NPPBH - ix, width - ox);
 
-		  if (w == width  &&  h == NPPBV)
+		  if (w == width  &&  w == NPPBH  &&  h == NPPBV)
 		  {
 			read (stream, imageMemory + oy * stride, blockSize, bx, by, 0);
 		  }
@@ -1413,89 +1424,6 @@ public:
   nitfItemSet * header;
 };
 
-class nitfFileHeader
-{
-public:
-  nitfFileHeader ()
-  {
-	header = 0;
-  }
-
-  ~nitfFileHeader ()
-  {
-	for (int i = 0; i < images.size (); i++)
-	{
-	  delete images[i];
-	}
-	if (header) delete header;
-  }
-
-  void get (const string & name, string & value)
-  {
-	header->get (name, value);
-  }
-
-  void get (const string & name, int & value)
-  {
-	header->get (name, value);
-  }
-
-  // set() must instantiate an appropriate version of the header
-
-  void read (istream & stream)
-  {
-	// Probe for file version, but rewind so file header can parse it as well
-	char buffer[10];
-	int startOffset = stream.tellg ();
-	stream.read (buffer, 9);
-	stream.seekg (startOffset);
-	version.assign (buffer, 9);
-
-	if (version == "NITF02.10"  ||  version == "NSIF01.00")
-	{
-	  header = new nitfItemSet (mapFileHeader0210);
-	}
-	else if (version == "NITF02.00")
-	{
-	  header = new nitfItemSet (mapFileHeader0200);
-	}
-	else
-	{
-	  throw "Unknown file version";
-	}
-	header->read (stream);
-
-	int offset;
-	get ("HL", offset);
-
-	int NUMI;
-	get ("NUMI", NUMI);
-	for (int i = 0; i < NUMI; i++)
-	{
-	  nitfImageSection * h = new nitfImageSection (version);
-	  images.push_back (h);
-
-	  sprintf (buffer, "LISH%03i", i+1);
-	  get (buffer, h->LISH);
-	  sprintf (buffer, "LI%03i", i+1);
-	  get (buffer, h->LI);
-
-	  stream.seekg (offset);
-	  h->read (stream);
-
-	  offset += h->LISH + h->LI;
-	}
-  }
-
-  void write (ostream & stream)
-  {
-  }
-
-  string version;
-  nitfItemSet * header;
-  vector<nitfImageSection *> images;
-};
-
 
 // class ImageFileDelegateNITF ------------------------------------------------
 
@@ -1508,10 +1436,52 @@ public:
 	this->out = out;
 	this->ownStream = ownStream;
 
-	header = new nitfFileHeader;
+	header = 0;
+	imageIndex = -1;
 	if (in)
 	{
+	  // Probe for file version, but rewind so file header can parse it as well
+	  char buffer[10];
+	  int startOffset = in->tellg ();
+	  in->read (buffer, 9);
+	  in->seekg (startOffset);
+	  version.assign (buffer, 9);
+
+	  if (version == "NITF02.10"  ||  version == "NSIF01.00")
+	  {
+		header = new nitfItemSet (mapFileHeader0210);
+	  }
+	  else if (version == "NITF02.00")
+	  {
+		header = new nitfItemSet (mapFileHeader0200);
+	  }
+	  else
+	  {
+		throw "Unknown file version";
+	  }
 	  header->read (*in);
+
+	  int offset;
+	  get ("HL", offset);
+
+	  int NUMI;
+	  get ("NUMI", NUMI);
+	  for (int i = 0; i < NUMI; i++)
+	  {
+		nitfImageSection * h = new nitfImageSection (version);
+		images.push_back (h);
+
+		sprintf (buffer, "LISH%03i", i+1);
+		get (buffer, h->LISH);
+		sprintf (buffer, "LI%03i", i+1);
+		get (buffer, h->LI);
+
+		in->seekg (offset);
+		h->read (*in);
+
+		offset += h->LISH + h->LI;
+	  }
+	  if (images.size () > 0) imageIndex = 0;
 	}
   }
   ~ImageFileDelegateNITF ();
@@ -1520,11 +1490,18 @@ public:
   virtual void write (const Image & image, int x = 0, int y = 0);
 
   virtual void get (const string & name, string & value);
+  virtual void get (const string & name, int & value);
+  virtual void get (const string & name, double & value);
+  virtual void get (const string & name, Matrix<double> & value);
 
   istream * in;
   ostream * out;
   bool ownStream;
-  nitfFileHeader * header;
+
+  string version;
+  nitfItemSet * header;
+  vector<nitfImageSection *> images;
+  int imageIndex;
 };
 
 ImageFileDelegateNITF::~ImageFileDelegateNITF ()
@@ -1534,6 +1511,11 @@ ImageFileDelegateNITF::~ImageFileDelegateNITF ()
 	if (in) delete in;
 	if (out) delete out;
   }
+
+  for (int i = 0; i < images.size (); i++)
+  {
+	delete images[i];
+  }
   if (header) delete header;
 }
 
@@ -1541,23 +1523,200 @@ void
 ImageFileDelegateNITF::read (Image & image, int x, int y, int width, int height)
 {
   if (! in) throw "ImageFileDelegateNITF not open for reading";
-  if (! header->images.size ()) throw "No image to read";
-
-  header->images[0]->read (*in, image, x, y, width, height);
+  if (imageIndex < 0) throw "No image available";
+  images[imageIndex]->read (*in, image, x, y, width, height);
 }
 
 void
 ImageFileDelegateNITF::write (const Image & image, int x, int y)
 {
   if (! out) throw "ImageFileDelegateNITF not open for writing";
+  throw "NITF write not yet implemented";
+}
+
+static inline void
+remapSpecialNames (const string & name, string & result)
+{
+  if      (name == "width")       result = "NCOLS";
+  else if (name == "height")      result = "NROWS";
+  else if (name == "blockWidth")  result = "NPPBH";
+  else if (name == "blockHeight") result = "NPPBV";
+  else                            result = name;
 }
 
 void
 ImageFileDelegateNITF::get (const string & name, string & value)
 {
   if (! header) return;
-  header->get (name, value);
+
+  string n;
+  remapSpecialNames (name, n);
+
+  if (header->contains (n))
+  {
+	header->get (n, value);
+  }
+  else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
+  {
+	images[imageIndex]->get (n, value);
+  }
 }
+
+void
+ImageFileDelegateNITF::get (const string & name, int & value)
+{
+  if (! header) return;
+
+  string n;
+  remapSpecialNames (name, n);
+
+  if (header->contains (n))
+  {
+	header->get (n, value);
+  }
+  else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
+  {
+	images[imageIndex]->get (n, value);
+  }
+}
+
+void
+ImageFileDelegateNITF::get (const string & name, double & value)
+{
+  if (! header) return;
+
+  string n;
+  remapSpecialNames (name, n);
+
+  if (header->contains (n))
+  {
+	header->get (n, value);
+  }
+  else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
+  {
+	images[imageIndex]->get (n, value);
+  }
+}
+
+static inline void
+geoToDecimal (const string & geo, double & x, double & y)
+{
+  y =   atof (geo.substr (0, 2).c_str ())
+	  + atof (geo.substr (2, 2).c_str ()) / 60.0
+ 	  + atof (geo.substr (4, 2).c_str ()) / 3600.0;
+  if (geo[6] == 'S') y *= -1.0;
+
+  x =   atof (geo.substr (7, 3).c_str ())
+	  + atof (geo.substr (10, 2).c_str ()) / 60.0
+ 	  + atof (geo.substr (12, 2).c_str ()) / 3600.0;
+  if (geo[14] == 'W') x *= -1.0;
+}
+
+void
+ImageFileDelegateNITF::get (const string & name, Matrix<double> & value)
+{
+  if (! header) return;
+
+  if (name == "GeoTransformationMatrix")
+  {
+	if (imageIndex < 0) return;
+
+	string ICORDS;
+	images[imageIndex]->get ("ICORDS", ICORDS);
+	if (version == "NITF02.10"  ||  version == "NSIF01.00")
+	{
+	  if (ICORDS == " ") return;
+	}
+	else if (version == "NITF02.00")
+	{
+	  if (ICORDS == "N") return;
+	  if (ICORDS == "C") ICORDS = "G";
+	  // Not sure what NITF 2.0 "G" maps to in NITF 2.1
+	}
+	else return;  // meesa give up
+
+	string IGEOLO1;
+	string IGEOLO2;
+	string IGEOLO3;
+	string IGEOLO4;
+	images[imageIndex]->get ("IGEOLO1", IGEOLO1);
+	images[imageIndex]->get ("IGEOLO2", IGEOLO2);
+	images[imageIndex]->get ("IGEOLO3", IGEOLO3);
+	images[imageIndex]->get ("IGEOLO4", IGEOLO4);
+
+	Matrix<double> XY (2, 4);
+	if (ICORDS == "G")
+	{
+	  geoToDecimal (IGEOLO1, XY(0,0), XY(1,0));
+	  geoToDecimal (IGEOLO2, XY(0,1), XY(1,1));
+	  geoToDecimal (IGEOLO3, XY(0,2), XY(1,2));
+	  geoToDecimal (IGEOLO4, XY(0,3), XY(1,3));
+	}
+	else if (ICORDS == "D")
+	{
+	}
+	else return;
+
+	int NROWS;
+	int NCOLS;
+	images[imageIndex]->get ("NROWS", NROWS);
+	images[imageIndex]->get ("NCOLS", NCOLS);
+	double lastX = NCOLS - 1;
+	double lastY = NROWS - 1;
+
+	// Solve for xform
+
+	// Find center of each point cloud
+	Vector<double> centerIJ (2);
+	centerIJ[0] = lastX / 2.0;
+	centerIJ[1] = lastY / 2.0;
+
+	Vector<double> centerXY (2);
+	centerXY.clear ();
+	for (int c = 0; c < 4; c++)
+	{
+	  centerXY += XY.column (c);
+	}
+	centerXY /= 4;
+
+	// Build least squares problem for 2x2 xform
+	Matrix<double> IJ (2, 4);
+	IJ(0,0) = 0     - centerIJ[0];
+	IJ(1,0) = 0     - centerIJ[1];
+	IJ(0,1) = lastX - centerIJ[0];
+	IJ(1,1) = 0     - centerIJ[1];
+	IJ(0,2) = lastX - centerIJ[0];
+	IJ(1,2) = lastY - centerIJ[1];
+	IJ(0,3) = 0     - centerIJ[0];
+	IJ(1,3) = lastY - centerIJ[1];
+
+	for (int c = 0; c < 4; c++)
+	{
+	  XY.column (c) -= centerXY;
+	}
+	Matrix<double> X;
+	gelss (~IJ, X, ~XY, (double *) 0, true, true);
+
+	// Assemble result
+	value.resize (4, 4);
+	value.clear ();
+	value.region (0, 0) = ~X;
+	value.region (0, 3) = centerXY - value.region (0, 0, 1, 1) * centerIJ;
+	value(3,3) = 1;
+
+	return;
+  }
+
+  double v = NAN;
+  get (name, v);
+  if (! isnan (v))
+  {
+	value.resize (1, 1);
+	value(0,0) = v;
+  }
+}
+
+// set() must instantiate an appropriate version of the header
 
 
 // class ImageFileFormatNITF --------------------------------------------------
