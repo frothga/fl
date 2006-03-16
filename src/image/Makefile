@@ -27,7 +27,7 @@ SOURCE_DIR := ../..
 MODULE = Image
 CPPFLAGS += $(X_INC) $(MPEG_INC) $(FT_INC) $(GTIFF_INC)
 VPATH = $(SOURCE_LIB)
-LOADLIBS = -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric $(MPEG_LIB) $(TIFF_LIB) $(JPEG_LIB) $(FT_LIB) $(GTIFF_LIB)
+LOADLIBS = -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric $(MPEG_LIB) $(JPEG_LIB) $(FT_LIB) $(GTIFF_LIB) $(TIFF_LIB)
 
 
 IMAGE_O = \
@@ -126,7 +126,7 @@ test: test.o $(OBJS)
 	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB)
 
 junk: junk.o $(OBJS)
-	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(TIFF_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB) $(GTIFF_LIB)
+	g++ -o $@ $^ -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB) $(GTIFF_LIB) $(TIFF_LIB)
 
 
 clean:
