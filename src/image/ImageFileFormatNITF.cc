@@ -1147,6 +1147,21 @@ public:
 	header->get (name, value);
   }
 
+  void set (const string & name, const string & value)
+  {
+	header->set (name, value);
+  }
+
+  void set (const string & name, int value)
+  {
+	header->set (name, value);
+  }
+
+  void set (const string & name, double value)
+  {
+	header->set (name, value);
+  }
+
   /**
 	 \param band If IMODE is anything other than S, then this parameter must
 	 always zero.
@@ -1447,18 +1462,7 @@ public:
 	  in->seekg (startOffset);
 	  version.assign (buffer, 9);
 
-	  if (version == "NITF02.10"  ||  version == "NSIF01.00")
-	  {
-		header = new nitfItemSet (mapFileHeader0210);
-	  }
-	  else if (version == "NITF02.00")
-	  {
-		header = new nitfItemSet (mapFileHeader0200);
-	  }
-	  else
-	  {
-		throw "Unknown file version";
-	  }
+	  createHeader ();
 	  header->read (*in);
 
 	  int offset;
@@ -1483,8 +1487,13 @@ public:
 	  }
 	  if (images.size () > 0) imageIndex = 0;
 	}
+	else
+	{
+	  version = "NITF02.10";
+	}
   }
   ~ImageFileDelegateNITF ();
+  void createHeader ();
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
@@ -1493,6 +1502,11 @@ public:
   virtual void get (const string & name, int & value);
   virtual void get (const string & name, double & value);
   virtual void get (const string & name, Matrix<double> & value);
+
+  virtual void set (const string & name, const string & value);
+  virtual void set (const string & name, int value);
+  virtual void set (const string & name, double value);
+  virtual void set (const string & name, const Matrix<double> & value);
 
   istream * in;
   ostream * out;
@@ -1520,6 +1534,25 @@ ImageFileDelegateNITF::~ImageFileDelegateNITF ()
 }
 
 void
+ImageFileDelegateNITF::createHeader ()
+{
+  if (header) return;
+
+  if (version == "NITF02.10"  ||  version == "NSIF01.00")
+  {
+	header = new nitfItemSet (mapFileHeader0210);
+  }
+  else if (version == "NITF02.00")
+  {
+	header = new nitfItemSet (mapFileHeader0200);
+  }
+  else
+  {
+	throw "Unrecognized file version";
+  }
+}
+
+void
 ImageFileDelegateNITF::read (Image & image, int x, int y, int width, int height)
 {
   if (! in) throw "ImageFileDelegateNITF not open for reading";
@@ -1532,6 +1565,8 @@ ImageFileDelegateNITF::write (const Image & image, int x, int y)
 {
   if (! out) throw "ImageFileDelegateNITF not open for writing";
   throw "NITF write not yet implemented";
+  // Must resize repeat sections in header to match number held
+  // nitfRepeat needs work to allow direct change in count
 }
 
 static inline void
@@ -1552,7 +1587,13 @@ ImageFileDelegateNITF::get (const string & name, string & value)
   string n;
   remapSpecialNames (name, n);
 
-  if (header->contains (n))
+  if (name == "imageIndex")
+  {
+	char buffer[10];
+	sprintf (buffer, "%i", imageIndex);
+	value = buffer;
+  }
+  else if (header->contains (n))
   {
 	header->get (n, value);
   }
@@ -1565,36 +1606,22 @@ ImageFileDelegateNITF::get (const string & name, string & value)
 void
 ImageFileDelegateNITF::get (const string & name, int & value)
 {
-  if (! header) return;
-
-  string n;
-  remapSpecialNames (name, n);
-
-  if (header->contains (n))
+  Matrix<double> v;
+  get (name, v);
+  if (v.rows () > 0  &&  v.columns () > 0)
   {
-	header->get (n, value);
-  }
-  else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
-  {
-	images[imageIndex]->get (n, value);
+	value = (int) rint (v(0,0));
   }
 }
 
 void
 ImageFileDelegateNITF::get (const string & name, double & value)
 {
-  if (! header) return;
-
-  string n;
-  remapSpecialNames (name, n);
-
-  if (header->contains (n))
+  Matrix<double> v;
+  get (name, v);
+  if (v.rows () > 0  &&  v.columns () > 0)
   {
-	header->get (n, value);
-  }
-  else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
-  {
-	images[imageIndex]->get (n, value);
+	value = v(0,0);
   }
 }
 
@@ -1707,16 +1734,101 @@ ImageFileDelegateNITF::get (const string & name, Matrix<double> & value)
 	return;
   }
 
+  string n;
+  remapSpecialNames (name, n);
   double v = NAN;
-  get (name, v);
-  if (! isnan (v))
+  bool found = false;
+  if (name == "imageIndex")
+  {
+	found = true;
+	v = imageIndex;
+  }
+  else if (header->contains (n))
+  {
+	found = true;
+	header->get (n, v);
+  }
+  else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
+  {
+	found = true;
+	images[imageIndex]->get (n, v);
+  }
+  if (found)
   {
 	value.resize (1, 1);
 	value(0,0) = v;
   }
 }
 
-// set() must instantiate an appropriate version of the header
+void
+ImageFileDelegateNITF::set (const string & name, const string & value)
+{
+  if (name == "imageIndex")
+  {
+	Matrix<double> v (1, 1);
+	v(0,0) = atof (value.c_str ());
+	set (name, v);
+	return;
+  }
+
+  createHeader ();
+
+  string n;
+  remapSpecialNames (name, n);
+
+  if (header->contains (n))
+  {
+	header->set (n, value);
+  }
+  else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
+  {
+	images[imageIndex]->set (n, value);
+  }
+}
+
+void
+ImageFileDelegateNITF::set (const string & name, int value)
+{
+  Matrix<double> v (1, 1);
+  v(0,0) = value;
+  set (name, v);
+}
+
+void
+ImageFileDelegateNITF::set (const string & name, double value)
+{
+  Matrix<double> v (1, 1);
+  v(0,0) = value;
+  set (name, v);
+}
+
+void
+ImageFileDelegateNITF::set (const string & name, const Matrix<double> & value)
+{
+  createHeader ();
+
+  string n;
+  remapSpecialNames (name, n);
+  if (name == "imageIndex")
+  {
+	imageIndex = (int) rint (value(0,0));
+	imageIndex = min (imageIndex, 998);
+
+	while (imageIndex >= images.size ())
+	{
+	  nitfImageSection * h = new nitfImageSection (version);
+	  images.push_back (h);
+	}
+  }
+  else if (header->contains (n))
+  {
+	header->set (n, value(0,0));
+  }
+  else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
+  {
+	images[imageIndex]->set (n, value(0,0));
+  }
+}
 
 
 // class ImageFileFormatNITF --------------------------------------------------
