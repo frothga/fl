@@ -23,6 +23,11 @@ for details.
 03/2006 Fred Rothganger -- Move endian code to endian.h
 
 $Log$
+Revision 1.31  2006/03/18 14:25:55  Fred
+Use look up tables to convert gamma, rather than functions.  Hopefully this will make the process more efficient.
+
+Changed 16 bit formats (GrayShort, RGBShort) to use gamma=1, on the assumption that the larger number of bits makes them more suitable for linear data, similar to float formats.  Not sure if images in the wild will satisfy this assumption.  Need more research.  Plan to add dynamically built luts for these formats at some point, so one can specify the gamma for the data.
+
 Revision 1.30  2006/03/13 03:50:19  Fred
 Remove comment from RGBABits::fromGrayChar() on the assumption that the alpha problem is now fixed.
 
@@ -118,65 +123,14 @@ union Int2Char
 #endif
 
 
-// Gamma functions ------------------------------------------------------------
-
-// These functions convert from int (which is assumed to be non-linear) to
-// floating point (assumed to be linear).  They assume that gamma = 2.2.
-
-static inline void
-delinearize (float & value)
-{
-  if (value <= 0.0031308f)
-  {
-	value *= 12.92f;
-  }
-  else
-  {
-	value = 1.055f * powf (value, 1.0f / 2.4f) - 0.055f;
-  }
-}
-
-static inline void
-delinearize (double & value)
-{
-  if (value <= 0.0031308)
-  {
-	value *= 12.92;
-  }
-  else
-  {
-	value = 1.055 * pow (value, 1.0 / 2.4) - 0.055;
-  }
-}
-
-static inline void
-linearize (float & value)
-{
-  if (value <= 0.04045f)
-  {
-	value /= 12.92f;
-  }
-  else
-  {
-	value = powf ((value + 0.055f) / 1.055f, 2.4f);
-  }
-}
-
-static inline void
-linearize (double & value)
-{
-  if (value <= 0.04045)
-  {
-	value /= 12.92;
-  }
-  else
-  {
-	value = pow ((value + 0.055) / 1.055, 2.4);
-  }
-}
-
-
 // class PixelFormat ----------------------------------------------------------
+
+unsigned char * PixelFormat::lutFloat2Char = PixelFormat::buildFloat2Char ();
+float *         PixelFormat::lutChar2Float = PixelFormat::buildChar2Float ();
+
+PixelFormat::~PixelFormat ()
+{
+}
 
 Image
 PixelFormat::filter (const Image & image)
@@ -242,14 +196,10 @@ void
 PixelFormat::getRGBA (void * pixel, float values[]) const
 {
   unsigned int rgba = getRGBA (pixel);
-  values[0] = ((rgba & 0xFF000000) >> 24) / 255.0f;
-  values[1] = ((rgba &   0xFF0000) >> 16) / 255.0f;
-  values[2] = ((rgba &     0xFF00) >>  8) / 255.0f;
-  values[3] = ((rgba &       0xFF)      ) / 255.0f;
-  linearize (values[0]);
-  linearize (values[1]);
-  linearize (values[2]);
-  // Don't linearize alpha, because already linear
+  values[0] = lutChar2Float[(rgba & 0xFF000000) >> 24];
+  values[1] = lutChar2Float[(rgba &   0xFF0000) >> 16];
+  values[2] = lutChar2Float[(rgba &     0xFF00) >>  8];
+  values[3] = (rgba & 0xFF) / 255.0f;  // Don't linearize alpha, because already linear
 }
 
 void
@@ -296,8 +246,7 @@ PixelFormat::getGray (void * pixel) const
 void
 PixelFormat::getGray (void * pixel, float & gray) const
 {
-  gray = getGray (pixel) / 255.0f;
-  linearize (gray);
+  gray = lutChar2Float[getGray (pixel)];
 }
 
 unsigned char
@@ -312,15 +261,9 @@ void
 PixelFormat::setRGBA (void * pixel, float values[]) const
 {
   unsigned int rgba = (unsigned int) (values[3] * 255);
-  int shift = 32;
-  for (int i = 0; i < 3; i++)
-  {
-	float v = values[i];
-	v = min (v, 1.0f);
-	v = max (v, 0.0f);
-	delinearize (v);
-	rgba |= ((unsigned int) (v * 255)) << (shift -= 8);
-  }
+  rgba |= lutFloat2Char[(unsigned int) (65535 * min (max (values[0], 0.0f), 1.0f))] << 24;
+  rgba |= lutFloat2Char[(unsigned int) (65535 * min (max (values[1], 0.0f), 1.0f))] << 16;
+  rgba |= lutFloat2Char[(unsigned int) (65535 * min (max (values[2], 0.0f), 1.0f))] <<  8;
   setRGBA (pixel, rgba);
 }
 
@@ -369,10 +312,8 @@ PixelFormat::setGray (void * pixel, unsigned char gray) const
 void
 PixelFormat::setGray (void * pixel, float gray) const
 {
-  gray = min (gray, 1.0f);
-  gray = max (gray, 0.0f);
-  delinearize (gray);
-  unsigned int iv = (unsigned int) (gray * 255);
+  gray = min (max (gray, 0.0f), 1.0f);
+  unsigned int iv = lutFloat2Char[(unsigned short) (65535 * gray)];
   unsigned int rgba = (iv << 24) | (iv << 16) | (iv << 8) | 0xFF;
   setRGBA (pixel, rgba);
 }
@@ -382,6 +323,52 @@ PixelFormat::setAlpha (void * pixel, unsigned char alpha) const
 {
   // Presumably, the derived PixelFormat does not have an alpha channel,
   // so just ignore this request.
+}
+
+inline unsigned char *
+PixelFormat::buildFloat2Char ()
+{
+  unsigned char * result = (unsigned char *) malloc (65536);
+  for (int i = 0; i < 65536; i++)
+  {
+	float f = i / 65535.0f;
+
+	// This screwy function is the one recommended by sRGB.
+	if (f <= 0.0031308f)
+	{
+	  f *= 12.92f;
+	}
+	else
+	{
+	  f = 1.055f * powf (f, 1.0f / 2.4f) - 0.055f;
+	}
+
+	result[i] = (unsigned char) rint (f * 255);
+  }
+  return result;
+}
+
+inline float *
+PixelFormat::buildChar2Float ()
+{
+  float * result = (float *) malloc (256 * sizeof (float));
+  for (int i = 0; i < 256; i++)
+  {
+	float f = i / 255.0f;
+
+	// This screwy function is the one recommended by sRGB.
+	if (f <= 0.04045f)
+	{
+	  f /= 12.92f;
+	}
+	else
+	{
+	  f = powf ((f + 0.055f) / 1.055f, 2.4f);
+	}
+
+	result[i] = f;
+  }
+  return result;
 }
 
 
@@ -485,8 +472,7 @@ PixelFormatGrayChar::fromGrayFloat (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	float p = min (max (*fromPixel++, 0.0f), 1.0f);
-	delinearize (p);
-	*toPixel++ = (unsigned char) (p * 255);
+	*toPixel++ = lutFloat2Char[(unsigned short) (65535 * p)];
   }
 }
 
@@ -503,8 +489,7 @@ PixelFormatGrayChar::fromGrayDouble (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	double p = min (max (*fromPixel++, 0.0), 1.0);
-	delinearize (p);
-	*toPixel++ = (unsigned char) (p * 255);
+	*toPixel++ = lutFloat2Char[(unsigned short) (65535 * p)];
   }
 }
 
@@ -655,10 +640,8 @@ void
 PixelFormatGrayChar::getXYZ (void * pixel, float values[]) const
 {
   values[0] = 0;
-  values[1] = *((unsigned char *) pixel) / 255.0f;
+  values[1] = lutChar2Float[*(unsigned char *) pixel];
   values[2] = 0;
-
-  linearize (values[1]);
 }
 
 unsigned char
@@ -670,8 +653,7 @@ PixelFormatGrayChar::getGray (void * pixel) const
 void
 PixelFormatGrayChar::getGray (void * pixel, float & gray) const
 {
-  gray = *((unsigned char *) pixel) / 255.0f;
-  linearize (gray);
+  gray = lutChar2Float[*(unsigned char *) pixel];
 }
 
 void
@@ -689,8 +671,7 @@ PixelFormatGrayChar::setXYZ (void * pixel, float values[]) const
 {
   // Convert Y value to non-linear form
   float v = min (max (values[1], 0.0f), 1.0f);
-  delinearize (v);
-  *((unsigned char *) pixel) = (unsigned int) rint (255 * v);
+  *((unsigned char *) pixel) = lutFloat2Char[(unsigned short) (65535 * v)];
 }
 
 void
@@ -703,8 +684,7 @@ void
 PixelFormatGrayChar::setGray (void * pixel, float gray) const
 {
   gray = min (max (gray, 0.0f), 1.0f);
-  delinearize (gray);
-  *((unsigned char *) pixel) = (unsigned int) rint (255 * gray);
+  *((unsigned char *) pixel) = lutFloat2Char[(unsigned short) (65535 * gray)];
 }
 
 
@@ -788,7 +768,6 @@ PixelFormatGrayShort::fromGrayFloat (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	float p = min (max (*fromPixel++, 0.0f), 1.0f);
-	delinearize (p);
 	*toPixel++ = (unsigned short) (p * grayMask);
   }
 }
@@ -806,7 +785,6 @@ PixelFormatGrayShort::fromGrayDouble (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	double p = min (max (*fromPixel++, 0.0), 1.0);
-	delinearize (p);
 	*toPixel++ = (unsigned short) (p * grayMask);
   }
 }
@@ -825,8 +803,7 @@ PixelFormatGrayShort::fromAny (const Image & image, Image & result) const
 	unsigned short * end = dest + image.width * image.height;
 	while (dest < end)
 	{
-	  unsigned short p = sourceFormat->getGray (source);
-	  *dest++ = (((p << 8) + p) >> grayShift) & grayMask;
+	  *dest++ = (unsigned short) (grayMask * lutChar2Float[sourceFormat->getGray (source)]);
 	  source += sourceDepth;
 	}
   }
@@ -836,8 +813,7 @@ PixelFormatGrayShort::fromAny (const Image & image, Image & result) const
 	{
 	  for (int x = 0; x < image.width; x++)
 	  {
-		unsigned short p = sourceFormat->getGray (image.buffer->pixel (x, y));
-		*dest++ = (((p << 8) + p) >> grayShift) & grayMask;
+		*dest++ = (unsigned short) (grayMask * lutChar2Float[sourceFormat->getGray (image.buffer->pixel (x, y))]);
 	  }
 	}
   }
@@ -863,8 +839,8 @@ PixelFormatGrayShort::operator == (const PixelFormat & that) const
 unsigned int
 PixelFormatGrayShort::getRGBA (void * pixel) const
 {
-  unsigned int t = (*((unsigned short *) pixel) << grayShift) & 0xFF00;
-  return (t << 16) | (t << 8) | t | 0xFF;
+  unsigned int t = lutFloat2Char[*(unsigned short *) pixel << grayShift];
+  return (t << 24) | (t << 16) | (t << 8) | 0xFF;
 }
 
 void
@@ -873,57 +849,49 @@ PixelFormatGrayShort::getXYZ (void * pixel, float values[]) const
   values[0] = 0;
   values[1] = *((unsigned short *) pixel) / (float) grayMask;
   values[2] = 0;
-
-  linearize (values[1]);
 }
 
 unsigned char
 PixelFormatGrayShort::getGray (void * pixel) const
 {
-  if (grayShift == 8) return *((unsigned short *) pixel);
-  if (grayShift > 8)  return *((unsigned short *) pixel) << (grayShift - 8);
-  return *((unsigned short *) pixel) >> (8 - grayShift);
+  return lutFloat2Char[*(unsigned short *) pixel << grayShift];
 }
 
 void
 PixelFormatGrayShort::getGray (void * pixel, float & gray) const
 {
   gray = *((unsigned short *) pixel) / (float) grayMask;
-  linearize (gray);
 }
 
 void
 PixelFormatGrayShort::setRGBA (void * pixel, unsigned int rgba) const
 {
-  unsigned int r = (rgba & 0xFF000000) >> 16;
-  unsigned int g = (rgba &   0xFF0000) >> 8;
-  unsigned int b =  rgba &     0xFF00;
+  float r = lutChar2Float[ rgba             >> 24];
+  float g = lutChar2Float[(rgba & 0xFF0000) >> 16];
+  float b = lutChar2Float[(rgba &   0xFF00) >>  8];
 
-  unsigned short t = (r * redWeight + g * greenWeight + b * blueWeight) / totalWeight;
-  *((unsigned short *) pixel) = (t >> grayShift) & grayMask;
+  float t = r * redToY + g * greenToY + b * blueToY;
+  *((unsigned short *) pixel) = (unsigned short) (grayMask * t);
 }
 
 void
 PixelFormatGrayShort::setXYZ (void * pixel, float values[]) const
 {
-  // Convert Y value to non-linear form
   float v = min (max (values[1], 0.0f), 1.0f);
-  delinearize (v);
-  *((unsigned short *) pixel) = (unsigned short) rint (grayMask * v);
+  *((unsigned short *) pixel) = (unsigned short) (grayMask * v);
 }
 
 void
 PixelFormatGrayShort::setGray (void * pixel, unsigned char gray) const
 {
-  *((unsigned short *) pixel) = ((gray << 8 + gray) >> grayShift) & grayMask;
+  *((unsigned short *) pixel) = (unsigned short) (grayMask * lutChar2Float[gray]);
 }
 
 void
 PixelFormatGrayShort::setGray (void * pixel, float gray) const
 {
   gray = min (max (gray, 0.0f), 1.0f);
-  delinearize (gray);
-  *((unsigned short *) pixel) = (unsigned short) rint (grayMask * gray);
+  *((unsigned short *) pixel) = (unsigned short) (grayMask * gray);
 }
 
 
@@ -996,9 +964,7 @@ PixelFormatGrayFloat::fromGrayChar (const Image & image, Image & result) const
   float *         end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	float v = *fromPixel++ / 255.0f;
-	linearize (v);
-	*toPixel++ = v;
+	*toPixel++ = lutChar2Float[*fromPixel++];
   }
 }
 
@@ -1015,9 +981,7 @@ PixelFormatGrayFloat::fromGrayShort (const Image & image, Image & result) const
   float grayMask = ((PixelFormatGrayShort *) image.format)->grayMask;
   while (toPixel < end)
   {
-	float v = *fromPixel++ / grayMask;
-	linearize (v);
-	*toPixel++ = v;
+	*toPixel++ = *fromPixel++ / grayMask;
   }
 }
 
@@ -1049,13 +1013,10 @@ PixelFormatGrayFloat::fromRGBAChar (const Image & image, Image & result) const
   float *         end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	float r = fromPixel[0] / 255.0f;
-	float g = fromPixel[1] / 255.0f;
-	float b = fromPixel[2] / 255.0f;
+	float r = lutChar2Float[fromPixel[0]];
+	float g = lutChar2Float[fromPixel[1]];
+	float b = lutChar2Float[fromPixel[2]];
     fromPixel += 4;
-	linearize (r);
-	linearize (g);
-	linearize (b);
 	*toPixel++ = redToY * r + greenToY * g + blueToY * b;
   }
 }
@@ -1072,13 +1033,10 @@ PixelFormatGrayFloat::fromRGBChar (const Image & image, Image & result) const
   float *         end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	float r = fromPixel[0] / 255.0f;
-	float g = fromPixel[1] / 255.0f;
-	float b = fromPixel[2] / 255.0f;
-	fromPixel += 3;
-	linearize (r);
-	linearize (g);
-	linearize (b);
+	float r = lutChar2Float[fromPixel[0]];
+	float g = lutChar2Float[fromPixel[1]];
+	float b = lutChar2Float[fromPixel[2]];
+    fromPixel += 3;
 	*toPixel++ = redToY * r + greenToY * g + blueToY * b;
   }
 }
@@ -1109,12 +1067,9 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 	  unsigned int g = *fromPixel & that->greenMask; \
 	  unsigned int b = *fromPixel & that->blueMask; \
       fromPixel++; \
-	  float fr = (redShift   > 0 ? r << redShift   : r >> -redShift)   / 255.0f; \
-	  float fg = (greenShift > 0 ? g << greenShift : g >> -greenShift) / 255.0f; \
-	  float fb = (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  / 255.0f; \
-	  linearize (fr); \
-	  linearize (fg); \
-	  linearize (fb); \
+	  float fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift]; \
+	  float fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift]; \
+	  float fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift]; \
 	  *toPixel++ = redToY * fr + greenToY * fg + blueToY * fb; \
 	} \
   }
@@ -1140,12 +1095,9 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 		unsigned int r = t & that->redMask;
 		unsigned int g = t & that->greenMask;
 		unsigned int b = t & that->blueMask;
-		float fr = (redShift   > 0 ? r << redShift   : r >> -redShift)   / 255.0f;
-		float fg = (greenShift > 0 ? g << greenShift : g >> -greenShift) / 255.0f;
-		float fb = (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  / 255.0f;
-		linearize (fr);
-		linearize (fg);
-		linearize (fb);
+		float fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift];
+		float fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift];
+		float fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift];
 		*toPixel++ = redToY * fr + greenToY * fg + blueToY * fb;
 	  }
 	  break;
@@ -1190,8 +1142,7 @@ unsigned int
 PixelFormatGrayFloat::getRGBA (void * pixel) const
 {
   float v = min (max (*((float *) pixel), 0.0f), 1.0f);
-  delinearize (v);
-  unsigned int t = (unsigned int) (v * 255);
+  unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)];
   return (t << 24) | (t << 16) | (t << 8) | 0xFF;
 }
 
@@ -1217,8 +1168,7 @@ unsigned char
 PixelFormatGrayFloat::getGray (void * pixel) const
 {
   float v = min (max (*((float *) pixel), 0.0f), 1.0f);
-  delinearize (v);
-  return (unsigned char) (v * 255);
+  return lutFloat2Char[(unsigned short) (65535 * v)];
 }
 
 void
@@ -1230,12 +1180,9 @@ PixelFormatGrayFloat::getGray (void * pixel, float & gray) const
 void
 PixelFormatGrayFloat::setRGBA (void * pixel, unsigned int rgba) const
 {
-  float r = ((rgba & 0xFF000000) >> 24) / 255.0f;
-  float g = ((rgba &   0xFF0000) >> 16) / 255.0f;
-  float b = ((rgba &     0xFF00) >>  8) / 255.0f;
-  linearize (r);
-  linearize (g);
-  linearize (b);
+  float r = lutChar2Float[(rgba & 0xFF000000) >> 24];
+  float g = lutChar2Float[(rgba &   0xFF0000) >> 16];
+  float b = lutChar2Float[(rgba &     0xFF00) >>  8];
   *((float *) pixel) = redToY * r + greenToY * g + blueToY * b;
 }
 
@@ -1254,9 +1201,7 @@ PixelFormatGrayFloat::setXYZ (void * pixel, float values[]) const
 void
 PixelFormatGrayFloat::setGray  (void * pixel, unsigned char gray) const
 {
-  register float g = gray / 255.0f;
-  linearize (g);
-  *((float *) pixel) = g;
+  *((float *) pixel) = lutChar2Float[gray];
 }
 
 void
@@ -1335,9 +1280,7 @@ PixelFormatGrayDouble::fromGrayChar (const Image & image, Image & result) const
   double *        end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	double v = *fromPixel++ / 255.0;
-	linearize (v);
-	*toPixel++ = v;
+	*toPixel++ = lutChar2Float[*fromPixel++];
   }
 }
 
@@ -1354,9 +1297,7 @@ PixelFormatGrayDouble::fromGrayShort (const Image & image, Image & result) const
   double grayMask = ((PixelFormatGrayShort *) image.format)->grayMask;
   while (toPixel < end)
   {
-	double v = *fromPixel++ / grayMask;
-	linearize (v);
-	*toPixel++ = v;
+	*toPixel++ = *fromPixel++ / grayMask;
   }
 }
 
@@ -1388,13 +1329,10 @@ PixelFormatGrayDouble::fromRGBAChar (const Image & image, Image & result) const
   double *        end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	double r = fromPixel[0] / 255.0;
-	double g = fromPixel[1] / 255.0;
-	double b = fromPixel[2] / 255.0;
+	double r = lutChar2Float[fromPixel[0]];
+	double g = lutChar2Float[fromPixel[1]];
+	double b = lutChar2Float[fromPixel[2]];
     fromPixel += 4;
-	linearize (r);
-	linearize (g);
-	linearize (b);
 	*toPixel++ = redToY * r + greenToY * g + blueToY * b;
   }
 }
@@ -1411,13 +1349,10 @@ PixelFormatGrayDouble::fromRGBChar (const Image & image, Image & result) const
   double *        end       = toPixel + result.width * result.height;
   while (toPixel < end)
   {
-	double r = fromPixel[0] / 255.0;
-	double g = fromPixel[1] / 255.0;
-	double b = fromPixel[2] / 255.0;
-	fromPixel += 3;
-	linearize (r);
-	linearize (g);
-	linearize (b);
+	double r = lutChar2Float[fromPixel[0]];
+	double g = lutChar2Float[fromPixel[1]];
+	double b = lutChar2Float[fromPixel[2]];
+    fromPixel += 3;
 	*toPixel++ = redToY * r + greenToY * g + blueToY * b;
   }
 }
@@ -1448,12 +1383,9 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 	  unsigned int g = *fromPixel & that->greenMask; \
 	  unsigned int b = *fromPixel & that->blueMask; \
       fromPixel++; \
-	  double fr = (redShift   > 0 ? r << redShift   : r >> -redShift)   / 255.0; \
-	  double fg = (greenShift > 0 ? g << greenShift : g >> -greenShift) / 255.0; \
-	  double fb = (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  / 255.0; \
-	  linearize (fr); \
-	  linearize (fg); \
-	  linearize (fb); \
+	  double fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift]; \
+	  double fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift]; \
+	  double fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift]; \
 	  *toPixel++ = redToY * fr + greenToY * fg + blueToY * fb; \
 	} \
   }
@@ -1479,12 +1411,9 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 		unsigned int r = t & that->redMask;
 		unsigned int g = t & that->greenMask;
 		unsigned int b = t & that->blueMask;
-		double fr = (redShift   > 0 ? r << redShift   : r >> -redShift)   / 255.0;
-		double fg = (greenShift > 0 ? g << greenShift : g >> -greenShift) / 255.0;
-		double fb = (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  / 255.0;
-		linearize (fr);
-		linearize (fg);
-		linearize (fb);
+		double fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift];
+		double fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift];
+		double fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift];
 		*toPixel++ = redToY * fr + greenToY * fg + blueToY * fb;
 	  }
 	  break;
@@ -1533,8 +1462,7 @@ unsigned int
 PixelFormatGrayDouble::getRGBA (void * pixel) const
 {
   double v = min (max (*((double *) pixel), 0.0), 1.0);
-  delinearize (v);
-  unsigned int t = (unsigned int) (v * 255);
+  unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)];
   return (t << 24) | (t << 16) | (t << 8) | 0xFF;
 }
 
@@ -1560,8 +1488,7 @@ unsigned char
 PixelFormatGrayDouble::getGray (void * pixel) const
 {
   double v = min (max (*((double *) pixel), 0.0), 1.0);
-  delinearize (v);
-  return (unsigned char) (v * 255);
+  return lutFloat2Char[(unsigned short) (65535 * v)];
 }
 
 void
@@ -1573,12 +1500,9 @@ PixelFormatGrayDouble::getGray (void * pixel, float & gray) const
 void
 PixelFormatGrayDouble::setRGBA (void * pixel, unsigned int rgba) const
 {
-  double r = ((rgba & 0xFF000000) >> 24) / 255.0;
-  double g = ((rgba &   0xFF0000) >> 16) / 255.0;
-  double b = ((rgba &     0xFF00) >>  8) / 255.0;
-  linearize (r);
-  linearize (g);
-  linearize (b);
+  double r = lutChar2Float[(rgba & 0xFF000000) >> 24];
+  double g = lutChar2Float[(rgba &   0xFF0000) >> 16];
+  double b = lutChar2Float[(rgba &     0xFF00) >>  8];
   *((double *) pixel) = redToY * r + greenToY * g + blueToY * b;
 }
 
@@ -1597,9 +1521,7 @@ PixelFormatGrayDouble::setXYZ (void * pixel, float values[]) const
 void
 PixelFormatGrayDouble::setGray  (void * pixel, unsigned char gray) const
 {
-  register double g = gray / 255.0;
-  linearize (g);
-  *((double *) pixel) = g;
+  *((double *) pixel) = lutChar2Float[gray];
 }
 
 void
@@ -1765,8 +1687,7 @@ PixelFormatRGBABits::filter (const Image & image)
   while (toPixel < end) \
   { \
 	fromSize v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
-	delinearize (v); \
-	unsigned int t = (unsigned int) (v * (255 << 8)); \
+	unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)]; \
 	*toPixel++ =   ((redShift   > 0 ? t << redShift   : t >> -redShift)   & redMask) \
 	             | ((greenShift > 0 ? t << greenShift : t >> -greenShift) & greenMask) \
                  | ((blueShift  > 0 ? t << blueShift  : t >> -blueShift)  & blueMask) \
@@ -1782,9 +1703,8 @@ PixelFormatRGBABits::filter (const Image & image)
   while (toPixel < end) \
   { \
 	fromSize v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
-	delinearize (v); \
 	Int2Char t; \
-	t.all = (unsigned int) (v * (255 << 8)); \
+	t.all = lutFloat2Char[(unsigned short) (65535 * v)]; \
 	t.all =   ((redShift   > 0 ? t.all << redShift   : t.all >> -redShift)   & redMask) \
 	        | ((greenShift > 0 ? t.all << greenShift : t.all >> -greenShift) & greenMask) \
             | ((blueShift  > 0 ? t.all << blueShift  : t.all >> -blueShift)  & blueMask) \
@@ -1837,31 +1757,63 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
+  int grayShift = ((PixelFormatGrayShort *) image.format)->grayShift;
   int redShift;
   int greenShift;
   int blueShift;
   int alphaShift;
-  unsigned int grayMask = ((PixelFormatGrayShort *) image.format)->grayMask;
-  shift (grayMask, grayMask, grayMask, grayMask, redShift, greenShift, blueShift, alphaShift);
+  shift (0xFF, 0xFF, 0xFF, 0, redShift, greenShift, blueShift, alphaShift);
   redShift *= -1;
   greenShift *= -1;
   blueShift *= -1;
   alphaShift *= -1;
 
+# define GrayShort2Bits(toSize) \
+  { \
+    unsigned short *  fromPixel = (unsigned short *)  i->memory; \
+	unsigned toSize * toPixel   = (unsigned toSize *) o->memory; \
+	unsigned toSize * end       = toPixel + result.width * result.height; \
+	while (toPixel < end) \
+	{ \
+	  unsigned int t = lutFloat2Char[*fromPixel++ << grayShift]; \
+	  *toPixel++ =   ((redShift   > 0 ? t << redShift   : t >> -redShift)   & redMask) \
+		           | ((greenShift > 0 ? t << greenShift : t >> -greenShift) & greenMask) \
+		           | ((blueShift  > 0 ? t << blueShift  : t >> -blueShift)  & blueMask) \
+		           | alphaMask; \
+	} \
+  }
+
   switch (depth)
   {
     case 1:
-	  Bits2Bits (short, char, grayMask, grayMask, grayMask, 0, redMask, greenMask, blueMask, alphaMask);
+	  GrayShort2Bits (char);
 	  break;
     case 2:
-	  Bits2Bits (short, short, grayMask, grayMask, grayMask, 0, redMask, greenMask, blueMask, alphaMask);
+	  GrayShort2Bits (short);
 	  break;
     case 3:
-	  Bits2OddBits (short, grayMask, grayMask, grayMask, 0, redMask, greenMask, blueMask, alphaMask);
+	{
+	  unsigned short * fromPixel = (unsigned short *) i->memory;
+	  unsigned char *  toPixel   = (unsigned char *)  o->memory;
+	  unsigned char *  end       = toPixel + result.width * result.height * 3;
+	  while (toPixel < end)
+	  {
+		int v = lutFloat2Char[*fromPixel++ << grayShift];
+		Int2Char t;
+		t.all =   ((redShift   > 0 ? v << redShift   : v >> -redShift)   & redMask)
+		        | ((greenShift > 0 ? v << greenShift : v >> -greenShift) & greenMask)
+		        | ((blueShift  > 0 ? v << blueShift  : v >> -blueShift)  & blueMask)
+		        | alphaMask;
+		toPixel[0] = t.piece0;
+		toPixel[1] = t.piece1;
+		toPixel[2] = t.piece2;
+		toPixel += 3;
+	  }
 	  break;
+	}
     case 4:
     default:
-	  Bits2Bits (short, int, grayMask, grayMask, grayMask, 0, redMask, greenMask, blueMask, alphaMask);
+	  GrayShort2Bits (int);
   }
 }
 
@@ -1876,7 +1828,7 @@ PixelFormatRGBABits::fromGrayFloat (const Image & image, Image & result) const
   int greenShift;
   int blueShift;
   int alphaShift;
-  shift (0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, redShift, greenShift, blueShift, alphaShift);
+  shift (0xFF, 0xFF, 0xFF, 0xFF, redShift, greenShift, blueShift, alphaShift);
   redShift *= -1;
   greenShift *= -1;
   blueShift *= -1;
@@ -1910,7 +1862,7 @@ PixelFormatRGBABits::fromGrayDouble (const Image & image, Image & result) const
   int greenShift;
   int blueShift;
   int alphaShift;
-  shift (0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, redShift, greenShift, blueShift, alphaShift);
+  shift (0xFF, 0xFF, 0xFF, 0xFF, redShift, greenShift, blueShift, alphaShift);
   redShift *= -1;
   greenShift *= -1;
   blueShift *= -1;
@@ -2297,8 +2249,7 @@ PixelFormatRGBAChar::fromGrayFloat (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	float v = min (max (*fromPixel++, 0.0f), 1.0f);
-	delinearize (v);
-	unsigned char t = (unsigned char) (v * 255);
+	unsigned char t = lutFloat2Char[(unsigned short) (65535 * v)];
 	toPixel[0] = t;
 	toPixel[1] = t;
 	toPixel[2] = t;
@@ -2319,9 +2270,8 @@ PixelFormatRGBAChar::fromGrayDouble (const Image & image, Image & result) const
   unsigned char * end       = toPixel + result.width * result.height * depth;
   while (toPixel < end)
   {
-	float v = min (max (*fromPixel++, 0.0), 1.0);
-	delinearize (v);
-	unsigned char t = (unsigned char) (v * 255);
+	double v = min (max (*fromPixel++, 0.0), 1.0);
+	unsigned char t = lutFloat2Char[(unsigned short) (65535 * v)];
 	toPixel[0] = t;
 	toPixel[1] = t;
 	toPixel[2] = t;
@@ -2509,8 +2459,7 @@ PixelFormatRGBChar::fromGrayFloat (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	float v = min (max (*fromPixel++, 0.0f), 1.0f);
-	delinearize (v);
-	unsigned char t = (unsigned char) (v * 255);
+	unsigned char t = lutFloat2Char[(unsigned short) (65535 * v)];
 	toPixel[0] = t;
 	toPixel[1] = t;
 	toPixel[2] = t;
@@ -2531,8 +2480,7 @@ PixelFormatRGBChar::fromGrayDouble (const Image & image, Image & result) const
   while (toPixel < end)
   {
 	double v = min (max (*fromPixel++, 0.0), 1.0);
-	delinearize (v);
-	unsigned char t = (unsigned char) (v * 255);
+	unsigned char t = lutFloat2Char[(unsigned short) (65535 * v)];
 	toPixel[0] = t;
 	toPixel[1] = t;
 	toPixel[2] = t;
@@ -2573,9 +2521,9 @@ PixelFormatRGBChar::getRGBA  (void * pixel) const
 void
 PixelFormatRGBChar::setRGBA  (void * pixel, unsigned int rgba) const
 {
-  ((unsigned char *) pixel)[2] = rgba >>= 8;
-  ((unsigned char *) pixel)[1] = rgba >>= 8;
-  ((unsigned char *) pixel)[0] = rgba >>  8;
+  ((unsigned char *) pixel)[2] = (rgba >>= 8) & 0xFF;
+  ((unsigned char *) pixel)[1] = (rgba >>= 8) & 0xFF;
+  ((unsigned char *) pixel)[0] =  rgba >>  8;
 }
 
 
@@ -2638,9 +2586,9 @@ unsigned int
 PixelFormatRGBShort::getRGBA (void * pixel) const
 {
   unsigned int rgba = 0;
-  rgba =   ((((unsigned short *) pixel)[0] << 16) & 0xFF000000)
-         | ((((unsigned short *) pixel)[1] <<  8) &   0xFF0000)
-         | ( ((unsigned short *) pixel)[2]        &     0xFF00)
+  rgba =   (lutFloat2Char[((unsigned short *) pixel)[0]] << 24)
+         | (lutFloat2Char[((unsigned short *) pixel)[1]] << 16)
+         | (lutFloat2Char[((unsigned short *) pixel)[2]] <<  8)
          | 0xFF;
   return rgba;
 }
@@ -2648,9 +2596,9 @@ PixelFormatRGBShort::getRGBA (void * pixel) const
 void
 PixelFormatRGBShort::setRGBA (void * pixel, unsigned int rgba) const
 {
-  ((unsigned short *) pixel)[0] = (rgba & 0xFF000000) >> 16;
-  ((unsigned short *) pixel)[1] = (rgba &   0xFF0000) >> 8;
-  ((unsigned short *) pixel)[2] = (rgba &     0xFF00);
+  ((unsigned short *) pixel)[0] = (unsigned short) (65535 * lutChar2Float[ rgba             >> 24]);
+  ((unsigned short *) pixel)[1] = (unsigned short) (65535 * lutChar2Float[(rgba & 0xFF0000) >> 16]);
+  ((unsigned short *) pixel)[2] = (unsigned short) (65535 * lutChar2Float[(rgba &   0xFF00) >>  8]);
 }
 
 
@@ -2675,14 +2623,10 @@ PixelFormatRGBAFloat::getRGBA (void * pixel) const
 	rgbaValues[i] = max (rgbaValues[i], 0.0f);
 	rgbaValues[i] = min (rgbaValues[i], 1.0f);
   }
-  delinearize (rgbaValues[0]);
-  delinearize (rgbaValues[1]);
-  delinearize (rgbaValues[2]);
-  // assume alpha is already linear
-  unsigned int r = ((unsigned int) (rgbaValues[0] * 255)) << 24;
-  unsigned int g = ((unsigned int) (rgbaValues[1] * 255)) << 16;
-  unsigned int b = ((unsigned int) (rgbaValues[2] * 255)) <<  8;
-  unsigned int a = ((unsigned int) (rgbaValues[3] * 255));
+  unsigned int r = (unsigned int) lutFloat2Char[(unsigned short) (65535 * rgbaValues[0])] << 24;
+  unsigned int g = (unsigned int) lutFloat2Char[(unsigned short) (65535 * rgbaValues[1])] << 16;
+  unsigned int b = (unsigned int) lutFloat2Char[(unsigned short) (65535 * rgbaValues[2])] <<  8;
+  unsigned int a = (unsigned int) (255 * rgbaValues[3]);  // assume alpha is already linear
   return r | g | b | a;
 }
 
@@ -2706,14 +2650,10 @@ void
 PixelFormatRGBAFloat::setRGBA (void * pixel, unsigned int rgba) const
 {
   float * rgbaValues = (float *) pixel;
-  rgbaValues[0] = ((rgba & 0xFF000000) >> 24) / 255.0f;
-  rgbaValues[1] = ((rgba &   0xFF0000) >> 16) / 255.0f;
-  rgbaValues[2] = ((rgba &     0xFF00) >>  8) / 255.0f;
-  rgbaValues[3] =  (rgba &       0xFF)        / 255.0f;
-  linearize (rgbaValues[0]);
-  linearize (rgbaValues[1]);
-  linearize (rgbaValues[2]);
-  // Don't linearize alpha, because it is always linear
+  rgbaValues[0] = lutChar2Float[ rgba             >> 24];
+  rgbaValues[1] = lutChar2Float[(rgba & 0xFF0000) >> 16];
+  rgbaValues[2] = lutChar2Float[(rgba &   0xFF00) >>  8];
+  rgbaValues[3] = (rgba & 0xFF) / 255.0f;  // Don't linearize alpha, because it is always linear
 }
 
 void
@@ -3122,15 +3062,11 @@ PixelFormatHLSFloat::getRGBA (void * pixel) const
 {
   float rgbaValues[4];
   getRGBA (pixel, rgbaValues);
-  delinearize (rgbaValues[0]);
-  delinearize (rgbaValues[1]);
-  delinearize (rgbaValues[2]);
-  // assume alpha is already linear
-  unsigned int r = ((unsigned int) (rgbaValues[0] * 255)) << 24;
-  unsigned int g = ((unsigned int) (rgbaValues[1] * 255)) << 16;
-  unsigned int b = ((unsigned int) (rgbaValues[2] * 255)) <<  8;
-  unsigned int a =  (unsigned int) (rgbaValues[3] * 255);
-  return r | g | b | a;
+  unsigned int r = lutFloat2Char[(unsigned short) (65535 * rgbaValues[0])];
+  unsigned int g = lutFloat2Char[(unsigned short) (65535 * rgbaValues[1])];
+  unsigned int b = lutFloat2Char[(unsigned short) (65535 * rgbaValues[2])];
+  unsigned int a = (unsigned int) (255 * rgbaValues[3]);
+  return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
 inline float
@@ -3208,12 +3144,9 @@ void
 PixelFormatHLSFloat::setRGBA (void * pixel, unsigned int rgba) const
 {
   float rgbaValues[3];  // Ignore alpha channel, because it is not processed or stored by any function of this format.
-  rgbaValues[0] = ((rgba & 0xFF000000) >> 24) / 255.0f;
-  rgbaValues[1] = ((rgba &   0xFF0000) >> 16) / 255.0f;
-  rgbaValues[2] = ((rgba &     0xFF00) >>  8) / 255.0f;
-  linearize (rgbaValues[0]);
-  linearize (rgbaValues[1]);
-  linearize (rgbaValues[2]);
+  rgbaValues[0] = lutChar2Float[ rgba             >> 24];
+  rgbaValues[1] = lutChar2Float[(rgba & 0xFF0000) >> 16];
+  rgbaValues[2] = lutChar2Float[(rgba &   0xFF00) >>  8];
   setRGBA (pixel, rgbaValues);
 }
 
