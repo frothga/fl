@@ -83,12 +83,14 @@ namespace fl
 	Pixel         operator () (int x, int y) const;  ///< Returns a Pixel object that wraps (x,y).
 	unsigned int  getRGBA  (int x, int y) const;
 	void          getRGBA  (int x, int y, float values[]) const;
+	void          getXYZ   (int x, int y, float values[]) const;
 	unsigned int  getYUV   (int x, int y) const;
 	unsigned char getGray  (int x, int y) const;
 	void          getGray  (int x, int y, float & gray) const;
 	unsigned char getAlpha (int x, int y) const;
 	void          setRGBA  (int x, int y, unsigned int rgba);
 	void          setRGBA  (int x, int y, float values[]);
+	void          setXYZ   (int x, int y, float values[]);
 	void          setYUV   (int x, int y, unsigned int yuv);
 	void          setGray  (int x, int y, unsigned char gray);
 	void          setGray  (int x, int y, float gray);
@@ -423,6 +425,8 @@ namespace fl
   class PixelFormat : public Filter
   {
   public:
+	virtual ~PixelFormat ();
+
 	virtual Image filter (const Image & image);  ///< Return an Image in this format
 	void fromAny (const Image & image, Image & result) const;
 
@@ -458,6 +462,12 @@ namespace fl
 	// various states.
 	bool monochrome;  ///< Indicates that this format has no color components.
 	bool hasAlpha;  ///< Indicates that this format has a real alpha channel (as apposed to a default alpha value).
+
+	// Look up tables for conversion between linear and non-linear values.
+	static unsigned char * lutFloat2Char;  ///< First convert float in [0,1] to unsigned short, then offset into this table to get unsigned char value.
+	static float *         lutChar2Float;  ///< Use unsigned char value directly as index into this table of float values.
+	static unsigned char * buildFloat2Char ();  ///< Construct lutFloat2Char during static initialization.
+	static float *         buildChar2Float ();  ///< Construct lutChar2Float during static initialization.
   };
 
   class PixelFormatGrayChar : public PixelFormat
@@ -1084,6 +1094,13 @@ namespace fl
 	format->getRGBA (buffer->pixel (x, y), values);
   }
 
+  inline void
+  Image::getXYZ (int x, int y, float values[]) const
+  {
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->getXYZ (buffer->pixel (x, y), values);
+  }
+
   inline unsigned int
   Image::getYUV (int x, int y) const
   {
@@ -1124,6 +1141,13 @@ namespace fl
   {
 	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
 	format->setRGBA (buffer->pixel (x, y), values);
+  }
+
+  inline void
+  Image::setXYZ (int x, int y, float values[])
+  {
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->setXYZ (buffer->pixel (x, y), values);
   }
 
   inline void
