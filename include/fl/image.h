@@ -153,12 +153,23 @@ namespace fl
 	   Maps (x,y) coordinates to a pointer that tells the PixelFormat where
 	   to get the color information.  This can come in two forms:
 	   <OL>
-	   <LI>A direct pointer to a packed pixel containing all the color channels.
-	   <LI>A pointer to an array of pointers (similar to the "char * argv[]"
-	   typical in the interface of main()), each one addressing one of the
-	   color channels.  The member planes gives the number of entries in the
-	   array, analogous to the "int argv" in the interface to main().
+	   <LI>planes = 1 -- A direct pointer to a packed pixel containing all the
+	   color channels.
+	   <LI>planes > 1 -- A pointer to an array of pointers, each one
+	   addressing one of the color channels.  The array of pointers is
+	   a member of the PixelBuffer object, and will remain valid until the
+	   next call to this function.
 	   </OL>
+
+	   This function is not thread-safe for two reasons.  First, if the
+	   underlying storage moves in memory (such as cached blocks from a large
+	   disk file), then one call to this function could invalidate the
+	   pointer(s) returned by another call.  Second, if planes > 1, then one
+	   call to this function will change the array of pointers filled in by
+	   another call.  For multi-threaded code, you should surround the call to
+	   this function and the call to PixelFormat in a mutex.  Alternately, if
+	   the underlying storage doesn't move in memory, then you could create
+	   multiple instances of PixelBuffer that hold the same underlying storage.
 	**/
 	virtual void * pixel (int x, int y) = 0;
 	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false) = 0;  ///< Same semantics as Image::resize()
@@ -170,16 +181,7 @@ namespace fl
 	  return ! (*this == that);
 	}
 
-	/**
-	   The number of memory blocks used to store the data, and the number of
-	   entries in the array returned by pixel().  If this is a "packed"
-	   format, then the value is 1 and pixel() returns the pointer directly.
-	   If this is "planar", then the value will be larger than 1.  In the
-	   latter case, the value returned by pixel() will point to an array of
-	   pointers, one per channel.  This array will be stored local to the
-	   PixelBuffer object, and pixel() will not be thread-safe.
-	**/
-	int planes;
+	int planes;  ///< The number of entries in the array returned by pixel().
   };
 
   /**
@@ -224,8 +226,8 @@ namespace fl
   {
   public:
 	PixelBufferPlanar ();
-	PixelBufferPlanar (int stride, int height, int ratioH, int ratioV);
-	PixelBufferPlanar (void * buffer0, void * buffer1, void * buffer2, int stride, int height, int ratioH, int ratioV);
+	PixelBufferPlanar (int stride, int height, int ratioH = 1, int ratioV = 1);
+	PixelBufferPlanar (void * buffer0, void * buffer1, void * buffer2, int stride0, int stride12, int height, int ratioH = 1, int ratioV = 1);
 	virtual ~PixelBufferPlanar ();
 
 	virtual void * pixel (int x, int y);
@@ -428,6 +430,7 @@ namespace fl
 	virtual ~PixelFormat ();
 
 	virtual Image filter (const Image & image);  ///< Return an Image in this format
+	virtual PixelBuffer * buffer () const;  ///< Construct a PixelBuffer suitable for holding data of the type described by this object.
 	void fromAny (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;  ///< Checks if this and that describe the same actual format.
@@ -740,20 +743,45 @@ namespace fl
 	float HLSvalue (const float & n1, const float & n2, float h) const;  ///< Subroutine of getRGBA(floats).
   };
 
-  extern PixelFormatGrayChar   GrayChar;
-  extern PixelFormatGrayShort  GrayShort;
-  extern PixelFormatGrayFloat  GrayFloat;
-  extern PixelFormatGrayDouble GrayDouble;
-  extern PixelFormatRGBAChar   RGBAChar;
-  extern PixelFormatRGBAShort  RGBAShort;
-  extern PixelFormatRGBAFloat  RGBAFloat;
-  extern PixelFormatRGBChar    RGBChar;
-  extern PixelFormatRGBShort   RGBShort;
-  extern PixelFormatRGBABits   BGRChar;
-  extern PixelFormatUYVYChar   UYVYChar;
-  extern PixelFormatYUYVChar   YUYVChar;
-  extern PixelFormatUYVChar    UYVChar;
-  extern PixelFormatHLSFloat   HLSFloat;
+  class PixelFormatPlanar : public PixelFormat
+  {
+  public:
+	PixelFormatPlanar (int ratioH, int ratioV) : ratioH (ratioH), ratioV (ratioV) {}
+
+	virtual PixelBuffer * buffer () const;
+
+	int ratioH;  ///< How many horizontal samples in first (luma) plane per sample in subsequent (chroma) planes
+	int ratioV;  ///< How many vertical samples in first (luma) plane per sample in subsequent (chroma) planes
+  };
+
+  class PixelFormatPlanarYUVChar : public PixelFormatPlanar
+  {
+  public:
+	PixelFormatPlanarYUVChar (int ratioH, int ratioV);
+
+	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual unsigned int  getYUV  (void * pixel) const;
+	virtual unsigned char getGray (void * pixel) const;
+	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
+	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
+  };
+
+  extern PixelFormatGrayChar      GrayChar;
+  extern PixelFormatGrayShort     GrayShort;
+  extern PixelFormatGrayFloat     GrayFloat;
+  extern PixelFormatGrayDouble    GrayDouble;
+  extern PixelFormatRGBAChar      RGBAChar;
+  extern PixelFormatRGBAShort     RGBAShort;
+  extern PixelFormatRGBAFloat     RGBAFloat;
+  extern PixelFormatRGBChar       RGBChar;
+  extern PixelFormatRGBShort      RGBShort;
+  extern PixelFormatRGBABits      BGRChar;
+  extern PixelFormatUYVYChar      UYVYChar;
+  extern PixelFormatYUYVChar      YUYVChar;
+  extern PixelFormatUYVChar       UYVChar;
+  extern PixelFormatPlanarYUVChar YUV420;
+  extern PixelFormatPlanarYUVChar YUV411;
+  extern PixelFormatHLSFloat      HLSFloat;
 
   // Naming convention for RGBABits:
   // R<red bits>G<green bits>B<blue bits>
