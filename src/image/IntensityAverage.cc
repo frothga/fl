@@ -33,7 +33,7 @@ Image
 IntensityAverage::filter (const Image & image)
 {
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
-  if (! imageBuffer) throw "AbsoluteValue can only handle packed buffers for now";
+  if (! imageBuffer) throw "IntensityAverage can only handle packed buffers for now";
   Pointer imageMemory = imageBuffer->memory;
 
   average = 0;
