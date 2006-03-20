@@ -55,6 +55,10 @@ ConvolutionDiscrete1D::filter (const Image & image)
   PixelBufferPacked * kernelBuffer = (PixelBufferPacked *) buffer;
   if (! kernelBuffer) throw "kernel must be a packed buffer";
   Pointer kernel = kernelBuffer->memory;
+
+  Image result (*format);
+
+  if (image.width == 0  ||  image.height == 0) return result;
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
   if (! imageBuffer) throw "Convolution1D only handles packed buffers for now";
   Pointer input = imageBuffer->memory;
@@ -62,8 +66,6 @@ ConvolutionDiscrete1D::filter (const Image & image)
   int last = width - 1;
   int mid  = width / 2;
   int stride = direction == Horizontal ? 1 : image.width;
-
-  Image result (*format);
 
   switch (mode)
   {
@@ -459,6 +461,8 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
   PixelBufferPacked * kernelBuffer = (PixelBufferPacked *) buffer;
   if (! kernelBuffer) throw "kernel must be a packed buffer";
   Pointer kernel = kernelBuffer->memory;
+
+  if (image.width == 0  ||  image.height == 0) return 0;
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
   if (! imageBuffer) throw "Convolution1D only handles packed buffers for now";
   Pointer input = imageBuffer->memory;

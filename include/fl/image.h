@@ -313,11 +313,28 @@ namespace fl
 	}
 	ImageOf (int width, int height, const PixelFormat & format) : Image (width, height, format)
 	{
+	  if (! (PixelBufferPacked *) buffer)
+	  {
+		if (width == 0  ||  height == 0)
+		{
+		  memory = 0;
+		  return;
+		}
+		throw "Can't wrap non-packed type images";
+	  }
 	  memory = (T *) buffer->pixel (0, 0);
 	}
 	ImageOf (const Image & that) : Image (that)
 	{
-	  if (! (PixelBufferPacked *) buffer) throw "Can't wrap non-packed type images";
+	  if (! (PixelBufferPacked *) buffer)
+	  {
+		if (width == 0  ||  height == 0)
+		{
+		  memory = 0;
+		  return;
+		}
+		throw "Can't wrap non-packed type images";
+	  }
 	  memory = (T *) buffer->pixel (0, 0);
 	}
 
