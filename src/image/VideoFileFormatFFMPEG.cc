@@ -37,7 +37,7 @@ using namespace fl;
 
 // class VideoInFileFFMPEG ----------------------------------------------------
 
-VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName, const fl::PixelFormat & hint)
+VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName)
 {
   fc = 0;
   cc = 0;
@@ -47,7 +47,6 @@ VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName, const fl::Pi
   timestampMode = false;
   seekLinear = false;
 
-  this->hint = &hint;
   this->fileName = fileName;
 
   open (fileName);
@@ -395,10 +394,6 @@ VideoInFileFFMPEG::open (const string & fileName)
   {
 	cc->flags |= CODEC_FLAG_TRUNCATED;
   }
-  if (hint->monochrome)
-  {
-	cc->flags |= CODEC_FLAG_GRAY;
-  }
 
   state = avcodec_open (cc, codec);
   if (state < 0)
@@ -446,83 +441,19 @@ VideoInFileFFMPEG::extractImage (Image & image)
 {
   if (cc->pix_fmt == PIX_FMT_YUV420P)
   {
-	if (hint->monochrome  ||  cc->flags & CODEC_FLAG_GRAY)
-	{
-	  image.format = &GrayChar;
-	  image.resize (cc->width, cc->height);
-	  ImageOf<unsigned char> that (image);
-	  for (int y = 0; y < cc->height; y++)
-	  {
-		memcpy (&that(0,y), picture.data[0] + y * picture.linesize[0], cc->width);
-	  }
-	}
-	else
-	{
-	  image.format = &UYVYChar;
-	  image.resize (cc->width, cc->height);
-	  ImageOf<unsigned int> that (image);
-	  that.width /= 2;
-
-	  for (int y = 0; y < cc->height; y += 2)
-	  {
-		for (int x = 0; x < cc->width; x += 2)
-		{
-		  int hx = x / 2;
-		  int hy = y / 2;
-
-		  unsigned int U = picture.data[1][hy * picture.linesize[1] + hx];
-		  unsigned int V = picture.data[2][hy * picture.linesize[2] + hx] << 16;
-
-		  unsigned int Y00 = picture.data[0][ y    * picture.linesize[0] + x];
-		  unsigned int Y01 = picture.data[0][(y+1) * picture.linesize[0] + x];
-		  unsigned int Y10 = picture.data[0][ y    * picture.linesize[0] + x+1];
-		  unsigned int Y11 = picture.data[0][(y+1) * picture.linesize[0] + x+1];
-
-		  that (hx, y)   = (Y10 << 24) | V | (Y00 << 8) | U;
-		  that (hx, y+1) = (Y11 << 24) | V | (Y01 << 8) | U;
-		}
-	  }
-	}
+	assert (picture.linesize[1] == picture.linesize[2]);
+	image.format = &YUV420;
+	image.buffer = new PixelBufferPlanar (picture.data[0], picture.data[1], picture.data[2], picture.linesize[0], picture.linesize[1], cc->height, YUV420.ratioH, YUV420.ratioV);
+	image.width = cc->width;
+	image.height = cc->height;
   }
   else if (cc->pix_fmt == PIX_FMT_YUV411P)
   {
-	if (hint->monochrome  ||  cc->flags & CODEC_FLAG_GRAY)
-	{
-	  image.format = &GrayChar;
-	  image.resize (cc->width, cc->height);
-	  ImageOf<unsigned char> that (image);
-	  for (int y = 0; y < cc->height; y++)
-	  {
-		memcpy (&that(0,y), picture.data[0] + y * picture.linesize[0], cc->width);
-	  }
-	}
-	else
-	{
-	  image.format = &UYVYChar;
-	  image.resize (cc->width, cc->height);
-	  ImageOf<unsigned int> that (image);
-	  that.width /= 2;
-
-	  for (int y = 0; y < cc->height; y++)
-	  {
-		for (int x = 0; x < cc->width; x += 4)
-		{
-		  int hx = x / 2;
-		  int fx = x / 4;
-
-		  unsigned int U = picture.data[1][y * picture.linesize[1] + fx];
-		  unsigned int V = picture.data[2][y * picture.linesize[2] + fx] << 16;
-
-		  unsigned int Y0 = picture.data[0][y * picture.linesize[0] + x];
-		  unsigned int Y1 = picture.data[0][y * picture.linesize[0] + x+1];
-		  unsigned int Y2 = picture.data[0][y * picture.linesize[0] + x+2];
-		  unsigned int Y3 = picture.data[0][y * picture.linesize[0] + x+3];
-
-		  that (hx,   y) = (Y1 << 24) | V | (Y0 << 8) | U;
-		  that (hx+1, y) = (Y3 << 24) | V | (Y2 << 8) | U;
-		}
-	  }
-	}
+	assert (picture.linesize[1] == picture.linesize[2]);
+	image.format = &YUV411;
+	image.buffer = new PixelBufferPlanar (picture.data[0], picture.data[1], picture.data[2], picture.linesize[0], picture.linesize[1], cc->height, YUV411.ratioH, YUV411.ratioV);
+	image.width = cc->width;
+	image.height = cc->height;
   }
   else if (cc->pix_fmt == PIX_FMT_YUV422)
   {
@@ -927,9 +858,9 @@ VideoFileFormatFFMPEG::VideoFileFormatFFMPEG ()
 }
 
 VideoInFile *
-VideoFileFormatFFMPEG::openInput (const std::string & fileName, const fl::PixelFormat & hint) const
+VideoFileFormatFFMPEG::openInput (const std::string & fileName) const
 {
-  return new VideoInFileFFMPEG (fileName, hint);
+  return new VideoInFileFFMPEG (fileName);
 }
 
 VideoOutFile *
