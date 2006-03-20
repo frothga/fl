@@ -29,7 +29,6 @@ using namespace fl;
 Image::Image ()
 {
   timestamp = getTimestamp ();
-  buffer    = new PixelBufferPacked (GrayChar.depth);
   format    = &GrayChar;
   width     = 0;
   height    = 0;
@@ -38,7 +37,6 @@ Image::Image ()
 Image::Image (const PixelFormat & format)
 {
   timestamp    = getTimestamp ();
-  buffer       = new PixelBufferPacked (format.depth);
   this->format = &format;
   width        = 0;
   height       = 0;
@@ -46,20 +44,16 @@ Image::Image (const PixelFormat & format)
 
 Image::Image (int width, int height)
 {
-  timestamp    = getTimestamp ();
-  this->width  = max (0, width);
-  this->height = max (0, height);
-  buffer       = new PixelBufferPacked (this->width, this->height, GrayChar.depth);
-  format       = &GrayChar;
+  timestamp = getTimestamp ();
+  format    = &GrayChar;
+  resize (width, height);
 }
 
 Image::Image (int width, int height, const PixelFormat & format)
 {
   timestamp    = getTimestamp ();
-  this->width  = max (0, width);
-  this->height = max (0, height);
-  buffer       = new PixelBufferPacked (this->width, this->height, format.depth);
   this->format = &format;
+  resize (width, height);
 }
 
 Image::Image (const Image & that)
@@ -82,9 +76,6 @@ Image::Image (void * block, int width, int height, const PixelFormat & format)
 
 Image::Image (const std::string & fileName)
 {
-  // Set this so resize() will work right.
-  buffer = new PixelBufferPacked ();
-
   read (fileName);
 }
 
@@ -170,7 +161,7 @@ Image::attach (void * block, int width, int height, const PixelFormat & format)
 void
 Image::detach ()
 {
-  buffer = new PixelBufferPacked;
+  buffer = 0;
 }
 
 /**
@@ -184,6 +175,10 @@ Image::resize (int width, int height, bool preserve)
 {
   width  = max (width,  0);
   height = max (height, 0);
+  if (! buffer.memory  ||  buffer->planes != format->planes)
+  {
+	buffer = format->buffer ();
+  }
   buffer->resize (width, height, *format, preserve);
   this->width  = width;
   this->height = height;
