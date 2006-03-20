@@ -47,7 +47,7 @@ testAbsoluteValue (Image & image)
 	  float expected = (float) x / image.width;
 	  if (fabs (pixel - expected) > 1e-6)
 	  {
-		cerr << x << " " << y << " " << pixel << " - " << expected << " = " << pixel - expected << endl;
+		cout << x << " " << y << " " << pixel << " - " << expected << " = " << pixel - expected << endl;
 		throw "AbsoluteValue failed";
 	  }
 	}
@@ -86,7 +86,7 @@ testTransform (Image & image)
 	{
 	  if (disp.getGray (x, y) < 254)
 	  {
-		cerr << x << " " << y << " expected white, got " << (int) disp.getGray (x, y) << endl;
+		cout << x << " " << y << " expected white, got " << (int) disp.getGray (x, y) << endl;
 		throw "Tranform fails";
 	  }
 	}
@@ -109,7 +109,7 @@ main (int argc, char * argv[])
 	  image.format = &GrayDouble;
 	  image.resize (640, 480);
 	  testAbsoluteValue (image);
-	  cerr << "AbsoluteValue passes" << endl;
+	  cout << "AbsoluteValue passes" << endl;
 	}
 
 	// CanvasImage::drawFilledRectangle
@@ -129,12 +129,12 @@ main (int argc, char * argv[])
 		{
 		  if (ci.getGray (x, y))
 		  {
-			cerr << x << " " << y << " not zero!" << endl;
+			cout << x << " " << y << " not zero!" << endl;
 			throw "CanvasImage::drawFilledRectangle fails";
 		  }
 		}
 	  }
-	  cerr << "CanvasImage::drawFilledRectangle passes" << endl;
+	  cout << "CanvasImage::drawFilledRectangle passes" << endl;
 	}
 
 	// ConvolutionDiscrete1D::filter -- zerofill X {float double}, usezeros X {float double} X {horz vert}, boost X {float double}  X {horz vert}, crop X {float double}
@@ -151,7 +151,7 @@ main (int argc, char * argv[])
 	  cf.normalFloats ();
 	  if (imagef(0,0))
 	  {
-		cerr << "pixel is " << imagef(0,0) << endl;
+		cout << "pixel is " << imagef(0,0) << endl;
 		throw "Convolution1D::normalFloats(float) failed";
 	  }
 
@@ -159,7 +159,7 @@ main (int argc, char * argv[])
 	  cf.normalFloats ();
 	  if (! imagef(0,0))
 	  {
-		cerr << "pixel should have been nonzero" << endl;
+		cout << "pixel should have been nonzero" << endl;
 		throw "Convolution1D::normalFloats(float) failed";
 	  }
 
@@ -169,11 +169,11 @@ main (int argc, char * argv[])
 	  cd.normalFloats ();
 	  if (imaged(0,0))
 	  {
-		cerr << "pixel is " << imaged(0,0) << endl;
+		cout << "pixel is " << imaged(0,0) << endl;
 		throw "Convolution1D::normalFloats(double) failed";
 	  }
 
-	  cerr << "ConvolutionDiscrete1D::normalFloats passes" << endl;
+	  cout << "ConvolutionDiscrete1D::normalFloats passes" << endl;
 	}
 
 	// ConvolutionDiscrete2D::normalFloats -- float double
@@ -184,7 +184,7 @@ main (int argc, char * argv[])
 	  cf.normalFloats ();
 	  if (imagef(0,0))
 	  {
-		cerr << "pixel is " << imagef(0,0) << endl;
+		cout << "pixel is " << imagef(0,0) << endl;
 		throw "Convolution2D::normalFloats(float) failed";
 	  }
 
@@ -192,7 +192,7 @@ main (int argc, char * argv[])
 	  cf.normalFloats ();
 	  if (! imagef(0,0))
 	  {
-		cerr << "pixel should have been nonzero" << endl;
+		cout << "pixel should have been nonzero" << endl;
 		throw "Convolution2D::normalFloats(float) failed";
 	  }
 
@@ -202,11 +202,11 @@ main (int argc, char * argv[])
 	  cd.normalFloats ();
 	  if (imaged(0,0))
 	  {
-		cerr << "pixel is " << imaged(0,0) << endl;
+		cout << "pixel is " << imaged(0,0) << endl;
 		throw "Convolution2D::normalFloats(double) failed";
 	  }
 
-	  cerr << "ConvolutionDiscrete2D::normalFloats passes" << endl;
+	  cout << "ConvolutionDiscrete2D::normalFloats passes" << endl;
 	}
 
 	// DescriptorFilters::prepareFilterMatrix
@@ -240,7 +240,7 @@ main (int argc, char * argv[])
 	  Vector<float> value = desc.value (image, target);
 	  if (! value[0]  ||  value[1])
 	  {
-		cerr << "value = " << value << endl;
+		cout << "value = " << value << endl;
 		throw "DescriptorFilters fails";
 	  }
 
@@ -255,7 +255,7 @@ main (int argc, char * argv[])
 	  Vector<float> value2 = desc2.value (image, target);
 	  if (value != value2)
 	  {
-		cerr << "values don't match" << endl;
+		cout << "values don't match" << endl;
 		throw "DescriptorFilters fails";
 	  }
 
@@ -271,13 +271,13 @@ main (int argc, char * argv[])
 		  disp.getGray (x + 5, y + 5, a);
 		  if (fabs (a - c) > 1e-6)
 		  {
-			cerr << "computed patch is wrong " << a - c << endl;
+			cout << "computed patch is wrong " << a - c << endl;
 			throw "DescriptorFilters or Rescale or Rotate180 fails";
 		  }
 		}
 	  }
 
-	  cerr << "DescriptorFilters, Rescale and Rotate180 pass" << endl;
+	  cout << "DescriptorFilters, Rescale and Rotate180 pass" << endl;
 	}
 
 	// DescriptorLBP
@@ -302,14 +302,14 @@ main (int argc, char * argv[])
 	  value = patch.value (image, pa);
 	  if (value.rows () != 100  ||  value[0] != 0  ||  value[78] < 0.9)
 	  {
-		cerr << "unexpected value: " << value << endl;
+		cout << "unexpected value: " << value << endl;
 		throw "DescriptorPatch fails";
 	  } 
 
 	  DescriptorTextonScale ts;
 	  value = ts.value (image, pa);
 
-	  cerr << "DescriptorPatch passes" << endl;
+	  cout << "DescriptorPatch passes" << endl;
 	  cerr << "more work needed to verify results for DescriptorLBP and DescriptorTextonScale" << endl;
 	}
 
@@ -338,22 +338,22 @@ main (int argc, char * argv[])
 
 	  if (fabs (avg.average) > 0.01)
 	  {
-		cerr << "average too far from zero " << avg.average << endl;
+		cout << "average too far from zero " << avg.average << endl;
 		throw "IntensityAverage fails";
 	  }
 	  if (fabs (std.deviation - 1.0f) > 0.01)
 	  {
-		cerr << "deviation too far from one " << std.deviation << endl;
+		cout << "deviation too far from one " << std.deviation << endl;
 		throw "IntensityDeviation fails";
 	  }
 	  if (hist.counts[10] < 50000  ||  hist.counts[0] > 100)
 	  {
-		cerr << "histogram has unexpected distribution:" << endl;
-		hist.dump (cerr);
+		cout << "histogram has unexpected distribution:" << endl;
+		hist.dump (cout);
 		throw "IntensityHistogram fails";
 	  }
 
-	  cerr << "IntensityAverage, IntensityDeviation and IntensityHistogram pass" << endl;
+	  cout << "IntensityAverage, IntensityDeviation and IntensityHistogram pass" << endl;
 	}
 
 	// Gaussian1D
@@ -382,11 +382,11 @@ main (int argc, char * argv[])
 	  int count = points.size ();
 	  if (abs (count - expected) > 50)
 	  {
-		cerr << "unexpected point count " << count << "   rather than " << expected << endl;
+		cout << "unexpected point count " << count << "   rather than " << expected << endl;
 		throw "failure in one or more of {InterestDOG, InterestMSER, InterestHarrisLaplacian, InterestHessian} or their dependencies";
 	  }
 
-	  cerr << "InterestDOG, InterestMSER, InterestHarrisLaplacian and InterestHessian pass" << endl;
+	  cout << "InterestDOG, InterestMSER, InterestHarrisLaplacian and InterestHessian pass" << endl;
 	}
 
 	// Transform -- {8dof 6dof} X {float double}
@@ -396,7 +396,7 @@ main (int argc, char * argv[])
 	  image.format = &GrayDouble;
 	  image.resize (640, 480);
 	  testTransform (image);
-	  cerr << "Transform passes" << endl;
+	  cout << "Transform passes" << endl;
 	}
 
 	// VideoFileFormatFFMPEG
@@ -410,7 +410,7 @@ main (int argc, char * argv[])
 		{
 		  if (! vout.good ())
 		  {
-			cerr << "vout is bad" << endl;
+			cout << "vout is bad" << endl;
 			throw "VideoFileFormatFFMPEG::write fails";
 		  }
 		  image.clear ((i << 24) | (i << 16) | (i << 8));
@@ -434,7 +434,7 @@ main (int argc, char * argv[])
 			int g = image.getGray (x, y);
 			if (abs (g - f) > 1)
 			{
-			  cerr << x << " " << y << " expected " << f << " but got " << g << endl;
+			  cout << x << " " << y << " expected " << f << " but got " << g << endl;
 			  throw "VideoFileFormatFFMPEG::read fails";
 			}
 		  }
@@ -442,17 +442,17 @@ main (int argc, char * argv[])
 	  }
 	  if (i < 250)
 	  {
-		cerr << "didn't read enough frames " << i << endl;
+		cout << "didn't read enough frames " << i << endl;
 		throw "VideoFileFormatFFMPEG::read fails";
 	  }
 
-	  cerr << "VideoFileFormatFFMPEG passes" << endl;
+	  cout << "VideoFileFormatFFMPEG passes" << endl;
 	}
 
   }
   catch (const char * error)
   {
-	cerr << "Exception: " << error << endl;
+	cout << "Exception: " << error << endl;
 	return 1;
   }
 
