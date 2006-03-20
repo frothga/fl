@@ -5,6 +5,59 @@ using namespace fl;
 using namespace std;
 
 
+// Utility functions ----------------------------------------------------------
+
+/**
+   \param oldStride Curent width of one row in bytes (not pixels).
+   \param newStride Desired width of one row in bytes.
+ **/
+static void
+reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight)
+{
+  int oldHeight = memory.size ();
+  if (oldHeight <= 0)
+  {
+	oldHeight = 0;
+  }
+  else if (oldStride > 0)
+  {
+	oldHeight /= oldStride;
+  }
+  int copyWidth  = min (newStride, oldStride);
+  int copyHeight = min (newHeight, oldHeight);
+
+  if (newStride == oldStride)
+  {
+	if (newHeight > oldHeight)
+	{
+	  Pointer temp (memory);
+	  memory.detach ();
+	  memory.grow (newStride * newHeight);
+	  int count = newStride * copyHeight;
+	  memcpy (memory.memory, temp.memory, count);
+	  assert (count >= 0  &&  count < memory.size ());
+	  memset ((char *) memory + count, 0, memory.size () - count);
+	}
+  }
+  else  // differen strides
+  {
+	Pointer temp (memory);
+	memory.detach ();
+	memory.grow (newStride * newHeight);
+	memory.clear ();
+
+	unsigned char * target = (unsigned char *) memory;
+	unsigned char * source = (unsigned char *) temp;
+	for (int y = 0; y < copyHeight; y++)
+	{
+	  memcpy (target, source, copyWidth);
+	  target += newStride;
+	  source += oldStride;
+	}
+  }
+}
+
+
 // class PixelBuffer ----------------------------------------------------------
 
 PixelBuffer::~PixelBuffer ()
@@ -73,9 +126,7 @@ bool
 PixelBufferPacked::operator == (const PixelBuffer & that) const
 {
   const PixelBufferPacked * p = dynamic_cast<const PixelBufferPacked *> (&that);
-  // If p is non-zero, then implicitly the member "packed" is true.
-  // The exception to this might be a PixelBuffer that inherits from
-  // PixelBufferPacked but doesn't otherwise claim to be a packed format.
+  // If p exists, then implicitly the number of planes is 1.
   return    p
          && stride == p->stride
          && depth  == p->depth
@@ -109,54 +160,8 @@ PixelBufferPacked::resize (int width, int height, const PixelFormat & format, bo
 	return;
   }
 
-  int myHeight = memory.size ();
-  int byteWidth = stride * depth;  // at this point, depth is guaranteed to be same as format.depth
-  if (myHeight <= 0)
-  {
-	myHeight = 0;
-  }
-  else if (byteWidth > 0)
-  {
-	myHeight /= byteWidth;
-  }
-  int copyWidth  = min (width,  stride);
-  int copyHeight = min (height, myHeight);
-
-  if (width == stride)
-  {
-	if (height > myHeight)
-	{
-	  Pointer temp (memory);
-	  memory.detach ();
-	  memory.grow (width * height * depth);
-	  int count = width * copyHeight * depth;
-	  memcpy (memory.memory, temp.memory, count);
-	  assert (count >= 0  &&  count < memory.size ());
-	  memset ((char *) memory + count, 0, memory.size () - count);
-	}
-  }
-  else
-  {
-	Pointer temp (memory);
-	memory.detach ();
-	memory.grow (width * height * depth);
-	memory.clear ();
-
-	unsigned char * target = (unsigned char *) memory;
-	int targetStride = width * depth;
-	unsigned char * source = (unsigned char *) temp;
-	int sourceStride = stride * depth;
-	int count = copyWidth * depth;
-
-	for (int y = 0; y < copyHeight; y++)
-	{
-	  memcpy (target, source, count);
-	  target += targetStride;
-	  source += sourceStride;
-	}
-
-	stride = width;
-  }
+  reshapeBuffer (memory, stride * depth, width * depth, height);
+  stride = width;
 }
 
 
@@ -167,8 +172,8 @@ PixelBufferPlanar::PixelBufferPlanar ()
   planes   = 3;
   stride0  = 0;
   stride12 = 0;
-  ratioH   = 0;
-  ratioV   = 0;
+  ratioH   = 1;
+  ratioV   = 1;
 }
 
 PixelBufferPlanar::PixelBufferPlanar (int stride, int height, int ratioH, int ratioV)
@@ -184,17 +189,20 @@ PixelBufferPlanar::PixelBufferPlanar (int stride, int height, int ratioH, int ra
   plane2.grow (stride12 * height);
 }
 
-PixelBufferPlanar::PixelBufferPlanar (void * buffer0, void * buffer1, void * buffer2, int stride, int height, int ratioH, int ratioV)
+/**
+   Attach to an FFMPEG picture.
+ **/
+PixelBufferPlanar::PixelBufferPlanar (void * buffer0, void * buffer1, void * buffer2, int stride0, int stride12, int height, int ratioH, int ratioV)
 {
-  planes       = 3;
-  stride0      = stride;
-  stride12     = stride / ratioH;
-  this->ratioH = ratioH;
-  this->ratioV = ratioV;
+  planes         = 3;
+  this->stride0  = stride0;
+  this->stride12 = stride12;
+  this->ratioH   = ratioH;
+  this->ratioV   = ratioV;
 
   plane0.attach (buffer0, stride0  * height);
-  plane1.attach (buffer0, stride12 * height);
-  plane2.attach (buffer0, stride12 * height);
+  plane1.attach (buffer1, stride12 * height);
+  plane2.attach (buffer2, stride12 * height);
 }
 
 PixelBufferPlanar::~PixelBufferPlanar ()
@@ -209,7 +217,7 @@ PixelBufferPlanar::pixel (int x, int y)
 
   pixelArray[0] = ((char *) plane0) + (y   * stride0  + x);
   pixelArray[1] = ((char *) plane1) + (y12 * stride12 + x12);
-  pixelArray[2] = ((char *) plane1) + (y12 * stride12 + x12);
+  pixelArray[2] = ((char *) plane2) + (y12 * stride12 + x12);
 
   return pixelArray;
 }
@@ -217,23 +225,73 @@ PixelBufferPlanar::pixel (int x, int y)
 void
 PixelBufferPlanar::resize (int width, int height, const PixelFormat & format, bool preserve)
 {
+  if (width <= 0  ||  height <= 0)
+  {
+	plane0.detach ();
+	plane1.detach ();
+	plane2.detach ();
+	return;
+  }
+
   assert (format.depth == 1);  // may generalize to variable depth, if there exists a case that needs it
-  // ratioH = 
+
+  const PixelFormatPlanar * f = dynamic_cast<const PixelFormatPlanar *> (&format);
+  if (! f) throw "Need a PixelFormatPlanar";
+  ratioH = f->ratioH;
+  ratioV = f->ratioV;
+
+  if (preserve)
+  {
+	reshapeBuffer (plane0, stride0,  width,          height);
+	reshapeBuffer (plane1, stride12, width / ratioH, height / ratioV);
+	reshapeBuffer (plane2, stride12, width / ratioH, height / ratioV);
+	stride0  = width;
+	stride12 = width / ratioH;
+  }
+  else
+  {
+	stride0  = width;
+	stride12 = width / ratioH;
+	plane0.grow (stride0  * height);
+	plane1.grow (stride12 * height);
+	plane2.grow (stride12 * height);
+  }
 }
 
 PixelBuffer *
 PixelBufferPlanar::duplicate () const
 {
-  return 0;
+  PixelBufferPlanar * result = new PixelBufferPlanar ();
+  result->ratioH   = ratioH;
+  result->ratioV   = ratioV;
+  result->stride0  = stride0;
+  result->stride12 = stride12;
+
+  result->plane0.copyFrom (plane0);
+  result->plane1.copyFrom (plane1);
+  result->plane2.copyFrom (plane2);
+
+  return result;
 }
 
 void
 PixelBufferPlanar::clear ()
 {
+  plane0.clear ();
+  plane1.clear ();
+  plane2.clear ();
 }
 
 bool
 PixelBufferPlanar::operator == (const PixelBuffer & that) const
 {
-  return false;
+  const PixelBufferPlanar * p = dynamic_cast<const PixelBufferPlanar *> (&that);
+  return    p
+         && ratioH   == p->ratioH
+         && ratioV   == p->ratioV
+         && stride0  == p->stride0
+         && stride12 == p->stride12
+         && plane0   == p->plane0
+         && plane1   == p->plane1
+         && plane2   == p->plane2;
 }
