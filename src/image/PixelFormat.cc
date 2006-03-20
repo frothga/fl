@@ -23,6 +23,11 @@ for details.
 03/2006 Fred Rothganger -- Move endian code to endian.h
 
 $Log$
+Revision 1.32  2006/03/20 05:39:25  Fred
+Add PixelFormatPlanarYUV.  Broaden PixelFormat::fromAny() to handle outputting to a non-packed buffer.
+
+Add PixelFormat::buffer() to create an appropriate PixelBuffer for each PixelFormat.
+
 Revision 1.31  2006/03/18 14:25:55  Fred
 Use look up tables to convert gamma, rather than functions.  Hopefully this will make the process more efficient.
 
@@ -59,19 +64,21 @@ using namespace std;
 using namespace fl;
 
 
-PixelFormatGrayChar   fl::GrayChar;
-PixelFormatGrayShort  fl::GrayShort;
-PixelFormatGrayFloat  fl::GrayFloat;
-PixelFormatGrayDouble fl::GrayDouble;
-PixelFormatRGBAChar   fl::RGBAChar;
-PixelFormatRGBAShort  fl::RGBAShort;
-PixelFormatRGBAFloat  fl::RGBAFloat;
-PixelFormatRGBChar    fl::RGBChar;
-PixelFormatRGBShort   fl::RGBShort;
-PixelFormatUYVYChar   fl::UYVYChar;
-PixelFormatYUYVChar   fl::YUYVChar;
-PixelFormatUYVChar    fl::UYVChar;
-PixelFormatHLSFloat   fl::HLSFloat;
+PixelFormatGrayChar      fl::GrayChar;
+PixelFormatGrayShort     fl::GrayShort;
+PixelFormatGrayFloat     fl::GrayFloat;
+PixelFormatGrayDouble    fl::GrayDouble;
+PixelFormatRGBAChar      fl::RGBAChar;
+PixelFormatRGBAShort     fl::RGBAShort;
+PixelFormatRGBAFloat     fl::RGBAFloat;
+PixelFormatRGBChar       fl::RGBChar;
+PixelFormatRGBShort      fl::RGBShort;
+PixelFormatUYVYChar      fl::UYVYChar;
+PixelFormatYUYVChar      fl::YUYVChar;
+PixelFormatUYVChar       fl::UYVChar;
+PixelFormatPlanarYUVChar fl::YUV420 (2, 2);
+PixelFormatPlanarYUVChar fl::YUV411 (4, 1);
+PixelFormatHLSFloat      fl::HLSFloat;
 
 // These "bits" formats must be endian independent.
 #if BYTE_ORDER == LITTLE_ENDIAN
@@ -151,6 +158,12 @@ PixelFormat::filter (const Image & image)
   return result;
 }
 
+PixelBuffer *
+PixelFormat::buffer () const
+{
+  return new PixelBufferPacked;
+}
+
 /**
    Uses getRGBA() and setRGBA().  XYZ would be more accurate, but this
    is also adequate, since RGB values are well defined (as non-linear sRGB).
@@ -158,29 +171,59 @@ PixelFormat::filter (const Image & image)
 void
 PixelFormat::fromAny (const Image & image, Image & result) const
 {
-  unsigned char * dest = (unsigned char *) ((PixelBufferPacked *) result.buffer)->memory;
   const PixelFormat * sourceFormat = image.format;
 
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   if (i)
   {
 	unsigned char * source = (unsigned char *) i->memory;
 	int sourceDepth = sourceFormat->depth;
-	unsigned char * end = dest + image.width * image.height * depth;
-	while (dest < end)
+	if (o)
 	{
-	  setRGBA (dest, sourceFormat->getRGBA (source));
-	  source += sourceDepth;
-	  dest += depth;
+	  unsigned char * dest = (unsigned char *) o->memory;
+	  unsigned char * end  = dest + image.width * image.height * depth;
+	  while (dest < end)
+	  {
+		setRGBA (dest, sourceFormat->getRGBA (source));
+		source += sourceDepth;
+		dest += depth;
+	  }
+	}
+	else
+	{
+	  for (int y = 0; y < image.height; y++)
+	  {
+		for (int x = 0; x < image.width; x++)
+		{
+		  setRGBA (result.buffer->pixel (x, y), sourceFormat->getRGBA (source));
+		  source += sourceDepth;
+		}
+	  }
 	}
   }
   else
   {
-	for (int y = 0; y < image.height; y++)
+	if (o)
 	{
-	  for (int x = 0; x < image.width; x++)
+	  unsigned char * dest = (unsigned char *) o->memory;
+	  for (int y = 0; y < image.height; y++)
 	  {
-		setRGBA (dest, sourceFormat->getRGBA (image.buffer->pixel (x, y)));
+		for (int x = 0; x < image.width; x++)
+		{
+		  setRGBA (dest, sourceFormat->getRGBA (image.buffer->pixel (x, y)));
+		  dest += depth;
+		}
+	  }
+	}
+	else
+	{
+	  for (int y = 0; y < image.height; y++)
+	  {
+		for (int x = 0; x < image.width; x++)
+		{
+		  setRGBA (result.buffer->pixel (x, y), sourceFormat->getRGBA (image.buffer->pixel (x, y)));
+		}
 	  }
 	}
   }
@@ -3038,6 +3081,74 @@ PixelFormatUYVChar::setYUV (void * pixel, unsigned int yuv) const
   ((unsigned char *) pixel)[0] = (yuv & 0xFF00) >>  8;
   ((unsigned char *) pixel)[1] =  yuv           >> 16;
   ((unsigned char *) pixel)[2] =  yuv &   0xFF;
+}
+
+
+// class PixelFormatPlanar ----------------------------------------------------
+
+PixelBuffer *
+PixelFormatPlanar::buffer () const
+{
+  return new PixelBufferPlanar;
+}
+
+
+// class PixelFormatPlanarYUVChar ---------------------------------------------
+
+PixelFormatPlanarYUVChar::PixelFormatPlanarYUVChar (int ratioH, int ratioV)
+: PixelFormatPlanar (ratioH, ratioV)
+{
+  planes     = 3;
+  depth      = sizeof (char);
+  precedence = 1;  // same as UYVY
+  monochrome = false;
+  hasAlpha   = false;
+}
+
+unsigned int
+PixelFormatPlanarYUVChar::getRGBA (void * pixel) const
+{
+  int y = *((unsigned char **) pixel)[0] << 16;
+  int u = *((unsigned char **) pixel)[1] - 128;
+  int v = *((unsigned char **) pixel)[2] - 128;
+
+  unsigned int r = min (max (y               + 0x166F7 * v, 0), 0xFFFFFF);
+  unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v, 0), 0xFFFFFF);
+  unsigned int b = min (max (y + 0x1C560 * u,               0), 0xFFFFFF);
+
+  return ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF;
+}
+
+unsigned int
+PixelFormatPlanarYUVChar::getYUV (void * pixel) const
+{
+  return (*((unsigned char **) pixel)[0] << 16) | (*((unsigned char **) pixel)[1] << 8) | *((unsigned char **) pixel)[2];
+}
+
+unsigned char
+PixelFormatPlanarYUVChar::getGray (void * pixel) const
+{
+  return *((unsigned char **) pixel)[0];
+}
+
+void
+PixelFormatPlanarYUVChar::setRGBA (void * pixel, unsigned int rgba) const
+{
+  int r = (rgba & 0xFF000000) >> 24;
+  int g = (rgba &   0xFF0000) >> 16;
+  int b = (rgba &     0xFF00) >>  8;
+
+  *((unsigned char **) pixel)[0] = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b,            0), 0xFFFFFF) >> 16;
+  *((unsigned char **) pixel)[1] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000, 0), 0xFFFFFF) >> 16;
+  *((unsigned char **) pixel)[2] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000, 0), 0xFFFFFF) >> 16;
+}
+
+void
+PixelFormatPlanarYUVChar::setYUV  (void * pixel, unsigned int yuv) const
+{
+  *((unsigned char **) pixel)[0] =  yuv           >> 16;
+  *((unsigned char **) pixel)[1] = (yuv & 0xFF00) >>  8;
+  *((unsigned char **) pixel)[2] =  yuv &   0xFF;
 }
 
 
