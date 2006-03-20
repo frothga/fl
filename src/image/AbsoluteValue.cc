@@ -23,6 +23,7 @@ using namespace fl;
 Image
 AbsoluteValue::filter (const Image & image)
 {
+  if (image.width == 0  ||  image.height == 0) return image;
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
   if (! imageBuffer) throw "AbsoluteValue can only handle packed buffers for now";
   Pointer imageMemory = imageBuffer->memory;
