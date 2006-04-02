@@ -93,6 +93,198 @@ testTransform (Image & image)
   }
 }
 
+void
+testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::PixelFormat * targetFormat)
+{
+  cerr << typeid (*targetFormat).name () << endl;
+
+  // Convert from every other format into the target one.
+  for (int i = 0; i < formats.size (); i++)
+  {
+	fl::PixelFormat * fromFormat = formats[i];
+	cerr << "  from " << typeid (*fromFormat).name () << endl;
+
+	Image fromImage = test * *fromFormat;
+	Image toImage = fromImage * *targetFormat;
+
+	if (toImage.width != test.width  ||  toImage.height != test.height)
+	{
+	  throw "PixelFormat conversion failed to produce same size of image";
+	}
+
+	// Verify
+	const float thresholdRatio         = 1.01f;
+	const float thresholdFloat         = 0.01f;
+	const int   thresholdLuma          = 1;
+	const int   thresholdChroma        = 1;
+	const int   thresholdLumaClipped   = 3;
+	const int   thresholdChromaClipped = 4;
+
+	if (fromFormat->monochrome  ||  targetFormat->monochrome)
+	{
+	  bool approximate = true;
+	  for (int y = 0; y < fromImage.height; y++)
+	  {
+		for (int x = 0; x < fromImage.width; x++)
+		{
+		  float original;
+		  if (approximate)
+		  {
+			fromImage.getGray (x, y, original);
+		  }
+		  else
+		  {
+			float rgba[4];
+			fromImage.getRGBA (x, y, rgba);
+			original = rgba[0] * 0.2126 + rgba[1] * 0.7152 + rgba[2] * 0.0722;
+		  }
+		  float converted;
+		  toImage.getGray (x, y, converted);
+		  float ratio = original / converted;
+		  if (ratio < 1.0f) ratio = 1.0f / ratio;
+		  float difference = fabs (original - converted);
+		  if (ratio > thresholdRatio  &&  difference > thresholdFloat)
+		  {
+			if (approximate)
+			{
+			  approximate = false;
+			  cerr << "    switching to exact gray" << endl;
+			  // Technically, we let this one pixel go by without re-evaluating
+			  // to see if it matches the exact gray level.  However, if one
+			  // pixel is bad, almost certainly a bunch of others will be also.
+			}
+			else
+			{
+			  cout << x << " " << y << " unexpected change in gray level: " << difference << " = | " << original << " - " << converted << " |" << endl;
+			  throw "PixelFormat fails";
+			}
+		  }
+		}
+	  }
+	}
+	else if (PixelFormatYUV * pfyuv = dynamic_cast<PixelFormatYUV *> (targetFormat))
+	{
+	  int ratioH = pfyuv->ratioH;
+	  int ratioV = pfyuv->ratioV;
+	  //cerr << "    ratioH,V = " << ratioH << " " << ratioV << endl;
+
+	  const unsigned int shift = 16 + (int) rint (log (ratioH * ratioV) / log (2));
+	  const int bias = 0x808 << (shift - 4);
+	  const int maximum = (~(unsigned int) 0) >> (24 - shift);
+
+	  for (int y = 0; y < fromImage.height; y += ratioV)
+	  {
+		for (int x = 0; x < fromImage.width; x += ratioH)
+		{
+		  // We need the average RGB value to detect cases where the pixel
+		  // value passes outside the RGB volume in YUV space.  In such
+		  // cases, the pixel value gets clipped, which can introduce
+		  // errors larger than a comfortable threshold.
+		  int r = 0;
+		  int g = 0;
+		  int b = 0;
+		  for (int yy = y; yy < y + ratioV; yy++)
+		  {
+			for (int xx = x; xx < x + ratioH; xx++)
+			{
+			  unsigned int rgba = fromImage.getRGBA (xx, yy);
+			  r +=  rgba             >> 24;
+			  g += (rgba & 0xFF0000) >> 16;
+			  b += (rgba &   0xFF00) >>  8;
+			}
+		  }
+		  int u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
+		  int v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
+		  int tu = u - 128;
+		  int tv = v - 128;
+
+		  // Check for clipping
+		  int clip = 0;
+		  for (int yy = y; yy < y + ratioV; yy++)
+		  {
+			for (int xx = x; xx < x + ratioH; xx++)
+			{
+			  unsigned int oyuv = fromImage.getYUV (xx, yy);
+			  int ty = oyuv  &  0xFF0000;
+			  r = (ty                + 0x166F7 * tv + 0x8000) >> 16;
+			  g = (ty -  0x5879 * tu -  0xB6E9 * tv + 0x8000) >> 16;
+			  b = (ty + 0x1C560 * tu                + 0x8000) >> 16;
+			  clip = max (clip, 0 - r);
+			  clip = max (clip, 0 - g);
+			  clip = max (clip, 0 - b);
+			  clip = max (clip, r - 0xFF);
+			  clip = max (clip, g - 0xFF);
+			  clip = max (clip, b - 0xFF);
+			}
+		  }
+		  //if (clip) cerr << "    " << x << " " << y << " clip = " << clip << endl;
+		  int tLuma   = clip ? thresholdLumaClipped   : thresholdLuma;
+		  int tChroma = clip ? thresholdChromaClipped : thresholdChroma;
+		  if (PixelFormatPlanarYCbCrChar * pfycbcr = dynamic_cast<PixelFormatPlanarYCbCrChar *> (targetFormat))
+		  {
+			tChroma = max (tChroma, 2);  // The additional quantization due to shortened excursion of YCbCr sometimes produces a 2-level difference.
+		  }
+
+		  // Check consistency
+		  for (int yy = y; yy < y + ratioV; yy++)
+		  {
+			for (int xx = x; xx < x + ratioH; xx++)
+			{
+			  unsigned int oyuv = fromImage.getYUV (xx, yy);
+			  unsigned int cyuv = toImage.getYUV (xx, yy);
+			  int oy = oyuv >> 16;
+			  int cy = cyuv >> 16;
+			  int error = abs (oy - cy);
+			  if (error > tLuma)
+			  {
+				cout << "    " << xx << " " << yy << " unexpected change in luma: " << error << " = | " << oy << " - " << cy << " |  clip=" << clip << endl;
+				throw "PixelFormat fails";
+			  }
+
+			  int cu = (cyuv & 0xFF00) >> 8;
+			  int cv = (cyuv &   0xFF);
+			  error = max (abs (u - cu), abs (v - cv));
+			  if (error > tChroma)
+			  {
+				cout << "    " << xx << " " << yy << " unexpected change in chroma: " << error << " = |(" << u << " " << v << ") - (" << cu << " " << cv << ")|  clip=" << clip << endl;
+				throw "PixelFormat fails";
+			  }
+			}
+		  }
+
+		}
+	  }
+
+	}
+	else
+	{
+	  Vector<float> original (4);
+	  Vector<float> converted (4);
+	  for (int y = 0; y < fromImage.height; y++)
+	  {
+		for (int x = 0; x < fromImage.width; x++)
+		{
+		  fromImage.getRGBA (x, y, &original[0]);
+		  toImage.getRGBA (x, y, &converted[0]);
+		  for (int r = 0; r < original.rows (); r++)
+		  {
+			float ratio = original[r] / converted[r];
+			if (ratio < 1.0f) ratio = 1.0f / ratio;
+			float difference = fabs (original[r] - converted[r]);
+			if (ratio > thresholdRatio  &&  difference > thresholdFloat)
+			{
+			  cout << x << " " << y << " unexpected change in color value: " << ratio << endl << original << endl << converted << endl;
+			  throw "PixelFormat fails";
+			}
+		  }
+		}
+	  }
+	}
+  }
+
+  // Verify all getters and setters.
+}
+
 
 int
 main (int argc, char * argv[])
@@ -101,6 +293,35 @@ main (int argc, char * argv[])
   {
 	new ImageFileFormatJPEG;
 
+
+	// PixelFormat
+	{
+	  vector<fl::PixelFormat *> formats;
+	  formats.push_back (&GrayChar);
+	  formats.push_back (&GrayShort);
+	  formats.push_back (&GrayFloat);
+	  formats.push_back (&GrayDouble);
+	  formats.push_back (&RGBAChar);
+	  formats.push_back (&RGBAShort);
+	  formats.push_back (&RGBAFloat);
+	  formats.push_back (&RGBChar);
+	  formats.push_back (&RGBShort);
+	  formats.push_back (&UYVYChar);
+	  formats.push_back (&YUYVChar);
+	  formats.push_back (&UYVChar);
+	  formats.push_back (&YUV420);
+	  formats.push_back (&YUV411);
+	  formats.push_back (&HLSFloat);
+
+	  Image test ("test.jpg");
+
+	  for (int i = 0; i < formats.size (); i++)
+	  {
+		testFormat (test, formats, formats[i]);
+	  }
+
+	  cout << "PixelFormat passes" << endl;
+	}
 
 	// AbsoluteValue -- float and double
 	{
@@ -426,15 +647,14 @@ main (int argc, char * argv[])
 		vin >> image;
 		if (! vin.good ()) break;
 		assert (image.width == 320  &&  image.height == 240);
-		int f = (int) rint (i * 219.0 / 255.0) + 16;
 		for (int y = 0; y < image.height; y++)
 		{
 		  for (int x = 0; x < image.width; x++)
 		  {
 			int g = image.getGray (x, y);
-			if (abs (g - f) > 1)
+			if (abs (g - i) > 1)
 			{
-			  cout << x << " " << y << " expected " << f << " but got " << g << endl;
+			  cout << x << " " << y << " expected " << i << " but got " << g << endl;
 			  throw "VideoFileFormatFFMPEG::read fails";
 			}
 		  }
