@@ -97,6 +97,14 @@ PixelBufferPacked::PixelBufferPacked (void * buffer, int stride, int height, int
   this->memory.attach (buffer, stride * height * depth);
 }
 
+PixelBufferPacked::PixelBufferPacked (const Pointer & buffer, int stride, int depth)
+{
+  planes       = 1;
+  this->stride = stride;
+  this->depth  = depth;
+  this->memory = buffer;
+}
+
 PixelBufferPacked::~PixelBufferPacked ()
 {
 }
@@ -235,10 +243,17 @@ PixelBufferPlanar::resize (int width, int height, const PixelFormat & format, bo
 
   assert (format.depth == 1);  // may generalize to variable depth, if there exists a case that needs it
 
-  const PixelFormatPlanar * f = dynamic_cast<const PixelFormatPlanar *> (&format);
-  if (! f) throw "Need a PixelFormatPlanar";
-  ratioH = f->ratioH;
-  ratioV = f->ratioV;
+  const PixelFormatYUV * f = dynamic_cast<const PixelFormatYUV *> (&format);
+  if (f)
+  {
+	ratioH = f->ratioH;
+	ratioV = f->ratioV;
+  }
+  else
+  {
+	ratioH = 1;
+	ratioV = 1;
+  }
 
   if (preserve)
   {
