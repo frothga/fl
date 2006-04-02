@@ -58,7 +58,7 @@ namespace fl
 
 	void read (const std::string & fileName);  ///< Read image from fileName.  Format will be determined automatically.
 	void read (std::istream & stream);
-	void write (const std::string & fileName, const std::string & formatName = "pgm") const;  ///< Write image to fileName.
+	void write (const std::string & fileName, const std::string & formatName = "") const;  ///< Write image to fileName.
 	void write (std::ostream & stream, const std::string & formatName = "pgm") const;
 
 	Image & operator <<= (const Image & that);  ///< Direct assignment by shallow copy.  Same semantics as "=".  By using a different operator than "=", we allow subclasses to inherit this function.
@@ -194,6 +194,7 @@ namespace fl
 	PixelBufferPacked (int depth = 1);
 	PixelBufferPacked (int stride, int height, int depth);
 	PixelBufferPacked (void * buffer, int stride, int height, int depth);  ///< Binds to an external block of memory.
+	PixelBufferPacked (const Pointer & buffer, int stride, int depth);
 	virtual ~PixelBufferPacked ();
 
 	virtual void * pixel (int x, int y);
@@ -420,14 +421,16 @@ namespace fl
 	 gamma = 2.2 as per sRGB spec), and all floating point values are linear.
 	 We can add parameters to the formats if we need to distinguish more color
 	 spaces.
-	 Naming convention for PixelFormats
+
+	 <p>Naming convention for PixelFormats
 	   = <color space><basic C type for one channel>
        Color space names refer to sequence of channels (usually bytes) in
        memory, rather than in machine words (eg: registers in the processor).
        The leftmost letter in a name refers to the lowest numbered address.
 	   If a channel is larger than one byte, then the bytes are laid out
 	   within the channel according to the standard for the machine.
-	 Naming convention for accessor methods
+
+	 <p>Naming convention for accessor methods --
 	   The data is in machine words, so names describe sequence
 	   within machine words.  Accessors guarantee that the order in the
 	   machine word will be the same, regardless of endian.  (This implies
@@ -435,11 +438,18 @@ namespace fl
 	   The leftmost letter refers to the most significant byte in the word.
 	   Some accessors take arrays, and since arrays are memory blocks they
 	   follow the memory order convention.
-	 TODO:
-	 * think about adding arbitrary information channels besides alpha
-       (eg: depth).  alpha gets special treatment because it has a specific,
-       well-defined effect on how pixels are combined.
-	 * add alpha blend methods (operator << and >>) to Pixel
+
+	 <p>According to the Poynton color FAQ, YUV refers to a very specific
+	 scaling of the color difference values for composite signals, and it is
+	 improper to use these channel names for anything else.  However, in
+	 colloquial usage U and V refer generically to color difference values
+	 without regard to scaling.  If there is ever a need to deal with the
+	 real YUV color space, everything will have to be renamed to make the
+	 semantics clear.  Until then, in this code U and V will be synonyms
+	 for Pb and Pr scaled to unsigned chars with a bias of 128.
+
+	 \todo Add accessor for numbered color channels.  This will be most
+	 meaningful for hyperspectal data.
   **/
   class PixelFormat : public Filter
   {
@@ -448,7 +458,7 @@ namespace fl
 
 	virtual Image filter (const Image & image);  ///< Return an Image in this format
 	virtual PixelBuffer * buffer () const;  ///< Construct a PixelBuffer suitable for holding data of the type described by this object.
-	void fromAny (const Image & image, Image & result) const;
+	virtual void fromAny (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;  ///< Checks if this and that describe the same actual format.
 	bool operator != (const PixelFormat & that) const
@@ -496,12 +506,13 @@ namespace fl
 	PixelFormatGrayChar ();
 
 	virtual Image filter (const Image & image);
-	void fromGrayShort  (const Image & image, Image & result) const;
-	void fromGrayFloat  (const Image & image, Image & result) const;
-	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBAChar   (const Image & image, Image & result) const;
-	void fromRGBABits   (const Image & image, Image & result) const;
-	void fromAny        (const Image & image, Image & result) const;
+	virtual void fromAny (const Image & image, Image & result) const;
+	void fromGrayShort   (const Image & image, Image & result) const;
+	void fromGrayFloat   (const Image & image, Image & result) const;
+	void fromGrayDouble  (const Image & image, Image & result) const;
+	void fromRGBAChar    (const Image & image, Image & result) const;
+	void fromRGBABits    (const Image & image, Image & result) const;
+	void fromYCbCrChar   (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
@@ -521,10 +532,10 @@ namespace fl
 	PixelFormatGrayShort (unsigned short grayMask = 0xFFFF);
 
 	virtual Image filter (const Image & image);
-	void fromGrayChar   (const Image & image, Image & result) const;
-	void fromGrayFloat  (const Image & image, Image & result) const;
-	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromAny        (const Image & image, Image & result) const;
+	virtual void fromAny (const Image & image, Image & result) const;
+	void fromGrayChar    (const Image & image, Image & result) const;
+	void fromGrayFloat   (const Image & image, Image & result) const;
+	void fromGrayDouble  (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
@@ -547,13 +558,14 @@ namespace fl
 	PixelFormatGrayFloat ();
 
 	virtual Image filter (const Image & image);
-	void fromGrayChar   (const Image & image, Image & result) const;
-	void fromGrayShort  (const Image & image, Image & result) const;
-	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBAChar   (const Image & image, Image & result) const;
-	void fromRGBChar    (const Image & image, Image & result) const;
-	void fromRGBABits   (const Image & image, Image & result) const;
-	void fromAny        (const Image & image, Image & result) const;
+	virtual void fromAny (const Image & image, Image & result) const;
+	void fromGrayChar    (const Image & image, Image & result) const;
+	void fromGrayShort   (const Image & image, Image & result) const;
+	void fromGrayDouble  (const Image & image, Image & result) const;
+	void fromRGBAChar    (const Image & image, Image & result) const;
+	void fromRGBChar     (const Image & image, Image & result) const;
+	void fromRGBABits    (const Image & image, Image & result) const;
+	void fromYCbCrChar   (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getRGBA (void * pixel, float values[]) const;
@@ -573,13 +585,14 @@ namespace fl
 	PixelFormatGrayDouble ();
 
 	virtual Image filter (const Image & image);
-	void fromGrayChar  (const Image & image, Image & result) const;
-	void fromGrayShort (const Image & image, Image & result) const;
-	void fromGrayFloat (const Image & image, Image & result) const;
-	void fromRGBAChar  (const Image & image, Image & result) const;
-	void fromRGBChar   (const Image & image, Image & result) const;
-	void fromRGBABits  (const Image & image, Image & result) const;
-	void fromAny       (const Image & image, Image & result) const;
+	virtual void fromAny (const Image & image, Image & result) const;
+	void fromGrayChar    (const Image & image, Image & result) const;
+	void fromGrayShort   (const Image & image, Image & result) const;
+	void fromGrayFloat   (const Image & image, Image & result) const;
+	void fromRGBAChar    (const Image & image, Image & result) const;
+	void fromRGBChar     (const Image & image, Image & result) const;
+	void fromRGBABits    (const Image & image, Image & result) const;
+	void fromYCbCrChar   (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getRGBA (void * pixel, float values[]) const;
@@ -608,11 +621,12 @@ namespace fl
 	PixelFormatRGBABits (int depth, unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask);
 
 	virtual Image filter (const Image & image);
-	void fromGrayChar   (const Image & image, Image & result) const;
-	void fromGrayShort  (const Image & image, Image & result) const;
-	void fromGrayFloat  (const Image & image, Image & result) const;
-	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBABits   (const Image & image, Image & result) const;
+	void fromGrayChar    (const Image & image, Image & result) const;
+	void fromGrayShort   (const Image & image, Image & result) const;
+	void fromGrayFloat   (const Image & image, Image & result) const;
+	void fromGrayDouble  (const Image & image, Image & result) const;
+	void fromRGBABits    (const Image & image, Image & result) const;
+	void fromYCbCrChar   (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
@@ -635,10 +649,10 @@ namespace fl
 	PixelFormatRGBAChar ();
 
 	virtual Image filter (const Image & image);
-	void fromGrayChar   (const Image & image, Image & result) const;
-	void fromGrayFloat  (const Image & image, Image & result) const;
-	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBChar    (const Image & image, Image & result) const;
+	void fromGrayChar    (const Image & image, Image & result) const;
+	void fromGrayFloat   (const Image & image, Image & result) const;
+	void fromGrayDouble  (const Image & image, Image & result) const;
+	void fromRGBChar     (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA  (void * pixel) const;
 	virtual unsigned char getAlpha (void * pixel) const;
@@ -652,11 +666,11 @@ namespace fl
 	PixelFormatRGBChar ();
 
 	virtual Image filter (const Image & image);
-	void fromGrayChar   (const Image & image, Image & result) const;
-	void fromGrayShort  (const Image & image, Image & result) const;
-	void fromGrayFloat  (const Image & image, Image & result) const;
-	void fromGrayDouble (const Image & image, Image & result) const;
-	void fromRGBAChar   (const Image & image, Image & result) const;
+	void fromGrayChar    (const Image & image, Image & result) const;
+	void fromGrayShort   (const Image & image, Image & result) const;
+	void fromGrayFloat   (const Image & image, Image & result) const;
+	void fromGrayDouble  (const Image & image, Image & result) const;
+	void fromRGBAChar    (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA  (void * pixel) const;
 	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
@@ -695,19 +709,29 @@ namespace fl
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
   };
 
+  class PixelFormatYUV : public PixelFormat
+  {
+  public:
+	PixelFormatYUV (int ratioH, int ratioV) : ratioH (ratioH), ratioV (ratioV) {}
+
+	int ratioH;  ///< How many horizontal luma samples per chroma sample.
+	int ratioV;  ///< How many vertical luma samples per chroma sample.
+  };
+
   /**
 	 Assumes that pixel pairs are 32-bit word aligned.  So, if the pixel
 	 address falls in the center of a 32-bit word it must refer to the "VY"
 	 portion of the pair.  Likewise, an address that falls on a 32-bit boundary
 	 refers to the "UY" portion.
   **/
-  class PixelFormatUYVYChar : public PixelFormat
+  class PixelFormatUYVYChar : public PixelFormatYUV
   {
   public:
 	PixelFormatUYVYChar ();
 
 	virtual Image filter (const Image & image);
-	void fromYUYVChar (const Image & image, Image & result) const;
+	virtual void fromAny (const Image & image, Image & result) const;
+	void fromYUYVChar    (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual unsigned int  getYUV  (void * pixel) const;
@@ -717,13 +741,14 @@ namespace fl
   };
 
   /// Same as UYVY, but with different ordering within the dwords
-  class PixelFormatYUYVChar : public PixelFormat
+  class PixelFormatYUYVChar : public PixelFormatYUV
   {
   public:
 	PixelFormatYUYVChar ();
 
 	virtual Image filter (const Image & image);
-	void fromUYVYChar (const Image & image, Image & result) const;
+	virtual void fromAny (const Image & image, Image & result) const;
+	void fromUYVYChar    (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual unsigned int  getYUV  (void * pixel) const;
@@ -735,7 +760,7 @@ namespace fl
   /**
 	 YUV 444 format (1394 mode 0 format 0)
    **/
-  class PixelFormatUYVChar : public PixelFormat
+  class PixelFormatUYVChar : public PixelFormatYUV
   {
   public:
 	PixelFormatUYVChar ();
@@ -745,6 +770,51 @@ namespace fl
 	virtual unsigned char getGray (void * pixel) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
 	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
+  };
+
+  class PixelFormatPlanarYUVChar : public PixelFormatYUV
+  {
+  public:
+	PixelFormatPlanarYUVChar (int ratioH, int ratioV);
+
+	virtual void fromAny (const Image & image, Image & result) const;
+
+	virtual bool operator == (const PixelFormat & that) const;
+
+	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual unsigned int  getYUV  (void * pixel) const;
+	virtual unsigned char getGray (void * pixel) const;
+	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
+	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
+  };
+
+  /**
+	 Same as PixelFormatPlanarYUVChar, except that 16 <= Y <= 235 and
+	 16 <= U,V <= 240.  Video standards call for footroom and headroom
+	 to allow for analog signal overshoots.
+   **/
+  class PixelFormatPlanarYCbCrChar : public PixelFormatYUV
+  {
+  public:
+	PixelFormatPlanarYCbCrChar (int ratioH, int ratioV);
+
+	virtual void fromAny (const Image & image, Image & result) const;
+
+	virtual bool operator == (const PixelFormat & that) const;
+
+	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual unsigned int  getYUV  (void * pixel) const;
+	virtual void          getGray (void * pixel, float & gray) const;
+	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
+	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
+	virtual void          setGray (void * pixel, float gray) const;
+
+	static unsigned char * lutYin;
+	static unsigned char * lutUVin;
+	static unsigned char * lutYout;
+	static unsigned char * lutUVout;
+	static float *         lutGrayOut;
+	static unsigned char * buildAll ();  ///< Returns the value of lutYin, but actually constructs and assigns all 6 luts.
   };
 
   class PixelFormatHLSFloat : public PixelFormat
@@ -760,45 +830,22 @@ namespace fl
 	float HLSvalue (const float & n1, const float & n2, float h) const;  ///< Subroutine of getRGBA(floats).
   };
 
-  class PixelFormatPlanar : public PixelFormat
-  {
-  public:
-	PixelFormatPlanar (int ratioH, int ratioV) : ratioH (ratioH), ratioV (ratioV) {}
-
-	virtual PixelBuffer * buffer () const;
-
-	int ratioH;  ///< How many horizontal samples in first (luma) plane per sample in subsequent (chroma) planes
-	int ratioV;  ///< How many vertical samples in first (luma) plane per sample in subsequent (chroma) planes
-  };
-
-  class PixelFormatPlanarYUVChar : public PixelFormatPlanar
-  {
-  public:
-	PixelFormatPlanarYUVChar (int ratioH, int ratioV);
-
-	virtual unsigned int  getRGBA (void * pixel) const;
-	virtual unsigned int  getYUV  (void * pixel) const;
-	virtual unsigned char getGray (void * pixel) const;
-	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
-	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
-  };
-
-  extern PixelFormatGrayChar      GrayChar;
-  extern PixelFormatGrayShort     GrayShort;
-  extern PixelFormatGrayFloat     GrayFloat;
-  extern PixelFormatGrayDouble    GrayDouble;
-  extern PixelFormatRGBAChar      RGBAChar;
-  extern PixelFormatRGBAShort     RGBAShort;
-  extern PixelFormatRGBAFloat     RGBAFloat;
-  extern PixelFormatRGBChar       RGBChar;
-  extern PixelFormatRGBShort      RGBShort;
-  extern PixelFormatRGBABits      BGRChar;
-  extern PixelFormatUYVYChar      UYVYChar;
-  extern PixelFormatYUYVChar      YUYVChar;
-  extern PixelFormatUYVChar       UYVChar;
-  extern PixelFormatPlanarYUVChar YUV420;
-  extern PixelFormatPlanarYUVChar YUV411;
-  extern PixelFormatHLSFloat      HLSFloat;
+  extern PixelFormatGrayChar           GrayChar;
+  extern PixelFormatGrayShort          GrayShort;
+  extern PixelFormatGrayFloat          GrayFloat;
+  extern PixelFormatGrayDouble         GrayDouble;
+  extern PixelFormatRGBAChar           RGBAChar;
+  extern PixelFormatRGBAShort          RGBAShort;
+  extern PixelFormatRGBAFloat          RGBAFloat;
+  extern PixelFormatRGBChar            RGBChar;
+  extern PixelFormatRGBShort           RGBShort;
+  extern PixelFormatRGBABits           BGRChar;
+  extern PixelFormatUYVYChar           UYVYChar;
+  extern PixelFormatYUYVChar           YUYVChar;
+  extern PixelFormatUYVChar            UYVChar;
+  extern PixelFormatPlanarYCbCrChar    YUV420;
+  extern PixelFormatPlanarYCbCrChar    YUV411;
+  extern PixelFormatHLSFloat           HLSFloat;
 
   // Naming convention for RGBABits:
   // R<red bits>G<green bits>B<blue bits>
