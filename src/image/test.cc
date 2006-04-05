@@ -98,6 +98,14 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 {
   cerr << typeid (*targetFormat).name () << endl;
 
+  const float thresholdRatio         = 1.01f;
+  const float thresholdDifference    = 0.01f;
+  const int   thresholdLuma          = 1;
+  const int   thresholdChroma        = 1;
+  const int   thresholdLumaClipped   = 3;
+  const int   thresholdChromaClipped = 4;
+  const int   thresholdLumaAccessor  = 2;  // higher because errors in YUV<->RGB conversion get magnified by gray conversion
+
   // Convert from every other format into the target one.
   for (int i = 0; i < formats.size (); i++)
   {
@@ -105,6 +113,10 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	cerr << "  from " << typeid (*fromFormat).name () << endl;
 
 	Image fromImage = test * *fromFormat;
+	// Make stride larger than width to verify PixelBufferPacked operation
+	// and correct looping in converters.
+	fromImage.buffer->resize (fromImage.width + 16, fromImage.height, *fromFormat, true);
+
 	Image toImage = fromImage * *targetFormat;
 
 	if (toImage.width != test.width  ||  toImage.height != test.height)
@@ -113,13 +125,6 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	}
 
 	// Verify
-	const float thresholdRatio         = 1.01f;
-	const float thresholdFloat         = 0.01f;
-	const int   thresholdLuma          = 1;
-	const int   thresholdChroma        = 1;
-	const int   thresholdLumaClipped   = 3;
-	const int   thresholdChromaClipped = 4;
-
 	if (fromFormat->monochrome  ||  targetFormat->monochrome)
 	{
 	  bool approximate = true;
@@ -143,7 +148,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 		  float ratio = original / converted;
 		  if (ratio < 1.0f) ratio = 1.0f / ratio;
 		  float difference = fabs (original - converted);
-		  if (ratio > thresholdRatio  &&  difference > thresholdFloat)
+		  if (ratio > thresholdRatio  &&  difference > thresholdDifference)
 		  {
 			if (approximate)
 			{
@@ -271,7 +276,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 			float ratio = original[r] / converted[r];
 			if (ratio < 1.0f) ratio = 1.0f / ratio;
 			float difference = fabs (original[r] - converted[r]);
-			if (ratio > thresholdRatio  &&  difference > thresholdFloat)
+			if (ratio > thresholdRatio  &&  difference > thresholdDifference)
 			{
 			  cout << x << " " << y << " unexpected change in color value: " << ratio << endl << original << endl << converted << endl;
 			  throw "PixelFormat fails";
@@ -282,7 +287,190 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	}
   }
 
-  // Verify all getters and setters.
+  // Verify all accessors
+  cerr << "  checking accessors";
+  Image target (16, 16, *targetFormat);
+  if (targetFormat->monochrome)
+  {
+	bool approximate = true;
+	Vector<float> rgbaFloatIn (4);
+	rgbaFloatIn[3] = 1.0f;
+	for (int r = 0; r < 256; r++)
+	{
+	  rgbaFloatIn[0] = fl::PixelFormat::lutChar2Float[r];
+	  for (int g = 0; g < 256; g++)
+	  {
+		rgbaFloatIn[1] = fl::PixelFormat::lutChar2Float[g];
+		for (int b = 0; b < 256; b++)
+		{
+		  rgbaFloatIn[2] = fl::PixelFormat::lutChar2Float[b];
+
+		  // Expectations
+		  float grayExact = rgbaFloatIn[0] * 0.2126 + rgbaFloatIn[1] * 0.7152 + rgbaFloatIn[2] * 0.0722;
+		  float grayFloat;
+		  int grayChar;
+		  if (approximate)
+		  {
+			grayChar = (((76 << 8) * r + (150 << 8) * g + (29 << 8) * b) / 255 + 0x80) >> 8;
+			grayFloat = fl::PixelFormat::lutChar2Float[grayChar];
+		  }
+		  else
+		  {
+			grayFloat = grayExact;
+			grayChar = fl::PixelFormat::lutFloat2Char[(unsigned short) (65535 * grayFloat)];
+		  }
+
+		  // get/setRGBA
+		  unsigned int rgbaIn = ((unsigned int) r << 24) | (g << 16) | (b << 8) | 0xFF;
+		  target.setRGBA (0, 0, rgbaIn);
+		  unsigned int rgbaOut = target.getRGBA (0, 0);
+		  bool allEqual =    rgbaOut >> 24 == (rgbaOut & 0xFF0000) >> 16
+		                  && rgbaOut >> 24 == (rgbaOut & 0xFF00) >> 8;
+		  if (! allEqual)
+		  {
+			cout << r << " " << g << " " << b << " getRGBA returned non-gray value: " << hex << grayChar << " " << rgbaOut << dec << endl;
+			throw "PixelFormat fails";
+		  }
+		  if (abs (grayChar - (int) (rgbaOut >> 24)) > thresholdLuma)
+		  {
+			if (approximate)
+			{
+			  approximate = false;
+			  cerr << "    switching to exact gray" << endl;
+			  continue;
+			}
+			cout << r << " " << g << " " << b << " getRGBA returned unexpected gray value: " << hex << grayChar << " " << rgbaOut << dec << endl;
+			throw "PixelFormat fails";
+		  }
+
+		  // get/setRGBA(float)
+		  target.setRGBA (0, 0, &rgbaFloatIn[0]);
+		  Vector<float> rgbaFloatOut (4);
+		  target.getRGBA (0, 0, &rgbaFloatOut[0]);
+		  allEqual =    rgbaFloatOut[0] == rgbaFloatOut[1]
+		             && rgbaFloatOut[0] == rgbaFloatOut[2];
+		  if (! allEqual)
+		  {
+			cout << r << " " << g << " " << b << " getRGBA returned non-gray value: " << hex << grayChar << dec << endl << rgbaFloatOut << endl;
+			throw "PixelFormat fails";
+		  }
+		  float ratio = rgbaFloatOut[0] / grayFloat;
+		  if (ratio < 1.0f) ratio = 1.0f / ratio;
+		  float difference = fabs (rgbaFloatOut[0] - grayFloat);
+		  if (ratio > thresholdRatio  &&  difference > thresholdDifference)
+		  {
+			cout << r << " " << g << " " << b << " getRGBA returned unexpected gray value: " << grayFloat << " " << rgbaFloatOut[0] << endl;
+			throw "PixelFormat fails";
+		  }
+
+		  // get/setXYZ
+		  Vector<float> xyzIn (3);
+		  xyzIn[0] = 0.4124f * rgbaFloatIn[0] + 0.3576f * rgbaFloatIn[1] + 0.1805f * rgbaFloatIn[2];
+		  xyzIn[1] = grayExact;
+		  xyzIn[2] = 0.0193f * rgbaFloatIn[0] + 0.1192f * rgbaFloatIn[1] + 0.9505f * rgbaFloatIn[2];
+		  target.setXYZ (0, 0, &xyzIn[0]);
+		  Vector<float> xyzOut (3);
+		  target.getXYZ (0, 0, &xyzOut[0]);
+		  if (xyzOut[0] != 0  ||  xyzOut[2] != 0)
+		  {
+			cout << r << " " << g << " " << b << " getXYZ returned non-gray value: " << xyzOut << endl;
+			throw "PixelFormat failed";
+		  }
+		  ratio = xyzOut[1] / grayExact;
+		  if (ratio < 1.0f) ratio = 1.0f / ratio;
+		  difference = xyzOut[1] - grayExact;
+		  if (ratio > thresholdRatio  &&   difference > thresholdDifference)
+		  {
+			cout << r << " " << g << " " << b << " getXYZ returned unexpected gray value: " << grayExact << " " << xyzOut[1] << endl;
+			throw "PixelFormat failed";
+		  }
+
+		  // get/setYUV
+		  unsigned int y = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) & 0xFF0000;
+		  unsigned int u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) & 0xFF0000;
+		  unsigned int v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) & 0xFF0000;
+		  unsigned int yuvIn = y | (u >> 8) | (v >> 16);
+		  target.setYUV (0, 0, yuvIn);
+		  unsigned int yuvOut = target.getYUV (0, 0);
+		  u = (yuvOut & 0xFF00) >> 8;
+		  v =  yuvOut &   0xFF;
+		  if (abs ((int) u - 128) > thresholdChroma  ||  abs ((int) v - 128) > thresholdChroma)
+		  {
+			cout << r << " " << g << " " << b << " getYUV returned non-gray value: " << hex << yuvOut << dec << endl;
+			throw "PixelFormat failed";
+		  }
+		  y = yuvOut >> 16;
+		  if (abs (grayChar - (int) y) > thresholdLumaAccessor)
+		  {
+			cout << r << " " << g << " " << b << " getYUV returned unexpected gray value: " << hex << grayChar << " " << yuvOut << dec << endl;
+			throw "PixelFormat failed";
+		  }
+
+		  // get/setGray
+		  target.setGray (0, 0, (unsigned char) grayChar);
+		  int grayOut = target.getGray (0, 0);
+		  if (abs (grayOut - grayChar) > thresholdLuma)
+		  {
+			cout << r << " " << g << " " << b << " getGray returned unexpected value: " << hex << grayChar << " " << grayOut << dec << endl;
+			throw "PixelFormat failed";
+		  }
+
+		  // get/setGray(float)
+		  target.setGray (0, 0, grayFloat);
+		  float grayOutFloat;
+		  target.getGray (0, 0, grayOutFloat);
+		  ratio = grayOutFloat / grayFloat;
+		  if (ratio < 1.0f) ratio = 1.0f / ratio;
+		  difference = fabs (grayOutFloat - grayFloat);
+		  if (ratio > thresholdRatio  &&   difference > thresholdDifference)
+		  {
+			cout << r << " " << g << " " << b << " getGray returned unexpected value: " << grayFloat << " " << grayOutFloat << endl;
+			throw "PixelFormat failed";
+		  }
+		}
+	  }
+	  cerr << ".";
+	}
+	cerr << endl;
+  }
+  else
+  {
+	for (int r = 0; r < 256; r++)
+	{
+	  for (int g = 0; g < 256; g++)
+	  {
+		for (int b = 0; b < 256; b++)
+		{
+		  // get/setRGBA
+
+		  // get/setRGBA(float)
+
+		  // get/setXYZ
+
+		  // get/setYUV
+
+		  // get/setGray
+
+		  // get/setGray(float)
+		}
+	  }
+	}
+  }
+
+  // get/setAlpha
+  if (targetFormat->hasAlpha)
+  {
+	for (int a = 0; a < 256; a++)
+	{
+	  target.setAlpha (0, 0, a);
+	  int alphaOut = target.getAlpha (0, 0);
+	  if (abs (alphaOut - a) > thresholdLuma)
+	  {
+		cout << "Unexpected alpha value: " << hex << a << " " << alphaOut << dec << endl;
+		throw "PixelFormat fails";
+	  }
+	}
+  }
 }
 
 
@@ -312,6 +500,7 @@ main (int argc, char * argv[])
 	  formats.push_back (&YUV420);
 	  formats.push_back (&YUV411);
 	  formats.push_back (&HLSFloat);
+	  formats.push_back (&BGRChar);
 
 	  Image test ("test.jpg");
 
