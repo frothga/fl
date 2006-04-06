@@ -125,7 +125,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	}
 
 	// Verify
-	if (fromFormat->monochrome  ||  targetFormat->monochrome)
+	if (targetFormat->monochrome)
 	{
 	  bool approximate = true;
 	  for (int y = 0; y < fromImage.height; y++)
@@ -261,6 +261,70 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	  }
 
 	}
+	else if (const PixelFormatRGBABits * pfbits = dynamic_cast<const PixelFormatRGBABits *> (targetFormat))
+	{
+	  int rbits = pfbits->redBits;
+	  int gbits = pfbits->greenBits;
+	  int bbits = pfbits->blueBits;
+	  int abits = 8;
+	  if (const PixelFormatRGBABits * frombits = dynamic_cast<const PixelFormatRGBABits *> (fromFormat))
+	  {
+		if (*fromFormat != *targetFormat)
+		{
+		  int oabits = frombits->alphaBits;
+		  if (oabits < 8)
+		  {
+			abits = pfbits->alphaBits;
+			abits = min (abits, oabits);
+			if (abits == 0) abits = 8;  // if no alpha channel, then expect it to be faked as 0xFF
+		  }
+		}
+	  }
+	  rbits = min (rbits, 8);
+	  gbits = min (gbits, 8);
+	  bbits = min (bbits, 8);
+	  rbits = 8 - rbits;
+	  gbits = 8 - gbits;
+	  bbits = 8 - bbits;
+	  abits = 8 - abits;
+	  unsigned int omask =   ((0xFF >> rbits) << (24 + rbits))
+	                       | ((0xFF >> gbits) << (16 + gbits))
+	                       | ((0xFF >> bbits) << ( 8 + bbits))
+	                       | ((0xFF >> abits) <<       abits );
+
+	  for (int y = 0; y < fromImage.height; y++)
+	  {
+		for (int x = 0; x < fromImage.width; x++)
+		{
+		  unsigned int original  = fromImage.getRGBA (x, y);
+		  unsigned int converted = toImage.getRGBA (x, y);
+		  original &= omask;
+
+		  int r =  original             >> 24;
+		  int g = (original & 0xFF0000) >> 16;
+		  int b = (original &   0xFF00) >>  8;
+		  int a =  original &     0xFF;
+
+		  int cr =  converted             >> 24;
+		  int cg = (converted & 0xFF0000) >> 16;
+		  int cb = (converted &   0xFF00) >>  8;
+		  int ca =  converted &     0xFF;
+
+		  int er = abs (r - cr);
+		  int eg = abs (g - cg);
+		  int eb = abs (b - cb);
+		  int ea = abs (a - ca);
+		  int error = max (er, eg, eb, ea);
+		  if (error > thresholdLuma)
+		  {
+			cout << x << " " << y << " unexpected change in color value: " << error << " " << hex << original << " " << converted << dec << endl;
+			cerr << "bits = " << rbits << " " << gbits << " " << bbits << " " << abits << endl;
+			cerr << "omask = " << hex << omask << dec << endl;
+			throw "PixelFormat fails";
+		  }
+		}
+	  }
+	}
 	else
 	{
 	  Vector<float> original (4);
@@ -286,6 +350,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	  }
 	}
   }
+
 
   // Verify all accessors
   cerr << "  checking accessors";
@@ -435,13 +500,20 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
   }
   else
   {
+	Vector<float> rgbaFloatIn (4);
+	rgbaFloatIn[3] = 1.0f;
 	for (int r = 0; r < 256; r++)
 	{
+	  rgbaFloatIn[0] = fl::PixelFormat::lutChar2Float[r];
 	  for (int g = 0; g < 256; g++)
 	  {
+		rgbaFloatIn[1] = fl::PixelFormat::lutChar2Float[g];
 		for (int b = 0; b < 256; b++)
 		{
+		  rgbaFloatIn[2] = fl::PixelFormat::lutChar2Float[b];
+
 		  // get/setRGBA
+		  
 
 		  // get/setRGBA(float)
 
@@ -484,6 +556,12 @@ main (int argc, char * argv[])
 
 	// PixelFormat
 	{
+	  // Create some formats to more fully test RGBABits
+	  PixelFormatRGBABits R2G3B2A0 (1, 0x03, 0x1C, 0x60, 0);
+	  PixelFormatRGBABits R5G6B5A0 (2, 0xF800, 0x07E0, 0x001F, 0);
+	  PixelFormatRGBABits R8G8B8A0 (3, 0xFF0000, 0x00FF00, 0x0000FF, 0);
+	  PixelFormatRGBABits R9G9B9A5 (4, 0xFF800000, 0x007FC000, 0x00003FE0, 0x0000001F);
+
 	  vector<fl::PixelFormat *> formats;
 	  formats.push_back (&GrayChar);
 	  formats.push_back (&GrayShort);
@@ -501,6 +579,10 @@ main (int argc, char * argv[])
 	  formats.push_back (&YUV411);
 	  formats.push_back (&HLSFloat);
 	  formats.push_back (&BGRChar);
+	  formats.push_back (&R2G3B2A0);
+	  formats.push_back (&R5G6B5A0);
+	  formats.push_back (&R8G8B8A0);
+	  formats.push_back (&R9G9B9A5);
 
 	  Image test ("test.jpg");
 
