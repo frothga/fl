@@ -636,11 +636,16 @@ namespace fl
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
 
 	void shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift) const;
+	static int countBits (unsigned int mask);
 
 	unsigned int redMask;
 	unsigned int greenMask;
 	unsigned int blueMask;
 	unsigned int alphaMask;
+	int redBits;
+	int greenBits;
+	int blueBits;
+	int alphaBits;
   };
 
   class PixelFormatRGBAChar : public PixelFormatRGBABits
