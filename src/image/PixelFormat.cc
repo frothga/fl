@@ -23,6 +23,9 @@ for details.
 03/2006 Fred Rothganger -- Move endian code to endian.h
 
 $Log$
+Revision 1.35  2006/04/06 03:48:42  Fred
+Count bits in each color mask and include that info as metadata on RGBABits.  Add function "dublicate" which echoes the bits in a channel in order to fill out a wider channel.  Use to fill out alpha channel in RGBABits accessors.  Should use it for all converters as well, but that will slow them down.
+
 Revision 1.34  2006/04/05 02:40:57  Fred
 Handle stride != width.
 
@@ -1849,6 +1852,11 @@ PixelFormatRGBABits::PixelFormatRGBABits (int depth, unsigned int redMask, unsig
   this->blueMask  = blueMask;
   this->alphaMask = alphaMask;
 
+  redBits   = countBits (redMask);
+  greenBits = countBits (greenMask);
+  blueBits  = countBits (blueMask);
+  alphaBits = countBits (alphaMask);
+
   planes     = 1;
   precedence = 3;  // Above GrayChar and below all floating point formats
   monochrome = redMask == greenMask  &&  greenMask == blueMask;
@@ -2548,6 +2556,40 @@ PixelFormatRGBABits::shift (unsigned int redMask, unsigned int greenMask, unsign
   }
 }
 
+int
+PixelFormatRGBABits::countBits (unsigned int mask)
+{
+  int count = 0;
+  while (mask)
+  {
+	if (mask & 0x1) count++;
+	mask >>= 1;
+  }
+  return count;
+}
+
+static inline unsigned int
+dublicate (unsigned int value, int shift, int bits, int times)
+{
+  if (shift > 0)
+  {
+	value <<= shift;
+  }
+  else
+  {
+	value >>= -shift;
+  }
+
+  unsigned int result = value;
+  while (--times > 0)
+  {
+	value >>= bits;
+	result |= value;
+  }
+
+  return result;
+}
+
 unsigned int
 PixelFormatRGBABits::getRGBA (void * pixel) const
 {
@@ -2581,12 +2623,18 @@ PixelFormatRGBABits::getRGBA (void * pixel) const
   unsigned int r = value.all & redMask;
   unsigned int g = value.all & greenMask;
   unsigned int b = value.all & blueMask;
-  unsigned int a = alphaMask ? value.all & alphaMask : 0xFFFFFFFF;
+  unsigned int a = value.all & alphaMask;
+  int ab = alphaBits;
+  if (! alphaMask)
+  {
+	a = 0xFFFFFFFF;
+	ab = 8;
+  }
 
   return   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & 0xFF000000)
 		 | ((greenShift > 0 ? g << greenShift : g >> -greenShift) &   0xFF0000)
 		 | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  &     0xFF00)
-		 | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) &       0xFF);
+		 | (dublicate (a, alphaShift, alphaBits, 7 / ab + 1)      &       0xFF);
 }
 
 unsigned char
@@ -2619,7 +2667,7 @@ PixelFormatRGBABits::getAlpha (void * pixel) const
   unsigned int mask = alphaMask;
   while (mask >>= 1) {shift--;}
 
-  return (shift > 0 ? a << shift : a >> -shift) & 0xFF;
+  return dublicate (a, shift, alphaBits, 7 / alphaBits + 1) & 0xFF;
 }
 
 void
