@@ -270,8 +270,9 @@ namespace fl
 	virtual void clear ();
 	virtual bool operator == (const PixelBuffer & that) const;
 
-	Pointer buffer;
-	void * pixelArray[3];  ///< Temporary storage for marshalled addresses.  Not thread-safe.
+	int     stride;
+	Pointer memory;
+	void *  pixelArray[3];  ///< Temporary storage for marshalled addresses.  Not thread-safe.
   };
 
   /**
@@ -793,6 +794,14 @@ namespace fl
 	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
   };
 
+  class PixelFormatUYYVYY : public PixelFormatPlanarYUVChar
+  {
+  public:
+	PixelFormatUYYVYY ();
+
+	virtual PixelBuffer * buffer () const;
+  };
+
   /**
 	 Same as PixelFormatPlanarYUVChar, except that 16 <= Y <= 235 and
 	 16 <= U,V <= 240.  Video standards call for footroom and headroom
@@ -848,6 +857,7 @@ namespace fl
   extern PixelFormatUYVYChar           UYVYChar;
   extern PixelFormatYUYVChar           YUYVChar;
   extern PixelFormatUYVChar            UYVChar;
+  extern PixelFormatUYYVYY             UYYVYY;
   extern PixelFormatPlanarYCbCrChar    YUV420;
   extern PixelFormatPlanarYCbCrChar    YUV411;
   extern PixelFormatHLSFloat           HLSFloat;
