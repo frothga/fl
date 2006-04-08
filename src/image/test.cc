@@ -716,6 +716,7 @@ main (int argc, char * argv[])
 	  formats.push_back (&UYVYChar);
 	  formats.push_back (&YUYVChar);
 	  formats.push_back (&UYVChar);
+	  formats.push_back (&UYYVYY);
 	  formats.push_back (&YUV420);
 	  formats.push_back (&YUV411);
 	  formats.push_back (&HLSFloat);
