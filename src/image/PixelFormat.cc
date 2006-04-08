@@ -23,6 +23,11 @@ for details.
 03/2006 Fred Rothganger -- Move endian code to endian.h
 
 $Log$
+Revision 1.36  2006/04/08 14:46:16  Fred
+Add PixelFormatUYYVYY.  Fix deficiency in PlanarYUV::fromAny(): it now handles converting to a non-planar buffer, needed by UYYVYY.
+
+Guard PlanarYCbCr against similar deficiency, but don't fix for now, because no obvious need for it.
+
 Revision 1.35  2006/04/06 03:48:42  Fred
 Count bits in each color mask and include that info as metadata on RGBABits.  Add function "dublicate" which echoes the bits in a channel in order to fill out a wider channel.  Use to fill out alpha channel in RGBABits accessors.  Should use it for all converters as well, but that will slow them down.
 
@@ -105,6 +110,7 @@ PixelFormatRGBShort           fl::RGBShort;
 PixelFormatUYVYChar           fl::UYVYChar;
 PixelFormatYUYVChar           fl::YUYVChar;
 PixelFormatUYVChar            fl::UYVChar;
+PixelFormatUYYVYY             fl::UYYVYY;
 PixelFormatPlanarYCbCrChar    fl::YUV420 (2, 2);
 PixelFormatPlanarYCbCrChar    fl::YUV411 (4, 1);
 PixelFormatHLSFloat           fl::HLSFloat;
@@ -179,7 +185,7 @@ PixelFormat::filter (const Image & image)
 	return result;
   }
 
-  result.resize (image.width, image.height, depth);
+  result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
   fromAny (image, result);
@@ -479,7 +485,7 @@ PixelFormatGrayChar::filter (const Image & image)
 	return result;
   }
 
-  result.resize (image.width, image.height, depth);
+  result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayShort))
@@ -851,7 +857,7 @@ PixelFormatGrayShort::filter (const Image & image)
 	return result;
   }
 
-  result.resize (image.width, image.height, depth);
+  result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
   if (typeid (*image.format) == typeid (PixelFormatGrayChar))
@@ -1080,7 +1086,7 @@ PixelFormatGrayFloat::filter (const Image & image)
 	return result;
   }
 
-  result.resize (image.width, image.height, depth);
+  result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
@@ -1470,7 +1476,7 @@ PixelFormatGrayDouble::filter (const Image & image)
 	return result;
   }
 
-  result.resize (image.width, image.height, depth);
+  result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
@@ -1874,7 +1880,7 @@ PixelFormatRGBABits::filter (const Image & image)
 	return result;
   }
 
-  result.resize (image.width, image.height, depth);
+  result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
@@ -2753,7 +2759,7 @@ PixelFormatRGBAChar::filter (const Image & image)
 	return result;
   }
 
-  result.resize (image.width, image.height, depth);
+  result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
@@ -2949,7 +2955,7 @@ PixelFormatRGBChar::filter (const Image & image)
 	return result;
   }
 
-  result.resize (image.width, image.height, depth);
+  result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatGrayChar))
@@ -3313,7 +3319,7 @@ PixelFormatUYVYChar::filter (const Image & image)
   }
 
   assert (image.width % 2 == 0);  // No odd-width images allowed!
-  result.resize (image.width, image.height, depth);
+  result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatYUYVChar))
@@ -3549,7 +3555,7 @@ PixelFormatYUYVChar::filter (const Image & image)
 	return result;
   }
 
-  result.resize (image.width, image.height, depth);
+  result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
   if (typeid (* image.format) == typeid (PixelFormatUYVYChar))
@@ -3834,115 +3840,210 @@ PixelFormatPlanarYUVChar::fromAny (const Image & image, Image & result) const
   assert (image.width % ratioH == 0  &&  image.height % ratioV == 0);
 
   const PixelFormat * sourceFormat = image.format;
+  PixelBuffer *       sourceBuffer = (PixelBuffer *) image.buffer;
+  const int           sourceDepth  = sourceFormat->depth;
 
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   PixelBufferPlanar * o = (PixelBufferPlanar *) result.buffer;
-  unsigned char * Y = (unsigned char *) o->plane0;
-  unsigned char * U = (unsigned char *) o->plane1;
-  unsigned char * V = (unsigned char *) o->plane2;
 
-  const int rowWidth       = result.width;
-  const int blockRowWidth  = ratioH;
-  const int blockSwath     = o->stride0 * ratioV;
-  const int step12         = o->stride12 - result.width / ratioH;
-  const int toStep         = o->stride0 * ratioV - result.width;
-  const int toBlockStep    = ratioH - o->stride0 * ratioV;
-  const int toBlockRowStep = o->stride0 - ratioH;
+  int rowWidth      = result.width;
+  int blockRowWidth = ratioH;
 
   const unsigned int shift = 16 + (int) rint (log (ratioH * ratioV) / log (2));
-  const int bias = 0x808 << (shift - 4);  // include both bias and rounding in single constant
-  const int maximum = (~(unsigned int) 0) >> (24 - shift);
+  const int bias           = 0x808 << (shift - 4);  // include both bias and rounding in single constant
+  const int maximum        = (~(unsigned int) 0) >> (24 - shift);
 
-  if (i)
+  if (o)
   {
-	unsigned char * source = (unsigned char *) i->memory;
-	const int sourceDepth = sourceFormat->depth;
+	unsigned char * Y = (unsigned char *) o->plane0;
+	unsigned char * U = (unsigned char *) o->plane1;
+	unsigned char * V = (unsigned char *) o->plane2;
 
-	const int fromStep         = (i->stride * ratioV - image.width) * sourceDepth;
-	const int fromBlockStep    = (ratioH - i->stride * ratioV     ) * sourceDepth;
-	const int fromBlockRowStep = (i->stride - ratioH              ) * sourceDepth;
+	const int blockSwath     = o->stride0 * ratioV;
+	const int step12         = o->stride12 - result.width / ratioH;
+	const int toStep         = o->stride0 * ratioV - result.width;
+	const int toBlockStep    = ratioH - o->stride0 * ratioV;
+	const int toBlockRowStep = o->stride0 - ratioH;
 
-	unsigned char * end = Y + result.width * result.height;
-	while (Y < end)
+	if (i)
 	{
-	  unsigned char * rowEnd = Y + rowWidth;
-	  while (Y < rowEnd)
+	  unsigned char * source = (unsigned char *) i->memory;
+
+	  const int fromStep         = (i->stride * ratioV - image.width) * sourceDepth;
+	  const int fromBlockStep    = (ratioH - i->stride * ratioV     ) * sourceDepth;
+	  const int fromBlockRowStep = (i->stride - ratioH              ) * sourceDepth;
+
+	  unsigned char * end = Y + result.width * result.height;
+	  while (Y < end)
 	  {
-		int r = 0;
-		int g = 0;
-		int b = 0;
-		unsigned char * blockEnd = Y + blockSwath;
-		while (Y < blockEnd)
+		unsigned char * rowEnd = Y + rowWidth;
+		while (Y < rowEnd)
 		{
-		  unsigned char * blockRowEnd = Y + blockRowWidth;
-		  while (Y < blockRowEnd)
+		  int r = 0;
+		  int g = 0;
+		  int b = 0;
+		  unsigned char * blockEnd = Y + blockSwath;
+		  while (Y < blockEnd)
 		  {
-			unsigned int rgba = sourceFormat->getRGBA (source);
-			source += sourceDepth;
-			int sr =  rgba             >> 24;  // assumes 32-bit int
-			int sg = (rgba & 0xFF0000) >> 16;
-			int sb = (rgba &   0xFF00) >>  8;
-			r += sr;
-			g += sg;
-			b += sb;
-			*Y++ = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			unsigned char * blockRowEnd = Y + blockRowWidth;
+			while (Y < blockRowEnd)
+			{
+			  unsigned int rgba = sourceFormat->getRGBA (source);
+			  source += sourceDepth;
+			  int sr =  rgba             >> 24;  // assumes 32-bit int
+			  int sg = (rgba & 0xFF0000) >> 16;
+			  int sb = (rgba &   0xFF00) >>  8;
+			  r += sr;
+			  g += sg;
+			  b += sb;
+			  *Y++ = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			}
+			Y += toBlockRowStep;
+			source += fromBlockRowStep;
 		  }
-		  Y += toBlockRowStep;
-		  source += fromBlockRowStep;
+		  *U++ = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
+		  *V++ = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
+		  Y += toBlockStep;
+		  source += fromBlockStep;
 		}
-		*U++ = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
-		*V++ = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
-		Y += toBlockStep;
-		source += fromBlockStep;
+		Y += toStep;
+		source += fromStep;
+		U += step12;
+		V += step12;
 	  }
-	  Y += toStep;
-	  source += fromStep;
-	  U += step12;
-	  V += step12;
+	}
+	else
+	{
+	  int y = 0;
+	  unsigned char * end = Y + result.width * result.height;
+	  while (Y < end)
+	  {
+		int x = 0;
+		unsigned char * rowEnd = Y + rowWidth;
+		while (Y < rowEnd)
+		{
+		  int r = 0;
+		  int g = 0;
+		  int b = 0;
+		  unsigned char * blockEnd = Y + blockSwath;
+		  while (Y < blockEnd)
+		  {
+			unsigned char * blockRowEnd = Y + blockRowWidth;
+			while (Y < blockRowEnd)
+			{
+			  unsigned int rgba = sourceFormat->getRGBA (sourceBuffer->pixel (x++, y));
+			  int sr =  rgba             >> 24;
+			  int sg = (rgba & 0xFF0000) >> 16;
+			  int sb = (rgba &   0xFF00) >>  8;
+			  r += sr;
+			  g += sg;
+			  b += sb;
+			  *Y++ = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			}
+			Y += toBlockRowStep;
+			x -= ratioH;
+			y++;
+		  }
+		  *U++ = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
+		  *V++ = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
+		  Y += toBlockStep;
+		  x += ratioH;
+		  y -= ratioV;
+		}
+		Y += toStep;
+		y += ratioV;
+		U += step12;
+		V += step12;
+	  }
 	}
   }
   else
   {
-	int y = 0;
-	unsigned char * end = Y + result.width * result.height;
-	while (Y < end)
+	PixelBuffer * destBuffer = (PixelBuffer *) result.buffer;
+
+	if (i)
 	{
-	  int x = 0;
-	  unsigned char * rowEnd = Y + rowWidth;
-	  while (Y < rowEnd)
+	  unsigned char * source = (unsigned char *) i->memory;
+
+	  rowWidth      *= sourceDepth;
+	  blockRowWidth *= sourceDepth;
+	  const int blockSwath       = (i->stride * ratioV              ) * sourceDepth;
+	  const int fromStep         = (i->stride * ratioV - image.width) * sourceDepth;
+	  const int fromBlockStep    = (ratioH - i->stride * ratioV     ) * sourceDepth;
+	  const int fromBlockRowStep = (i->stride - ratioH              ) * sourceDepth;
+
+	  int y = 0;
+	  unsigned char * end = source + i->stride * image.height * sourceDepth;
+	  while (source < end)
 	  {
-		int r = 0;
-		int g = 0;
-		int b = 0;
-		unsigned char * blockEnd = Y + blockSwath;
-		while (Y < blockEnd)
+		int x = 0;
+		unsigned char * rowEnd = source + rowWidth;
+		while (source < rowEnd)
 		{
-		  unsigned char * blockRowEnd = Y + blockRowWidth;
-		  while (Y < blockRowEnd)
+		  int r = 0;
+		  int g = 0;
+		  int b = 0;
+		  unsigned char * blockEnd = source + blockSwath;
+		  while (source < blockEnd)
 		  {
-			unsigned int rgba = sourceFormat->getRGBA (image.buffer->pixel (x++, y));
-			int sr =  rgba             >> 24;  // assumes 32-bit int
-			int sg = (rgba & 0xFF0000) >> 16;
-			int sb = (rgba &   0xFF00) >>  8;
-			r += sr;
-			g += sg;
-			b += sb;
-			*Y++ = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			unsigned char * blockRowEnd = source + blockRowWidth;
+			while (source < blockRowEnd)
+			{
+			  unsigned int rgba = sourceFormat->getRGBA (source);
+			  source += sourceDepth;
+			  int sr =  rgba             >> 24;  // assumes 32-bit int
+			  int sg = (rgba & 0xFF0000) >> 16;
+			  int sb = (rgba &   0xFF00) >>  8;
+			  r += sr;
+			  g += sg;
+			  b += sb;
+			  *((unsigned char **) destBuffer->pixel (x++, y))[0] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			}
+			source += fromBlockRowStep;
+			x -= ratioH;
+			y++;
 		  }
-		  Y += toBlockRowStep;
-		  x -= ratioH;
-		  y++;
+		  y -= ratioV;
+		  unsigned char ** pixel = (unsigned char **) destBuffer->pixel (x, y);
+		  *pixel[1] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
+		  *pixel[2] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
+		  source += fromBlockStep;
+		  x += ratioH;
 		}
-		*U++ = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
-		*V++ = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
-		Y += toBlockStep;
-		x += ratioH;
-		y -= ratioV;
+		source += fromStep;
+		y += ratioV;
 	  }
-	  Y += toStep;
-	  y += ratioV;
-	  U += step12;
-	  V += step12;
+	}
+	else
+	{
+	  for (int y = 0; y < result.height; y += ratioV)
+	  {
+		for (int x = 0; x < result.width; x += ratioH)
+		{
+		  int r = 0;
+		  int g = 0;
+		  int b = 0;
+		  int yend = y + ratioV;
+		  int xend = x + ratioH;
+		  for (int yy = y; yy < yend; yy++)
+		  {
+			for (int xx = x; xx < xend; xx++)
+			{
+			  unsigned int rgba = sourceFormat->getRGBA (sourceBuffer->pixel (xx, yy));
+			  int sr =  rgba             >> 24;
+			  int sg = (rgba & 0xFF0000) >> 16;
+			  int sb = (rgba &   0xFF00) >>  8;
+			  r += sr;
+			  g += sg;
+			  b += sb;
+			  *((unsigned char **) destBuffer->pixel (xx, yy))[0] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			}
+		  }
+		  unsigned char ** pixel = (unsigned char **) destBuffer->pixel (x, y);
+		  *pixel[1] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
+		  *pixel[2] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
+		}
+	  }
 	}
   }
 }
@@ -4003,6 +4104,20 @@ PixelFormatPlanarYUVChar::setYUV  (void * pixel, unsigned int yuv) const
 }
 
 
+// class PixelFormatUYYVYY ----------------------------------------------------
+
+PixelFormatUYYVYY::PixelFormatUYYVYY ()
+: PixelFormatPlanarYUVChar (4, 1)
+{
+}
+
+PixelBuffer *
+PixelFormatUYYVYY::buffer () const
+{
+  return new PixelBufferUYYVYY;
+}
+
+
 // class PixelFormatPlanarYCbCrChar -------------------------------------------
 
 unsigned char * PixelFormatPlanarYCbCrChar::lutYin = PixelFormatPlanarYCbCrChar::buildAll ();
@@ -4060,6 +4175,7 @@ PixelFormatPlanarYCbCrChar::fromAny (const Image & image, Image & result) const
 
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   PixelBufferPlanar * o = (PixelBufferPlanar *) result.buffer;
+  assert (o);
   unsigned char * Y  = (unsigned char *) o->plane0;
   unsigned char * Cb = (unsigned char *) o->plane1;
   unsigned char * Cr = (unsigned char *) o->plane2;
