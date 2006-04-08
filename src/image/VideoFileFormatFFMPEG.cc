@@ -457,11 +457,11 @@ VideoInFileFFMPEG::extractImage (Image & image)
   }
   else if (cc->pix_fmt == PIX_FMT_YUV422)
   {
-	image.attach (picture.data[0], cc->width, cc->height, YUYVChar);
+	image.attach (picture.data[0], cc->width, cc->height, YUYV);
   }
   else if (cc->pix_fmt == PIX_FMT_UYVY422)
   {
-	image.attach (picture.data[0], cc->width, cc->height, UYVYChar);
+	image.attach (picture.data[0], cc->width, cc->height, UYVY);
   }
   else if (cc->pix_fmt == PIX_FMT_RGB24)
   {
@@ -672,10 +672,10 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 			if (*image.format == BGRChar) best = *p;
 			break;
 		  case PIX_FMT_YUV422:
-			if (*image.format == YUYVChar) best = *p;
+			if (*image.format == YUYV) best = *p;
 			break;
 		  case PIX_FMT_UYVY422:
-			if (*image.format == UYVYChar) best = *p;
+			if (*image.format == UYVY) best = *p;
 			break;
 		  case PIX_FMT_GRAY8:
 			if (*image.format == GrayChar) best = *p;
@@ -714,12 +714,12 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	sourceFormat = PIX_FMT_RGB24;
 	sourceImage = image;
   }
-  else if (*image.format == UYVYChar)
+  else if (*image.format == UYVY)
   {
 	sourceFormat = PIX_FMT_UYVY422;
 	sourceImage = image;
   }
-  else if (*image.format == YUYVChar)
+  else if (*image.format == YUYV)
   {
 	sourceFormat = PIX_FMT_YUV422;
 	sourceImage = image;

@@ -23,6 +23,9 @@ for details.
 03/2006 Fred Rothganger -- Move endian code to endian.h
 
 $Log$
+Revision 1.37  2006/04/08 15:16:08  Fred
+Strip "Char" from all YUV-type formats.  It is ugly, and doesn't add any information in this case.
+
 Revision 1.36  2006/04/08 14:46:16  Fred
 Add PixelFormatUYYVYY.  Fix deficiency in PlanarYUV::fromAny(): it now handles converting to a non-planar buffer, needed by UYYVYY.
 
@@ -107,12 +110,12 @@ PixelFormatRGBAShort          fl::RGBAShort;
 PixelFormatRGBAFloat          fl::RGBAFloat;
 PixelFormatRGBChar            fl::RGBChar;
 PixelFormatRGBShort           fl::RGBShort;
-PixelFormatUYVYChar           fl::UYVYChar;
-PixelFormatYUYVChar           fl::YUYVChar;
-PixelFormatUYVChar            fl::UYVChar;
+PixelFormatUYVY           fl::UYVY;
+PixelFormatYUYV           fl::YUYV;
+PixelFormatUYV            fl::UYV;
 PixelFormatUYYVYY             fl::UYYVYY;
-PixelFormatPlanarYCbCrChar    fl::YUV420 (2, 2);
-PixelFormatPlanarYCbCrChar    fl::YUV411 (4, 1);
+PixelFormatPlanarYCbCr    fl::YUV420 (2, 2);
+PixelFormatPlanarYCbCr    fl::YUV411 (4, 1);
 PixelFormatHLSFloat           fl::HLSFloat;
 
 // These "bits" formats must be endian independent.
@@ -306,7 +309,7 @@ PixelFormat::getXYZ (void * pixel, float values[]) const
 }
 
 /**
-   See PixelFormatUYVYChar::setRGBA() for more details on the conversion matrix.
+   See PixelFormatUYVY::setRGBA() for more details on the conversion matrix.
  **/
 unsigned int
 PixelFormat::getYUV  (void * pixel) const
@@ -508,9 +511,9 @@ PixelFormatGrayChar::filter (const Image & image)
   {
 	fromRGBABits (image, result);
   }
-  else if (typeid (* image.format) == typeid (PixelFormatPlanarYCbCrChar))
+  else if (typeid (* image.format) == typeid (PixelFormatPlanarYCbCr))
   {
-	fromYCbCrChar (image, result);
+	fromYCbCr (image, result);
   }
   else
   {
@@ -696,7 +699,7 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 }
 
 void
-PixelFormatGrayChar::fromYCbCrChar (const Image & image, Image & result) const
+PixelFormatGrayChar::fromYCbCr (const Image & image, Image & result) const
 {
   PixelBufferPlanar * i = (PixelBufferPlanar *) image.buffer;
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
@@ -711,7 +714,7 @@ PixelFormatGrayChar::fromYCbCrChar (const Image & image, Image & result) const
 	unsigned char * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
-	  *toPixel++ = PixelFormatPlanarYCbCrChar::lutYout[*fromPixel++];
+	  *toPixel++ = PixelFormatPlanarYCbCr::lutYout[*fromPixel++];
 	}
 	fromPixel += step;
   }
@@ -1113,9 +1116,9 @@ PixelFormatGrayFloat::filter (const Image & image)
   {
 	fromRGBABits (image, result);
   }
-  else if (typeid (* image.format) == typeid (PixelFormatPlanarYCbCrChar))
+  else if (typeid (* image.format) == typeid (PixelFormatPlanarYCbCr))
   {
-	fromYCbCrChar (image, result);
+	fromYCbCr (image, result);
   }
   else
   {
@@ -1324,7 +1327,7 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 }
 
 void
-PixelFormatGrayFloat::fromYCbCrChar (const Image & image, Image & result) const
+PixelFormatGrayFloat::fromYCbCr (const Image & image, Image & result) const
 {
   PixelBufferPlanar * i = (PixelBufferPlanar *) image.buffer;
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
@@ -1339,7 +1342,7 @@ PixelFormatGrayFloat::fromYCbCrChar (const Image & image, Image & result) const
 	float * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
-	  *toPixel++ = PixelFormatPlanarYCbCrChar::lutGrayOut[*fromPixel++];
+	  *toPixel++ = PixelFormatPlanarYCbCr::lutGrayOut[*fromPixel++];
 	}
 	fromPixel += step;
   }
@@ -1503,9 +1506,9 @@ PixelFormatGrayDouble::filter (const Image & image)
   {
 	fromRGBABits (image, result);
   }
-  else if (typeid (* image.format) == typeid (PixelFormatPlanarYCbCrChar))
+  else if (typeid (* image.format) == typeid (PixelFormatPlanarYCbCr))
   {
-	fromYCbCrChar (image, result);
+	fromYCbCr (image, result);
   }
   else
   {
@@ -1714,7 +1717,7 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 }
 
 void
-PixelFormatGrayDouble::fromYCbCrChar (const Image & image, Image & result) const
+PixelFormatGrayDouble::fromYCbCr (const Image & image, Image & result) const
 {
   PixelBufferPlanar * i = (PixelBufferPlanar *) image.buffer;
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
@@ -1729,7 +1732,7 @@ PixelFormatGrayDouble::fromYCbCrChar (const Image & image, Image & result) const
 	double * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
-	  *toPixel++ = PixelFormatPlanarYCbCrChar::lutGrayOut[*fromPixel++];
+	  *toPixel++ = PixelFormatPlanarYCbCr::lutGrayOut[*fromPixel++];
 	}
 	fromPixel += step;
   }
@@ -1903,9 +1906,9 @@ PixelFormatRGBABits::filter (const Image & image)
   {
 	fromRGBABits (image, result);
   }
-  else if (typeid (* image.format) == typeid (PixelFormatPlanarYCbCrChar))
+  else if (typeid (* image.format) == typeid (PixelFormatPlanarYCbCr))
   {
-	fromYCbCrChar (image, result);
+	fromYCbCr (image, result);
   }
   else
   {
@@ -2350,7 +2353,7 @@ PixelFormatRGBABits::fromRGBABits (const Image & image, Image & result) const
 }
 
 void
-PixelFormatRGBABits::fromYCbCrChar (const Image & image, Image & result) const
+PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
 {
   PixelBufferPlanar * i = (PixelBufferPlanar *) image.buffer;
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
@@ -2491,7 +2494,7 @@ PixelFormatRGBABits::fromYCbCrChar (const Image & image, Image & result) const
 	  YCbCr2Bits (int);
 	  break;
     default:
-	  throw "Unhandled depth in PixelFormatRGBABits::fromYCbCrChar";
+	  throw "Unhandled depth in PixelFormatRGBABits::fromYCbCr";
   }
 }
 
@@ -3288,7 +3291,7 @@ PixelFormatRGBAFloat::setAlpha (void * pixel, unsigned char alpha) const
 }
 
 
-// class PixelFormatUYVYChar --------------------------------------------------
+// class PixelFormatUYVY ------------------------------------------------------
 
 // Notes...
 // YUV <-> RGB conversion matrices are specified by the standards in terms of
@@ -3297,7 +3300,7 @@ PixelFormatRGBAFloat::setAlpha (void * pixel, unsigned char alpha) const
 // non-linear, it should not be linearized until after it is converted into
 // RGB.  The matrices output non-linear RGB.
 
-PixelFormatUYVYChar::PixelFormatUYVYChar ()
+PixelFormatUYVY::PixelFormatUYVY ()
 : PixelFormatYUV (2, 1)
 {
   planes     = 1;
@@ -3308,7 +3311,7 @@ PixelFormatUYVYChar::PixelFormatUYVYChar ()
 }
 
 Image
-PixelFormatUYVYChar::filter (const Image & image)
+PixelFormatUYVY::filter (const Image & image)
 {
   Image result (*this);
 
@@ -3322,9 +3325,9 @@ PixelFormatUYVYChar::filter (const Image & image)
   result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
-  if (typeid (* image.format) == typeid (PixelFormatYUYVChar))
+  if (typeid (* image.format) == typeid (PixelFormatYUYV))
   {
-	fromYUYVChar (image, result);
+	fromYUYV (image, result);
   }
   else
   {
@@ -3335,7 +3338,7 @@ PixelFormatUYVYChar::filter (const Image & image)
 }
 
 void
-PixelFormatUYVYChar::fromAny (const Image & image, Image & result) const
+PixelFormatUYVY::fromAny (const Image & image, Image & result) const
 {
   const PixelFormat * sourceFormat = image.format;
 
@@ -3410,7 +3413,7 @@ PixelFormatUYVYChar::fromAny (const Image & image, Image & result) const
 }
 
 void
-PixelFormatUYVYChar::fromYUYVChar (const Image & image, Image & result) const
+PixelFormatUYVY::fromYUYV (const Image & image, Image & result) const
 {
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
@@ -3433,7 +3436,7 @@ PixelFormatUYVYChar::fromYUYVChar (const Image & image, Image & result) const
 }
 
 unsigned int
-PixelFormatUYVYChar::getRGBA (void * pixel) const
+PixelFormatUYVY::getRGBA (void * pixel) const
 {
   int y;
   if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
@@ -3462,7 +3465,7 @@ PixelFormatUYVYChar::getRGBA (void * pixel) const
 }
 
 unsigned int
-PixelFormatUYVYChar::getYUV (void * pixel) const
+PixelFormatUYVY::getYUV (void * pixel) const
 {
   unsigned int y;
   if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
@@ -3479,13 +3482,13 @@ PixelFormatUYVYChar::getYUV (void * pixel) const
 }
 
 unsigned char
-PixelFormatUYVYChar::getGray (void * pixel) const
+PixelFormatUYVY::getGray (void * pixel) const
 {
   return ((unsigned char *) pixel)[1];
 }
 
 void
-PixelFormatUYVYChar::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatUYVY::setRGBA (void * pixel, unsigned int rgba) const
 {
   int r = (rgba & 0xFF000000) >> 24;
   int g = (rgba &   0xFF0000) >> 16;
@@ -3514,7 +3517,7 @@ PixelFormatUYVYChar::setRGBA (void * pixel, unsigned int rgba) const
 }
 
 void
-PixelFormatUYVYChar::setYUV (void * pixel, unsigned int yuv) const
+PixelFormatUYVY::setYUV (void * pixel, unsigned int yuv) const
 {
   if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
   {
@@ -3532,9 +3535,9 @@ PixelFormatUYVYChar::setYUV (void * pixel, unsigned int yuv) const
 }
 
 
-// class PixelFormatYUYVChar --------------------------------------------------
+// class PixelFormatYUYV ------------------------------------------------------
 
-PixelFormatYUYVChar::PixelFormatYUYVChar ()
+PixelFormatYUYV::PixelFormatYUYV ()
 : PixelFormatYUV (2, 1)
 {
   planes     = 1;
@@ -3545,7 +3548,7 @@ PixelFormatYUYVChar::PixelFormatYUYVChar ()
 }
 
 Image
-PixelFormatYUYVChar::filter (const Image & image)
+PixelFormatYUYV::filter (const Image & image)
 {
   Image result (*this);
 
@@ -3558,9 +3561,9 @@ PixelFormatYUYVChar::filter (const Image & image)
   result.resize (image.width, image.height);
   result.timestamp = image.timestamp;
 
-  if (typeid (* image.format) == typeid (PixelFormatUYVYChar))
+  if (typeid (* image.format) == typeid (PixelFormatUYVY))
   {
-	fromUYVYChar (image, result);
+	fromUYVY (image, result);
   }
   else
   {
@@ -3571,7 +3574,7 @@ PixelFormatYUYVChar::filter (const Image & image)
 }
 
 void
-PixelFormatYUYVChar::fromAny (const Image & image, Image & result) const
+PixelFormatYUYV::fromAny (const Image & image, Image & result) const
 {
   const PixelFormat * sourceFormat = image.format;
 
@@ -3646,7 +3649,7 @@ PixelFormatYUYVChar::fromAny (const Image & image, Image & result) const
 }
 
 void
-PixelFormatYUYVChar::fromUYVYChar (const Image & image, Image & result) const
+PixelFormatYUYV::fromUYVY (const Image & image, Image & result) const
 {
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
@@ -3669,7 +3672,7 @@ PixelFormatYUYVChar::fromUYVYChar (const Image & image, Image & result) const
 }
 
 unsigned int
-PixelFormatYUYVChar::getRGBA (void * pixel) const
+PixelFormatYUYV::getRGBA (void * pixel) const
 {
   int y;
   if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
@@ -3692,7 +3695,7 @@ PixelFormatYUYVChar::getRGBA (void * pixel) const
 }
 
 unsigned int
-PixelFormatYUYVChar::getYUV (void * pixel) const
+PixelFormatYUYV::getYUV (void * pixel) const
 {
   unsigned int y;
   if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
@@ -3709,13 +3712,13 @@ PixelFormatYUYVChar::getYUV (void * pixel) const
 }
 
 unsigned char
-PixelFormatYUYVChar::getGray (void * pixel) const
+PixelFormatYUYV::getGray (void * pixel) const
 {
   return * (unsigned char *) pixel;
 }
 
 void
-PixelFormatYUYVChar::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatYUYV::setRGBA (void * pixel, unsigned int rgba) const
 {
   int r = (rgba & 0xFF000000) >> 24;
   int g = (rgba &   0xFF0000) >> 16;
@@ -3741,7 +3744,7 @@ PixelFormatYUYVChar::setRGBA (void * pixel, unsigned int rgba) const
 }
 
 void
-PixelFormatYUYVChar::setYUV (void * pixel, unsigned int yuv) const
+PixelFormatYUYV::setYUV (void * pixel, unsigned int yuv) const
 {
   if (((unsigned long) pixel) % 4)  // in middle of 32-bit word
   {
@@ -3759,9 +3762,9 @@ PixelFormatYUYVChar::setYUV (void * pixel, unsigned int yuv) const
 }
 
 
-// class PixelFormatUYVChar ---------------------------------------------------
+// class PixelFormatUYV -------------------------------------------------------
 
-PixelFormatUYVChar::PixelFormatUYVChar ()
+PixelFormatUYV::PixelFormatUYV ()
 : PixelFormatYUV (1, 1)
 {
   planes     = 1;
@@ -3772,7 +3775,7 @@ PixelFormatUYVChar::PixelFormatUYVChar ()
 }
 
 unsigned int
-PixelFormatUYVChar::getRGBA (void * pixel) const
+PixelFormatUYV::getRGBA (void * pixel) const
 {
   int u = ((unsigned char *) pixel)[0] - 128;
   int y = ((unsigned char *) pixel)[1] << 16;
@@ -3786,19 +3789,19 @@ PixelFormatUYVChar::getRGBA (void * pixel) const
 }
 
 unsigned int
-PixelFormatUYVChar::getYUV (void * pixel) const
+PixelFormatUYV::getYUV (void * pixel) const
 {
   return (((unsigned char *) pixel)[1] << 16) | (((unsigned char *) pixel)[0] << 8) | ((unsigned char *) pixel)[2];
 }
 
 unsigned char
-PixelFormatUYVChar::getGray (void * pixel) const
+PixelFormatUYV::getGray (void * pixel) const
 {
   return ((unsigned char *) pixel)[1];
 }
 
 void
-PixelFormatUYVChar::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatUYV::setRGBA (void * pixel, unsigned int rgba) const
 {
   int r = (rgba & 0xFF000000) >> 24;
   int g = (rgba &   0xFF0000) >> 16;
@@ -3814,7 +3817,7 @@ PixelFormatUYVChar::setRGBA (void * pixel, unsigned int rgba) const
 }
 
 void
-PixelFormatUYVChar::setYUV (void * pixel, unsigned int yuv) const
+PixelFormatUYV::setYUV (void * pixel, unsigned int yuv) const
 {
   ((unsigned char *) pixel)[0] = (yuv & 0xFF00) >>  8;
   ((unsigned char *) pixel)[1] =  yuv           >> 16;
@@ -3822,9 +3825,9 @@ PixelFormatUYVChar::setYUV (void * pixel, unsigned int yuv) const
 }
 
 
-// class PixelFormatPlanarYUVChar ---------------------------------------------
+// class PixelFormatPlanarYUV -------------------------------------------------
 
-PixelFormatPlanarYUVChar::PixelFormatPlanarYUVChar (int ratioH, int ratioV)
+PixelFormatPlanarYUV::PixelFormatPlanarYUV (int ratioH, int ratioV)
 : PixelFormatYUV (ratioH, ratioV)
 {
   planes     = 3;
@@ -3835,7 +3838,7 @@ PixelFormatPlanarYUVChar::PixelFormatPlanarYUVChar (int ratioH, int ratioV)
 }
 
 void
-PixelFormatPlanarYUVChar::fromAny (const Image & image, Image & result) const
+PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
 {
   assert (image.width % ratioH == 0  &&  image.height % ratioV == 0);
 
@@ -4049,16 +4052,16 @@ PixelFormatPlanarYUVChar::fromAny (const Image & image, Image & result) const
 }
 
 bool
-PixelFormatPlanarYUVChar::operator == (const PixelFormat & that) const
+PixelFormatPlanarYUV::operator == (const PixelFormat & that) const
 {
-  const PixelFormatPlanarYUVChar * p = dynamic_cast<const PixelFormatPlanarYUVChar *> (&that);
+  const PixelFormatPlanarYUV * p = dynamic_cast<const PixelFormatPlanarYUV *> (&that);
   return    p
          && ratioH == p->ratioH
          && ratioV == p->ratioV;
 }
 
 unsigned int
-PixelFormatPlanarYUVChar::getRGBA (void * pixel) const
+PixelFormatPlanarYUV::getRGBA (void * pixel) const
 {
   int y = *((unsigned char **) pixel)[0] << 16;
   int u = *((unsigned char **) pixel)[1] - 128;
@@ -4072,19 +4075,19 @@ PixelFormatPlanarYUVChar::getRGBA (void * pixel) const
 }
 
 unsigned int
-PixelFormatPlanarYUVChar::getYUV (void * pixel) const
+PixelFormatPlanarYUV::getYUV (void * pixel) const
 {
   return (*((unsigned char **) pixel)[0] << 16) | (*((unsigned char **) pixel)[1] << 8) | *((unsigned char **) pixel)[2];
 }
 
 unsigned char
-PixelFormatPlanarYUVChar::getGray (void * pixel) const
+PixelFormatPlanarYUV::getGray (void * pixel) const
 {
   return *((unsigned char **) pixel)[0];
 }
 
 void
-PixelFormatPlanarYUVChar::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatPlanarYUV::setRGBA (void * pixel, unsigned int rgba) const
 {
   int r = (rgba & 0xFF000000) >> 24;
   int g = (rgba &   0xFF0000) >> 16;
@@ -4096,7 +4099,7 @@ PixelFormatPlanarYUVChar::setRGBA (void * pixel, unsigned int rgba) const
 }
 
 void
-PixelFormatPlanarYUVChar::setYUV  (void * pixel, unsigned int yuv) const
+PixelFormatPlanarYUV::setYUV  (void * pixel, unsigned int yuv) const
 {
   *((unsigned char **) pixel)[0] =  yuv           >> 16;
   *((unsigned char **) pixel)[1] = (yuv & 0xFF00) >>  8;
@@ -4107,7 +4110,7 @@ PixelFormatPlanarYUVChar::setYUV  (void * pixel, unsigned int yuv) const
 // class PixelFormatUYYVYY ----------------------------------------------------
 
 PixelFormatUYYVYY::PixelFormatUYYVYY ()
-: PixelFormatPlanarYUVChar (4, 1)
+: PixelFormatPlanarYUV (4, 1)
 {
 }
 
@@ -4118,15 +4121,15 @@ PixelFormatUYYVYY::buffer () const
 }
 
 
-// class PixelFormatPlanarYCbCrChar -------------------------------------------
+// class PixelFormatPlanarYCbCr -----------------------------------------------
 
-unsigned char * PixelFormatPlanarYCbCrChar::lutYin = PixelFormatPlanarYCbCrChar::buildAll ();
-unsigned char * PixelFormatPlanarYCbCrChar::lutUVin;
-unsigned char * PixelFormatPlanarYCbCrChar::lutYout;
-unsigned char * PixelFormatPlanarYCbCrChar::lutUVout;
-float *         PixelFormatPlanarYCbCrChar::lutGrayOut;
+unsigned char * PixelFormatPlanarYCbCr::lutYin = PixelFormatPlanarYCbCr::buildAll ();
+unsigned char * PixelFormatPlanarYCbCr::lutUVin;
+unsigned char * PixelFormatPlanarYCbCr::lutYout;
+unsigned char * PixelFormatPlanarYCbCr::lutUVout;
+float *         PixelFormatPlanarYCbCr::lutGrayOut;
 
-PixelFormatPlanarYCbCrChar::PixelFormatPlanarYCbCrChar (int ratioH, int ratioV)
+PixelFormatPlanarYCbCr::PixelFormatPlanarYCbCr (int ratioH, int ratioV)
 : PixelFormatYUV (ratioH, ratioV)
 {
   planes     = 3;
@@ -4137,7 +4140,7 @@ PixelFormatPlanarYCbCrChar::PixelFormatPlanarYCbCrChar (int ratioH, int ratioV)
 }
 
 unsigned char *
-PixelFormatPlanarYCbCrChar::buildAll ()
+PixelFormatPlanarYCbCr::buildAll ()
 {
   lutYin     = (unsigned char *) malloc (256);
   lutUVin    = (unsigned char *) malloc (256);
@@ -4167,7 +4170,7 @@ PixelFormatPlanarYCbCrChar::buildAll ()
 }
 
 void
-PixelFormatPlanarYCbCrChar::fromAny (const Image & image, Image & result) const
+PixelFormatPlanarYCbCr::fromAny (const Image & image, Image & result) const
 {
   assert (image.width % ratioH == 0  &&  image.height % ratioV == 0);
 
@@ -4286,16 +4289,16 @@ PixelFormatPlanarYCbCrChar::fromAny (const Image & image, Image & result) const
 }
 
 bool
-PixelFormatPlanarYCbCrChar::operator == (const PixelFormat & that) const
+PixelFormatPlanarYCbCr::operator == (const PixelFormat & that) const
 {
-  const PixelFormatPlanarYCbCrChar * p = dynamic_cast<const PixelFormatPlanarYCbCrChar *> (&that);
+  const PixelFormatPlanarYCbCr * p = dynamic_cast<const PixelFormatPlanarYCbCr *> (&that);
   return    p
          && ratioH == p->ratioH
          && ratioV == p->ratioV;
 }
 
 unsigned int
-PixelFormatPlanarYCbCrChar::getRGBA (void * pixel) const
+PixelFormatPlanarYCbCr::getRGBA (void * pixel) const
 {
   // Converts from YCbCr using the matrix given in the Poynton color FAQ:
   // [R]    1  [298.082    0      408.583]   [Y  -  16]
@@ -4320,7 +4323,7 @@ PixelFormatPlanarYCbCrChar::getRGBA (void * pixel) const
    in memory, but instead rescales them to standard [0,255] range values.
  **/
 unsigned int
-PixelFormatPlanarYCbCrChar::getYUV (void * pixel) const
+PixelFormatPlanarYCbCr::getYUV (void * pixel) const
 {
   return   (lutYout [*((unsigned char **) pixel)[0]] << 16)
 	     | (lutUVout[*((unsigned char **) pixel)[1]] <<  8)
@@ -4332,13 +4335,13 @@ PixelFormatPlanarYCbCrChar::getYUV (void * pixel) const
    than black or whiter than white.
  **/
 void
-PixelFormatPlanarYCbCrChar::getGray (void * pixel, float & gray) const
+PixelFormatPlanarYCbCr::getGray (void * pixel, float & gray) const
 {
   gray = lutGrayOut[*((unsigned char **) pixel)[0]];
 }
 
 void
-PixelFormatPlanarYCbCrChar::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatPlanarYCbCr::setRGBA (void * pixel, unsigned int rgba) const
 {
   // Converts to YCbCr using the matrix given in the Poynton color FAQ:
   // [Y ]    1  [ 65.738  129.057   25.064]   [R]   [ 16]
@@ -4364,7 +4367,7 @@ PixelFormatPlanarYCbCrChar::setRGBA (void * pixel, unsigned int rgba) const
    instead rescales them to their shortened ranges.
  **/
 void
-PixelFormatPlanarYCbCrChar::setYUV  (void * pixel, unsigned int yuv) const
+PixelFormatPlanarYCbCr::setYUV  (void * pixel, unsigned int yuv) const
 {
   *((unsigned char **) pixel)[0] = lutYin [ yuv           >> 16];
   *((unsigned char **) pixel)[1] = lutUVin[(yuv & 0xFF00) >>  8];
@@ -4376,7 +4379,7 @@ PixelFormatPlanarYCbCrChar::setYUV  (void * pixel, unsigned int yuv) const
    than black or whiter than white.
  **/
 void
-PixelFormatPlanarYCbCrChar::setGray (void * pixel, float gray) const
+PixelFormatPlanarYCbCr::setGray (void * pixel, float gray) const
 {
   // de-linearize
   if (gray <= 0.0031308f)

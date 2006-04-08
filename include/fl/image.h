@@ -449,6 +449,12 @@ namespace fl
 	 semantics clear.  Until then, in this code U and V will be synonyms
 	 for Pb and Pr scaled to unsigned chars with a bias of 128.
 
+	 <p>Another note on YUV: These formats are pretty specific to video,
+	 and it is unlikely that there will ever be YUV formats with channel
+	 sizes other than char, so these format names do not bear the obligatory
+	 "Char" on the end.  This can also be changed once the first exception
+	 becomes evident.
+
 	 \todo Add accessor for numbered color channels.  This will be most
 	 meaningful for hyperspectal data.
   **/
@@ -513,7 +519,7 @@ namespace fl
 	void fromGrayDouble  (const Image & image, Image & result) const;
 	void fromRGBAChar    (const Image & image, Image & result) const;
 	void fromRGBABits    (const Image & image, Image & result) const;
-	void fromYCbCrChar   (const Image & image, Image & result) const;
+	void fromYCbCr       (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
@@ -566,7 +572,7 @@ namespace fl
 	void fromRGBAChar    (const Image & image, Image & result) const;
 	void fromRGBChar     (const Image & image, Image & result) const;
 	void fromRGBABits    (const Image & image, Image & result) const;
-	void fromYCbCrChar   (const Image & image, Image & result) const;
+	void fromYCbCr       (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getRGBA (void * pixel, float values[]) const;
@@ -593,7 +599,7 @@ namespace fl
 	void fromRGBAChar    (const Image & image, Image & result) const;
 	void fromRGBChar     (const Image & image, Image & result) const;
 	void fromRGBABits    (const Image & image, Image & result) const;
-	void fromYCbCrChar   (const Image & image, Image & result) const;
+	void fromYCbCr       (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual void          getRGBA (void * pixel, float values[]) const;
@@ -627,7 +633,7 @@ namespace fl
 	void fromGrayFloat   (const Image & image, Image & result) const;
 	void fromGrayDouble  (const Image & image, Image & result) const;
 	void fromRGBABits    (const Image & image, Image & result) const;
-	void fromYCbCrChar   (const Image & image, Image & result) const;
+	void fromYCbCr       (const Image & image, Image & result) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
@@ -730,14 +736,14 @@ namespace fl
 	 portion of the pair.  Likewise, an address that falls on a 32-bit boundary
 	 refers to the "UY" portion.
   **/
-  class PixelFormatUYVYChar : public PixelFormatYUV
+  class PixelFormatUYVY : public PixelFormatYUV
   {
   public:
-	PixelFormatUYVYChar ();
+	PixelFormatUYVY ();
 
 	virtual Image filter (const Image & image);
 	virtual void fromAny (const Image & image, Image & result) const;
-	void fromYUYVChar    (const Image & image, Image & result) const;
+	void fromYUYV        (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual unsigned int  getYUV  (void * pixel) const;
@@ -747,14 +753,14 @@ namespace fl
   };
 
   /// Same as UYVY, but with different ordering within the dwords
-  class PixelFormatYUYVChar : public PixelFormatYUV
+  class PixelFormatYUYV : public PixelFormatYUV
   {
   public:
-	PixelFormatYUYVChar ();
+	PixelFormatYUYV ();
 
 	virtual Image filter (const Image & image);
 	virtual void fromAny (const Image & image, Image & result) const;
-	void fromUYVYChar    (const Image & image, Image & result) const;
+	void fromUYVY        (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual unsigned int  getYUV  (void * pixel) const;
@@ -766,10 +772,10 @@ namespace fl
   /**
 	 YUV 444 format (1394 mode 0 format 0)
    **/
-  class PixelFormatUYVChar : public PixelFormatYUV
+  class PixelFormatUYV : public PixelFormatYUV
   {
   public:
-	PixelFormatUYVChar ();
+	PixelFormatUYV ();
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual unsigned int  getYUV  (void * pixel) const;
@@ -778,10 +784,10 @@ namespace fl
 	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
   };
 
-  class PixelFormatPlanarYUVChar : public PixelFormatYUV
+  class PixelFormatPlanarYUV : public PixelFormatYUV
   {
   public:
-	PixelFormatPlanarYUVChar (int ratioH, int ratioV);
+	PixelFormatPlanarYUV (int ratioH, int ratioV);
 
 	virtual void fromAny (const Image & image, Image & result) const;
 
@@ -794,7 +800,7 @@ namespace fl
 	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
   };
 
-  class PixelFormatUYYVYY : public PixelFormatPlanarYUVChar
+  class PixelFormatUYYVYY : public PixelFormatPlanarYUV
   {
   public:
 	PixelFormatUYYVYY ();
@@ -807,10 +813,10 @@ namespace fl
 	 16 <= U,V <= 240.  Video standards call for footroom and headroom
 	 to allow for analog signal overshoots.
    **/
-  class PixelFormatPlanarYCbCrChar : public PixelFormatYUV
+  class PixelFormatPlanarYCbCr : public PixelFormatYUV
   {
   public:
-	PixelFormatPlanarYCbCrChar (int ratioH, int ratioV);
+	PixelFormatPlanarYCbCr (int ratioH, int ratioV);
 
 	virtual void fromAny (const Image & image, Image & result) const;
 
@@ -854,12 +860,12 @@ namespace fl
   extern PixelFormatRGBChar            RGBChar;
   extern PixelFormatRGBShort           RGBShort;
   extern PixelFormatRGBABits           BGRChar;
-  extern PixelFormatUYVYChar           UYVYChar;
-  extern PixelFormatYUYVChar           YUYVChar;
-  extern PixelFormatUYVChar            UYVChar;
+  extern PixelFormatUYVY               UYVY;
+  extern PixelFormatYUYV               YUYV;
+  extern PixelFormatUYV                UYV;
   extern PixelFormatUYYVYY             UYYVYY;
-  extern PixelFormatPlanarYCbCrChar    YUV420;
-  extern PixelFormatPlanarYCbCrChar    YUV411;
+  extern PixelFormatPlanarYCbCr        YUV420;
+  extern PixelFormatPlanarYCbCr        YUV411;
   extern PixelFormatHLSFloat           HLSFloat;
 
   // Naming convention for RGBABits:

@@ -225,7 +225,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 		  //if (clip) cerr << "    " << x << " " << y << " clip = " << clip << endl;
 		  int tLuma   = clip ? thresholdLumaClipped   : thresholdLuma;
 		  int tChroma = clip ? thresholdChromaClipped : thresholdChroma;
-		  if (PixelFormatPlanarYCbCrChar * pfycbcr = dynamic_cast<PixelFormatPlanarYCbCrChar *> (targetFormat))
+		  if (PixelFormatPlanarYCbCr * pfycbcr = dynamic_cast<PixelFormatPlanarYCbCr *> (targetFormat))
 		  {
 			tChroma = max (tChroma, 2);  // The additional quantization due to shortened excursion of YCbCr sometimes produces a 2-level difference.
 		  }
@@ -506,7 +506,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	float tDifference = thresholdDifference;
 	int tLuma         = thresholdLuma;
 	int tChroma       = thresholdChroma;
-	if (PixelFormatPlanarYCbCrChar * pfycbcr = dynamic_cast<PixelFormatPlanarYCbCrChar *> (targetFormat))
+	if (PixelFormatPlanarYCbCr * pfycbcr = dynamic_cast<PixelFormatPlanarYCbCr *> (targetFormat))
 	{
 	  tChroma = max (tChroma, 2);
 	  tRatio  = max (tRatio,  1.035f);
@@ -713,9 +713,9 @@ main (int argc, char * argv[])
 	  formats.push_back (&RGBAFloat);
 	  formats.push_back (&RGBChar);
 	  formats.push_back (&RGBShort);
-	  formats.push_back (&UYVYChar);
-	  formats.push_back (&YUYVChar);
-	  formats.push_back (&UYVChar);
+	  formats.push_back (&UYVY);
+	  formats.push_back (&YUYV);
+	  formats.push_back (&UYV);
 	  formats.push_back (&UYYVYY);
 	  formats.push_back (&YUV420);
 	  formats.push_back (&YUV411);
