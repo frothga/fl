@@ -310,3 +310,93 @@ PixelBufferPlanar::operator == (const PixelBuffer & that) const
          && plane1   == p->plane1
          && plane2   == p->plane2;
 }
+
+
+// class PixelBufferUYYVYY ----------------------------------------------------
+
+PixelBufferUYYVYY::PixelBufferUYYVYY ()
+{
+  planes = 1;
+  stride = 0;
+}
+
+PixelBufferUYYVYY::PixelBufferUYYVYY (void * buffer, int stride, int height)
+{
+  assert (stride % 4 == 0);
+
+  planes       = 1;
+  this->stride = stride * 6 / 4;  // actual bytes between rows
+  memory.attach (buffer, stride * height);
+}
+
+PixelBufferUYYVYY::~PixelBufferUYYVYY ()
+{
+}
+
+void *
+PixelBufferUYYVYY::pixel (int x, int y)
+{
+  int h = x / 4;
+  int p = x % 4;
+  unsigned char * base = & ((unsigned char *) memory)[y * stride + h * 6];
+  if (p < 2)
+  {
+	pixelArray[0] = base + (p + 1);
+  }
+  else
+  {
+	pixelArray[0] = base + (p + 2);
+  }
+  pixelArray[1] = base;
+  pixelArray[2] = base + 3;
+
+  return pixelArray;
+}
+
+void
+PixelBufferUYYVYY::resize (int width, int height, const PixelFormat & format, bool preserve)
+{
+  assert (width % 4 == 0);
+
+  if (width <= 0  ||  height <= 0)
+  {
+	stride = 0;
+	memory.detach ();
+	return;
+  }
+
+  int newStride = width * 6 / 4;
+  if (! preserve)
+  {
+	stride = newStride;
+	memory.grow (stride * height);
+	return;
+  }
+
+  reshapeBuffer (memory, stride, newStride, height);
+  stride = newStride;
+}
+
+PixelBuffer *
+PixelBufferUYYVYY::duplicate () const
+{
+  PixelBufferUYYVYY * result = new PixelBufferUYYVYY;
+  result->memory.copyFrom (memory);
+  result->stride = stride;
+  return result;
+}
+
+void
+PixelBufferUYYVYY::clear ()
+{
+  memory.clear ();
+}
+
+bool
+PixelBufferUYYVYY::operator == (const PixelBuffer & that) const
+{
+  const PixelBufferUYYVYY * p = dynamic_cast<const PixelBufferUYYVYY *> (&that);
+  return    p
+         && stride == p->stride
+         && memory == p->memory;
+}
