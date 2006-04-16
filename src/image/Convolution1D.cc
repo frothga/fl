@@ -35,6 +35,358 @@ ConvolutionDiscrete1D::ConvolutionDiscrete1D (const Image & image, const BorderM
   this->mode = mode;
 }
 
+/**
+   \todo This code has latent bugs if the kernel is wider than the image.
+ **/
+template<class T>
+static inline void convolveH (T * kernel, T * image, T * result,
+							  BorderMode mode,
+							  int kernelWidth, int width, int height,
+							  int fromStride, int toStride)
+{
+  assert (kernelWidth <= width);
+
+  // Main convolution
+  int mid       = kernelWidth / 2;
+  int last      = kernelWidth - 1;
+  int rowWidth  = width - last;
+  int fromStep  = fromStride - rowWidth;
+  int toStep    = toStride   - rowWidth;
+  T * kernelEnd = kernel + last;
+  T * fromPixel = image;
+  T * toPixel   = result;
+  if (mode != Crop) toPixel += mid;
+  T * end = toPixel + height * toStride;
+  while (toPixel < end)
+  {
+	T * rowEnd = toPixel + rowWidth;
+	while (toPixel < rowEnd)
+	{
+	  register T sum = 0;
+	  T * k = kernelEnd;
+	  while (k >= kernel)
+	  {
+		sum += *k-- * *fromPixel++;
+	  }
+	  *toPixel++ = sum;
+	  fromPixel -= last;  // net advance of 1 pixel
+	}
+	toPixel += toStep;
+	fromPixel += fromStep;
+  }
+
+  // Edge cases
+  switch (mode)
+  {
+	case ZeroFill:
+	{
+	  toStep    = toStride - mid;
+	  T * left  = result;
+	  T * right = result + mid + rowWidth;
+	  T * end   = result + height * toStride;
+	  while (right < end)
+	  {
+		T * rowEnd = right + mid;
+		while (right < rowEnd)
+		{
+		  *left++  = (T) 0.0;
+		  *right++ = (T) 0.0;
+		}
+		left += toStep;
+		right += toStep;
+	  }
+	  break;
+	}
+	case UseZeros:
+	{
+	  int toLeftStep  = toStride - mid;
+	  int toRightStep = toStride + mid;
+	  T * kernelStart = kernel + mid;
+	  T * fromLeft  = image;
+	  T * fromRight = image + mid + rowWidth + mid - 1;
+	  T * toLeft  = result;
+	  T * toRight = result + mid + rowWidth + mid - 1;
+	  T * end     = result + height * toStride;
+	  while (toRight < end)
+	  {
+		T * kernelLeft  = kernelStart;
+		T * kernelRight = kernelStart;
+		while (kernelRight > kernel)
+		{
+		  T * kl = kernelLeft++;
+		  T * kr = kernelRight--;
+		  T * fl = fromLeft;
+		  T * fr = fromRight;
+		  register T sumLeft = 0;
+		  register T sumRight = 0;
+		  while (kl >= kernel)
+		  {
+			sumLeft  += *kl-- * *fl++;
+			sumRight += *kr++ * *fr--;
+		  }
+		  *toLeft++  = sumLeft;
+		  *toRight-- = sumRight;
+		}
+		fromLeft  += fromStride;
+		fromRight += fromStride;
+		toLeft  += toLeftStep;
+		toRight += toRightStep;
+	  }
+	  break;
+	}
+	case Boost:
+	{
+	  // Pre-compute partial sums of the kernel.
+	  // Need separate left and right totals in case kernel is not symmetric.
+	  T * leftTotal  = (T *) alloca (kernelWidth * sizeof (T));
+	  T * rightTotal = (T *) alloca (kernelWidth * sizeof (T));
+
+	  double total = 0;
+	  T * k = kernelEnd;
+	  T * t = rightTotal + last;
+	  while (k >= kernel)
+	  {
+		*t-- = (T) (total += *k--);
+	  }
+
+	  total = 0;
+	  k = kernel;
+	  t = leftTotal;
+	  while (k <= kernelEnd)
+	  {
+		*t++ = (T) (total += *k++);
+	  }
+
+	  // Convolve
+	  int toLeftStep  = toStride - mid;
+	  int toRightStep = toStride + mid;
+	  T * kernelStart = kernel + mid;
+	  T * leftTotalStart = leftTotal + mid;
+	  T * rightTotalStart = rightTotal + mid;
+	  T * fromLeft  = image;
+	  T * fromRight = image + mid + rowWidth + mid - 1;
+	  T * toLeft  = result;
+	  T * toRight = result + mid + rowWidth + mid - 1;
+	  T * end   = result + height * toStride;
+	  while (toRight < end)
+	  {
+		T * kernelLeft  = kernelStart;
+		T * kernelRight = kernelStart;
+		T * lt          = leftTotalStart;
+		T * rt          = rightTotalStart;
+		while (kernelRight > kernel)
+		{
+		  T * kl = kernelLeft++;
+		  T * kr = kernelRight--;
+		  T * fl = fromLeft;
+		  T * fr = fromRight;
+		  register T sumLeft = 0;
+		  register T sumRight = 0;
+		  while (kl >= kernel)
+		  {
+			sumLeft  += *kl-- * *fl++;
+			sumRight += *kr++ * *fr--;
+		  }
+		  *toLeft++  = sumLeft  / *lt++;
+		  *toRight-- = sumRight / *rt--;
+		}
+		fromLeft  += fromStride;
+		fromRight += fromStride;
+		toLeft  += toLeftStep;
+		toRight += toRightStep;
+	  }
+	  break;
+	}
+	case Copy:
+	{
+	  fromStep      = fromStride - mid;
+	  toStep        = toStride   - mid;
+	  T * fromLeft  = image;
+	  T * fromRight = image + (mid + rowWidth);
+	  T * toLeft    = result;
+	  T * toRight   = result + (mid + rowWidth);
+	  T * end       = result + height * toStride;
+	  while (toRight < end)
+	  {
+		T * rowEnd = toRight + mid;
+		while (toRight < rowEnd)
+		{
+		  *toLeft++  = *fromLeft++;
+		  *toRight++ = *fromRight++;
+		}
+		fromLeft += fromStep;
+		fromRight += fromStep;
+		toLeft += toStep;
+		toRight += toStep;
+	  }
+	}
+  }
+}
+
+/**
+   \todo This code has latent bugs if the kernel is taller than the image.
+ **/
+template<class T>
+static inline void convolveV (T * kernel, T * image, T * result,
+							  BorderMode mode,
+							  int kernelHeight, int width, int height,
+							  int fromStride, int toStride)
+{
+  assert (kernelHeight <= height);
+
+  // Main convolution
+  int mid        = kernelHeight / 2;
+  int last       = kernelHeight - 1;
+  int cropHeight = height - last;
+  int rowStep    = 1 - fromStride * kernelHeight;
+  int fromStep   = fromStride - width;
+  int toStep     = toStride   - width;
+  T * kernelEnd  = kernel + last;
+  T * fromPixel  = image;
+  T * toPixel    = result;
+  if (mode != Crop) toPixel += mid * toStride;
+  T * end = toPixel + cropHeight * toStride;
+  while (toPixel < end)
+  {
+	T * rowEnd = toPixel + width;
+	while (toPixel < rowEnd)
+	{
+	  register T sum = 0;
+	  T * k = kernelEnd;
+	  while (k >= kernel)
+	  {
+		sum += *k-- * *fromPixel;
+		fromPixel += fromStride;
+	  }
+	  *toPixel++ = sum;
+	  fromPixel += rowStep;
+	}
+	toPixel += toStep;
+	fromPixel += fromStep;
+  }
+
+  // Edge cases
+  switch (mode)
+  {
+	case ZeroFill:
+	{
+	  int count = toStride * mid * sizeof (T);
+	  memset (result, 0, count);
+	  memset (end,    0, count);
+	  break;
+	}
+	case UseZeros:
+	{
+	  T * kernelStart = kernel + mid;
+	  T * fromTop    = image;
+	  T * fromBottom = image + (height - 1) * fromStride;
+	  T * toTopStart    = result;
+	  T * toBottomStart = result + (height - 1) * toStride;
+	  T * end           = toBottomStart + width;
+	  while (toBottomStart < end)
+	  {
+		T * kernelTop    = kernelStart;
+		T * kernelBottom = kernelStart;
+		T * toTop    = toTopStart++;
+		T * toBottom = toBottomStart++;
+		while (kernelBottom > kernel)
+		{
+		  T * kt = kernelTop++;
+		  T * kb = kernelBottom--;
+		  T * ft = fromTop;
+		  T * fb = fromBottom;
+		  register T sumTop    = 0;
+		  register T sumBottom = 0;
+		  while (kt >= kernel)
+		  {
+			sumTop    += *kt-- * *ft;
+			sumBottom += *kb++ * *fb;
+			ft += fromStride;
+			fb -= fromStride;
+		  }
+		  *toTop    = sumTop;
+		  *toBottom = sumBottom;
+		  toTop    += toStride;
+		  toBottom -= toStride;
+		}
+		fromTop++;
+		fromBottom++;
+	  }
+	  break;
+	}
+	case Boost:
+	{
+	  // Pre-compute partial sums of the kernel.
+	  T * topTotal    = (T *) alloca (kernelHeight * sizeof (T));
+	  T * bottomTotal = (T *) alloca (kernelHeight * sizeof (T));
+
+	  double total = 0;
+	  T * k = kernelEnd;
+	  T * t = bottomTotal + last;
+	  while (k >= kernel)
+	  {
+		*t-- = (T) (total += *k--);
+	  }
+
+	  total = 0;
+	  k = kernel;
+	  t = topTotal;
+	  while (k <= kernelEnd)
+	  {
+		*t++ = (T) (total += *k++);
+	  }
+
+	  // Convolve
+	  T * kernelStart      = kernel      + mid;
+	  T * topTotalStart    = topTotal    + mid;
+	  T * bottomTotalStart = bottomTotal + mid;
+	  T * fromTop    = image;
+	  T * fromBottom = image + (height - 1) * fromStride;
+	  T * toTopStart    = result;
+	  T * toBottomStart = result + (height - 1) * toStride;
+	  T * end           = toBottomStart + width;
+	  while (toBottomStart < end)
+	  {
+		T * kernelTop    = kernelStart;
+		T * kernelBottom = kernelStart;
+		T * tt           = topTotalStart;
+		T * bt           = bottomTotalStart;
+		T * toTop    = toTopStart++;
+		T * toBottom = toBottomStart++;
+		while (kernelBottom > kernel)
+		{
+		  T * kt = kernelTop++;
+		  T * kb = kernelBottom--;
+		  T * ft = fromTop;
+		  T * fb = fromBottom;
+		  register T sumTop    = 0;
+		  register T sumBottom = 0;
+		  while (kt >= kernel)
+		  {
+			sumTop    += *kt-- * *ft;
+			sumBottom += *kb++ * *fb;
+			ft += fromStride;
+			fb -= fromStride;
+		  }
+		  *toTop    = sumTop    / *tt++;
+		  *toBottom = sumBottom / *bt--;
+		  toTop    += toStride;
+		  toBottom -= toStride;
+		}
+		fromTop++;
+		fromBottom++;
+	  }
+	  break;
+	}
+	case Copy:
+	{
+	  int count = toStride * mid * sizeof (T);
+	  memcpy (result, image,                                   count);
+	  memcpy (end,    image + (mid + cropHeight) * fromStride, count);
+	}
+  }
+}
+
 Image
 ConvolutionDiscrete1D::filter (const Image & image)
 {
@@ -52,392 +404,59 @@ ConvolutionDiscrete1D::filter (const Image & image)
 	return filter (image * (*format));
   }
 
-  PixelBufferPacked * kernelBuffer = (PixelBufferPacked *) buffer;
-  if (! kernelBuffer) throw "kernel must be a packed buffer";
-  Pointer kernel = kernelBuffer->memory;
+  PixelBufferPacked * k = (PixelBufferPacked *) buffer;
+  if (! k) throw "kernel must be a packed buffer";
 
   Image result (*format);
-
-  if (image.width == 0  ||  image.height == 0) return result;
-  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
-  if (! imageBuffer) throw "Convolution1D only handles packed buffers for now";
-  Pointer input = imageBuffer->memory;
-
-  int last = width - 1;
-  int mid  = width / 2;
-  int stride = direction == Horizontal ? 1 : image.width;
-
-  switch (mode)
+  if (mode == Crop)
   {
-    case ZeroFill:
+	if (direction == Horizontal)
 	{
-	  result.resize (image.width, image.height);
-	  result.clear ();
-
-	  int incx;
-	  int incy;
-	  if (direction == Horizontal)
-	  {
-		incx = mid;
-		incy = 0;
-	  }
-	  else  // direction == Vertical
-	  {
-		incx = 0;
-		incy = mid;
-	  }
-
-	  if (*format == GrayFloat)
-	  {
-		float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
-		r += incy * image.width + incx;
-		for (int y = incy; y < result.height - incy; y++)
-		{
-		  for (int x = incx; x < result.width - incx; x++)
-		  {
-			float * a = (float *) kernel;
-			float * b = (float *) input + (y * image.width + x);
-			b += mid * stride;
-
-			float sum = 0;
-			for (int i = 0; i <= last; i++)
-			{
-			  sum += *a++ * *b;
-			  b -= stride;
-			}
-			*r++ = sum;
-		  }
-		  r += incx + incx;
-		}
-	  }
-	  else if (*format == GrayDouble)
-	  {
-		double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
-		r += incy * image.width + incx;
-		for (int y = incy; y < result.height - incy; y++)
-		{
-		  for (int x = incx; x < result.width - incx; x++)
-		  {
-			double * a = (double *) kernel;
-			double * b = (double *) input + (y * image.width + x);
-			b += mid * stride;
-
-			double sum = 0;
-			for (int i = 0; i <= last; i++)
-			{
-			  sum += *a++ * *b;
-			  b -= stride;
-			}
-			*r++ = sum;
-		  }
-		  r += incx + incx;
-		}
-	  }
-	  else
-	  {
-		throw "ConvolutionDiscrete1D::filter: unimplemented format";
-	  }
-
-	  break;
+	  result.resize (image.width - (width - 1), image.height);
 	}
-    case UseZeros:
+	else  // direction == Vertical
 	{
-	  result.resize (image.width, image.height);
-
-	  if (*format == GrayFloat)
-	  {
-		float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
-		if (direction == Horizontal)
-		{
-		  for (int y = 0; y < result.height; y++)
-		  {
-			for (int x = 0; x < result.width; x++)
-			{
-			  int low  = max (0,    x + mid - (image.width - 1));	
-			  int high = min (last, x + mid);
-
-			  float * a = (float *) kernel + low;
-			  float * b = (float *) input + (y * image.width + x);
-			  b += (mid - low) * stride;
-
-			  float sum = 0;
-			  for (int i = low; i <= high; i++)
-			  {
-				sum += *a++ * *b;
-				b -= stride;
-			  }
-			  *r++ = sum;
-			}
-		  }
-		}
-		else  // direction == Vertical
-		{
-		  for (int y = 0; y < result.height; y++)
-		  {
-			int low  = max (0,    y + mid - (image.height - 1));	
-			int high = min (last, y + mid);
-
-			for (int x = 0; x < result.width; x++)
-			{
-			  float * a = (float *) kernel + low;
-			  float * b = (float *) input + (y * image.width + x);
-			  b += (mid - low) * stride;
-
-			  float sum = 0;
-			  for (int i = low; i <= high; i++)
-			  {
-				sum += *a++ * *b;
-				b -= stride;
-			  }
-			  *r++ = sum;
-			}
-		  }
-		}
-	  }
-	  else if (*format == GrayDouble)
-	  {
-		double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
-		if (direction == Horizontal)
-		{
-		  for (int y = 0; y < result.height; y++)
-		  {
-			for (int x = 0; x < result.width; x++)
-			{
-			  int low  = max (0,    x + mid - (image.width - 1));	
-			  int high = min (last, x + mid);
-
-			  double * a = (double *) kernel + low;
-			  double * b = (double *) input + (y * image.width + x);
-			  b += (mid - low) * stride;
-
-			  double sum = 0;
-			  for (int i = low; i <= high; i++)
-			  {
-				sum += *a++ * *b;
-				b -= stride;
-			  }
-			  *r++ = sum;
-			}
-		  }
-		}
-		else  // direction == Vertical
-		{
-		  for (int y = 0; y < result.height; y++)
-		  {
-			int low  = max (0,    y + mid - (image.height - 1));	
-			int high = min (last, y + mid);
-
-			for (int x = 0; x < result.width; x++)
-			{
-			  double * a = (double *) kernel + low;
-			  double * b = (double *) input + (y * image.width + x);
-			  b += (mid - low) * stride;
-
-			  double sum = 0;
-			  for (int i = low; i <= high; i++)
-			  {
-				sum += *a++ * *b;
-				b -= stride;
-			  }
-			  *r++ = sum;
-			}
-		  }
-		}
-	  }
-	  else
-	  {
-		throw "ConvolutionDiscrete1D::filter: unimplemented format";
-	  }
-
-	  break;
+	  result.resize (image.width, image.height - (width - 1));
 	}
-    case Boost:
+  }
+  else
+  {
+	result.resize (image.width, image.height);
+  }
+  if (result.width == 0  ||  result.height == 0) return result;
+
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  if (! i) throw "Convolution1D only handles packed buffers for now";
+
+  if (direction == Horizontal)
+  {
+	if (*format == GrayFloat)
 	{
-	  result.resize (image.width, image.height);
-
-	  if (*format == GrayFloat)
-	  {
-		float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
-		if (direction == Horizontal)
-		{
-		  for (int y = 0; y < result.height; y++)
-		  {
-			for (int x = 0; x < result.width; x++)
-			{
-			  int low  = max (0,    x + mid - (image.width - 1));	
-			  int high = min (last, x + mid);
-
-			  float * a = (float *) kernel + low;
-			  float * b = (float *) input + (y * image.width + x);
-			  b += (mid - low) * stride;
-
-			  float sum = 0;
-			  float weight = 0;
-			  for (int i = low; i <= high; i++)
-			  {
-				sum += *a * *b;
-				weight += *a++;
-				b -= stride;
-			  }
-			  *r++ = sum / weight;
-			}
-		  }
-		}
-		else  // direction == Vertical
-		{
-		  for (int y = 0; y < result.height; y++)
-		  {
-			int low  = max (0,    y + mid - (image.height - 1));	
-			int high = min (last, y + mid);
-
-			for (int x = 0; x < result.width; x++)
-			{
-			  float * a = (float *) kernel + low;
-			  float * b = (float *) input + (y * image.width + x);
-			  b += (mid - low) * stride;
-
-			  float sum = 0;
-			  float weight = 0;
-			  for (int i = low; i <= high; i++)
-			  {
-				sum += *a * *b;
-				weight += *a++;
-				b -= stride;
-			  }
-			  *r++ = sum / weight;
-			}
-		  }
-		}
-	  }
-	  else if (*format == GrayDouble)
-	  {
-		double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
-		if (direction == Horizontal)
-		{
-		  for (int y = 0; y < result.height; y++)
-		  {
-			for (int x = 0; x < result.width; x++)
-			{
-			  int low  = max (0,    x + mid - (image.width - 1));	
-			  int high = min (last, x + mid);
-
-			  double * a = (double *) kernel + low;
-			  double * b = (double *) input + (y * image.width + x);
-			  b += (mid - low) * stride;
-
-			  double sum = 0;
-			  double weight = 0;
-			  for (int i = low; i <= high; i++)
-			  {
-				sum += *a * *b;
-				weight += *a++;
-				b -= stride;
-			  }
-			  *r++ = sum / weight;
-			}
-		  }
-		}
-		else  // direction == Vertical
-		{
-		  for (int y = 0; y < result.height; y++)
-		  {
-			int low  = max (0,    y + mid - (image.height - 1));	
-			int high = min (last, y + mid);
-
-			for (int x = 0; x < result.width; x++)
-			{
-			  double * a = (double *) kernel + low;
-			  double * b = (double *) input + (y * image.width + x);
-			  b += (mid - low) * stride;
-
-			  double sum = 0;
-			  double weight = 0;
-			  for (int i = low; i <= high; i++)
-			  {
-				sum += *a * *b;
-				weight += *a++;
-				b -= stride;
-			  }
-			  *r++ = sum / weight;
-			}
-		  }
-		}
-	  }
-	  else
-	  {
-		throw "ConvolutionDiscrete1D::filter: unimplemented format";
-	  }
-
-	  break;
+	  convolveH ((float *) k->memory, (float *) i->memory, (float *) o->memory, mode, width, image.width, image.height, i->stride, o->stride);
 	}
-    case Crop:
-    default:
+	else if (*format == GrayDouble)
 	{
-	  if (direction == Horizontal)
-	  {
-		if (image.width < width)
-		{
-		  break;
-		}
-		result.resize (image.width - last, image.height);
-	  }
-	  else  // direction == Vertical
-	  {
-		if (image.height < width)
-		{
-		  break;
-		}
-		result.resize (image.width, image.height - last);
-	  }
-
-	  if (*format == GrayFloat)
-	  {
-		float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
-		for (int y = 0; y < result.height; y++)
-		{
-		  for (int x = 0; x < result.width; x++)
-		  {
-			float * a = (float *) kernel;
-			float * b = (float *) input + (y * image.width + x);
-			b += last * stride;
-
-			float sum = 0;
-			for (int i = 0; i <= last; i++)
-			{
-			  sum += *a++ * *b;
-			  b -= stride;
-			}
-			*r++ = sum;
-		  }
-		}
-	  }
-	  else if (*format == GrayDouble)
-	  {
-		double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
-		for (int y = 0; y < result.height; y++)
-		{
-		  for (int x = 0; x < result.width; x++)
-		  {
-			double * a = (double *) kernel;
-			double * b = (double *) input + (y * image.width + x);
-			b += last * stride;
-
-			double sum = 0;
-			for (int i = 0; i <= last; i++)
-			{
-			  sum += *a++ * *b;
-			  b -= stride;
-			}
-			*r++ = sum;
-		  }
-		}
-	  }
-	  else
-	  {
-		throw "ConvolutionDiscrete1D::filter: unimplemented format";
-	  }
-
-	  break;
+	  convolveH ((double *) k->memory, (double *) i->memory, (double *) o->memory, mode, width, image.width, image.height, i->stride, o->stride);
+	}
+	else
+	{
+	  throw "ConvolutionDiscrete1D::filter: unimplemented format";
+	}
+  }
+  else  // direction == Vertical
+  {
+	if (*format == GrayFloat)
+	{
+	  convolveV ((float *) k->memory, (float *) i->memory, (float *) o->memory, mode, width, image.width, image.height, i->stride, o->stride);
+	}
+	else if (*format == GrayDouble)
+	{
+	  convolveV ((double *) k->memory, (double *) i->memory, (double *) o->memory, mode, width, image.width, image.height, i->stride, o->stride);
+	}
+	else
+	{
+	  throw "ConvolutionDiscrete1D::filter: unimplemented format";
 	}
   }
 
