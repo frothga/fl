@@ -37,6 +37,7 @@ DescriptorSIFT::DescriptorSIFT (int width, int angles)
 {
   this->width = width;
   this->angles = angles;
+  angleRange = TWOPIf;
   dimension = width * width * angles;
 
   supportRadial = 3 * width / 2.0f;  // Causes each bin to cover 3 sigmas.
@@ -65,7 +66,7 @@ void
 DescriptorSIFT::init ()
 {
   dimension = width * width * angles;
-  angleStep = (2.0f * PI / angles) + 1e-6;
+  angleStep = (angleRange / angles) + 1e-6;
 
   map<int, ImageOf<float> *>::iterator it;
   for (it = kernels.begin (); it != kernels.end (); it++)
@@ -196,7 +197,7 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 	for (int x = 0; x < I_x.width; x++)
 	{
 	  float angle = atan2 (*dy, *dx);
-	  if (angle < 0.0f) angle += TWOPIf;
+	  if (angle < 0.0f) angle += angleRange;
 	  angle /= angleStep;
 	  const float weight = sqrtf (*dx * *dx + *dy * *dy) * *g++;
 	  dx++;
@@ -284,6 +285,7 @@ DescriptorSIFT::patch (Canvas * canvas, const Vector<float> & value, int size)
   float * length = & value[0];
   Point center;
   Point tip;
+  bool nosign = fabs (angleRange - PI) < 1e-6;
   for (int y = 0; y < width; y++)
   {
 	center.y = (y + 0.5f) * size;
@@ -292,11 +294,17 @@ DescriptorSIFT::patch (Canvas * canvas, const Vector<float> & value, int size)
 	  center.x = (x + 0.5f) * size;
 	  for (int a = 0; a < angles; a++)
 	  {
-		double angle = a * 2 * PI / angles;
+		double angle = a * angleRange / angles;
 		double radius = (size / 2.0) * (*length++ / maxValue);
 		tip.x = center.x + cos (angle) * radius;
 		tip.y = center.y + sin (angle) * radius;
 		canvas->drawSegment (center, tip, BLACK);
+		if (nosign)
+		{
+		  tip.x = center.x - cos (angle) * radius;
+		  tip.y = center.y - sin (angle) * radius;
+		  canvas->drawSegment (center, tip, BLACK);
+		}
 	  }
 	}
   }
@@ -341,6 +349,7 @@ DescriptorSIFT::read (std::istream & stream)
 
   stream.read ((char *) &width,         sizeof (width));
   stream.read ((char *) &angles,        sizeof (angles));
+  stream.read ((char *) &angleRange,    sizeof (angleRange));
   stream.read ((char *) &supportRadial, sizeof (supportRadial));
   stream.read ((char *) &supportPixel,  sizeof (supportPixel));
   stream.read ((char *) &sigmaWeight,   sizeof (sigmaWeight));
@@ -356,6 +365,7 @@ DescriptorSIFT::write (std::ostream & stream, bool withName)
 
   stream.write ((char *) &width,         sizeof (width));
   stream.write ((char *) &angles,        sizeof (angles));
+  stream.write ((char *) &angleRange,    sizeof (angleRange));
   stream.write ((char *) &supportRadial, sizeof (supportRadial));
   stream.write ((char *) &supportPixel,  sizeof (supportPixel));
   stream.write ((char *) &sigmaWeight,   sizeof (sigmaWeight));

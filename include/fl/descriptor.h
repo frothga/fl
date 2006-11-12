@@ -435,6 +435,7 @@ namespace fl
 	// Parameters
 	int width;  ///< Number of horizontal or vertical positions.
 	int angles;  ///< Number of orientation bins.
+	float angleRange;  ///< Default is 2*PI.  If set to PI instead, then ignore sign of gradient.
 	int supportPixel;  ///< Pixel radius of normalized form of affine-invariant patch, if used.
 	float sigmaWeight;  ///< Size of Gaussian that weights the entries in the bins.
 	float maxValue;  ///< Largest permissible entry in one bin.
