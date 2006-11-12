@@ -198,7 +198,12 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
 {
   // Temporary guard against non-packed buffers.
   PixelBufferPacked * toBuffer = (PixelBufferPacked *) this->buffer;
-  if (! toBuffer) throw "Non-packed buffers not yet implemented in bitblt.";
+  if (! toBuffer)
+  {
+	buffer = toBuffer = new PixelBufferPacked;
+	this->width  = 0;
+	this->height = 0;
+  }
 
   // Adjust parameters
   if (fromX >= that.width  ||  fromY >= that.height)
