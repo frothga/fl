@@ -57,7 +57,12 @@ MPEG_LIB = -L$(MPEG_DIR)/lib -lavformat -lavcodec -lavutil -lz
 # Tiff library
 TIFF_DIR = /usr
 TIFF_INC = -I$(TIFF_DIR)/include
-TIFF_LIB = -L$(TIFF_DIR)/lib -ltiff
+TIFF_LIB = -L$(TIFF_DIR)/lib -ltiffxx -ltiff -lz
+
+# GeoTiff Library
+GTIFF_DIR = /usr
+GTIFF_INC = -I$(GTIFF_DIR)/include -DHAVE_GEOTIFF
+GTIFF_LIB = -L$(GTIFF_DIR)/lib -lgeotiff
 
 # JPEG library
 JPEG_DIR = /usr
