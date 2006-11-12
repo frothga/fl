@@ -172,7 +172,9 @@ namespace fl
 	AVFormatContext * fc;
 	AVStream * stream;
 	AVCodec * codec;
+	fl::PixelFormat * pixelFormat;  ///< The format in which the codec receives the image.
 	bool needHeader;  ///< indicates that file header needs to be written; also that codec needs to be opened
+	fl::Pointer videoBuffer;  ///< Working memory for encoder.
 	int state;
   };
 
