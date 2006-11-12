@@ -30,7 +30,7 @@ test: test.o $(OBJS)
 
 
 clean:
-	rm -f *~ *.o core core.* $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
+	rm -f *~ *.o core core.* *$(EXESUF).core $(SOURCE_LIB)/$(LIBPREF)$(MODULE)*
 	rm -f test$(EXESUF)
 
 distclean: clean
