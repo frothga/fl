@@ -31,10 +31,12 @@ namespace fl
 {
   enum BorderMode  ///< What to do with resulting pixels when the kernel exceeds the border of the input image.
   {
-	Crop,  ///< Resulting image is smaller than input image, and only contains "good" pixels.
-	ZeroFill,  ///< Resulting image is full size, but "bad" pixels are set to zero.
-	Boost,  ///< Treat the portion of the kernel that overlaps the image as if it were a full kernel.  This involves boosting the weights of the sub-kernel so the resulting pixel values are consistent with the "good" pixels.  Only appropriate for symmetric kernels that sum to 1.
-	UseZeros  ///< Treat pixels beyond the border of source image as having value of zero and convolve with full kernel.
+	Crop,      ///< Resulting image is smaller than input image, and only contains the well-defined pixels.
+	ZeroFill,  ///< Resulting image is full size, but border pixels are set to zero.
+	Boost,     ///< Treat the portion of the kernel that overlaps the image as if it were a full kernel.  This involves boosting the weights of the sub-kernel so the resulting pixel values are consistent with the well-defined pixels.  Only appropriate for symmetric kernels that sum to 1.
+	UseZeros,  ///< Treat pixels beyond the border of source image as having value of zero and convolve with full kernel.
+	Copy,      ///< Resulting image is full size, and border pixels are copied from source image.
+	Undefined  ///< Border pixels are not computed, but resulting image is same size as input.  Does exactly the same amount of computation at Crop.
   };
 
   /**
