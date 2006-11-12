@@ -312,7 +312,7 @@ XImage *
 fl::Visual::createImage (const Image & image, Image & formatted) const
 {
   formatted = image * format;
-  char * buffer = (char *) formatted.buffer;
+  char * buffer = (char *) ((PixelBufferPacked *) formatted.buffer)->memory;
   XImage * result = XCreateImage
   (
     screen->display->display,
