@@ -30,14 +30,19 @@ for details.
 #include "fl/track.h"
 #include "fl/imagecache.h"
 #include "fl/time.h"
+#include "fl/endian.h"
 
 #include <math.h>
 #include <fstream>
+
+#include <tiff.h>
 
 
 using namespace std;
 using namespace fl;
 
+
+extern bool useNew;
 
 int
 main (int argc, char * argv[])
@@ -49,6 +54,361 @@ main (int argc, char * argv[])
   try
   {
 	SlideShow window;
+
+
+	// Analyze HLS <-> RGB round trip
+	/*
+	float maxError = 0;
+	double avgError = 0;
+	float hls[3];
+	for (int r = 0; r < 256; r++)
+	{
+	  for (int g = 0; g < 256; g++)
+	  {
+		for (int b = 0; b < 256; b++)
+		{
+		  unsigned int rgba = (r << 24) | (g << 16) | (b << 8) | 0xFF;
+		  HLSFloat.setRGBA (hls, rgba);
+		  unsigned int rgbaOut = HLSFloat.getRGBA (hls);
+
+		  int cr =  rgbaOut             >> 24;
+		  int cg = (rgbaOut & 0xFF0000) >> 16;
+		  int cb = (rgbaOut &   0xFF00) >>  8;
+		  int er = abs (r - cr);
+		  int eg = abs (g - cg);
+		  int eb = abs (b - cb);
+
+		  int error = max (er, max (eg, eb));
+		  if (error >= maxError)
+		  {
+			cerr << r << " " << g << " " << b << " = " << error << " " << er << " " << eg << " " << eb << endl;
+			maxError = error;
+		  }
+		  avgError += error;
+		}
+	  }
+	}
+	cerr << "maxError = " << maxError << endl;
+	cerr << "avgError = " << avgError / 0x1000000 << endl;
+	*/
+
+
+	// Analyze RGB to gray via YUV
+	/*
+	float maxError = 0;
+	double avgError = 0;
+	for (int r = 0; r < 256; r++)
+	{
+	  for (int g = 0; g < 256; g++)
+	  {
+		for (int b = 0; b < 256; b++)
+		{
+		  int y = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+
+		  int cy = y << 16;
+		  int cu = u - 128;
+		  int cv = v - 128;
+
+		  int rr = min (max (cy                + 0x166F7 * cv + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int gg = min (max (cy -  0x5879 * cu -  0xB6E9 * cv + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int bb = min (max (cy + 0x1C560 * cu                + 0x8000, 0), 0xFFFFFF) >> 16;
+
+		  float fr = fl::PixelFormat::lutChar2Float[rr];
+		  float fg = fl::PixelFormat::lutChar2Float[gg];
+		  float fb = fl::PixelFormat::lutChar2Float[bb];
+		  float gray = fr * 0.2126 + fg * 0.7152 + fb * 0.0722;
+		  int grayChar = fl::PixelFormat::lutFloat2Char[(unsigned short) (65535 * gray)];
+
+		  fr = fl::PixelFormat::lutChar2Float[r];
+		  fg = fl::PixelFormat::lutChar2Float[g];
+		  fb = fl::PixelFormat::lutChar2Float[b];
+		  float grayExact = fr * 0.2126 + fg * 0.7152 + fb * 0.0722;
+		  int grayExactChar = fl::PixelFormat::lutFloat2Char[(unsigned short) (65535 * grayExact)];
+
+		  int error = abs (grayChar - grayExactChar);
+		  if (error > maxError)
+		  {
+			cerr << r << " " << g << " " << b << " = " << error << endl;
+			maxError = error;
+		  }
+		  avgError += error;
+		}
+	  }
+	}
+	cerr << "maxError = " << maxError << endl;
+	cerr << "avgError = " << avgError / 0x1000000 << endl;
+	*/
+
+
+	// Analyze RGB to YCbCr conversions
+	/*
+	float maxError = 0;
+	double avgError = 0;
+	for (int r = 0; r < 256; r++)
+	{
+	  for (int g = 0; g < 256; g++)
+	  {
+		for (int b = 0; b < 256; b++)
+		{
+		  int y1 = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int u  = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int v  = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+
+		  int y2 = (  0x41BD * r + 0x810F * g + 0x1910 * b + 0x100000 + 0x8000) >> 16;
+		  int cb = (- 0x25F2 * r - 0x4A7E * g + 0x7070 * b + 0x800000 + 0x8000) >> 16;
+		  int cr = (  0x7070 * r - 0x5E28 * g - 0x1248 * b + 0x800000 + 0x8000) >> 16;
+
+		  int yy = fl::PixelFormatPlanarYCbCrChar::lutYout[y2];
+		  int uu = fl::PixelFormatPlanarYCbCrChar::lutUVout[cb];
+		  int vv = fl::PixelFormatPlanarYCbCrChar::lutUVout[cr];
+
+		  //int yy = fl::PixelFormatPlanarYCbCrChar::lutYout [fl::PixelFormatPlanarYCbCrChar::lutYin [y1]];
+		  //int uu = fl::PixelFormatPlanarYCbCrChar::lutUVout[fl::PixelFormatPlanarYCbCrChar::lutUVin[u ]];
+		  //int vv = fl::PixelFormatPlanarYCbCrChar::lutUVout[fl::PixelFormatPlanarYCbCrChar::lutUVin[v ]];
+
+		  int ey = yy - y1;
+		  int eu = uu - u;
+		  int ev = vv - v;
+
+		  //int error = max (abs (ey), max (abs (eu), abs (ev)));
+		  int error = max (abs (eu), abs (ev));
+		  //int error = abs (ey);
+		  //if (error > maxError)
+		  if (abs (eu) > 1  ||  abs (ev) > 1)
+		  {
+			//cerr << r << " " << g << " " << b << " = " << error << endl;
+			cerr << y1 << " " << u << " " << v << " = " << ey << " " << eu << " " << ev << endl;
+			maxError = error;
+		  }
+		  avgError += error;
+		}
+	  }
+	}
+	cerr << "maxError = " << maxError << endl;
+	cerr << "avgError = " << avgError / 0x1000000 << endl;
+	*/
+
+
+	// Analyze YUV to RGB conversions
+	/*
+	int maxError = 0;
+	double avgError = 0;
+	int count = 0;
+	for (int u = 0; u < 256; u++)
+	{
+	  for (int v = 0; v < 256; v++)
+	  {
+		for (int y = 0; y < 256; y++)
+		{
+		  int cy = y << 16;
+		  int cu = u - 128;
+		  int cv = v - 128;
+		  int r = cy                + 0x166F7 * cv + 0x8000;
+		  int g = cy -  0x5879 * cu -  0xB6E9 * cv + 0x8000;
+		  int b = cy + 0x1C560 * cu                + 0x8000;
+		  //if (r < 0  ||  r > 0xFFFFFF  ||  g < 0  ||  g > 0xFFFFFF  ||  b < 0  ||  b > 0xFFFFFF) continue;
+		  r >>= 16;
+		  g >>= 16;
+		  b >>= 16;
+		  count++;
+
+		  int yy = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int uu = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int vv = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+		  cerr << hex << r << " " << g << " " << b << dec << endl;
+		  cerr << hex << yy << " " << uu << " " << vv << dec << endl;
+
+		  int ey = yy - y;
+		  int eu = uu - u;
+		  int ev = vv - v;
+
+		  int error = max (abs (ey), max (abs (eu), abs (ev)));
+		  maxError = max (maxError, error);
+		  if (ey != 0  ||  eu != 0  ||  ev != 0)
+		  {
+			cerr << y << " " << u << " " << v << " = " << ey << " " << eu << " " << ev << endl;
+		  }
+		  avgError += error;
+		}
+	  }
+	}
+	cerr << "maxError = " << maxError << endl;
+	cerr << "avgError = " << avgError / count << endl;
+	*/
+
+
+	// Analyze RGB to YUV conversions
+	/*
+	float maxError = 0;
+	double avgError = 0;
+	for (int r = 0; r < 256; r++)
+	{
+	  for (int g = 0; g < 256; g++)
+	  {
+		for (int b = 0; b < 256; b++)
+		{
+		  int y = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+
+		  int cy = y << 16;
+		  int cu = u - 128;
+		  int cv = v - 128;
+
+		  int rr = min (max (cy                + 0x166F7 * cv + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int gg = min (max (cy -  0x5879 * cu -  0xB6E9 * cv + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int bb = min (max (cy + 0x1C560 * cu                + 0x8000, 0), 0xFFFFFF) >> 16;
+
+		  int yy = min (max (  0x4C84 * rr + 0x962B * gg + 0x1D4F * bb            + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int uu = min (max (- 0x2B2F * rr - 0x54C9 * gg + 0x8000 * bb + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+		  int vv = min (max (  0x8000 * rr - 0x6B15 * gg - 0x14E3 * bb + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+
+		  //float er = abs (yy - y);
+		  //float eg = abs (uu - u);
+		  //float eb = abs (vv - v);
+
+		  float er = abs (rr - r);
+		  float eg = abs (gg - g);
+		  float eb = abs (bb - b);
+
+		  //float er = fabs (fl::PixelFormat::lutChar2Float[rr] - fl::PixelFormat::lutChar2Float[r]);
+		  //float eg = fabs (fl::PixelFormat::lutChar2Float[gg] - fl::PixelFormat::lutChar2Float[g]);
+		  //float eb = fabs (fl::PixelFormat::lutChar2Float[bb] - fl::PixelFormat::lutChar2Float[b]);
+
+		  //float er = fl::PixelFormat::lutChar2Float[rr] / fl::PixelFormat::lutChar2Float[r];
+		  //float eg = fl::PixelFormat::lutChar2Float[gg] / fl::PixelFormat::lutChar2Float[g];
+		  //float eb = fl::PixelFormat::lutChar2Float[bb] / fl::PixelFormat::lutChar2Float[b];
+		  //if (er < 1.0) er = 1.0 / er;
+		  //if (eg < 1.0) eg = 1.0 / eg;
+		  //if (eb < 1.0) eb = 1.0 / eb;
+		  //if (isinf (er)) er = 0;
+		  //if (isinf (eg)) eg = 0;
+		  //if (isinf (eb)) eb = 0;
+
+		  //float error = max (er, max (eg, eb));
+		  float error = er + eg + eb;
+		  if (error > maxError)
+		  {
+			//cerr << r << " " << g << " " << b << " = " << error << endl;
+			cerr << y << " " << u << " " << v << " = " << error << endl;
+			maxError = error;
+		  }
+		  avgError += error;
+		}
+	  }
+	}
+	cerr << "maxError = " << maxError << endl;
+	cerr << "avgError = " << avgError / 0x1000000 << endl;
+	*/
+
+
+	// Analyze color to gray conversions
+	/*
+	const int redWeight   =  76;
+	const int greenWeight = 150;
+	const int blueWeight  =  29;
+	const int totalWeight = 255;
+	const float redToY   = 0.2126;
+	const float greenToY = 0.7152;
+	const float blueToY  = 0.0722;
+	float maxError = 0;
+	double avgError = 0;
+	for (int r = 0; r < 256; r++)
+	{
+	  for (int g = 0; g < 256; g++)
+	  {
+		for (int b = 0; b < 256; b++)
+		{
+		  int gray1 = ((redWeight * (r << 8) + greenWeight * (g << 8) + blueWeight * (b << 8)) / totalWeight) >> 8;
+		  float linear1 = fl::PixelFormat::lutChar2Float[gray1];
+		  float lr = fl::PixelFormat::lutChar2Float[r];
+		  float lg = fl::PixelFormat::lutChar2Float[g];
+		  float lb = fl::PixelFormat::lutChar2Float[b];
+		  float linear2 = lr * redToY + lg * greenToY + lb * blueToY;
+		  int gray2 = fl::PixelFormat::lutFloat2Char[(unsigned short) (65535 * linear2)];
+		  float error = fabs (linear1 - linear2);
+		  if (error > maxError)
+		  {
+			cerr << r << " " << g << " " << b << " = " << gray1 << " " << linear1 << " " << linear2 << " " << " " << gray2 << " " << error << endl;
+			maxError = error;
+		  }
+		  avgError += error;
+		}
+	  }
+	}
+	cerr << "maxError = " << maxError << endl;
+	cerr << "avgError = " << avgError / 0x1000000 << endl;
+	*/
+
+
+	// Analyze YCbCr to gray conversion
+	/*
+	float maxError = 0;
+	double avgError = 0;
+	for (int gray1 = 0; gray1 < 256; gray1++)
+	{
+	  //float linear1 = (fl::PixelFormat::lutChar2Float[gray1] - fl::PixelFormatPlanarYCbCrChar::floatOffset) / fl::PixelFormatPlanarYCbCrChar::floatRange;
+	  float linear1 = (gray1 - 16) / 219.0;
+	  if (linear1 <= 0.04045f)
+	  {
+		linear1 /= 12.92f;
+	  }
+	  else
+	  {
+		linear1 = powf ((linear1 + 0.055f) / 1.055f, 2.4f);
+	  }
+
+	  int gray2 = fl::PixelFormatPlanarYCbCrChar::lutYout[gray1];
+	  float linear2 = fl::PixelFormat::lutChar2Float[gray2];
+
+	  float error = fabs (linear1 - linear2);
+	  cerr << gray1 << " " << linear1 << " " << linear2 << " " << " " << gray2 << " " << error << endl;
+	  if (error > maxError)
+	  {
+		maxError = error;
+	  }
+	  avgError += error;
+	}
+	cerr << "maxError = " << maxError << endl;
+	cerr << "avgError = " << avgError / 0x100 << endl;
+	*/
+
+
+	// Test bitblt
+	/*
+	new ImageFileFormatJPEG;
+	Image test ("test.jpg");
+	Image image (200, 200, RGBChar);
+	image.clear (WHITE);
+	image.bitblt (test, 0, image.height, 0, 0, image.width);
+	window.show (image);
+	window.waitForClick ();
+	*/
+
+
+	// Test bswap
+	/*
+	unsigned long long bob[] =
+	{
+	  0x1122334455667788ll,
+	  0x1222334455667788ll,
+	  0x1322334455667788ll,
+	  0x1422334455667788ll,
+	  0x1522334455667788ll,
+	  0x1622334455667788ll,
+	  0x1722334455667788ll,
+	  0x1822334455667788ll,
+	  0x1922334455667788ll
+	};
+	for (int i = 0; i < 9; i++) cerr << hex << bob[i] << endl;
+	bswap (bob, 9);
+	//bswap ((unsigned int *) bob, 18);
+	//bswap ((unsigned short *) bob, 36);
+	for (int i = 0; i < 9; i++) cerr << hex << bob[i] << endl;
+	//cerr << "direct = " << hex << bswap (0x11223344) << endl;
+	*/
 
 
 	// Test KLT
@@ -91,6 +451,7 @@ main (int argc, char * argv[])
 
 
 	// Test effect of removing intensity information from image
+	/*
 	new ImageFileFormatJPEG;
 	new ImageFileFormatPGM;
 	new ImageFileFormatTIFF;
@@ -107,6 +468,7 @@ main (int argc, char * argv[])
 	}
 	window.show (image);
 	window.waitForClick ();
+	*/
 
 
 	// Test rotation in HLS space
@@ -327,24 +689,79 @@ main (int argc, char * argv[])
 	new ImageFileFormatJPEG;
 	new ImageFileFormatTIFF;
 	new ImageFileFormatPGM;
-	PixelFormatRGBABits barf0 (3, 0xFF00, 0xFF, 0xFF0000, 0x0);
-	PixelFormatRGBABits barf1 (3, 0xFF, 0xFF0000, 0xF00, 0x0);
-	Image image (parmChar (1, "test.tif"));
-	image *= BGRChar;
-	Image i2 (image.width, image.height, UYVChar);
-	for (int y = 0; y < image.height; y++)
-	{
-	  for (int x = 0; x < image.width; x++)
-	  {
-		unsigned int pixel;
-		pixel = image.getYUV (x, y);
-		i2.setYUV (x, y, pixel);
-	  }
-	}
-	image = i2;
-	cerr << typeid (*image.format).name () << endl;
+	new ImageFileFormatNITF;
+	ImageFile file (parmChar (1, "test.jpg"));
+	Image image;
+	file.read (image, parmInt (2, 0), parmInt (3, 0), parmInt (4, 0), parmInt (5, 0));
+	string compression;
+	file.get ("Compression", compression);
+	cerr << "compression = " << compression << endl;
 	window.show (image);
 	window.waitForClick ();
+	*/
+
+
+	// Test ImageFile metadata reading and writing
+	new ImageFileFormatMatlab;
+	new ImageFileFormatJPEG;
+	new ImageFileFormatTIFF;
+	new ImageFileFormatPGM;
+	new ImageFileFormatNITF;
+	Image test ("test.jpg");
+	ImageFile file ("test.tif", "w");
+	Matrix<double> xform (4, 4);
+	xform.clear ();
+	xform(3,3) = 1;
+	xform(0,0) = 3;
+	xform(1,1) = 3;
+	xform(0,3) = 100;
+	xform(1,3) = 200;
+	file.set ("GeoTransformationMatrix", xform);
+	file.set ("PageName", "bob 47");
+	file.set ("GTCitation", "my stuff");
+	file.set ("GTRasterTypeGeoKey", "RasterPixelIsArea");
+	file.write (test);
+	file.close ();
+	ImageFile file2;
+	file2.open ("test.tif", "r");
+	string sv;
+	Matrix<double> mv;
+	string cit;
+	string rt;
+	file2.get ("PageName", sv);
+	file2.get ("GeoTransformationMatrix", mv);
+	file2.get ("GTCitation", cit);
+	file2.get ("GTRasterTypeGeoKey", rt);
+	cerr << "PageName = " << sv << endl;
+	cerr << "GeoTransformationMatrix: " << mv.rows () << " " << mv.columns () << endl << mv << endl;
+	cerr << "GTCitation = " << cit << endl;
+	cerr << "raster type = " << rt << endl;
+
+
+
+	// Write a tiled file
+	/*
+	new ImageFileFormatJPEG;
+	new ImageFileFormatTIFF;
+	Image test ("test.jpg");
+	ImageFile file ("test.tif", "w");
+	int blockWidth = test.width; //128;
+	int blockHeight = 48; //128;
+	file.set ("Compression", "LZW");
+	//file.set ("blockWidth", blockWidth);
+	//file.set ("blockHeight", blockHeight);
+	file.set ("width", test.width);
+	file.set ("height", test.height);
+	for (int y = 0; y < test.height; y += blockHeight)
+	{
+	  for (int x = 0; x < test.width; x += blockWidth)
+	  {
+		Image block (*test.format);
+		block.bitblt (test, 0, 0, x, y, blockWidth, blockHeight);
+		cerr << "block = " << x << " " << y << " " << block.width << " " << block.height << endl;
+		file.write (block, x, y);
+	  }
+	}
 	*/
 
 
@@ -499,7 +916,7 @@ main (int argc, char * argv[])
 	new ImageFileFormatPGM;
 	new ImageFileFormatJPEG;
 	Image image;
-	image.read ("test2.jpg");
+	image.read ("test.jpg");
 	//image *= GrayFloat;
 
 	Transform rot (parmFloat (1, 0) * PI / 180);
@@ -523,7 +940,42 @@ main (int argc, char * argv[])
 	cerr << "time = " << w << endl;
 	cerr << typeid (*image.format).name () << endl;
 	cerr << "image = " << image.width << " " << image.height << endl;
-	window.show (image);
+	//window.show (image);
+	//window.waitForClick ();
+	*/
+
+
+	// Test Convolution1D
+	/*
+	new ImageFileFormatJPEG;
+	Image test ("test.jpg");
+	test *= GrayFloat;
+
+	Gaussian1D c (1, Crop);
+	//c.direction = Vertical;
+	useNew = false;
+	ImageOf<float> original = test * c;
+	useNew = true;
+	ImageOf<float> changed = test * c;
+
+	if (original.width != changed.width  ||  original.height != changed.height) throw "different sizes!";
+	float maximum = 0;
+	for (int y = 0; y < original.height; y++)
+	{
+	  for (int x = 0; x < original.width; x++)
+	  {
+		float diff = fabs (original(x,y) - changed(x,y));
+		float ratio = original(x,y) / changed(x,y);
+		if (ratio < 1) ratio = 1.0f / ratio;
+		if (diff > maximum)
+		{
+		  maximum = diff;
+		  cerr << x << " " << y << " " << diff << " " << original(x,y) << " " << changed(x,y) << " " << ratio << endl;
+		}
+	  }
+	}
+
+	window.show (changed);
 	window.waitForClick ();
 	*/
 
@@ -565,13 +1017,29 @@ main (int argc, char * argv[])
 
 	// Test Pixel
 	/*
-	new ImageFileFormatPGM;
+	//PixelFormatRGBABits bob (2, 0xF000, 0xF00, 0xF0, 0xF);
 	new ImageFileFormatJPEG;
-	new ImageFileFormatTIFF;
-	Image image;
-	image.read (parmChar (1, "test.tif"));
-	image *= ClearAlpha (0x808080);
-	image.write ("/home/rothgang/public_html/test.jpg", "jpg");
+	Image test ("test.jpg");
+	//((PixelBufferPacked *) test.buffer)->resize (test.width + 13, test.height, *test.format, true);
+	//test *= YUV411;
+
+	Image image (test.width, test.height, YUV422);
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		//float pixel;
+		//unsigned char pixel;
+		unsigned int pixel;
+		pixel = test.getYUV (x, y);
+		//test.getGray (x, y, pixel);
+		image.setYUV (x, y, pixel);
+	  }
+	}
+
+	Image image = test * UYYVYY;
+	window.show (image); // * Zoom (3, 3));
+	window.waitForClick ();
 	*/
 
 
@@ -632,23 +1100,37 @@ main (int argc, char * argv[])
 	Image original = i;
 	i *= GrayChar;
 	InterestPointSet points;
-	InterestMSER m (parmInt (2, 5), parmFloat (3, 0.9f));
+	//InterestMSER m (parmInt (2, 5), parmFloat (3, 0.9f));
+	InterestHarrisLaplacian m;
+	//InterestDOG m;
+	//InterestHessian m;
 	Stopwatch timer;
 	m.run (i, points);
 	cerr << "run time = " << timer << endl;
 	cerr << "total points = " << points.size () << endl;
 	InterestPointSet::reverse_iterator it;
-	  CanvasImage ci;
-	  ci.copyFrom (original);
+	CanvasImage ci;
+	ci.copyFrom (original);
 	for (it = points.rbegin (); it != points.rend (); it++)
 	{
-	  PointMSER * p = (PointMSER *) *it;
-	  //cerr << "MSER = " << (int) p->threshold << " " << p->sign << " " << p->weight << endl;
-	  //ci.drawMSER (*p, i);
-	  ci.drawEllipse (*p, p->A * ~p->A, p->scale, GREEN);
+	  if (PointMSER * p = dynamic_cast<PointMSER *> (*it))
+	  {
+		cerr << "MSER = " << (int) p->threshold << " " << p->sign << " " << p->weight << endl;
+		ci.drawMSER (*p, i);
+		ci.drawEllipse (*p, p->A * ~p->A, p->scale, GREEN);
+	  }
+	  else if (PointAffine * p = dynamic_cast<PointAffine *> (*it))
+	  {
+		ci.drawEllipse (*p, p->A * ~p->A, p->scale, GREEN);
+	  }
+	  else if (PointInterest * p = dynamic_cast<PointInterest *> (*it))
+	  {
+		PointAffine pa = *p;
+		ci.drawEllipse (pa, pa.A * ~pa.A, pa.scale, GREEN);
+	  }
 	}
-	  window.show (ci);
-	  window.waitForClick ();
+	window.show (ci);
+	window.waitForClick ();
 	*/
 
 
@@ -1003,9 +1485,11 @@ main (int argc, char * argv[])
 
 	// Test drawText
 	/*
+	new ImageFileFormatPGM;
 	CanvasImage disp (640, 480, RGBAChar);
-	disp.setFont ("courier", parmFloat (1, 12));
-	disp.drawText ("bob", Point (320, 240), WHITE, parmFloat (2, 0));
+	disp.setFont (parmChar (1, "courier"), parmFloat (2, 12));
+	disp.drawText ("bob", Point (320, 240), WHITE, parmFloat (3, 0));
+	disp.write ("test2.pgm", "pgm");
 	window.show (disp);
 	window.waitForClick ();
 	*/
