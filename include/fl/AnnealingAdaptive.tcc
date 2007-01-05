@@ -6,7 +6,29 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for Cygwin
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.6  2007/01/05 14:05:02  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.5  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.4  2005/09/26 04:18:06  Fred
+Add detail to revision history.
+
+Revision 1.3  2005/04/23 19:35:05  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.2  2005/01/12 04:59:59  rothgang
+Use std versions of pow, sqrt, and fabs so that choice of type specific version
+will be automatic when template is instantiated.  IE: std contains type
+overloaded versions of the functions rather than separately named functions.
+
+Revision 1.1  2004/04/19 21:22:43  rothgang
+Create template versions of Search classes.
+-------------------------------------------------------------------------------
 */
 
 
