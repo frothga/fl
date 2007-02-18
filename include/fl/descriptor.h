@@ -6,19 +6,118 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-01/2005 Fred Rothganger -- Update comments and defaults on some classes.  Add
-        ChiSquared::preprocess().  Guarantee orientations are returnd in
-        descending order by strength.
-09/2005 Fred Rothganger -- Commit to using ImageCache.  Efficiency improvements
-        to DescriptorSIFT.
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.11 thru 1.16 Copyright 2005 Sandia Corporation.
+Revisions 1.17 thru 1.19 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Derive Comparison from Metric.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.19  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.18  2006/11/12 14:52:47  Fred
+Add ability to ignore sign of gradient.
+
+Revision 1.17  2006/02/05 22:22:20  Fred
+Break dependency numeric and image libraries:  Created a new class called
+Metric that resides in the numeric library and does a job similar to but more
+general than Comparison.  Derive Comparison from Metric.  This forces a change
+in the semantics of the value() function.  Moved preprocessing flag out of the
+function prototype and made it a member of the class.  In the future, it may
+prove useful to have preprocessing in Metric itself, in which case relevant
+members will move up.
+
+Rearrange the construction of ComparisonCombo so it doesn't depend on
+DescriptorCombo.
+
+Revision 1.16  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.15  2005/10/09 03:41:49  Fred
+Move the file name LICENSE up to previous line, for better symmetry with UIUC
+notice.
+
+Revision 1.14  2005/10/08 19:28:20  Fred
+Update revision history and add Sandia copyright notice.
+
+Commit to using ImageCache.  Efficiency improvements to DescriptorSIFT.
+
+Revision 1.13  2005/04/23 19:35:05  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.12  2005/01/22 21:10:07  Fred
+Guarantee that orientations are returned in descending order of strength.
+
+Revision 1.11  2005/01/12 04:56:38  rothgang
+Update semantics of DescriptorSIFT::supportPixel.  Add
+ChiSquared::preprocess().  Change default number of bins in
+DescriptorColorHistogram* to an odd number.
+
+Revision 1.10  2004/09/08 17:10:10  rothgang
+Add ability to do linear mapping in MetricEuclidean.
+
+Revision 1.9  2004/08/30 01:26:44  rothgang
+Include timestamp in change detection for cacheing input image.
+
+Revision 1.8  2004/08/30 00:10:53  rothgang
+Change certain attributes of Descriptor from functions to member variables:
+supportRadial, monochrome, dimension.  Elevated supportRadial to a member of
+the base classs.  It is very common, but not 100% common, so there is a little
+wasted storage in a couple of cases.  On the other hand, this allows for client
+code to determine what support was used for a descriptor on an affine patch.
+
+Revision 1.7  2004/04/19 16:51:48  rothgang
+Add full serialization support (using Factory template) to both Descriptor and
+Comparison classes.
+
+Remove variants of Descriptor::value() for Point classes other than
+PointAffine, since this can be handled by automatic conversion.
+
+Fix public inheritance in DescriptorTextonScale.
+
+Add timestamp to make change detection more discriminating in DescriptorLBP. 
+Should add this to other classes that do caching as well.
+
+Revision 1.6  2004/04/06 20:17:32  rothgang
+Remove attempt to squash comparison values into probabilities, but continue to
+squash them into range [0,1].  Add LBP class.
+
+Revision 1.5  2004/02/15 18:04:04  rothgang
+Change interface of Comparison to return a value in [0,1].  Original idea was
+to give probability of correct match, but this varies with data so it should be
+handled at the application level.  Will remove the probability idea but leave
+the output in [0,1].  The application can then reshape the value into a
+probability.
+
+Added several new Comparisons: HistogramIntersection, ChiSquared.  Added
+DescriptorCombo and ComparisonCombo.  Added DescriptorContrast.  Simplified
+spin images.  Enhanced Descriptor interface to provide some descriptive
+information: dimension and chromaticity.
+
+Revision 1.4  2004/01/14 18:19:35  rothgang
+Add monochrome attribute, and provide default implementations for read() and
+write().
+
+Revision 1.3  2004/01/13 21:13:22  rothgang
+Add Comparison.  Convert some comments to doxygen format.  Add
+DescriptorTextonScaled.
+
+Revision 1.2  2003/12/30 16:39:55  rothgang
+Several new descriptors, including ColorHistogram and SIFT.  Refine the class
+hierarchy of Convolution.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

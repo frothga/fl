@@ -6,12 +6,66 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-06/2005 Fred Rothganger -- Add PointMSER
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.8 thru 1.9 Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.11  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.10  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.9  2005/10/09 03:28:51  Fred
+Update revision history and add Sandia copyright notice.
+
+Revision 1.8  2005/06/07 04:01:11  Fred
+Added PointMSER.  Changed DetectorType names to be more generic, and added MSER
+regions to list.
+
+Revision 1.7  2005/04/23 19:38:11  Fred
+Add UIUC copyright notice.
+
+Revision 1.6  2004/08/30 00:08:45  rothgang
+Add projection(), and function similar to rectification() except that it
+returns the inverse.  Typically, we do computations on affine patches using
+this form.  Eliminates two matrix inversions in the process of converting a
+PointAffine into the desired form.
+
+Added a constructor for PointAffine that takes the kind of matrix produced by
+projection().
+
+Revision 1.5  2003/12/30 16:23:45  rothgang
+Add method to compute rectifying transformation for PointAffine.
+
+Revision 1.4  2003/09/07 22:19:24  rothgang
+Convert comments to doxygen format.  Add forms of distance() and angle() that
+compute relative to origin rather than a given point.
+
+Revision 1.3  2003/08/11 13:48:49  rothgang
+Added a detector type of Unknown.
+
+Revision 1.2  2003/07/09 15:03:15  rothgang
+Modified Point to work more easily with other matrix classes.  (Still needs
+work in this regard.)  Added field to PointInterest to remember what type of
+detector it came from.  Changed name of PointInterestAffine to PointAffine in
+anticipation of adding Point classes specific to detector type.  However,
+didn't proceed any further in developing the specific classes because the only
+way they would be useful would be to store all PointInterests as separate heap
+objects, which is "heavy".
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

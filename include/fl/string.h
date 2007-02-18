@@ -6,7 +6,39 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
+Revisions 1.2 and 1.4 Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.6  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.5  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.4  2005/09/26 04:28:46  Fred
+Add detail to revision history.
+
+Revision 1.3  2005/04/23 19:35:05  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.2  2005/01/22 20:48:27  Fred
+MSVC compilability fix:  Handle difference in naming of case insensitive
+strcmp().
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

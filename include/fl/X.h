@@ -6,7 +6,43 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Add EventPredicate.  Convert to doc comments.
+Revisions 1.5 thru 1.6 Copyright 2007 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.6  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.5  2006/01/29 23:56:35  Fred
+Add EventPredicate to allow more complex filtering of events.  The original
+motivation was to use XCheckIfEvent() to detect the existence of events without
+blocking or removing them from the queue.  However, these are not the semantics
+of XCheckIfEvent() or any other Xlib function I have found so far.  In any
+case, the facility may still turn out useful sometime.
+
+Convert comments to doxygen format.
+
+Revision 1.4  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.3  2005/04/23 19:38:11  Fred
+Add UIUC copyright notice.
+
+Revision 1.2  2003/08/11 14:01:04  rothgang
+Add getImage and resize functions.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

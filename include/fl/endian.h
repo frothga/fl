@@ -1,6 +1,39 @@
 /*
 Author: Fred Rothganger
-Created 3/11/2006 to machine endian related defines and functions
+Created 3/11/2006 to provide machine endian related defines and functions
+
+
+Revisions 1.1 thru 1.3 Copyright 2006 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.4  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.3  2006/03/12 03:20:08  Fred
+Convert to local labels in gcc code to avoid errors when bswap is inlined
+multiple times in same program.  Haven't yet gotten local labels to work in
+MSVC.  The MASM macro @@ is rejected by the inline assembler.  Labels in MSVC
+inline assembly only have function scope, so as long as there is not more than
+one instance of bswap per function it will be ok.
+
+Revision 1.2  2006/03/12 00:27:52  Fred
+Rearrange order of routines according to # of bits processed.
+
+Add generic routines if not x86.
+
+Write entire loop in x86 assembly rather than mixing C code.
+
+Stop using double underscores on endian defines.
+
+Revision 1.1  2006/03/11 19:56:42  Fred
+Header for managing byte order issues.
+-------------------------------------------------------------------------------
 */
 
 

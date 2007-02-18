@@ -6,19 +6,97 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-08/2005 Fred Rothganger -- Compilability fix for GCC 3.4.4
-09/2005 Fred Rothganger -- Make operator ! a member of various Matrix classes.
-        Move stream operators and Matrix2x2::geev() into appropriate tcc files.
-        Add operator * to MatrixTranspose.
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.10 thru 1.18 Copyright 2005 Sandia Corporation.
+Revisions 1.19 thru 1.20 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Rename SmartPointer to PointerStruct.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.20  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.19  2006/02/25 23:11:48  Fred
+Renamed SmartPointer to PointerStruct as part of a rework of pointer.h.
+
+Revision 1.18  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.17  2005/10/09 03:26:43  Fred
+Update revision history and add Sandia copyright notice.
+
+Move stream operators and Matrix2x2::geev() into appropriate .tcc files.
+
+Add operator * to MatrixTranspose.
+
+Revision 1.16  2005/09/12 03:57:21  Fred
+Add comment to revision history.
+
+Revision 1.15  2005/09/11 23:03:28  Fred
+Make operator ! a member of Matrix and add the operator to MatrixAbstract and
+Matrix3x3 as well.
+
+Revision 1.14  2005/09/10 17:27:19  Fred
+Add detail to revision history.  Add Sandia copyright.  This will need to be
+updated with license info before release.
+
+Revision 1.13  2005/08/07 03:10:08  Fred
+GCC 3.4 compilability fix: explicitly specify "this" for inherited member
+variables in a template.
+
+Revision 1.12  2005/04/23 19:35:05  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.11  2005/01/22 20:45:59  Fred
+MSVC compilability fix:  Change interface of frob() to be float rather than
+templated type.  Make Matrix2x2::geev(complex) a nested template rather than an
+explicit template specialization in order to avoid mutliple definitions.
+
+Revision 1.10  2005/01/12 04:59:18  rothgang
+Use math.h to add functions (sqrt, pow) to the std namespace to ensure that all
+common numeric types are covered.
+
+Revision 1.9  2004/08/30 00:04:56  rothgang
+Add sumSquares() and elementMultiply().
+
+Revision 1.8  2004/06/22 21:26:41  rothgang
+Remove unecessary negation in Matrix2x2::geev().
+
+Revision 1.7  2004/05/10 20:12:57  rothgang
+Switch from using C99 style complex numbers to STL complex template.
+
+Revision 1.6  2004/04/19 16:34:46  rothgang
+Get rid of factory method.  This is now handled by factory template.
+
+Revision 1.5  2003/12/30 16:30:30  rothgang
+Change default value of withName to false.  Convert comments to doxygen format.
+Add MatrixSparse::frob().  Add Matrix::detach().  Still have an issue with
+outputting complex numbers to a human readable stream.
+
+Revision 1.4  2003/09/07 22:19:56  rothgang
+Add real read and write methods to MatrixPacked.
+
+Revision 1.3  2003/08/11 14:17:56  rothgang
+Changed interface for clear() so that it can take an arbitrary scalar rather
+than just setting everything to zero.  Added geev from Matrix2x2<complex
+double>.
+
+Revision 1.2  2003/07/09 14:53:53  rothgang
+Changed which methods have inline implementations in the header file.  Mainly,
+the element accessors () and [] should be inlineable.  Also added a template
+constructor to each class that allows type as well as structural conversion.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

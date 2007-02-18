@@ -6,13 +6,56 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-04/2005 Fred Rothganger -- Add == and != operators
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.4 thru 1.7  Copyright 2005 Sandia Corporation.
+Revisions 1.9 thru 1.10 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.10  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.9  2006/02/25 23:16:22  Fred
+Renamed SmartPointer to PointerStruct.  Created a new PointerPoly class which
+manages a pointer to a reference counted object.  PointerPoly is the closest
+thing to what most people consider a "smart pointer".  The "poly" refers to the
+fact that the object can be of any class that is derived from the one given in
+the template parameter.
+
+Revision 1.8  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.7  2005/10/09 03:29:18  Fred
+Update revision history and add Sandia copyright notice.
+
+Revision 1.6  2005/04/23 21:04:24  Fred
+Add == and != operators to support their namesake operators in Image.  Checks
+for equality based on metadata rather than on actual contents of memory block.
+
+Revision 1.5  2005/04/23 19:35:05  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.4  2005/01/22 20:47:03  Fred
+MSVC compilability fix:  Fix complaint about lvalue.
+
+Revision 1.3  2003/12/30 16:23:05  rothgang
+Convert comments to doxygen format.
+
+Revision 1.2  2003/07/09 14:58:01  rothgang
+Changed copyFrom() to allow self-duplication.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

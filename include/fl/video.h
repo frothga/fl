@@ -6,8 +6,81 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-01/2006 Fred Rothganger -- Generate timestamp from PTS. Pure seek on timestamp.
+Revisions 1.7 and 1.9    Copyright 2005 Sandia Corporation.
+Revisions 1.11 thru 1.15 Copyright 2007 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.15  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.14  2006/11/12 15:07:39  Fred
+Use planar PixelFormats to avoid extra conversions.  More efficient allocation
+of working buffer.
+
+Revision 1.13  2006/03/20 05:19:59  Fred
+Get rid of hint.  Instead, follow the paradigm that we return an image with
+zero conversion.
+
+Revision 1.12  2006/01/29 03:17:20  Fred
+Rework seekTime() to use only timestamps, and not depend on an estimate of
+frame rate.  Move linear seeking back into seekFrame().
+
+Revision 1.11  2006/01/25 03:46:11  Fred
+Set the timestamp field from PTS rather than generating it based on a fixed
+framerate assumption when reading video.
+
+Revision 1.10  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.9  2005/09/26 04:29:13  Fred
+Add detail to revision history.
+
+Revision 1.8  2005/04/23 19:35:05  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.7  2005/01/22 20:58:31  Fred
+MSVC compilability fix:  FFMPEG defines a PixelFormat enumeration, which
+collides with fl::PixelFormat under VC compiler.
+
+Revision 1.6  2004/09/08 17:10:56  rothgang
+Add trap for case where video does not have any valid timestamps.  Switches to
+linear seeking instead.
+
+Revision 1.5  2004/08/10 21:16:41  rothgang
+Add ability to get attributes from input stream.  Use this to get duration from
+FFMPEG.
+
+Add "expectedSkew" member, to compensate for difference between PTS and DTS
+when seeking.
+
+Revision 1.4  2004/05/08 19:49:34  rothgang
+Change semantics of good() slightly by not reading ahead to check for eof.  Now
+good() indicates the certainty that the previous read succeeded, but only the
+possibility that the next read will succeed.
+
+Revision 1.3  2003/12/30 16:21:10  rothgang
+Create timestamp mode, which switches between frame number and seconds for
+value of Image::timestamp.
+
+Revision 1.2  2003/08/11 13:48:05  rothgang
+Remove extern C from around include libavformat.h because it is embedded in the
+library how.  Updated comments to doxygen format.  Added guarantee that Image
+is always valid till next read.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

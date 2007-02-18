@@ -6,18 +6,48 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-09/2005 Fred Rothganger -- Moved implementations into numeric lib and switched
-        to single template declaration for both float and double versions.
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.1 thru 1.3 Copyright 2005 Sandia Corporation.
+Revisions 1.4 thru 1.7 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Add "copy" option to gelss() and gelsd().
-02/2006 Fred Rothganger -- Change all "copy" options to "destroy".
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.7  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.6  2006/02/16 04:44:08  Fred
+Change all "copy" options into "destroy".  These functions now have about the
+same semantics as before the copy option was added, except now the programmer
+can explicitly indicate that a parameter can be overwritten safely.
+
+Revision 1.5  2006/02/05 22:53:58  Fred
+Add a flag to control copying the "b" parameter in gels*() functions, since
+there are cases where the client program may want to reuse it.
+
+Revision 1.4  2006/01/22 05:20:04  Fred
+Add "copy" option to gelss() and gelsd().
+
+Revision 1.3  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.2  2005/10/09 03:46:15  Fred
+Add  Sandia distribution terms.
+
+Add detailed doc comments for most functions.  Also, change contract to allow
+inputs to be destroyed, and in some cases provide a flag to prevent
+destruction.
+
+Make pinv(), det(), and rank()  take a MatrixAbstract.
+
+Revision 1.1  2005/09/12 03:55:01  Fred
+Use a single header for LAPACK functions that are templated on numeric type. 
+Split implementations into separate files that contain template specializations
+to issue the actual calls to LAPACK.
+-------------------------------------------------------------------------------
 */
 
 

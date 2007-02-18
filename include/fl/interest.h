@@ -6,18 +6,81 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-06/2005 Fred Rothganger -- Added MSER and changed interface to pass collections
-        of pointers.
-08/2005 Fred Rothganger -- Commit to using ImageCache
-09/2005 Fred Rothganger -- Add more constraints to InterestMSER.
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.5  thru 1.12 Copyright 2005 Sandia Corporation.
+Revisions 1.13 thru 1.14 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Add "fast" mode to InterestDOG.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.14  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.13  2006/01/22 05:23:51  Fred
+Add "fast" mode to InterestDOG.
+
+Revision 1.12  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.11  2005/10/09 03:42:22  Fred
+Move the file name LICENSE up to previous line, for better symmetry with UIUC
+notice.
+
+Revision 1.10  2005/10/08 19:33:33  Fred
+Update revision history and add Sandia copyright notice.
+
+Commit to using ImageCache.
+
+Add more constraints to InterestMSER.
+
+Revision 1.9  2005/06/14 02:33:13  Fred
+Move supporting subroutines into InterestMSER class.  Deal with known memory
+leak in merge() by creating a string of Roots that have been subsumed.  Also
+create a string of Roots that have been discarded.  By re-using these, we can
+reduce calls to the memory allocator.
+
+Revision 1.8  2005/06/12 20:24:42  Fred
+Add neighbors parameter to control finding local minima.
+
+Use Gaussian information stored in Root objects associated with subsumed
+regions to avoid counting pixels more than once.  This is an "intermediate"
+checkin to preserve a milestone.  The next step is to rewrite all the
+supporting routines to share a data structure containing all important
+variables.  This could be the InterestMSER class itself, but then it wouldn't
+be thread safe, so will use a private structure in the implementation file.
+
+Revision 1.7  2005/06/10 15:20:47  Fred
+Save/reuse previous center and covariance of a region as it grows.  However, to
+really become efficient, must transfer such information when regions merge.
+
+Revision 1.6  2005/06/07 04:00:04  Fred
+Added MSER and changed interface to pass collections of pointers (allows
+polymorphism in type of returend interest points).
+
+Revision 1.5  2005/05/29 21:54:11  Fred
+Fix comment on InterestDOG.
+
+Revision 1.4  2005/04/23 19:38:11  Fred
+Add UIUC copyright notice.
+
+Revision 1.3  2003/12/30 16:32:06  rothgang
+Add InterestHessian and InterestDOG.  Convert comments to doxygen format.
+
+Revision 1.2  2003/07/24 19:15:08  rothgang
+Make InterestHarrisLaplacian and InterestLaplacian work in very similar manner.
+Find local maximum rather than global maximum when determining scale.  Develop
+appropriate statistic for determining threshold.  Deprecate findScale().
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

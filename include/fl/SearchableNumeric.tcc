@@ -6,13 +6,48 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fixes for MSVC and Cygwin
-08/2005 Fred Rothganger -- Compilability fix for GCC 3.4.4
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.2 thru 1.8 Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.9  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.8  2005/10/09 03:57:53  Fred
+Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.7  2005/10/09 03:41:12  Fred
+Move the file name LICENSE up to previous line, for better symmetry with UIUC
+notice.
+
+Revision 1.6  2005/10/08 18:41:11  Fred
+Update revision history and add Sandia copyright notice.
+
+Revision 1.5  2005/08/07 03:10:08  Fred
+GCC 3.4 compilability fix: explicitly specify "this" for inherited member
+variables in a template.
+
+Revision 1.4  2005/04/23 19:35:05  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.3  2005/01/22 20:41:09  Fred
+MSVC compilability fix: Get rid of explicit template specializations to avoid
+multiple definitions.
+
+Revision 1.2  2005/01/12 04:59:59  rothgang
+Use std versions of pow, sqrt, and fabs so that choice of type specific version
+will be automatic when template is instantiated.  IE: std contains type
+overloaded versions of the functions rather than separately named functions.
+
+Revision 1.1  2004/04/19 21:22:43  rothgang
+Create template versions of Search classes.
+-------------------------------------------------------------------------------
 */
 
 

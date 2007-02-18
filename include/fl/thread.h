@@ -1,6 +1,29 @@
 /*
 Author: Fred Rothganger
 Created 2/11/2006 to provide pthread emulation on Windows
+
+
+Revisions 1.1 thru 1.3 Copyright 2007 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.3  2007/02/18 14:50:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.2  2006/02/18 00:25:33  Fred
+Don't use PTHREAD_PARAMETER, since the type is the same on both posix and
+Windows.
+
+Add mutexes.
+
+Revision 1.1  2006/02/14 06:12:48  Fred
+Fake pthreads on Windows.
+-------------------------------------------------------------------------------
 */
 
 
