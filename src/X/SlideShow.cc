@@ -6,7 +6,55 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Get rid of dead code.  Add optimized expose handler.
+Revisions 1.6 thru 1.8 Copyright 2007 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.8  2007/02/25 14:46:37  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.7  2006/01/29 23:59:41  Fred
+Since the Expose event is mostly called during window resizing, and since this
+invalidates the whole window, the first pass at optimizing its handler doesn't
+help.  It always gets the entire window as the region to update.  Furthermore,
+under Cygwin the count field is not filled in correctly.  Therefore, changed
+this function to purge the queue of Expose events and resend a new Expose event
+to handle all of them at once.
+
+Revision 1.6  2006/01/29 15:51:57  Fred
+Remove dead code.
+
+Optimize handling of expose event.  However, it would be even more optimal to
+ignore them until count is zero and do full redraw, since the typical case is
+resizing the window, and apparently this inalidates the whole thing.
+
+Revision 1.5  2005/10/09 04:04:47  Fred
+Put UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.4  2005/04/23 19:38:35  Fred
+Add UIUC copyright notice.
+
+Revision 1.3  2004/08/30 00:03:55  rothgang
+Use pthreads to handle waiting, rather than spinning.
+
+Revision 1.2  2004/07/22 15:14:14  rothgang
+Use malloc() rather than new to make dummy memory region for ximage.  Stops
+complaints from valgrind.  Consider hacking in a destructor function in the
+XImage structure instead of using a dummy allocation.  However, dummy memory
+allocation seems as simple as anything.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

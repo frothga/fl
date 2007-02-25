@@ -4,6 +4,37 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.6  2007/02/25 14:48:28  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.5  2005/10/09 04:05:47  Fred
+Put UIUC license in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.4  2005/04/23 19:38:49  Fred
+Add UIUC copyright notice.
+
+Revision 1.3  2004/07/22 15:10:02  rothgang
+Change "list" type functions to take a string as default rather than a vector
+of strings.  Makes specifying the default easier in the client program.
+
+Rename "temp" to "query" in find().  Makes the function easier to read. 
+Consider changing find to explicitly use regular expressions (or at least *)
+rather than working with prefixes.
+
+Revision 1.2  2004/07/06 17:59:51  rothgang
+Add getIntList() and method to dump parameters to stream.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 
