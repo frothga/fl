@@ -4,6 +4,25 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.5  2007/03/23 10:57:30  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.4  2005/10/13 04:14:26  Fred
+Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.3  2005/04/23 19:40:06  Fred
+Add UIUC copyright notice.
+
+Revision 1.2  2004/05/10 20:12:28  rothgang
+Switch from using C99 style complex numbers to STL complex template.
+
+Revision 1.1  2003/12/31 16:06:36  rothgang
+Add the zroots function from Numerical Recipes in C.
+-------------------------------------------------------------------------------
 */
 
 

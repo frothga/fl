@@ -6,7 +6,33 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Use Metric rather than Comparison.
+Revisions 1.4 and 1.5 Copyright 2007 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.5  2007/03/23 10:57:26  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.4  2006/02/05 22:29:23  Fred
+Break dependency on image library by using Metric rather than Comparison. 
+Metric is a member of the numeric library, while Comparison is a member of the
+image library.  Comparison is now a subclass of Metric, so it can still be
+passed in here.
+
+Revision 1.3  2005/10/13 04:14:25  Fred
+Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.2  2005/04/23 19:40:05  Fred
+Add UIUC copyright notice.
+
+Revision 1.1  2004/04/19 17:26:12  rothgang
+Add agglomerative clustering.
+-------------------------------------------------------------------------------
 */
 
 
