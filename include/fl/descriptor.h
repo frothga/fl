@@ -6,8 +6,8 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.11 thru 1.16 Copyright 2005 Sandia Corporation.
-Revisions 1.17 thru 1.19 Copyright 2007 Sandia Corporation.
+Revisions 1.11, 1.12, 1.14, 1.15 Copyright 2005 Sandia Corporation.
+Revisions 1.17 thru 1.20         Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.20  2007/03/23 11:38:05  Fred
+Correct which revisions are under Sandia copyright.
+
 Revision 1.19  2007/02/18 14:50:37  Fred
 Use CVS Log to generate revision history.
 
