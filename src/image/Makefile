@@ -5,20 +5,95 @@
 # for details.
 #
 #
-# 12/2004 Fred Rothganger -- Clean MSVC intermediate files.
-# 02/2005 Fred Rothganger -- Add ImageCache.
-# 06/2005 Fred Rothganger -- Add reference to Freetype2.  Remove reference to
-#         CGAL.  Add InterestMSER.
-# Revisions Copyright 2005 Sandia Corporation.
+# Revisions 1.6 and 1.8    Copyright 2005 Sandia Corporation.
+# Revisions 1.10 thru 1.19 Copyright 2007 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Lesser General Public License.  See the file
 # LICENSE for details.
 #
 #
-# 01/2006 Fred Rothganger -- Move PixelFormat clases to separate file.
-# 02/2006 Fred Rothganger -- Build shared libraries.  Add distclean.
-#         Change Image structure.  Add ImageFileFormatNITF and support GeoTIFF.
+#------------------------------------------------------------------------------
+# $Log$
+# Revision 1.19  2007/03/23 12:13:18  Fred
+# Use CVS Log to generate revision history.
+#
+# Revision 1.18  2006/11/12 15:23:23  Fred
+# Reorder libraries to deal with dependency of tiff on jpeg.
+# 
+# Revision 1.17  2006/03/20 05:35:16  Fred
+# Fix link order for geotiff.
+# 
+# Revision 1.16  2006/03/16 03:37:00  Fred
+# Fix order of references to tiff lib and geotiff lib to avoid errors when
+# linking statically.
+# 
+# Revision 1.15  2006/03/01 04:03:52  Fred
+# Basic support for GeoTiff.  Add ImageFileFormatNITF.
+# 
+# Rename test2 to junk.  Remove Cygwin core files.
+# 
+# Revision 1.14  2006/02/26 03:11:02  Fred
+# Rename test2 to junk.
+# 
+# Revision 1.13  2006/02/25 22:42:25  Fred
+# Change image structure by encapsulating storage format in a new PixelBuffer
+# class.
+# 
+# Make "test.cc" into a real regression test, with self-verification.  Rename
+# junk test program to test2.cc
+# 
+# Revision 1.12  2006/02/15 14:11:09  Fred
+# Delete test program using $(EXESUF).
+# 
+# Revision 1.11  2006/02/03 14:29:54  Fred
+# Change build system to handle shared libraries as well as static archives.
+# 
+# Add distclean rule.  They key difference is that now clean won't remove the
+# Dependencies file.
+# 
+# Revision 1.10  2006/01/06 18:04:22  Fred
+# Move PixelFormat classes into separate file.  Actually, PixelFormat is much
+# more important than Pixel.  The main reason for the move is symmetry with a
+# soon-to-be-added set of classes called PixelBuffer.
+# 
+# Revision 1.9  2005/10/13 03:22:35  Fred
+# Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+# 
+# Revision 1.8  2005/10/09 05:39:48  Fred
+# Add ImageCache and use freetype 2 library.
+# 
+# Update revision history and add Sandia copyright notice.
+# 
+# Revision 1.7  2005/04/23 19:36:46  Fred
+# Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+# 11/21.
+# 
+# Revision 1.6  2005/01/22 20:59:47  Fred
+# MSVC compilability fix:  Clean intermediate files.
+# 
+# Revision 1.5  2004/09/08 17:13:44  rothgang
+# Remove Dependencies for clean.  (Dependencies are not really needed for a
+# clean build, because all .o files are missing.  Not having Dependencies makes
+# distribution easier for user.)
+# 
+# Revision 1.4  2004/07/22 15:34:20  rothgang
+# Get rid of extra spin image classes.  Add several new filters and
+# descriptors.  Add KLT class for tracking points in video.
+# 
+# Revision 1.3  2003/12/30 16:19:58  rothgang
+# More descriptors; new interest operator; new image file format.
+# 
+# Revision 1.2  2003/09/07 22:17:56  rothgang
+# Add several new classes, mainly to support InterestHessian.
+# 
+# Revision 1.1  2003/07/08 23:19:47  rothgang
+# branches:  1.1.1;
+# Initial revision
+# 
+# Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+# Imported sources
+#------------------------------------------------------------------------------
 
 
 SOURCE_DIR := ../..
@@ -144,4 +219,3 @@ depend:
 	  $(CXX) -MM $(CPPFLAGS) $$SOURCEFILE >> Dependencies; \
 	done
 
--include Dependencies

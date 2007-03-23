@@ -5,20 +5,84 @@
 # for details.
 #
 #
-# 12/2004 Fred Rothganger -- Clean MSVC intermediate files.
-# 06/2005 Fred Rothganger -- Added FT_INC to CPPFLAGS.
-# 09/2005 Fred Rothganger -- Change lapack*.h to templated lapack.h and move
-#         implementations into separate files.
-# 10/2005 Fred Rothganger -- Add dgesd and sgelsd
-# Revisions Copyright 2005 Sandia Corporation.
+# Revisions 1.6, 1.8 thru 1.11 Copyright 2005 Sandia Corporation.
+# Revisions 1.13 thru 1.15     Copyright 2007 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Lesser General Public License.  See the file
 # LICENSE for details.
 #
 #
-# 02/2006 Fred Rothganger -- Build shared libraries.  Add distclean.
-#         Break dependency on FT_INC.
+#------------------------------------------------------------------------------
+# $Log$
+# Revision 1.15  2007/03/23 12:17:03  Fred
+# Use CVS Log to generate revision history.
+#
+# Revision 1.14  2006/02/15 14:13:02  Fred
+# Delete test program using $(EXESUF).
+# 
+# Revision 1.13  2006/02/03 14:32:06  Fred
+# Change build system to handle shared libraries as well as static archives.
+# 
+# Add distclean rule.  They key difference is that now clean won't remove the
+# Dependencies file.
+# 
+# Break the dependency on the image library (a circular dependency), allowing
+# shared libraries to work.  Another consequency is that we don't depend on
+# freetype2 any more.
+# 
+# Revision 1.12  2005/10/13 04:14:25  Fred
+# Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+# 
+# Revision 1.11  2005/10/13 03:35:57  Fred
+# Add Sandia distribution terms.
+# 
+# Add dgelsd and sgelsd
+# 
+# Revision 1.10  2005/09/12 03:46:27  Fred
+# Rename ?getri.cc to ?getrf.cc, since that is the LAPACK call shared by all
+# the functions in those files.
+# 
+# Revision 1.9  2005/09/11 15:23:59  Fred
+# Change lapack*.h into single set of templates in lapack.h.  Move
+# implementations to separate files.
+# 
+# Revision 1.8  2005/09/10 13:40:52  Fred
+# Clarify revision history.  Add Sandia copyright.  This will probably need to
+# be changed again before final release to add license information.
+# 
+# Add reference to freetype2 (temporary hack, hopefully).
+# 
+# Make proper reference to lapack library, rather than explicit path.
+# 
+# Revision 1.7  2005/04/23 19:37:23  Fred
+# Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+# 11/21.
+# 
+# Revision 1.6  2005/01/22 21:00:25  Fred
+# MSVC compilability fix:  Clean intermediate files.
+# 
+# Revision 1.5  2004/09/08 17:14:58  rothgang
+# Remove Dependencies for clean.  (Dependencies are not really needed for a
+# clean build, because all .o files are missing.  Not having Dependencies makes
+# distribution easier for user.)
+# 
+# Revision 1.4  2004/07/22 15:20:23  rothgang
+# Make float type specific versions of search classes.
+# 
+# Revision 1.3  2004/04/19 18:33:05  rothgang
+# Add agglomerative clustering.  Rename PCA and add MDA.
+# 
+# Revision 1.2  2004/04/06 21:16:45  rothgang
+# Add neural network, dimensionality reduction, clustering, and root finding.
+# 
+# Revision 1.1  2003/07/08 23:19:47  rothgang
+# branches:  1.1.1;
+# Initial revision
+# 
+# Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+# Imported sources
+#------------------------------------------------------------------------------
 
 
 SOURCE_DIR := ../..
@@ -147,4 +211,3 @@ depend:
 	  $(CXX) -MM $(CPPFLAGS) $$SOURCEFILE >> Dependencies; \
 	done
 
--include Dependencies
