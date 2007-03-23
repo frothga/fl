@@ -1,6 +1,32 @@
 /*
 Author: Fred Rothganger
-Created 2/11/2006 to provide convenient setup of TCP connections.
+Created 2/11/2006 to provide convenient setup of TCP connections.  Adapted
+from numeric/KMeansParallel.cc network code.
+
+
+Revisions 1.1 thru 1.4 Copyright 2007 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.4  2007/03/23 02:41:14  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.3  2006/02/18 00:42:11  Fred
+Don't use PTHREAD_PARAMETER since it is the same on both posix and Windows.
+
+Revision 1.2  2006/02/15 06:35:18  Fred
+Simplify comments.  Change error trap on accept to check for fatal rather than
+non-fata codes.  This is to minimize the size of the test, since there seem to
+be more non-fatal codes than fatal ones.
+
+Revision 1.1  2006/02/14 06:05:27  Fred
+Simple TCP server.
+-------------------------------------------------------------------------------
 */
 
 
