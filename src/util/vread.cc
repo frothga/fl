@@ -6,7 +6,49 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Update seek capabilities.  Write ppm files.
+Revisions 1.7 thru 1.9 Copyright 2007 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.9  2007/03/23 11:06:58  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.8  2006/01/30 00:25:28  Fred
+Add seek while dragging, ie: scroll through video with a single mouse gesture. 
+A little more convenient than simply clicking for each desired position.
+
+Revision 1.7  2006/01/29 03:24:18  Fred
+Handle new semantics for VideoIn::seekTime().
+
+Fix bug in switching between frame number and timestamp output.
+
+Write ppm as well as jpeg.
+
+Revision 1.6  2005/10/14 17:00:43  Fred
+Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.5  2005/04/23 19:40:47  Fred
+Add UIUC copyright notice.
+
+Revision 1.4  2004/09/08 17:16:24  rothgang
+Update for new pthread-based sleep mode in SlideShow.
+
+Revision 1.3  2004/08/25 15:54:28  rothgang
+Add command line option to start video in paused state.
+
+Revision 1.2  2004/08/10 21:37:39  rothgang
+Completely rewrite to use new video seeking capabilities, and to have nicer
+user interface.
+
+Revision 1.1  2004/07/22 15:21:30  rothgang
+Utility to read video files.  Outputs specific frames or plays frames to
+screen.
+-------------------------------------------------------------------------------
 */
 
 
