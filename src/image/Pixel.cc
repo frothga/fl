@@ -6,19 +6,23 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for Cygwin
-01/2005 Fred Rothganger -- Compilability fix for MSVC
-05/2005 Fred Rothganger -- Rework naming scheme to be consistent across
-        endians.
-10/2005 Fred Rothganger -- 64-bit compatibility
-Revisions Copyright 2005 Sandia Corporation.
+Revision 1.1 thru 1.2 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Moved PixelFormat code into separate file.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.2  2007/03/23 02:32:04  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.1  2006/01/06 18:04:23  Fred
+Move PixelFormat classes into separate file.  Actually, PixelFormat is much
+more important than Pixel.  The main reason for the move is symmetry with a
+soon-to-be-added set of classes called PixelBuffer.
+-------------------------------------------------------------------------------
 */
 
 

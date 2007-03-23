@@ -6,7 +6,39 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC.
+Revisions 1.3 and 1.5 Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.7  2007/03/23 02:32:05  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.6  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.5  2005/10/09 04:09:00  Fred
+Add detail to revision history.
+
+Revision 1.4  2005/04/23 19:36:46  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.3  2005/01/22 21:06:46  Fred
+MSVC compilability fix:  Suppress complaint about missing return value.
+
+Revision 1.2  2004/07/22 15:28:43  rothgang
+Finished writing filter(), but still untested.  Also, still need to write
+response().
+
+Revision 1.1  2003/12/30 21:05:36  rothgang
+Create recursive convolutions.  This work is still in progress, so the code is
+not usable yet.
+-------------------------------------------------------------------------------
 */
 
 

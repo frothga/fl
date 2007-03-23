@@ -6,15 +6,66 @@ Distributed under the UIUC/NCSA Open Source License.  See LICENSE-UIUC
 for details.
 
 
-12/2004 Fred Rothganger -- Attempt to adjust white balance of firewire camera
-10/2005 Fred Rothganger -- Test ImageFileFormatTIFF, Transform, InterestMSER,
-        Canvas::drawText, 64-bit readiness for Pixel, alternate implementations
-        of DOG and SIFT.  Change lapack?.h to lapack.h
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.3, 1.5 and 1.6 Copyright 2005 Sandia Corporation.
+Revisions 1.7 thru 1.8     Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.8  2007/03/23 02:32:02  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.7  2006/11/12 15:30:04  Fred
+Test round-trip conversions of various color spaces.
+
+Test NITF file format and GeoTIFF metadata.
+
+Test optimized Convolution1D.
+
+Test pixel accessors.
+
+Render different types of interst points differently.  In particular, render
+an MSER as a watershed region.
+
+Allow selection of font name in drawText test.
+
+Revision 1.6  2005/10/15 21:35:43  Fred
+Change lapack?.h to lapack.h
+
+Test 64-bit compatibility of Pixel.
+
+Revision 1.5  2005/10/09 05:38:07  Fred
+Test ImageFileFormatTIFF, Transform, InterestMSER, Canvas::drawText, and
+alternate implementation of DOG and SIFT.
+
+Update revision history and add Sandia copyright notice.
+
+Revision 1.4  2005/04/23 19:36:46  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.3  2005/01/23 23:20:38  Fred
+Add test for ComparisonChiSquared.  Rehack test for Comparison squashing
+function.
+
+Rehack test for Point.
+
+Attempt to adjust white balance from firewire camera.
+
+Revision 1.2  2004/07/22 15:35:59  rothgang
+Deeper testing of spin images.  Tests for several new classes including KLT.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

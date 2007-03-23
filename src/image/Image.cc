@@ -6,8 +6,103 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-01/2005 Fred Rothganger -- Encapsulate storage in PixelBuffer
+Revisions 1.6 and 1.8    Copyright 2005 Sandia Corporation.
+Revisions 1.10 thru 1.21 Copyright 2007 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.21  2007/03/23 02:32:04  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.20  2006/11/12 15:11:56  Fred
+Allocate buffer if needed in bitblt().
+
+Revision 1.19  2006/03/20 05:34:51  Fred
+Push work of constructing buffer into resize().
+
+Revision 1.18  2006/03/05 23:58:49  Fred
+Guard against negative image size.
+
+Revision 1.17  2006/03/02 03:27:14  Fred
+Create new class ImageFileDelegate to do the actual work of the image codec. 
+Make ImageFile a tool for accessing image files, including metadata and image
+contents.  ImageFileDelegate is now like a strategy object which implements the
+specifics, while ImageFile presents a uniform inteface to the programmer.
+
+Use ImageFile to service to read() and write() methods.
+
+Revision 1.16  2006/02/27 03:32:44  Fred
+Get rid of ImageFileFormat::open() for files, and change interface of open()
+for streams to optionally specify that the ImageFile should take responsibility
+for destroying the stream.  Update Image::read() and write() file methods to
+set the flag appropriately.  Guard against zero probability codec selection.
+
+Revision 1.15  2006/02/26 14:03:47  Fred
+Add omitted return value.
+
+Revision 1.14  2006/02/26 03:09:12  Fred
+Create a new class called ImageFile which does the actual work of reading or
+writing Images, and separate it from ImageFileFormat.  The job of
+ImageFileFormat is now just to reify the format and act as a factory to
+ImageFiles.  The purpose of this change is to move toward supporting big
+images, which require a file to be open over the lifespan of the Image.
+
+Revision 1.13  2006/02/26 00:14:10  Fred
+Switch to probabilistic selection of image file format.
+
+Revision 1.12  2006/02/25 22:38:31  Fred
+Change image structure by encapsulating storage format in a new PixelBuffer
+class.  Must now unpack the PixelBuffer before accessing memory directly. 
+ImageOf<> now intercepts any method that may modify the buffer location and
+captures the new address.
+
+Revision 1.11  2006/01/15 05:35:12  Fred
+Rewrite operator + to use pointers, similar to operator -.
+
+Revision 1.10  2006/01/15 03:23:43  Fred
+Rewrite operator - to use pointers, and factor out if tests.  Code is much more
+complicated, but should be more efficient.
+
+Revision 1.9  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.8  2005/10/09 04:11:48  Fred
+Add detail to revision history.
+
+Revision 1.7  2005/04/23 19:36:46  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.6  2005/01/22 21:19:58  Fred
+MSVC compilability fix:  Use memset() rather than bzero(), since it is not
+always available.  Probably should look for more efficient function to clear
+memory.
+
+Revision 1.5  2004/01/08 21:23:58  rothgang
+Add method to multiply image by scalar that returs a new image rather than
+modifying the existing one.
+
+Revision 1.4  2003/09/07 22:06:26  rothgang
+Fixed error messages for operators.
+
+Revision 1.3  2003/08/06 22:19:56  rothgang
+Prevent width and height from going negative.
+
+Revision 1.2  2003/07/13 19:23:58  rothgang
+Update resize() to handle 3-byte formats.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

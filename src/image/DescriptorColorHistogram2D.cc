@@ -6,13 +6,75 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-09/2005 Fred Rothganger -- Remove lapackd.h
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.9, 1.11 thru 1.13 Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.15  2007/03/23 02:32:06  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.14  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.13  2005/10/09 05:06:11  Fred
+Remove lapack.h, as it is no longer necessary to obtain matrix inversion
+operator.
+
+Revision 1.12  2005/10/09 04:45:05  Fred
+Rename lapack?.h to lapack.h.  Add Sandia copyright notice.
+
+Revision 1.11  2005/09/10 16:39:04  Fred
+Clarify revision history.
+
+Revision 1.10  2005/04/23 19:36:46  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.9  2005/01/22 21:07:16  Fred
+MSVC compilability fix:  Use fl/math.h.  Replace GNU operator with min() and
+max().
+
+Revision 1.8  2004/09/15 18:51:33  rothgang
+Add comment about prefering odd-sized histograms.
+
+Revision 1.7  2004/08/29 16:21:12  rothgang
+Change certain attributes of Descriptor from functions to member variables:
+supportRadial, monochrome, dimension.  Elevated supportRadial to a member of
+the base classs.  It is very common, but not 100% common, so there is a little
+wasted storage in a couple of cases.  On the other hand, this allows for client
+code to determine what support was used for a descriptor on an affine patch.
+
+Modified read() and write() functions to call base class first, and moved task
+of writing name into the base class.  May move task of writing supportRadial
+into base class as well, but leaving it as is for now.
+
+Revision 1.6  2004/05/03 18:55:13  rothgang
+Add Factory.
+
+Revision 1.5  2004/03/22 20:30:55  rothgang
+Switch to simple chi^2 for comparison.
+
+Revision 1.4  2004/02/15 18:51:31  rothgang
+Update for new items in Descriptor interface: isMonochrome(), comparison(),
+dimension().  Use 1.0 rather than intensity of pixel for binning.  Normalize
+resulting histogram to sum to 1 (probability distribution) rather than have
+unit norm.  This makes it more ammenable to ChiSquared and
+HistorgramIntersection comparison methods.
+
+Revision 1.3  2004/01/14 18:12:27  rothgang
+Set monochrome to false.
+
+Revision 1.2  2004/01/08 21:26:47  rothgang
+Add support for regions selected by alpha channel.
+
+Revision 1.1  2003/12/30 21:06:22  rothgang
+Create color histogram descriptor.
+-------------------------------------------------------------------------------
 */
 
 

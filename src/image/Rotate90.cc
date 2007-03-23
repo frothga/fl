@@ -4,6 +4,23 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.4  2007/03/23 02:32:04  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.3  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.2  2005/04/23 19:39:05  Fred
+Add UIUC copyright notice.
+
+Revision 1.1  2003/07/13 19:26:22  rothgang
+Create class to handle 90 degree rotations directly (without use of
+interpolation, as in the Transform class).
+-------------------------------------------------------------------------------
 */
 
 

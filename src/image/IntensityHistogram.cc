@@ -6,7 +6,33 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Change Image structure.
+Revisions 1.4 thru 1.5 Copyright 2007 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.5  2007/03/23 02:32:03  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.4  2006/02/25 22:38:31  Fred
+Change image structure by encapsulating storage format in a new PixelBuffer
+class.  Must now unpack the PixelBuffer before accessing memory directly. 
+ImageOf<> now intercepts any method that may modify the buffer location and
+captures the new address.
+
+Revision 1.3  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.2  2005/04/23 19:39:05  Fred
+Add UIUC copyright notice.
+
+Revision 1.1  2003/12/30 21:10:10  rothgang
+Create filter for measuring the spread of intensities in an image.
+-------------------------------------------------------------------------------
 */
 
 

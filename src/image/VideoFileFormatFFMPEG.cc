@@ -6,20 +6,172 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-05/2005 Fred Rothganger -- Use new PixelFormat names.
-08/2005 Fred Rothganger -- Update to new time base representation in FFMPEG.
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.15, 1.16, 1.18 thru 1.22 Copyright 2005 Sandia Corporation.
+Revisions 1.24 thru 1.33             Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-12/2005 Fred Rothganger -- Fix problems with seek.
-01/2006 Fred Rothganger -- Protect against uninitialized packet.  Read/write
-        timestamps in video file.  Pure seek on timestamp.
-02/2006 Fred Rothganger -- Change Image structure.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.33  2007/03/23 02:32:03  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.32  2006/11/12 15:06:18  Fred
+Add comment to clarify outer loop of seek() method.  Handle timestamping of
+raw video.
+
+Use planar PixelFormats to avoid extra conversions.  Better selection of
+PixelFormat.  More efficient allocation of working buffer.
+
+Ability to select named codecs.
+
+Revision 1.31  2006/04/08 15:16:28  Fred
+Strip "Char" from all YUV-type formats.  It is ugly, and doesn't add any
+information in this case.
+
+Revision 1.30  2006/03/20 05:41:10  Fred
+Get rid of hint.  Instead, follow the paradigm of returing an image with no
+conversion.  Make use of new planar formats and get rid of conversion code.
+
+Revision 1.29  2006/02/25 22:38:32  Fred
+Change image structure by encapsulating storage format in a new PixelBuffer
+class.  Must now unpack the PixelBuffer before accessing memory directly. 
+ImageOf<> now intercepts any method that may modify the buffer location and
+captures the new address.
+
+Revision 1.28  2006/01/29 03:22:02  Fred
+Rework seekTime() to use only timestamps, and not depend on an estimate of
+frame rate.  Move linear seeking back into seekFrame().
+
+Revision 1.27  2006/01/25 03:37:53  Fred
+Set the PTS of images going into a video file based on the timestamp field. 
+Set the timestamp field from PTS rather than generating it based on a fixed
+framerate assumption when reading video.
+
+Remove hack for telecine.  Instead, fixed FFMPEG.
+
+Framerate selection code had num and den reversed, so was failing.
+
+Revision 1.26  2006/01/16 05:45:01  Fred
+Protect against uninitialized packet.
+
+Revision 1.25  2006/01/02 20:30:53  Fred
+Fix seek().  Previous changes to keep up with FFMPEG were cursory and poorly
+tested.  This checkin is a more thorough pass through the code to make sure
+everything is coherent.  It fixes most of the outstanding bugs in seek(),
+including the crash in the first GOP.
+
+Revision 1.24  2005/12/17 14:40:36  Fred
+Move file close inside a guard against the existence for the format context
+that holds the file.
+
+Revision 1.23  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.22  2005/10/09 05:34:42  Fred
+Change AVStream::codec to a pointer.
+
+Update revision history and add Sandia copyright notice.
+
+Revision 1.21  2005/08/27 13:20:57  Fred
+Compilation fix for MSVC 7.1
+
+Revision 1.20  2005/08/06 15:31:39  Fred
+Update to latest FFMPEG: new way of representing time base and frame rate.
+
+Revision 1.19  2005/05/29 15:55:54  Fred
+Use standard BGRChar rather than one created locally.
+
+Revision 1.18  2005/05/01 21:16:46  Fred
+Adjust to more rigorous naming of PixelFormats.
+
+Revision 1.17  2005/04/23 19:36:46  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.16  2005/01/22 21:25:28  Fred
+MSVC compilability fix:  Be explicit about namespace of PixelFormat, since
+FFMPEG defines an enumeration also called PixelFormat.  Use fl/math.h.
+
+Take into account different streams in a video file.
+
+Revision 1.15  2005/01/12 05:37:22  rothgang
+Update to latest ffmpeg: Use av_read_frame() rather than av_read_packet().  Add
+flag to end of av_seek_frame(), and use stream's native time base.
+
+Revision 1.14  2004/09/08 17:11:40  rothgang
+Add trap for case where video does not have any valid timestamps.  Switches to
+linear seeking instead.
+
+Revision 1.13  2004/08/29 16:00:29  rothgang
+A hack for seeking in AVIs.  Actually, already fixed this directly in FFMPEG,
+so just storing the hack for the record.  The fix in FFMPEG may not be correct
+or permanent, so this code may be useful sometime (but hopefully not).
+
+Revision 1.12  2004/08/25 15:30:59  rothgang
+Fix handling of last few frames in output.
+
+Revision 1.11  2004/08/10 21:15:43  rothgang
+Add ability to get attributes from input stream.  Use this to get duration from
+FFMPEG.
+
+Revision 1.10  2004/08/10 14:56:23  rothgang
+Tidy up seek code changes.  Added "expectedSkew" to adjust requested timestamp
+back a little to ensure we don't overshoot the target frame.
+
+Revision 1.9  2004/08/10 03:35:57  rothgang
+(The previous version wasn't quite as correct as claimed.  Hopefully, this one
+is.)  Uses PTS rather than DTS to determine the frame of the next retrieved
+image.  The skew built into PTS is exactly the correction needed to account for
+the frames skipped when picking up in the middle of an mpeg stream.  Need to
+add code now to compensate for the skew ahead of time.  Also need code to avoid
+doing a search if we are close enough to read forward to the requested frame.
+
+Revision 1.8  2004/08/08 23:13:00  rothgang
+Use FFMPEG's seek facility.  This code is correct, and it works for the most
+part.  However, the time base information found by FFMPEG is wrong for all
+video files tested, so there is drift between the correct frame and the frame
+found by this method.  To correct MPEG* files, need to probe the file and find
+the duration of one frame.  Not sure how to correct AVI files.  Don't deal with
+any other container types at present.
+
+Revision 1.7  2004/08/07 15:58:52  rothgang
+Setting B frames causes FFMPEG to crash, so suppress for now.
+
+Revision 1.6  2004/08/03 18:02:27  rothgang
+Updates to work with current FFMPEG: New function for allocating format
+context.  New interface to av_write_frame().
+
+Add two more user-tunable parameters: GOP size and number of B frames.
+
+Revision 1.5  2004/06/08 19:30:01  rothgang
+Minor update to flag handling to keep in sync with ffmpeg.
+
+Revision 1.4  2004/05/08 19:47:09  rothgang
+Change semantics of good() slightly by not reading ahead to check for eof.
+
+Fix some warnings from valgrind about imbalanced new[] and delete.
+
+Revision 1.3  2003/12/30 16:17:10  rothgang
+Create timestamp mode, which switches between frame numbers and seconds for the
+value of Image::timestamp.  Add bitrate setting.  Add more pixel formats. 
+Guarantee that memory held by returned image is valid until next call to video
+object.
+
+Revision 1.2  2003/07/17 14:48:16  rothgang
+Updates for latest snapshot of FFMPEG.  Deal with new approach to initializing
+AVFormatContext, and with change in how frame_rate_base is stored.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

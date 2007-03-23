@@ -6,12 +6,59 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-09/2005 Fred Rothganger -- Remove lapackd.h
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.8 and 1.9 Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.11  2007/03/23 02:32:06  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.10  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.9  2005/10/09 05:07:06  Fred
+Remove lapack.h, as it is no longer necessary to obtain matrix inversion
+operator.
+
+Revision 1.8  2005/10/09 04:46:19  Fred
+Rename lapack?.h to lapack.h.  Add Sandia copyright notice.
+
+Revision 1.7  2005/04/23 19:39:05  Fred
+Add UIUC copyright notice.
+
+Revision 1.6  2004/08/29 16:21:12  rothgang
+Change certain attributes of Descriptor from functions to member variables:
+supportRadial, monochrome, dimension.  Elevated supportRadial to a member of
+the base classs.  It is very common, but not 100% common, so there is a little
+wasted storage in a couple of cases.  On the other hand, this allows for client
+code to determine what support was used for a descriptor on an affine patch.
+
+Modified read() and write() functions to call base class first, and moved task
+of writing name into the base class.  May move task of writing supportRadial
+into base class as well, but leaving it as is for now.
+
+Revision 1.5  2004/05/03 20:16:15  rothgang
+Rearrange parameters for Gaussians so border mode comes before format.
+
+Revision 1.4  2004/05/03 19:00:07  rothgang
+Add Factory.
+
+Revision 1.3  2004/03/22 20:34:35  rothgang
+Changed setGray parameter to use reference rather than pointer.  Allows simpler
+code in this file.
+
+Revision 1.2  2004/02/15 18:40:56  rothgang
+Change convolution kernel parameters so they still work when clipped.  Ensure
+that patch is gray.
+
+Revision 1.1  2003/12/30 21:06:55  rothgang
+Create orientation descriptor.
+-------------------------------------------------------------------------------
 */
 
 

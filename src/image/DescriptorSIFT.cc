@@ -6,18 +6,106 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-03/2005 Fred Rothganger -- Optimizations, thanks to removing "square" case.
-        Change cache mechanism.
-09/2005 Fred Rothganger -- Remove lapackd.h
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.10, 1.12 thru 1.16 Copyright 2005 Sandia Corporation.
+Revisions 1.18 thru 1.20       Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Correct epsilon on angleStep.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.20  2007/03/23 02:32:02  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.19  2006/11/12 14:52:14  Fred
+Add ability to ignore sign of gradient.
+
+Revision 1.18  2006/02/01 03:33:56  Fred
+Fixed parenthesization on formula for angleStep.  Previously, it was adding an
+epsilon in the wrong way, allowing the buffer overrun bug to remain.
+
+Revision 1.17  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.16  2005/10/09 05:07:39  Fred
+Remove lapack.h, as it is no longer necessary to obtain matrix inversion
+operator.
+
+Revision 1.15  2005/10/09 04:41:56  Fred
+Add Sandia distribution terms.
+
+Rename lapack?.h to lapack.h
+
+Revision 1.14  2005/09/10 16:56:53  Fred
+Add detail to revision history.  Add Sandia copyright notice.  This will need
+to be updated with license info before release.
+
+Commit to using new cache mechanism.
+
+Remove "square" case, and optimize remaining code since it doesn't need so many
+edge condistion any more.  Store pre-computed set of weights for pixels in
+patch.  Rearrange contents of descriptor to match best scan order in patch.
+
+Use PointAffine::projection() rather than inverting
+PointAffine::rectification().
+
+Revision 1.13  2005/08/03 03:57:12  Fred
+Change color constants to all caps.
+
+Revision 1.12  2005/04/23 20:16:59  Fred
+Use experimental ImageCache to select image from cached scale pyramid.  Note
+that testing shows this method is both slower and less repeatable than drawing
+off a rectified patch every time.
+
+Revision 1.11  2005/04/23 19:36:45  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.10  2005/01/22 21:12:12  Fred
+MSVC compilability fix:  Allocate memory for histogram as an fl::Vector rather
+than using variable size vector extension.  Replace GNU operator with min() and
+max().
+
+Revision 1.9  2004/09/08 17:12:06  rothgang
+Use linear mapping for Euclidean distance.
+
+Revision 1.8  2004/08/30 01:26:06  rothgang
+Include timestamp in change detection for cacheing input image.
+
+Revision 1.7  2004/08/29 16:21:12  rothgang
+Change certain attributes of Descriptor from functions to member variables:
+supportRadial, monochrome, dimension.  Elevated supportRadial to a member of
+the base classs.  It is very common, but not 100% common, so there is a little
+wasted storage in a couple of cases.  On the other hand, this allows for client
+code to determine what support was used for a descriptor on an affine patch.
+
+Modified read() and write() functions to call base class first, and moved task
+of writing name into the base class.  May move task of writing supportRadial
+into base class as well, but leaving it as is for now.
+
+Revision 1.6  2004/05/03 19:03:09  rothgang
+Add Factory.  Add patch representation functions.
+
+Revision 1.5  2004/03/22 20:36:01  rothgang
+Remove probability transformation from comparison.
+
+Revision 1.4  2004/02/15 18:36:27  rothgang
+Better detection of patch change.  Add dimension().  Adjust parameters in
+MetricEuclidean.
+
+Revision 1.3  2004/01/14 18:10:54  rothgang
+Restore previous method of computing patch in image.  Add comparison.  Fix
+angle calculation durint binning.  Use FiniteDifferenceX/Y for computing
+derivative images.
+
+Revision 1.2  2004/01/08 21:27:48  rothgang
+Simplify computation of non-deformed region.
+
+Revision 1.1  2003/12/30 21:07:41  rothgang
+Create SIFT descriptor.
+-------------------------------------------------------------------------------
 */
 
 

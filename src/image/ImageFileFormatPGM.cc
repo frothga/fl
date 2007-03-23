@@ -6,16 +6,80 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-05/2005 Fred Rothganger -- Use new PixelFormat names.
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.3, 1.5 and 1.6 Copyright 2005 Sandia Corporation.
+Revisions 1.8 thru 1.15    Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Change Image structure.  Separate ImageFile.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.15  2007/03/23 02:32:02  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.14  2006/03/02 03:26:48  Fred
+Create new class ImageFileDelegate to do the actual work of the image codec. 
+Make ImageFile a tool for accessing image files, including metadata and image
+contents.  ImageFileDelegate is now like a strategy object which implements the
+specifics, while ImageFile presents a uniform inteface to the programmer.
+
+Revision 1.13  2006/02/28 04:25:45  Fred
+No longer necessary to include <fstream>
+
+Revision 1.12  2006/02/27 03:31:19  Fred
+Get rid of ImageFileFormat::open() for files, and change interface of open()
+for streams to optionally specify that the ImageFile should take responsibility
+for destroying the stream.
+
+Revision 1.11  2006/02/27 00:17:24  Fred
+Expand ImageFile::read() and write() to allow specification of coordinates in a
+larger raster.  These optional parameters support big image processing.
+
+Revision 1.10  2006/02/26 03:09:12  Fred
+Create a new class called ImageFile which does the actual work of reading or
+writing Images, and separate it from ImageFileFormat.  The job of
+ImageFileFormat is now just to reify the format and act as a factory to
+ImageFiles.  The purpose of this change is to move toward supporting big
+images, which require a file to be open over the lifespan of the Image.
+
+Revision 1.9  2006/02/26 00:14:10  Fred
+Switch to probabilistic selection of image file format.
+
+Revision 1.8  2006/02/25 22:38:31  Fred
+Change image structure by encapsulating storage format in a new PixelBuffer
+class.  Must now unpack the PixelBuffer before accessing memory directly. 
+ImageOf<> now intercepts any method that may modify the buffer location and
+captures the new address.
+
+Revision 1.7  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.6  2005/10/09 05:19:16  Fred
+Update revision history and add Sandia copyright notice.
+
+Revision 1.5  2005/05/01 21:04:23  Fred
+Adjust to more rigorous naming of PixelFormats.  Take advantage of new RGBChar
+format.
+
+Revision 1.4  2005/04/23 19:36:45  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.3  2005/01/22 21:21:45  Fred
+MSVC compilability fix:  Use fl/string.h to avoid function name discrepancy.
+
+Revision 1.2  2004/05/03 19:05:29  rothgang
+Guard against bad stream when reading.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

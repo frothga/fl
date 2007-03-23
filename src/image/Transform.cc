@@ -6,18 +6,86 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-04/2005 Fred Rothganger -- Complete support for 8-DOF homographies.  Import
-        optimizations from 3D project.
-09/2005 Fred Rothganger -- Remove lapackd.h
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.8  thru 1.12 Copyright 2005 Sandia Corporation.
+Revisions 1.15 thru 1.16 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Fix bugs in clip() related to openness of endpoints.
-02/2006 Fred Rothganger -- Change Image structure.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.16  2007/03/23 02:32:05  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.15  2006/02/25 22:38:32  Fred
+Change image structure by encapsulating storage format in a new PixelBuffer
+class.  Must now unpack the PixelBuffer before accessing memory directly. 
+ImageOf<> now intercepts any method that may modify the buffer location and
+captures the new address.
+
+Revision 1.14  2006/01/22 05:39:12  Fred
+Fix bugs in clipping process related to the openness of endpoints.
+
+Revision 1.13  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.12  2005/10/09 05:09:21  Fred
+Remove lapack?.h, as it is no longer necessary to obtain matrix inversion
+operator.
+
+Revision 1.11  2005/10/09 04:43:46  Fred
+Add Sandia distribution terms.
+
+Rename lapack?.h to lapack.h
+
+Revision 1.10  2005/09/10 17:13:09  Fred
+Add detail to revision history.  Add Sandia copyright.  This will need to be
+updated with license info before release.
+
+Revision 1.9  2005/04/23 20:58:10  Fred
+Use more efficient loop form that appears in 3d/align.cc.  Make separate cases
+for 6-DOF (affine) and 8-DOF (full) homographies.  Perform clipping before
+entering loop, to reduce number of if tests.  Finish incorporating RGBAFloat
+case.
+
+Revision 1.8  2005/04/23 20:06:38  Fred
+Finish conversion to full homographies.  Now uses 8-DOF homographies to
+represent forward and backward transformations.  Explicitly stores both
+matrices.  Removed hacks for scaling, and simplified calculations.
+
+Revision 1.7  2005/04/23 19:39:05  Fred
+Add UIUC copyright notice.
+
+Revision 1.6  2004/08/29 16:11:29  rothgang
+Note an alternate (and much better) implementation for handling color.  There
+are still bugs in the alternate implementation, so disabled for now.
+
+Revision 1.5  2004/05/03 19:21:35  rothgang
+Note that programs no longer depend on scale hack, so we are free to change
+internal representation to be a true homography.
+
+Revision 1.4  2003/12/29 23:36:16  rothgang
+Fix minor error in range checking.  Use simpler epression to scale matrix.
+
+Revision 1.3  2003/07/17 14:46:29  rothgang
+Added convenience constructor for including a scaling factor in inverse
+transformation.  This should be used by all code that use "S" matrices to grab
+patches, rather than pushing implicit scaling off on the usual constructor. 
+That approach is now deprecated.
+
+Revision 1.2  2003/07/09 15:43:26  rothgang
+Store only inverse transformation matrix.  Simplify windowing.  Use homography
+matrix in filter() method.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

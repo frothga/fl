@@ -6,20 +6,85 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-03/2005 Fred Rothganger -- Change cache mechanism
-05/2005 Fred Rothganger -- Changed interface to return a collection of pointers
-09/2005 Fred Rothganger -- Changed lapacks.h to lapack.h
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.4, 1.6 and 1.7 Copyright 2005 Sandia Corporation.
+Revisions 1.9 thru 1.15    Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Improve efficiency of decimation and image
-        difference.  Avoid unecessary image copies.  Add "fast" mode.
-02/2006 Fred Rothganger -- Change Image structure.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.15  2007/03/23 02:32:05  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.14  2006/02/25 22:38:31  Fred
+Change image structure by encapsulating storage format in a new PixelBuffer
+class.  Must now unpack the PixelBuffer before accessing memory directly. 
+ImageOf<> now intercepts any method that may modify the buffer location and
+captures the new address.
+
+Revision 1.13  2006/01/22 05:24:22  Fred
+Update revision history.
+
+Revision 1.12  2006/01/22 05:19:12  Fred
+Add a "fast" mode that decimates the working image immediately when it reaches
+a blur level of 2X.  To generate higher scale level DoGs that have the same
+size of the lower scale level ones, it then upsamples the difference images. 
+This is less accurate than continuing to blur full-sized images.  However, it
+saves a significant amount of time, especially in the first octave.  The "fast"
+mode is about 23% faster.  This mode is optional, and off by default.
+
+Revision 1.11  2006/01/18 03:30:21  Fred
+Cache every image that results from some computation.  (Before, some of these
+were omitted.)
+
+Compute the first couple of dogs at the next octave by decimation rather that a
+fresh difference.  Also, decimate the last image computed in the previous
+iteration and resume blurring there.  This saves a couple of convolutions,
+which are the most expensive part of the process.  (Working on a possible
+optimization which will place the downsampling at true octave bounaries, but it
+doesn't work yet.)
+
+Revision 1.10  2006/01/15 15:50:51  Fred
+Avoid unecessary image copies.  Retain blurred images between octave iterations
+for use in other possible optimizations.
+
+Revision 1.9  2006/01/15 05:46:06  Fred
+Improve efficiency of downsampling and of image differencing.
+
+Revision 1.8  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.7  2005/10/09 05:04:51  Fred
+Add Sandia copyright notice.  Fix revision history to note change from
+lapack?.h to lapack.h
+
+Revision 1.6  2005/09/10 16:47:10  Fred
+Add detail to revision history.  Add Sandia copyright notice.  This will need
+to be updated with license info before release.
+
+Commit to using new cache mechanism.
+
+Use new polymorphic collection of PointInterest pointers as return type.
+
+Revision 1.5  2005/04/23 19:36:46  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.4  2005/01/22 21:15:21  Fred
+MSVC compilability fix:  Be explicit about float constant.
+
+Revision 1.3  2004/05/03 20:16:15  rothgang
+Rearrange parameters for Gaussians so border mode comes before format.
+
+Revision 1.2  2004/03/22 19:25:47  rothgang
+Change wording in time elapsed message.
+
+Revision 1.1  2003/12/30 21:09:07  rothgang
+Create difference-of-Gaussian point detector.
+-------------------------------------------------------------------------------
 */
 
 

@@ -6,12 +6,38 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-05/2005 Fred Rothganger -- Changed interface to return a collection of pointers
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.3 and 1.4 Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.6  2007/03/23 02:32:04  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.5  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.4  2005/10/09 05:29:35  Fred
+Update revision history and add Sandia copyright notice.
+
+Revision 1.3  2005/06/07 03:56:50  Fred
+Change interface to run() to accomodate polymorphism in returned interest
+points.
+
+Revision 1.2  2005/04/23 19:39:05  Fred
+Add UIUC copyright notice.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

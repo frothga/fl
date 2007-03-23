@@ -6,16 +6,59 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-09/2005 Fred Rothganger -- Change lapacks.h to lapack.h
-Revisions Copyright 2005 Sandia Corporation.
+Revision  1.5          Copyright 2005 Sandia Corporation.
+Revisions 1.7 thru 1.9 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Use destroy option in gelss().  Change Image
-        structure.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.9  2007/03/23 02:32:06  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.8  2006/02/25 22:38:31  Fred
+Change image structure by encapsulating storage format in a new PixelBuffer
+class.  Must now unpack the PixelBuffer before accessing memory directly. 
+ImageOf<> now intercepts any method that may modify the buffer location and
+captures the new address.
+
+Revision 1.7  2006/02/17 16:52:55  Fred
+Use the new destroy option in gelss() for more efficiency.
+
+Revision 1.6  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.5  2005/10/09 04:45:41  Fred
+Rename lapack?.h to lapack.h.  Add Sandia copyright notice.
+
+Revision 1.4  2005/04/23 19:39:05  Fred
+Add UIUC copyright notice.
+
+Revision 1.3  2004/08/29 16:21:12  rothgang
+Change certain attributes of Descriptor from functions to member variables:
+supportRadial, monochrome, dimension.  Elevated supportRadial to a member of
+the base classs.  It is very common, but not 100% common, so there is a little
+wasted storage in a couple of cases.  On the other hand, this allows for client
+code to determine what support was used for a descriptor on an affine patch.
+
+Modified read() and write() functions to call base class first, and moved task
+of writing name into the base class.  May move task of writing supportRadial
+into base class as well, but leaving it as is for now.
+
+Revision 1.2  2003/09/07 22:00:10  rothgang
+Rename convolution base classes to allow for other methods of computation
+besides discrete kernel.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

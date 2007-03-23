@@ -6,12 +6,65 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-6/2005 Fred Rothganger -- Added PointMSER.
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.8 thru 1.10 Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.12  2007/03/23 02:32:04  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.11  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.10  2005/10/09 05:38:31  Fred
+Add Sandia copyright notice.
+
+Revision 1.9  2005/08/03 04:00:01  Fred
+Added missing change note in comments at top of file.
+
+Revision 1.8  2005/06/07 03:57:48  Fred
+Add PointMSER.
+
+Revision 1.7  2005/04/23 19:39:05  Fred
+Add UIUC copyright notice.
+
+Revision 1.6  2004/08/29 15:58:25  rothgang
+Add projection(), and function similar to rectification() except that it
+returns the inverse.  Typically, we do computations on affine patches using
+this form.  Eliminates two matrix inversions in the process of converting a
+PointAffine into the desired form.
+
+Added a constructor for PointAffine that takes the kind of matrix produced by
+projection().
+
+Revision 1.5  2003/12/29 23:34:14  rothgang
+Add method to generate rectification matrix for PointAffine.  Up to now, this
+has been in client code, but I now need this operation for certain Descriptor
+classes, so it is useful enough to move into the library.
+
+Revision 1.4  2003/09/07 22:09:59  rothgang
+Add methods to compute length and angle treating the given point as a vector
+(ie: relative to the origin).
+
+Revision 1.3  2003/07/15 16:14:59  rothgang
+Initialize detector field.
+
+Revision 1.2  2003/07/09 15:45:42  rothgang
+Make Point work better with other matrix classes.  Change PointInterestAffine
+to PointAffine.  Store type of detector in PointInterest.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

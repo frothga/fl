@@ -6,13 +6,46 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-05/2005 Fred Rothganger -- Changed interface to return a collection of pointers
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.4, 1.6 and 1.7 Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.9  2007/03/23 02:32:02  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.8  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.7  2005/10/09 05:30:09  Fred
+Update revision history and add Sandia copyright notice.
+
+Revision 1.6  2005/06/07 03:56:50  Fred
+Change interface to run() to accomodate polymorphism in returned interest
+points.
+
+Revision 1.5  2005/04/23 19:36:46  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.4  2005/01/22 21:15:36  Fred
+MSVC compilability fix:  Be explicit about float constant.
+
+Revision 1.3  2003/12/29 23:32:11  rothgang
+Spelling error in comments.
+
+Revision 1.2  2003/09/07 22:11:23  rothgang
+Hack to compute threshold for very large scales.
+
+Revision 1.1  2003/07/30 14:09:03  rothgang
+Add new interest operator for the trace of Hessian function.  This is
+equivalent to the Laplacian function, but can be computed with seperable
+filters, so much more efficient.
+-------------------------------------------------------------------------------
 */
 
 

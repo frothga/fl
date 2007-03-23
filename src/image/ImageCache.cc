@@ -1,14 +1,30 @@
 /*
 Author: Fred Rothganger
 Created 02/06/2005
-Copyright 2005 Sandia Corporation.
+
+
+Revisions 1.1 and 1.2 Copyright 2005 Sandia Corporation.
+Revisions 1.3 and 1.4 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Fix memory leak when setting original image.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.4  2007/03/23 02:32:04  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.3  2006/02/05 22:26:05  Fred
+Fix memory leak when setting original (that is, main) image.
+
+Revision 1.2  2005/10/09 05:13:05  Fred
+Add Sandia distribution terms.
+
+Revision 1.1  2005/08/28 22:52:14  Fred
+Mechanism for sharing/caching image processing results.
+-------------------------------------------------------------------------------
 */
 
 

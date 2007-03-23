@@ -6,17 +6,87 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for MSVC
-03/2005 Fred Rothganger -- Use closest image in scale pyramid.
-09/2005 Fred Rothganger -- Remove lapackd.h
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.8, 1.10 thru 1.12 Copyright 2005 Sandia Corporation.
+Revisions 1.14 thru 1.15      Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-02/2006 Fred Rothganger -- Change Image structure.
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.15  2007/03/23 02:32:03  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.14  2006/02/25 22:40:55  Fred
+Change image structure by encapsulating storage format in a new PixelBuffer
+class.  Must now unpack the PixelBuffer before accessing memory directly. 
+ImageOf<> now intercepts any method that may modify the buffer location and
+captures the new address.
+
+Revision 1.13  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.12  2005/10/09 05:07:22  Fred
+Remove lapack.h, as it is no longer necessary to obtain matrix inversion
+operator.
+
+Revision 1.11  2005/10/09 04:41:15  Fred
+Add Sandia distribution terms.
+
+Rename lapack?.h to lapack.h
+
+Revision 1.10  2005/09/10 16:42:29  Fred
+Clarify revision history.  Add Sandia copyright notice.  This will need to be
+updated with license info before release.
+
+Commit to using new cache mechanism.
+
+Use PointAffine::projection() rather than invertion
+PoinAffine::rectification().
+
+Revision 1.9  2005/04/23 19:36:46  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.8  2005/01/22 21:09:39  Fred
+MSVC compilability fix:  Allocate array for histogram using malloc rather than
+using variable sized array extension.
+
+Guarantee that orientations are returned in descending order of strength.
+
+Revision 1.7  2004/08/30 01:26:06  rothgang
+Include timestamp in change detection for cacheing input image.
+
+Revision 1.6  2004/08/29 16:21:12  rothgang
+Change certain attributes of Descriptor from functions to member variables:
+supportRadial, monochrome, dimension.  Elevated supportRadial to a member of
+the base classs.  It is very common, but not 100% common, so there is a little
+wasted storage in a couple of cases.  On the other hand, this allows for client
+code to determine what support was used for a descriptor on an affine patch.
+
+Modified read() and write() functions to call base class first, and moved task
+of writing name into the base class.  May move task of writing supportRadial
+into base class as well, but leaving it as is for now.
+
+Revision 1.5  2004/05/03 20:16:15  rothgang
+Rearrange parameters for Gaussians so border mode comes before format.
+
+Revision 1.4  2004/05/03 19:00:21  rothgang
+Add Factory.
+
+Revision 1.3  2004/02/15 18:39:35  rothgang
+Add kernelSize to constructor and rearrange parameters to be more like other
+Descriptor constructors.  Improve patch change detection.  Add blur to patch to
+adjust scale at which orientation is found.
+
+Revision 1.2  2004/01/14 18:11:16  rothgang
+Use FiniteDifferenceX/Y for computing derivative images.
+
+Revision 1.1  2003/12/30 21:06:55  rothgang
+Create orientation descriptor.
+-------------------------------------------------------------------------------
 */
 
 

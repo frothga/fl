@@ -6,33 +6,35 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-12/2004 Fred Rothganger -- Compilability fix for Cygwin
-01/2005 Fred Rothganger -- Compilability fix for MSVC
-05/2005 Fred Rothganger -- Rework naming scheme to be consistent across
-        endians.
-10/2005 Fred Rothganger -- 64-bit compatibility
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.8, 1.9, 1.11 thru 1.22 Copyright 2005 Sandia Corporation.
+Revisions 1.24 thru 1.38           Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
 
 
-01/2006 Fred Rothganger -- Moved PixelFormat code into separate file.
-02/2006 Fred Rothganger -- Change Image structure.
-03/2006 Fred Rothganger -- Move endian code to endian.h
-
+-------------------------------------------------------------------------------
 $Log$
+Revision 1.38  2007/03/23 02:32:06  Fred
+Use CVS Log to generate revision history.
+
 Revision 1.37  2006/04/08 15:16:08  Fred
-Strip "Char" from all YUV-type formats.  It is ugly, and doesn't add any information in this case.
+Strip "Char" from all YUV-type formats.  It is ugly, and doesn't add any
+information in this case.
 
 Revision 1.36  2006/04/08 14:46:16  Fred
-Add PixelFormatUYYVYY.  Fix deficiency in PlanarYUV::fromAny(): it now handles converting to a non-planar buffer, needed by UYYVYY.
+Add PixelFormatUYYVYY.  Fix deficiency in PlanarYUV::fromAny(): it now handles
+converting to a non-planar buffer, needed by UYYVYY.
 
-Guard PlanarYCbCr against similar deficiency, but don't fix for now, because no obvious need for it.
+Guard PlanarYCbCr against similar deficiency, but don't fix for now, because no
+obvious need for it.
 
 Revision 1.35  2006/04/06 03:48:42  Fred
-Count bits in each color mask and include that info as metadata on RGBABits.  Add function "dublicate" which echoes the bits in a channel in order to fill out a wider channel.  Use to fill out alpha channel in RGBABits accessors.  Should use it for all converters as well, but that will slow them down.
+Count bits in each color mask and include that info as metadata on RGBABits. 
+Add function "dublicate" which echoes the bits in a channel in order to fill
+out a wider channel.  Use to fill out alpha channel in RGBABits accessors. 
+Should use it for all converters as well, but that will slow them down.
 
 Revision 1.34  2006/04/05 02:40:57  Fred
 Handle stride != width.
@@ -40,15 +42,23 @@ Handle stride != width.
 Supply missing alpha value in RGBABits conversions if source alphaMask == 0.
 
 Revision 1.33  2006/04/02 03:05:03  Fred
-Add PlanarYCbCr class, and use it instead of generic PlanarYUV for YUV420 and YUV411.  This allows proper conversion of the excursions for video.
+Add PlanarYCbCr class, and use it instead of generic PlanarYUV for YUV420 and
+YUV411.  This allows proper conversion of the excursions for video.
 
-Change PixelFormatPlanar into PixelFormatYUV and use it to store ratioH and ratioV for all YUV classes.  Move job of selecting PixelBuffer type back to PixelFormat::buffer(), and base the selection on the number of planes.
+Change PixelFormatPlanar into PixelFormatYUV and use it to store ratioH and
+ratioV for all YUV classes.  Move job of selecting PixelBuffer type back to
+PixelFormat::buffer(), and base the selection on the number of planes.
 
-Add inner loop to some converters to handle the difference between stride and image width.  Some converters still need this change.
+Add inner loop to some converters to handle the difference between stride and
+image width.  Some converters still need this change.
 
-Add 0.5 to the result of all fixed-point arithmetic to get the same effect as rint().  This produces more consistent results, which the test program needs.
+Add 0.5 to the result of all fixed-point arithmetic to get the same effect as
+rint().  This produces more consistent results, which the test program needs.
 
-Change PixelFormat::build* routines to use double rather than float.  Not really an important change, but it costs nothing to use the extra precision.  Maybe it would be possible to get rid of the linear hack and just calculate the gamma function across the entire range.
+Change PixelFormat::build* routines to use double rather than float.  Not
+really an important change, but it costs nothing to use the extra precision. 
+Maybe it would be possible to get rid of the linear hack and just calculate the
+gamma function across the entire range.
 
 Fix GrayFloat::fromGrayShort() and RGBChar::fromGrayShort() to use lut.
 
@@ -56,32 +66,178 @@ Fix GrayShort::fromAny() to use linear getGray() accessor.
 
 Get rid of alpha channel in RGBABits::fromGrayFloat() and fromGrayDouble().
 
-Add UYVY::fromAny(), YUYV::fromAny() and PlanarYUV::fromAny() to average RGB values when computing UV components.
+Add UYVY::fromAny(), YUYV::fromAny() and PlanarYUV::fromAny() to average RGB
+values when computing UV components.
 
 Add PlanarYUVChar::operator== to compare ratioH and ratioV.
 
 Revision 1.32  2006/03/20 05:39:25  Fred
-Add PixelFormatPlanarYUV.  Broaden PixelFormat::fromAny() to handle outputting to a non-packed buffer.
+Add PixelFormatPlanarYUV.  Broaden PixelFormat::fromAny() to handle outputting
+to a non-packed buffer.
 
-Add PixelFormat::buffer() to create an appropriate PixelBuffer for each PixelFormat.
+Add PixelFormat::buffer() to create an appropriate PixelBuffer for each
+PixelFormat.
 
 Revision 1.31  2006/03/18 14:25:55  Fred
-Use look up tables to convert gamma, rather than functions.  Hopefully this will make the process more efficient.
+Use look up tables to convert gamma, rather than functions.  Hopefully this
+will make the process more efficient.
 
-Changed 16 bit formats (GrayShort, RGBShort) to use gamma=1, on the assumption that the larger number of bits makes them more suitable for linear data, similar to float formats.  Not sure if images in the wild will satisfy this assumption.  Need more research.  Plan to add dynamically built luts for these formats at some point, so one can specify the gamma for the data.
+Changed 16 bit formats (GrayShort, RGBShort) to use gamma=1, on the assumption
+that the larger number of bits makes them more suitable for linear data,
+similar to float formats.  Not sure if images in the wild will satisfy this
+assumption.  Need more research.  Plan to add dynamically built luts for these
+formats at some point, so one can specify the gamma for the data.
 
 Revision 1.30  2006/03/13 03:50:19  Fred
-Remove comment from RGBABits::fromGrayChar() on the assumption that the alpha problem is now fixed.
+Remove comment from RGBABits::fromGrayChar() on the assumption that the alpha
+problem is now fixed.
 
 Revision 1.29  2006/03/13 03:24:06  Fred
-Add more fromGrayShort() functions.  Fix input size in RGBABits::fromGrayShort().
+Add more fromGrayShort() functions.  Fix input size in
+RGBABits::fromGrayShort().
 
 Suppress alpha channel in RGBABits::fromGrayChar() and fromGrayShort().
 
 Fix sign on grayShift in RGBChar::fromGrayShort().
 
-Experimet with RCS log to replace manually maintained revision history at head of file.
+Experimet with RCS log to replace manually maintained revision history at head
+of file.
 
+Revision 1.28  2006/03/13 02:43:04  Fred
+Modify PixelFormatGrayShort to keep a mask of how many bits it is actually
+using, rather than just assuming all bits are significant.  This is mainly to
+support NITF images, where 16 bit gray values may contain less than 16
+significant bits.
+
+Add PixelFormatGrayChar::fromGrayShort().
+
+Revision 1.27  2006/03/12 03:22:27  Fred
+Move endian code to endian.h.  Don't use double underscores in front of
+endian-related macros.
+
+Revision 1.26  2006/02/25 22:38:32  Fred
+Change image structure by encapsulating storage format in a new PixelBuffer
+class.  Must now unpack the PixelBuffer before accessing memory directly. 
+ImageOf<> now intercepts any method that may modify the buffer location and
+captures the new address.
+
+Revision 1.25  2006/01/06 18:04:22  Fred
+Move PixelFormat classes into separate file.  Actually, PixelFormat is much
+more important than Pixel.  The main reason for the move is symmetry with a
+soon-to-be-added set of classes called PixelBuffer.
+
+Revision 1.24  2005/10/15 21:37:41  Fred
+In YUV formats, cast pixel to long rather than int when testing for eveness. 
+long is more likely than int to match the size of a pointer.  This hack should
+be enough to work on 64-bit systems.
+
+Revision 1.23  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.22  2005/10/09 05:30:53  Fred
+Update revision history and add Sandia copyright notice.
+
+Revision 1.21  2005/05/29 15:57:58  Fred
+Pixel class: Remove const claim from setters.  Add get/setAlpha().
+
+Revision 1.20  2005/05/03 04:35:39  Fred
+Add UYVChar and BGRChar formats.
+
+Revision 1.19  2005/05/03 03:48:43  Fred
+Add MSVC variant of bswap function.
+
+Revision 1.18  2005/05/02 05:23:05  Fred
+Minimize number of increment operations on pixel pointers.  Instead use
+relative offset, which should compile to smaller machine code.
+
+Revision 1.17  2005/05/02 04:15:02  Fred
+Add converter fromRGBChar to GrayFloat and GrayDouble.
+
+Revision 1.16  2005/05/02 03:58:28  Fred
+Make RGBAChar and RGBChar subclasses of RGBABits.
+
+Revision 1.15  2005/05/02 01:23:15  Fred
+Place RGBABits ahead of RGBAChar and RGBChar in the file.  No functional
+impact, just placing things in the same order they will appear in image.h when
+RGBAChar and RGBChar are subclasses of RGBABits.
+
+Revision 1.14  2005/05/02 00:17:54  Fred
+More rigorous naming:  Renamed YVYUChar->UYVYChar and VYUYChar->YUYVChar to
+follow memory order convention.  Changed implementation of RGBAChar to follow
+memory order convention.
+
+Changed get/setRGBA() to guarantee an order within machine word (which is of
+course invariant to endianness).
+
+With the above two changes and a few other small tweaks to the code, it should
+now work for big-endian as well as small-endian, so removed endian warning. 
+However, this hasn't been tested on an actual big-endian yet.
+
+Added RGBChar.  This is the format used by all the image i/o libraries that I
+currently link to.
+
+Still to do:  make RGBAChar and RGBChar subclasses of RGBABits.  Need support
+for direct conversion from RGBChar to GrayFloat and GrayDouble so that they use
+proper linear Y conversion.  Finally, some code is using Int2Char when it could
+load a word directly, and some code is incrementing pointers more than
+necessary.
+
+Revision 1.13  2005/04/26 03:48:56  Fred
+Remove alpha channel from PixelFormat::get/setXYZ(float[]) because this is
+inconsistent with the naming convention and with the behavior of the more
+specialized PixelFormat classes.
+
+Revision 1.12  2005/04/25 02:19:41  Fred
+Add PixelFormatGrayShort to support TIFF.  Rearranged precendence values.
+
+Add get/setAlpha() to PixelFormatRGBAShort.  All formats with alpha channels
+should implement these methods since the default implementation assumes no
+alpha channel.  Restored default implementation in PixelFormat and strengthened
+comments there to explain the no-alpha assumption.
+
+Revision 1.11  2005/04/23 20:52:03  Fred
+Add PixelFormats RGBChar, RGBShort and RGBAShort to accomodate TIFF.  Reorder
+precedence to insert RBG*Short formats between GrayFloat and GrayDouble.
+
+Revision 1.10  2005/04/23 19:36:46  Fred
+Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
+11/21.
+
+Revision 1.9  2005/01/22 21:22:32  Fred
+MSVC compilability fix:  Use fl/math.h.  Work around endian detection.  Work
+around lvalue complaint.
+
+Revision 1.8  2005/01/12 05:11:16  rothgang
+cygwin compilation fix: Use sys/param.h rather than endian.h.
+
+Revision 1.7  2004/03/22 19:24:15  rothgang
+Fix bug in PixelFormatHLSFloat::setRGBA() handling hue.  Rearrange code
+slightly and pre-compute more constants in hopes of being more efficient.
+
+Revision 1.6  2004/03/10 01:47:12  rothgang
+Change pointers to references in getGray(float).  Change pointers to values in
+setGray(float).
+
+Revision 1.5  2004/01/08 21:25:12  rothgang
+Getters and setters for gray and alpha.
+
+Revision 1.4  2003/12/30 16:11:59  rothgang
+Add HLS color space.  Add YUV accessors.
+
+Revision 1.3  2003/07/09 15:46:26  rothgang
+Add YUV color space.  Make individual formats more responsible for selecting
+conversion.
+
+Revision 1.2  2003/07/08 23:47:57  rothgang
+Added YUV.  Added operations.
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 

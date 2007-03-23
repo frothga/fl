@@ -1,3 +1,39 @@
+/*
+Author: Fred Rothganger
+
+
+Revision 1.1 thru 1.5 Copyright 2007 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.5  2007/03/23 02:32:03  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.4  2006/04/08 14:42:55  Fred
+Implement PixelBufferUYYVYY.
+
+Revision 1.3  2006/04/02 02:39:48  Fred
+Add PixelBufferPacked constructor that binds to a Pointer object.
+
+Change PixelFormatPlanar class to PixelFormatYUV, and change
+PixelBufferPlanar::resize() to assume other planar formats exist besides YUV,
+but that any other format has equal sized planes.
+
+Revision 1.2  2006/03/20 05:36:53  Fred
+Finish writing PixelBufferPlanar.  Move job of preserving buffer contents into
+a separate function, so it can be reused by PixelBuffer classes.
+
+Revision 1.1  2006/03/13 02:40:14  Fred
+Classes for managing the memory layout of an Image.
+-------------------------------------------------------------------------------
+*/
+
+
 #include "fl/image.h"
 
 

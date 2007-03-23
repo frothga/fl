@@ -6,12 +6,53 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-05/2005 Fred Rothganger -- Changed interface to return a collection of pointers
-Revisions Copyright 2005 Sandia Corporation.
+Revisions 1.6 and 1.7 Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
+
+
+-------------------------------------------------------------------------------
+$Log$
+Revision 1.9  2007/03/23 02:32:02  Fred
+Use CVS Log to generate revision history.
+
+Revision 1.8  2005/10/13 03:22:02  Fred
+Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
+
+Revision 1.7  2005/10/09 05:29:52  Fred
+Update revision history and add Sandia copyright notice.
+
+Revision 1.6  2005/06/07 03:56:50  Fred
+Change interface to run() to accomodate polymorphism in returned interest
+points.
+
+Revision 1.5  2005/04/23 19:39:05  Fred
+Add UIUC copyright notice.
+
+Revision 1.4  2003/07/30 14:05:06  rothgang
+Remove findScale(), since that work is now inline.
+
+Revision 1.3  2003/07/24 19:18:14  rothgang
+Make InterestHarrisLaplacian and InterestLaplacian work in very similar manner.
+Find local maximum rather than global maximum when determining scale.  Develop
+appropriate statistic for determining threshold.  Deprecate findScale().
+
+Revision 1.2  2003/07/18 13:08:08  rothgang
+Change method for generating scales.  Add "bookending", where the set of scales
+is one quantum larger at each end than the respective range of Harris filters. 
+Add code to properly detect whether the point is a local maximum in scale
+space.  (Unfortunately, tests on a rotated image show that any type of scale
+maximum filtering reduces the repeatability of points found by this detector.)
+
+Revision 1.1  2003/07/08 23:19:47  rothgang
+branches:  1.1.1;
+Initial revision
+
+Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
+Imported sources
+-------------------------------------------------------------------------------
 */
 
 
