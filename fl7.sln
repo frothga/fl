@@ -1,25 +1,25 @@
 Microsoft Visual Studio Solution File, Format Version 8.00
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "base", "src\base\base.vcproj", "{CDD1E3E9-BF21-462A-8D2E-C8533A889489}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "base", "src\base\base7.vcproj", "{CDD1E3E9-BF21-462A-8D2E-C8533A889489}"
 	ProjectSection(ProjectDependencies) = postProject
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "numeric", "src\numeric\numeric.vcproj", "{53E4FB78-7CAC-4BB7-A5AA-73F2C48276FD}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "numeric", "src\numeric\numeric7.vcproj", "{53E4FB78-7CAC-4BB7-A5AA-73F2C48276FD}"
 	ProjectSection(ProjectDependencies) = postProject
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "image", "src\image\image.vcproj", "{941D793F-85C4-4759-9F1B-1038072EE99F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "image", "src\image\image7.vcproj", "{941D793F-85C4-4759-9F1B-1038072EE99F}"
 	ProjectSection(ProjectDependencies) = postProject
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net", "src\net\net.vcproj", "{3343659A-B620-4A8F-8419-C5058A5FC7B2}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net", "src\net\net7.vcproj", "{3343659A-B620-4A8F-8419-C5058A5FC7B2}"
 	ProjectSection(ProjectDependencies) = postProject
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test net", "src\net\testnet.vcproj", "{86DEFEAE-79FC-42D4-A88E-5BD4F1567AB8}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test net", "src\net\testnet7.vcproj", "{86DEFEAE-79FC-42D4-A88E-5BD4F1567AB8}"
 	ProjectSection(ProjectDependencies) = postProject
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test numeric", "src\numeric\testnumeric.vcproj", "{1DC96005-E0DB-4AA8-BBC3-372D5E3DBC22}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test numeric", "src\numeric\testnumeric7.vcproj", "{1DC96005-E0DB-4AA8-BBC3-372D5E3DBC22}"
 	ProjectSection(ProjectDependencies) = postProject
 	EndProjectSection
 EndProject
