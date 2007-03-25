@@ -7,6 +7,7 @@ for details.
 
 
 Revisions 1.5 and 1.6 Copyright 2005 Sandia Corporation.
+Revisions 1.8 and 1.9 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -15,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.9  2007/03/25 14:06:44  Fred
+Fix template instantiation for Factory.
+
 Revision 1.8  2007/03/23 10:57:29  Fred
 Use CVS Log to generate revision history.
 
@@ -60,7 +64,6 @@ using namespace std;
 // class ClusterMethod --------------------------------------------------------
 
 template class Factory<ClusterMethod>;
-template <> Factory<ClusterMethod>::productMap Factory<ClusterMethod>::products;
 
 void
 ClusterMethod::read (istream & stream)
