@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.1 thru 1.3 Copyright 2005 Sandia Corporation.
-Revisions 1.5 and 1.6  Copyright 2007 Sandia Corporation.
+Revisions 1.5 thru 1.7 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,11 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.7  2007/03/25 14:38:39  Fred
+Don't pass destroyA flag in pinv() or rank().  Instead, assume the default is
+to preserve the matrix.  This could change again in the future, but the present
+code was broken since the meaning of the flag in that position changed.
+
 Revision 1.6  2007/03/23 10:57:27  Fred
 Use CVS Log to generate revision history.
 
@@ -161,7 +166,7 @@ namespace fl
 	Matrix<float> U;
 	Vector<float> D;
 	Matrix<float> VT;
-	gesvd (A, U, D, VT, true);
+	gesvd (A, U, D, VT);
 
 	if (tolerance < 0)
 	{
@@ -195,7 +200,7 @@ namespace fl
 	Matrix<float> U;
 	Matrix<float> S;
 	Matrix<float> VT;
-	gesvd (A, U, S, VT, 'N', 'N', true);
+	gesvd (A, U, S, VT, 'N', 'N');
 
 	if (threshold < 0)
 	{
