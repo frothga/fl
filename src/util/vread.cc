@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.7 thru 1.9 Copyright 2007 Sandia Corporation.
+Revisions 1.7 thru 1.10 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -15,6 +15,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.10  2007/03/25 14:40:40  Fred
+Don't let target time stamp get out of range.
+
 Revision 1.9  2007/03/23 11:06:58  Fred
 Use CVS Log to generate revision history.
 
@@ -142,7 +145,9 @@ public:
 		else if (event.xbutton.button == Button3)
 		{
 		  pause ();
-		  vin.seekTime (startTime + duration * event.xbutton.x / image.width);
+		  double t = duration * event.xbutton.x / image.width;
+		  t = max (0.0, min (duration, t));
+		  vin.seekTime (startTime + t);
 		  showFrame ();
 		}
 		else if (event.xbutton.button == Button4)
@@ -179,7 +184,9 @@ public:
 		  if (! found)
 		  {
 			pause ();
-			vin.seekTime (startTime + duration * event.xbutton.x / image.width);
+			double t = duration * event.xbutton.x / image.width;
+			t = max (0.0, min (duration, t));
+			vin.seekTime (startTime + t);
 			showFrame ();
 		  }
 		}
