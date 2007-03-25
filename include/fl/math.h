@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.2, 1.3, 1.5 Copyright 2005 Sandia Corporation.
-Revisions 1.7 and 1.8   Copyright 2007 Sandia Corporation.
+Revisions 1.7 thru 1.9  Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.9  2007/03/25 13:31:09  Fred
+Fix MSVC 2005 compile errors.  It doesn't define pow(int,int).
+
 Revision 1.8  2007/03/23 11:38:05  Fred
 Correct which revisions are under Sandia copyright.
 
@@ -80,13 +83,13 @@ namespace std
 	return powf ((float) a, b);
   }
 
-#ifndef _MSC_VER
-
   inline int
   pow (int a, int b)
   {
 	return (int) floor (pow ((double) a, b));
   }
+
+#ifndef _MSC_VER
 
   inline int
   isinf (float a)
