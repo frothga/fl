@@ -6,7 +6,8 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.9 and 1.10 Copyright 2005 Sandia Corporation.
+Revisions 1.9 and 1.10  Copyright 2005 Sandia Corporation.
+Revisions 1.12 and 1.13 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -15,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.13  2007/03/25 14:51:05  Fred
+Fix template instantiation for Factory.
+
 Revision 1.12  2007/03/23 02:32:06  Fred
 Use CVS Log to generate revision history.
 
@@ -88,7 +92,6 @@ using namespace fl;
 // class Descriptor -----------------------------------------------------------
 
 template class Factory<Descriptor>;
-template <> Factory<Descriptor>::productMap Factory<Descriptor>::products;
 
 Descriptor::Descriptor ()
 {
