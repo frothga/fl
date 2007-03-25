@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.11  2007/03/25 13:32:01  Fred
+Fix MSVC 2005 compile errors: more missing error defs.
+
 Revision 1.10  2007/02/18 14:50:37  Fred
 Use CVS Log to generate revision history.
 
@@ -92,6 +95,9 @@ Imported sources
 #  define ENOBUFS     WSAENOBUFS
 #  define ENOTSOCK    WSAENOTSOCK
 #  define EOPNOTSUPP  WSAEOPNOTSUPP
+#  define EBADF       WSAEBADF
+#  define EINVAL      WSAEINVAL
+#  define EFAULT      WSAEFAULT
 
 #else
 
