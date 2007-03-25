@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.1 and 1.2  Copyright 2005 Sandia Corporation.
-Revisions 1.4 thru 1.8 Copyright 2007 Sandia Corporation.
+Revisions 1.4 thru 1.9 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,11 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.9  2007/03/25 14:34:42  Fred
+This code was assuming that it always received dense matrices, and so was
+copying it using a direct pointer to memory.  Fixed this latent bug by using
+the element accessor when the matrix is not dense.
+
 Revision 1.8  2007/03/23 10:57:28  Fred
 Use CVS Log to generate revision history.
 
@@ -84,7 +89,8 @@ namespace fl
 	  tempA.copyFrom (A);
 	}
 
-	if (destroyB  &&  ldx == m  &&  (p = dynamic_cast<const Matrix<double> *> (&B)))
+	p = dynamic_cast<const Matrix<double> *> (&B);
+	if (destroyB  &&  ldx == m  &&  p)
 	{
 	  x = *p;
 	}
@@ -92,17 +98,31 @@ namespace fl
 	{
 	  x.resize (ldx, nrhs);
 	  double * xp = & x(0,0);
-	  double * bp = & B(0,0);
-	  double * end = bp + m * nrhs;
 	  int step = ldx - m;
-	  while (bp < end)
+	  if (p)
 	  {
-		double * rowEnd = bp + m;
-		while (bp < rowEnd)
+		double * bp = & B(0,0);
+		double * end = bp + m * nrhs;
+		while (bp < end)
 		{
-		  *xp++ = *bp++;
+		  double * rowEnd = bp + m;
+		  while (bp < rowEnd)
+		  {
+			*xp++ = *bp++;
+		  }
+		  xp += step;
 		}
-		xp += step;
+	  }
+	  else
+	  {
+		for (int c = 0; c < nrhs; c++)
+		{
+		  for (int r = 0; r < m; r++)
+		  {
+			*xp++ = B(r,c);
+		  }
+		  xp += step;
+		}
 	  }
 	}
 
