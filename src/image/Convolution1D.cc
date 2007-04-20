@@ -16,6 +16,18 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.12  2007/04/20 13:34:12  Fred
+First working version of assembly optimizations!  This is for horizontal case
+only, but will add vertical later.  Also, it is only for GCC/x86.  This code
+only improves GCC's output in -03 by about 5% to 10%.  To be worth it, this
+should be written for SSE rather than x87.  Also, might be worth abondoning
+the "reverse" kernel, since incrementing pointers is almost zero cost when
+interleaved with x87 instructions.
+
+Changed stride to be in bytes rather than pixels.
+
+Fixed response() to handle new border modes.
+
 Revision 1.11  2007/03/23 02:32:04  Fred
 Use CVS Log to generate revision history.
 
@@ -68,6 +80,9 @@ Imported sources
 #include "fl/convolve.h"
 #include "fl/pi.h"
 
+// for debugging only
+#include "fl/time.h"
+
 
 using namespace std;
 using namespace fl;
@@ -90,54 +105,193 @@ ConvolutionDiscrete1D::ConvolutionDiscrete1D (const Image & image, const BorderM
 }
 
 /**
-   \todo This code has latent bugs if the kernel is wider than the image.
- **/
+   Generic template for horizontal main loop.
+   Validated by test.cc w/ threshold = 3e-6
+**/
 template<class T>
-static inline void convolveH (T * kernel, T * image, T * result,
-							  BorderMode mode,
-							  int kernelWidth, int width, int height,
-							  int fromStride, int toStride)
+static inline void
+asmH (T * reverse, T * fromPixel, T * toPixel, T * end,
+	  int rowWidth, int last, int fromStep, int toStep)
 {
-  assert (kernelWidth <= width);
+  T * reverseEnd = reverse + last;
 
-  // Main convolution
-  int mid       = kernelWidth / 2;
-  int last      = kernelWidth - 1;
-  int rowWidth  = width - last;
-  int fromStep  = fromStride - rowWidth;
-  int toStep    = toStride   - rowWidth;
-  T * kernelEnd = kernel + last;
-  T * fromPixel = image;
-  T * toPixel   = result;
-  if (mode != Crop) toPixel += mid;
-  T * end = toPixel + height * toStride;
   while (toPixel < end)
   {
 	T * rowEnd = toPixel + rowWidth;
 	while (toPixel < rowEnd)
 	{
 	  register T sum = 0;
-	  T * k = kernelEnd;
-	  while (k >= kernel)
+	  T * r = reverse;
+	  while (r <= reverseEnd)
 	  {
-		sum += *k-- * *fromPixel++;
+		sum += *r++ * *fromPixel++;
 	  }
 	  *toPixel++ = sum;
 	  fromPixel -= last;  // net advance of 1 pixel
 	}
-	toPixel += toStep;
-	fromPixel += fromStep;
+	toPixel   = (T *) ((char *) toPixel   + toStep);
+	fromPixel = (T *) ((char *) fromPixel + fromStep);
   }
+}
+
+#if defined (__GNUC__)  &&  defined (__i386__)
+
+/**
+   Float specialization of horizontal main loop.
+**/
+template<>
+static inline void
+asmH (float * reverse, float * fromPixel, float * toPixel, float * end,
+	  int rowWidth, int last, int fromStep, int toStep)
+{
+  reverse--;
+  fromPixel--;
+  last++;  // same as kernelWidth
+  rowWidth *= sizeof (float);  // pre-scale for convenience
+
+  __asm (
+		 // Load registers  (don't trust gcc to do this right)
+		 "movl   %0, %%eax\n"  // toPixel
+		 "movl   %1, %%ebx\n"  // fromPixel
+		 //  ecx is inner loop index
+		 "movl   %2, %%edx\n"  // reverse
+		 "movl   %3, %%esi\n"  // last
+		 //  edi is rowEnd
+
+		 // while (toPixel < end)
+		 "jmp    5f\n"
+		 "1:"
+		 "movl   %%eax, %%edi\n"
+		 "addl   %4, %%edi\n"  // rowEnd = toPixel + rowWidth
+
+		 // while (toPixel < rowEnd)
+		 "jmp    4f\n"
+		 "2:"
+		 "movl   %%esi, %%ecx\n"
+		 "fldz\n"
+		 "3:"
+		 "flds   (%%ebx,%%ecx,4)\n"
+		 "fmuls  (%%edx,%%ecx,4)\n"
+		 "decl   %%ecx\n"
+		 "faddp\n"
+		 "jnz    3b\n"
+		 "fstps  (%%eax)\n"
+
+		 "addl   $4, %%eax\n"  // toPixel++
+		 "addl   $4, %%ebx\n"  // fromPixel++
+		 "4:"
+		 "cmpl   %%edi, %%eax\n"
+		 "jb     2b\n"
+
+		 "addl   %5, %%eax\n"   // toPixel += toStep
+		 "addl   %6, %%ebx\n"   // fromPixel += fromStep
+		 "5:"
+		 "cmpl   %7, %%eax\n"
+		 "jb     1b\n"
+		 
+		 :
+		 : "m" (toPixel), "m" (fromPixel), "m" (reverse), "m" (last), "m" (rowWidth), "m" (toStep), "m" (fromStep), "m" (end)
+		 : "eax", "ebx", "ecx", "edx", "esi", "edi"
+		 );
+}
+
+/**
+   Double specialization of horizontal main loop.
+**/
+template<>
+static inline void
+asmH (double * reverse, double * fromPixel, double * toPixel, double * end,
+	  int rowWidth, int last, int fromStep, int toStep)
+{
+  reverse--;
+  fromPixel--;
+  last++;
+  rowWidth *= sizeof (double);
+
+  __asm (
+		 "movl   %0, %%eax\n"
+		 "movl   %1, %%ebx\n"
+		 "movl   %2, %%edx\n"
+		 "movl   %3, %%esi\n"
+
+		 "jmp    5f\n"
+		 "1:"
+		 "movl   %%eax, %%edi\n"
+		 "addl   %4, %%edi\n"
+
+		 "jmp    4f\n"
+		 "2:"
+		 "movl   %%esi, %%ecx\n"
+		 "fldz\n"
+		 "3:"
+		 "fldl   (%%ebx,%%ecx,8)\n"
+		 "fmull  (%%edx,%%ecx,8)\n"
+		 "decl   %%ecx\n"
+		 "faddp\n"
+		 "jnz    3b\n"
+		 "fstpl  (%%eax)\n"
+
+		 "addl   $8, %%eax\n"
+		 "addl   $8, %%ebx\n"
+		 "4:"
+		 "cmpl   %%edi, %%eax\n"
+		 "jb     2b\n"
+
+		 "addl   %5, %%eax\n"
+		 "addl   %6, %%ebx\n"
+		 "5:"
+		 "cmpl   %7, %%eax\n"
+		 "jb     1b\n"
+		 :
+		 : "m" (toPixel), "m" (fromPixel), "m" (reverse), "m" (last), "m" (rowWidth), "m" (toStep), "m" (fromStep), "m" (end)
+		 : "eax", "ebx", "ecx", "edx", "esi", "edi"
+		 );
+}
+
+#endif
+
+/**
+   \todo This code has latent bugs if the kernel is wider than the image.
+ **/
+template<class T>
+static void
+convolveH (T * kernel, T * image, T * result,
+		   BorderMode mode,
+		   int kernelWidth, int width, int height,
+		   int fromStride, int toStride)
+{
+  assert (kernelWidth <= width);
+
+  // Main convolution
+
+  int mid       = kernelWidth / 2;
+  int last      = kernelWidth - 1;
+  int rowWidth  = width - last;
+  int fromStep  = fromStride - rowWidth * sizeof (T);
+  int toStep    = toStride   - rowWidth * sizeof (T);
+  T * kernelEnd = kernel + last;
+  T * fromPixel = image;
+  T * toPixel   = result;
+  if (mode != Crop) toPixel += mid;
+  T * end = (T *) ((char *) toPixel + height * toStride);
+
+  //   Reverse the kernel for use in assembly optimization
+  T * reverse = (T *) alloca (kernelWidth * sizeof (T));
+  T * r = reverse;
+  T * k = kernelEnd;
+  while (k >= kernel) *r++ = *k--;
+
+  asmH (reverse, fromPixel, toPixel, end, rowWidth, last, fromStep, toStep);
 
   // Edge cases
   switch (mode)
   {
 	case ZeroFill:
 	{
-	  toStep    = toStride - mid;
+	  toStep    = toStride - mid * sizeof (T);
 	  T * left  = result;
 	  T * right = result + mid + rowWidth;
-	  T * end   = result + height * toStride;
+	  T * end   = (T *) ((char *) result + height * toStride);
 	  while (right < end)
 	  {
 		T * rowEnd = right + mid;
@@ -146,21 +300,21 @@ static inline void convolveH (T * kernel, T * image, T * result,
 		  *left++  = (T) 0.0;
 		  *right++ = (T) 0.0;
 		}
-		left += toStep;
-		right += toStep;
+		left = (T *) ((char *) left + toStep);
+		right = (T *) ((char *) right + toStep);
 	  }
 	  break;
 	}
 	case UseZeros:
 	{
-	  int toLeftStep  = toStride - mid;
-	  int toRightStep = toStride + mid;
+	  int toLeftStep  = toStride - mid * sizeof (T);
+	  int toRightStep = toStride + mid * sizeof (T);
 	  T * kernelStart = kernel + mid;
 	  T * fromLeft  = image;
 	  T * fromRight = image + mid + rowWidth + mid - 1;
 	  T * toLeft  = result;
 	  T * toRight = result + mid + rowWidth + mid - 1;
-	  T * end     = result + height * toStride;
+	  T * end     = (T *) ((char *) result + height * toStride);
 	  while (toRight < end)
 	  {
 		T * kernelLeft  = kernelStart;
@@ -181,10 +335,10 @@ static inline void convolveH (T * kernel, T * image, T * result,
 		  *toLeft++  = sumLeft;
 		  *toRight-- = sumRight;
 		}
-		fromLeft  += fromStride;
-		fromRight += fromStride;
-		toLeft  += toLeftStep;
-		toRight += toRightStep;
+		fromLeft  = (T *) ((char *) fromLeft + fromStride);
+		fromRight = (T *) ((char *) fromRight + fromStride);
+		toLeft  = (T *) ((char *) toLeft + toLeftStep);
+		toRight = (T *) ((char *) toRight + toRightStep);
 	  }
 	  break;
 	}
@@ -212,8 +366,8 @@ static inline void convolveH (T * kernel, T * image, T * result,
 	  }
 
 	  // Convolve
-	  int toLeftStep  = toStride - mid;
-	  int toRightStep = toStride + mid;
+	  int toLeftStep  = toStride - mid * sizeof (T);
+	  int toRightStep = toStride + mid * sizeof (T);
 	  T * kernelStart = kernel + mid;
 	  T * leftTotalStart = leftTotal + mid;
 	  T * rightTotalStart = rightTotal + mid;
@@ -221,7 +375,7 @@ static inline void convolveH (T * kernel, T * image, T * result,
 	  T * fromRight = image + mid + rowWidth + mid - 1;
 	  T * toLeft  = result;
 	  T * toRight = result + mid + rowWidth + mid - 1;
-	  T * end   = result + height * toStride;
+	  T * end   = (T *) ((char *) result + height * toStride);
 	  while (toRight < end)
 	  {
 		T * kernelLeft  = kernelStart;
@@ -244,22 +398,22 @@ static inline void convolveH (T * kernel, T * image, T * result,
 		  *toLeft++  = sumLeft  / *lt++;
 		  *toRight-- = sumRight / *rt--;
 		}
-		fromLeft  += fromStride;
-		fromRight += fromStride;
-		toLeft  += toLeftStep;
-		toRight += toRightStep;
+		fromLeft  = (T *) ((char *) fromLeft  + fromStride);
+		fromRight = (T *) ((char *) fromRight + fromStride);
+		toLeft  = (T *) ((char *) toLeft  + toLeftStep);
+		toRight = (T *) ((char *) toRight + toRightStep);
 	  }
 	  break;
 	}
 	case Copy:
 	{
-	  fromStep      = fromStride - mid;
-	  toStep        = toStride   - mid;
+	  fromStep      = fromStride - mid * sizeof (T);
+	  toStep        = toStride   - mid * sizeof (T);
 	  T * fromLeft  = image;
 	  T * fromRight = image + (mid + rowWidth);
 	  T * toLeft    = result;
 	  T * toRight   = result + (mid + rowWidth);
-	  T * end       = result + height * toStride;
+	  T * end       = (T *) ((char *) result + height * toStride);
 	  while (toRight < end)
 	  {
 		T * rowEnd = toRight + mid;
@@ -268,10 +422,10 @@ static inline void convolveH (T * kernel, T * image, T * result,
 		  *toLeft++  = *fromLeft++;
 		  *toRight++ = *fromRight++;
 		}
-		fromLeft += fromStep;
-		fromRight += fromStep;
-		toLeft += toStep;
-		toRight += toStep;
+		fromLeft  = (T *) ((char *) fromLeft  + fromStep);
+		fromRight = (T *) ((char *) fromRight + fromStep);
+		toLeft  = (T *) ((char *) toLeft  + toStep);
+		toRight = (T *) ((char *) toRight + toStep);
 	  }
 	}
   }
@@ -281,10 +435,11 @@ static inline void convolveH (T * kernel, T * image, T * result,
    \todo This code has latent bugs if the kernel is taller than the image.
  **/
 template<class T>
-static inline void convolveV (T * kernel, T * image, T * result,
-							  BorderMode mode,
-							  int kernelHeight, int width, int height,
-							  int fromStride, int toStride)
+static void
+convolveV (T * kernel, T * image, T * result,
+		   BorderMode mode,
+		   int kernelHeight, int width, int height,
+		   int fromStride, int toStride)
 {
   assert (kernelHeight <= height);
 
@@ -292,14 +447,14 @@ static inline void convolveV (T * kernel, T * image, T * result,
   int mid        = kernelHeight / 2;
   int last       = kernelHeight - 1;
   int cropHeight = height - last;
-  int rowStep    = 1 - fromStride * kernelHeight;
-  int fromStep   = fromStride - width;
-  int toStep     = toStride   - width;
+  int rowStep    = sizeof (T) - fromStride * kernelHeight;
+  int fromStep   = fromStride - width * sizeof (T);
+  int toStep     = toStride   - width * sizeof (T);
   T * kernelEnd  = kernel + last;
   T * fromPixel  = image;
   T * toPixel    = result;
-  if (mode != Crop) toPixel += mid * toStride;
-  T * end = toPixel + cropHeight * toStride;
+  if (mode != Crop) toPixel = (T *) ((char *) toPixel + mid * toStride);
+  T * end = (T *) ((char *) toPixel + cropHeight * toStride);
   while (toPixel < end)
   {
 	T * rowEnd = toPixel + width;
@@ -310,13 +465,13 @@ static inline void convolveV (T * kernel, T * image, T * result,
 	  while (k >= kernel)
 	  {
 		sum += *k-- * *fromPixel;
-		fromPixel += fromStride;
+		fromPixel = (T *) ((char *) fromPixel + fromStride);
 	  }
 	  *toPixel++ = sum;
-	  fromPixel += rowStep;
+	  fromPixel = (T *) ((char *) fromPixel + rowStep);
 	}
-	toPixel += toStep;
-	fromPixel += fromStep;
+	toPixel   = (T *) ((char *) toPixel   + toStep);
+	fromPixel = (T *) ((char *) fromPixel + fromStep);
   }
 
   // Edge cases
@@ -324,7 +479,7 @@ static inline void convolveV (T * kernel, T * image, T * result,
   {
 	case ZeroFill:
 	{
-	  int count = toStride * mid * sizeof (T);
+	  int count = toStride * mid;
 	  memset (result, 0, count);
 	  memset (end,    0, count);
 	  break;
@@ -333,9 +488,9 @@ static inline void convolveV (T * kernel, T * image, T * result,
 	{
 	  T * kernelStart = kernel + mid;
 	  T * fromTop    = image;
-	  T * fromBottom = image + (height - 1) * fromStride;
+	  T * fromBottom = (T *) ((char *) image + (height - 1) * fromStride);
 	  T * toTopStart    = result;
-	  T * toBottomStart = result + (height - 1) * toStride;
+	  T * toBottomStart = (T *) ((char *) result + (height - 1) * toStride);
 	  T * end           = toBottomStart + width;
 	  while (toBottomStart < end)
 	  {
@@ -355,13 +510,13 @@ static inline void convolveV (T * kernel, T * image, T * result,
 		  {
 			sumTop    += *kt-- * *ft;
 			sumBottom += *kb++ * *fb;
-			ft += fromStride;
-			fb -= fromStride;
+			ft = (T *) ((char *) ft + fromStride);
+			fb = (T *) ((char *) fb - fromStride);
 		  }
 		  *toTop    = sumTop;
 		  *toBottom = sumBottom;
-		  toTop    += toStride;
-		  toBottom -= toStride;
+		  toTop    = (T *) ((char *) toTop    + toStride);
+		  toBottom = (T *) ((char *) toBottom - toStride);
 		}
 		fromTop++;
 		fromBottom++;
@@ -395,9 +550,9 @@ static inline void convolveV (T * kernel, T * image, T * result,
 	  T * topTotalStart    = topTotal    + mid;
 	  T * bottomTotalStart = bottomTotal + mid;
 	  T * fromTop    = image;
-	  T * fromBottom = image + (height - 1) * fromStride;
+	  T * fromBottom = (T *) ((char *) image + (height - 1) * fromStride);
 	  T * toTopStart    = result;
-	  T * toBottomStart = result + (height - 1) * toStride;
+	  T * toBottomStart = (T *) ((char *) result + (height - 1) * toStride);
 	  T * end           = toBottomStart + width;
 	  while (toBottomStart < end)
 	  {
@@ -419,13 +574,13 @@ static inline void convolveV (T * kernel, T * image, T * result,
 		  {
 			sumTop    += *kt-- * *ft;
 			sumBottom += *kb++ * *fb;
-			ft += fromStride;
-			fb -= fromStride;
+			ft = (T *) ((char *) ft + fromStride);
+			fb = (T *) ((char *) fb - fromStride);
 		  }
 		  *toTop    = sumTop    / *tt++;
 		  *toBottom = sumBottom / *bt--;
-		  toTop    += toStride;
-		  toBottom -= toStride;
+		  toTop    = (T *) ((char *) toTop    + toStride);
+		  toBottom = (T *) ((char *) toBottom - toStride);
 		}
 		fromTop++;
 		fromBottom++;
@@ -434,9 +589,9 @@ static inline void convolveV (T * kernel, T * image, T * result,
 	}
 	case Copy:
 	{
-	  int count = toStride * mid * sizeof (T);
-	  memcpy (result, image,                                   count);
-	  memcpy (end,    image + (mid + cropHeight) * fromStride, count);
+	  int count = toStride * mid;
+	  memcpy (result, image,                                            count);
+	  memcpy (end,    (char *) image + (mid + cropHeight) * fromStride, count);
 	}
   }
 }
@@ -538,7 +693,7 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
   if (image.width == 0  ||  image.height == 0) return 0;
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
   if (! imageBuffer) throw "Convolution1D only handles packed buffers for now";
-  Pointer input = imageBuffer->memory;
+  char * input = (char *) imageBuffer->memory;
 
   int last = width - 1;
   int mid = width / 2;
@@ -553,24 +708,24 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
   {
 	low  = max (0,    x + mid - (image.width - 1));	
 	high = min (last, x + mid);
-	stride = 1;
+	stride = (int) format->depth;
   }
   else  // direction == Vertical
   {
 	low  = max (0,    y + mid - (image.height - 1));
 	high = min (last, y + mid);
-	stride = image.width;
+	stride = imageBuffer->stride;
   }
 
-  if (low > high)
+  if (low > 0  ||  high < last)
   {
-	return 0;
-  }
-
-  if (   (mode == Crop  ||  mode == ZeroFill)
-      && (low > 0  ||  high < last))
-  {
-	return 0;
+	if (mode == Copy)
+	{
+	  if      (*format == GrayFloat)  return ((float  *) (input + y * imageBuffer->stride))[x];
+	  else if (*format == GrayDouble) return ((double *) (input + y * imageBuffer->stride))[x];
+	  else return 0;
+	}
+	if (mode == Crop  ||  mode == ZeroFill  ||  mode == Undefined) return 0;
   }
 
   if (mode == Boost)
@@ -578,8 +733,8 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
 	if (*format == GrayFloat)
 	{
 	  float * a = (float *) kernel + low;
-	  float * b = (float *) input + (y * image.width + x);
-	  b += (mid - low) * stride;
+	  float * b = (float *) (input + y * imageBuffer->stride) + x;
+	  b = (float *) ((char *) b + (mid - low) * stride);
 
 	  float result = 0;
 	  float weight = 0;
@@ -587,15 +742,15 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
 	  {
 		result += *a * *b;
 		weight += *a++;
-		b -= stride;
+		b = (float *) ((char *) b - stride);
 	  }
 	  return result / weight;
 	}
 	else if (*format == GrayDouble)
 	{
 	  double * a = (double *) kernel + low;
-	  double * b = (double *) input + (y * image.width + x);
-	  b += (mid - low) * stride;
+	  double * b = (double *) (input + y * imageBuffer->stride) + x;
+	  b = (double *) ((char *) b + (mid - low) * stride);
 
 	  double result = 0;
 	  double weight = 0;
@@ -603,7 +758,7 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
 	  {
 		result += *a * *b;
 		weight += *a++;
-		b -= stride;
+		b = (double *) ((char *) b - stride);
 	  }
 	  return result / weight;
 	}
@@ -617,28 +772,28 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
 	if (*format == GrayFloat)
 	{
 	  float * a = (float *) kernel + low;
-	  float * b = (float *) input + (y * image.width + x);
-	  b += (mid - low) * stride;
+	  float * b = (float *) (input + y * imageBuffer->stride) + x;
+	  b = (float *) ((char *) b + (mid - low) * stride);
 
 	  float result = 0;
 	  for (int i = low; i <= high; i++)
 	  {
 		result += *a++ * *b;
-		b -= stride;
+		b = (float *) ((char *) b - stride);
 	  }
 	  return result;
 	}
 	else if (*format == GrayDouble)
 	{
 	  double * a = (double *) kernel + low;
-	  double * b = (double *) input + (y * image.width + x);
-	  b += (mid - low) * stride;
+	  double * b = (double *) (input + y * imageBuffer->stride) + x;
+	  b = (double *) ((char *) b + (mid - low) * stride);
 
 	  double result = 0;
 	  for (int i = low; i <= high; i++)
 	  {
 		result += *a++ * *b;
-		b -= stride;
+		b = (double *) ((char *) b - stride);
 	  }
 	  return result;
 	}
