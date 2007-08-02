@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.9  thru 1.17 Copyright 2005 Sandia Corporation.
-Revisions 1.19 thru 1.41 Copyright 2007 Sandia Corporation.
+Revisions 1.19 thru 1.42 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,11 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.42  2007/08/02 12:37:10  Fred
+Add PixelBufferBits and PixelBufferYUYV.
+
+Clarify comments about operator== and PixelBuffer::planes.
+
 Revision 1.41  2007/03/23 11:38:05  Fred
 Correct which revisions are under Sandia copyright.
 
@@ -360,20 +365,12 @@ namespace fl
 
 	/**
 	   Maps (x,y) coordinates to a pointer that tells the PixelFormat where
-	   to get the color information.  This can come in two forms:
-	   <OL>
-	   <LI>planes = 1 -- A direct pointer to a packed pixel containing all the
-	   color channels.
-	   <LI>planes > 1 -- A pointer to an array of pointers, each one
-	   addressing one of the color channels.  The array of pointers is
-	   a member of the PixelBuffer object, and will remain valid until the
-	   next call to this function.
-	   </OL>
+	   to get the color information.  See comment on planes for details.
 
 	   This function is not thread-safe for two reasons.  First, if the
 	   underlying storage moves in memory (such as cached blocks from a large
 	   disk file), then one call to this function could invalidate the
-	   pointer(s) returned by another call.  Second, if planes > 1, then one
+	   pointer(s) returned by another call.  Second, if planes != 1, then one
 	   call to this function will change the array of pointers filled in by
 	   another call.  For multi-threaded code, you should surround the call to
 	   this function and the call to PixelFormat in a mutex.  Alternately, if
@@ -390,7 +387,31 @@ namespace fl
 	  return ! (*this == that);
 	}
 
-	int planes;  ///< The number of entries in the array returned by pixel().
+	/**
+	   Indicates the structure pointed to by pixel().  There are three forms:
+	   <OL>
+	   <LI>planes = 1 -- A direct pointer to a packed pixel containing all the
+	   color channels.
+	   <LI>planes > 1 -- A pointer to an array of pointers, each one
+	   addressing one of the color channels.  The value of planes indicates the
+	   size of the array.
+	   <LI>planes < 1 -- A pointer to a structure.  Each kind of structure is
+	   assigned a unique negative number.  Current structures are:
+	   <UL>
+	   <LI>-1 -- PixelBufferBits::PixelData
+	   </UL>
+	   </OL>
+	   Any value other than planes==1 is not thread safe.  The structure or
+	   array is a member of the PixelBuffer object, and its contents will be
+	   changed by the next call to pixel().  For safe operation, you must
+	   create a separate PixelBuffer object for each thread.  The default
+	   mode when assigning Image objects is to share the same PixelBuffer,
+	   so you must explicitly duplicate it.
+
+	   <p>A PixelFormat must have exactly the same value of planes to be
+	   compatible.
+	**/
+	int planes;
   };
 
   /**
@@ -458,13 +479,67 @@ namespace fl
   };
 
   /**
-	 A special structure just for the bizarre memory layout of IEEE 1394
-	 format 0 mode 2.  Even though this is technically a packed format and
-	 therefore should be handled by PixelBufferPacked and an appropriate
-	 PixelFormat, the fact that four pixels are packed into units of six bytes
-	 makes it impossible to use a single address to indicate which positions
-	 are referred to.  Instead, this PixelBuffer acts as a planar format,
-	 passing three pointers to the three channels.
+	 Pixels are not (generally) an even multiple of 8-bits in size, and are
+	 packed contiguously in memory.  Otherwise, this is much the same as
+	 PixelBufferPacked.  For simplicity and efficiency, this version assumes
+	 that pixels never cross 8-bit boundaries and that they always completely
+	 fill an 8-bit byte.  This would be easy to generalize, but not worth
+	 the extra overhead per pixel until a case comes up that requires it.
+  **/
+  class PixelBufferBits : public PixelBuffer
+  {
+  public:
+	PixelBufferBits (int slices = 8);
+	PixelBufferBits (int stride, int height, int slices = 8);
+	PixelBufferBits (void * buffer, int stride, int height, int slices = 8);
+	virtual ~PixelBufferBits ();
+
+	virtual void * pixel (int x, int y);
+	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false);  ///< stride will be set to ceil (width * bits / 8).
+	virtual PixelBuffer * duplicate () const;
+	virtual void clear ();
+	virtual bool operator == (const PixelBuffer & that) const;
+
+	int stride;
+	int slices;  ///< Pixels per byte.  Should be one of {2, 4, 8} in current implementation.
+	Pointer memory;
+
+	struct PixelData
+	{
+	  unsigned char * address;  ///< actual location of the byte containing the pixel
+	  int             index;  ///< Indicates which pixel in byte to select.  Exact meaning depends on "endianness", which is known by PixelFormatGrayBits.  Here, it is simply x % slices.
+	};
+	PixelData pixelData;
+  };
+
+  /**
+	 Handle YUYV and UYVY.  Technically a packed format, but the positions of
+	 U and V depend on the x position of the pixel.  Therefore, we must
+	 marshall these values.
+  **/
+  class PixelBufferYUYV : public PixelBuffer
+  {
+  public:
+	PixelBufferYUYV (bool swap = false);
+	PixelBufferYUYV (void * buffer, int width, int height, bool swap = false);  ///< Binds to an external block of memory.
+	virtual ~PixelBufferYUYV ();
+
+	virtual void * pixel (int x, int y);
+	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false);
+	virtual PixelBuffer * duplicate () const;
+	virtual void clear ();
+	virtual bool operator == (const PixelBuffer & that) const;
+
+	int     stride;
+	Pointer memory;
+	bool    swap;  ///< Indicates that pixels are UYVY rather than YUYV.
+	void *  pixelArray[3];  ///< Temporary storage for marshalled addresses.  Not thread-safe.
+  };
+
+  /**
+	 Handle IEEE 1394 format 0 mode 2.  Technically a packed format, but the
+	 positions of Y, U and V depend on the x position of the pixel.  Therefore,
+	 we must marshall these values.
   **/
   class PixelBufferUYYVYY : public PixelBuffer
   {
@@ -676,7 +751,7 @@ namespace fl
 	virtual PixelBuffer * buffer () const;  ///< Construct a PixelBuffer suitable for holding data of the type described by this object.
 	virtual void fromAny (const Image & image, Image & result) const;
 
-	virtual bool operator == (const PixelFormat & that) const;  ///< Checks if this and that describe the same actual format.
+	virtual bool operator == (const PixelFormat & that) const;  ///< Checks if this and that describe the same interpretation of memory contents.
 	bool operator != (const PixelFormat & that) const
 	{
 	  return ! operator == (that);
@@ -698,7 +773,7 @@ namespace fl
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;  ///< Ignored by default.  Formats that actually have an alpha channel must override this method.
 
 	int planes;  ///< The number of entries in the array passed through the "pixel" parameter.  See PixelBuffer::planes for semantics.  This format must agree with the PixelBuffer on the meaning of the pixel pointer.
-	int depth;  ///< Number of bytes in one pixel, including any padding.  If planes > 1, then this field only describes the first plane.  The other planes should in general have the same size associated with a single pixel, but a single datum may be shared by more than 1 pixel.
+	float depth;  ///< Number of bytes per pixel, including any padding.  If planes > 1, then this field only describes the first plane.  The other planes should in general have the same size associated with a single pixel, but a single datum may be shared by more than 1 pixel.
 	int precedence;  ///< Imposes a (partial?) order on formats according to information content.  Bigger numbers have more information.
 	// The following two flags could be implemented several different ways.
 	// One alternative would be to make a more complicated class hierarchy
@@ -714,6 +789,38 @@ namespace fl
 	static float *         lutChar2Float;  ///< Use unsigned char value directly as index into this table of float values.
 	static unsigned char * buildFloat2Char ();  ///< Construct lutFloat2Char during static initialization.
 	static float *         buildChar2Float ();  ///< Construct lutChar2Float during static initialization.
+  };
+
+  /**
+	 Interprets gray values consisting of fewer than 8 bits, such that several
+	 (2, 4 or 8) gray pixels are packed into one byte.  This could
+	 easily be generalized to chunks bigger than 1 byte, but presently there
+	 is no need.  PixelFormatGrayChar is equivalent to this format with
+	 bits == 8.  PixelFormatGrayShort also handles a set of significant bits
+	 other than the full word, but it is a somewhat different layout, since
+	 only one pixel occurs in any one word.
+   **/
+  class PixelFormatGrayBits : public PixelFormat
+  {
+  public:
+	/**
+	   @param bigendian Indicates that the pixel with the smallest horizontal
+	   coordinate (that is, X position) appears in the most significant bit(s)
+	   of the byte.  Within a single pixel, the ordering of the bits is
+	   unnaffected by this flag, and always follows the convention of the
+	   machine.
+	**/
+	PixelFormatGrayBits (int bits = 1, bool bigendian = true);
+
+	virtual PixelBuffer * buffer () const;
+
+	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
+
+	int           bits;
+	int           slices;  ///< Number of pixels in one byte.  Same as 8/bits or 1/depth.
+	unsigned char masks[8];  ///< An array of bit masks for each pixel packed in one byte.  x % bits gives an offset into this array.  There may be some wasted entries, but this is a trivial loss in exchange for the simplicity of a fixed-size array.
+	int           shifts[8];  ///< How far to upshift the indexed pixel to put it in the most significant position.
   };
 
   class PixelFormatGrayChar : public PixelFormat
@@ -940,46 +1047,7 @@ namespace fl
   };
 
   /**
-	 Assumes that pixel pairs are 32-bit word aligned.  So, if the pixel
-	 address falls in the center of a 32-bit word it must refer to the "VY"
-	 portion of the pair.  Likewise, an address that falls on a 32-bit boundary
-	 refers to the "UY" portion.
-  **/
-  class PixelFormatUYVY : public PixelFormatYUV
-  {
-  public:
-	PixelFormatUYVY ();
-
-	virtual Image filter (const Image & image);
-	virtual void fromAny (const Image & image, Image & result) const;
-	void fromYUYV        (const Image & image, Image & result) const;
-
-	virtual unsigned int  getRGBA (void * pixel) const;
-	virtual unsigned int  getYUV  (void * pixel) const;
-	virtual unsigned char getGray (void * pixel) const;
-	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
-	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
-  };
-
-  /// Same as UYVY, but with different ordering within the dwords
-  class PixelFormatYUYV : public PixelFormatYUV
-  {
-  public:
-	PixelFormatYUYV ();
-
-	virtual Image filter (const Image & image);
-	virtual void fromAny (const Image & image, Image & result) const;
-	void fromUYVY        (const Image & image, Image & result) const;
-
-	virtual unsigned int  getRGBA (void * pixel) const;
-	virtual unsigned int  getYUV  (void * pixel) const;
-	virtual unsigned char getGray (void * pixel) const;
-	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
-	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
-  };
-
-  /**
-	 YUV 444 format (1394 mode 0 format 0)
+	 YUV 444 format (1394 format 0 mode 0)
    **/
   class PixelFormatUYV : public PixelFormatYUV
   {
@@ -1009,12 +1077,51 @@ namespace fl
 	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
   };
 
+  /**
+	 YUV 422 format (1394 format 0 mode 1, etc).
+	 Inherits from PlanarYUV, even though this format is technically packed,
+	 because it uses a set of marshalled pointers.
+  **/
+  class PixelFormatUYVY : public PixelFormatPlanarYUV
+  {
+  public:
+	PixelFormatUYVY ();
+
+	virtual Image filter (const Image & image);
+	virtual PixelBuffer * buffer () const;
+	virtual void fromAny (const Image & image, Image & result) const;
+	void fromYUYV        (const Image & image, Image & result) const;
+
+	virtual bool operator == (const PixelFormat & that) const;
+  };
+
+  /// Same as UYVY, but with different ordering within the dwords
+  class PixelFormatYUYV : public PixelFormatPlanarYUV
+  {
+  public:
+	PixelFormatYUYV ();
+
+	virtual Image filter (const Image & image);
+	virtual PixelBuffer * buffer () const;
+	virtual void fromAny (const Image & image, Image & result) const;
+	void fromUYVY        (const Image & image, Image & result) const;
+
+	virtual bool operator == (const PixelFormat & that) const;
+  };
+
+  /**
+	 YUV 411 format (1394 format 0 mode 2).
+	 Inherits from PlanarYUV, even though this format is technically packed,
+	 because it uses a set of marshalled pointers.
+   **/
   class PixelFormatUYYVYY : public PixelFormatPlanarYUV
   {
   public:
 	PixelFormatUYYVYY ();
 
 	virtual PixelBuffer * buffer () const;
+
+	virtual bool operator == (const PixelFormat & that) const;
   };
 
   /**
