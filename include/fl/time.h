@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.12  2007/08/03 04:51:06  Fred
+Enable hires counter under Cygwin.
+
 Revision 1.11  2007/02/18 14:50:37  Fred
 Use CVS Log to generate revision history.
 
@@ -75,7 +78,7 @@ Imported sources
 
 #include <ostream>
 
-#ifdef WIN32
+#if defined(WIN32) || defined(__CYGWIN__)
 #  include <windows.h>
 #  undef min
 #  undef max
@@ -83,6 +86,7 @@ Imported sources
 #  include <sys/time.h>
 #  include <unistd.h>
 #endif
+
 
 namespace fl
 {
@@ -98,7 +102,7 @@ namespace fl
   inline double
   getTimestamp ()
   {
-#   ifdef WIN32
+#   if defined(WIN32) || defined(__CYGWIN__)
 
 	LARGE_INTEGER count;
 	LARGE_INTEGER frequency;
