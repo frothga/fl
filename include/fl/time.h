@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.3, 1.5 and 1.6 Copyright 2005 Sandia Corporation.
-Revisions 1.8 thru 1.11    Copyright 2007 Sandia Corporation.
+Revisions 1.8 thru 1.13    Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.13  2007/08/03 04:52:58  Fred
+Update Sandia copyright notice.
+
 Revision 1.12  2007/08/03 04:51:06  Fred
 Enable hires counter under Cygwin.
 
