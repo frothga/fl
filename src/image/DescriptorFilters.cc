@@ -6,8 +6,8 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revision  1.5          Copyright 2005 Sandia Corporation.
-Revisions 1.7 thru 1.9 Copyright 2007 Sandia Corporation.
+Revision  1.5           Copyright 2005 Sandia Corporation.
+Revisions 1.7 thru 1.10 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.10  2007/08/12 14:29:38  Fred
+Use stride rather than depth to determine size of image buffer.
+
 Revision 1.9  2007/03/23 02:32:06  Fred
 Use CVS Log to generate revision history.
 
@@ -158,7 +161,8 @@ DescriptorFilters::read (istream & stream)
 	stream.read ((char *) &width, sizeof (width));
 	stream.read ((char *) &height, sizeof (height));
 	Image image (width, height, GrayFloat);
-	stream.read ((char *) ((PixelBufferPacked *) image.buffer)->memory, width * height * GrayFloat.depth);
+	PixelBufferPacked * pbp = (PixelBufferPacked *) image.buffer;
+	stream.read ((char *) pbp->memory, height * pbp->stride);
 	filters.push_back (ConvolutionDiscrete2D (image));
   }
 }
@@ -176,7 +180,8 @@ DescriptorFilters::write (ostream & stream, bool withName)
 	int height = filters[i].height;
 	stream.write ((char *) &width,  sizeof (width));
 	stream.write ((char *) &height, sizeof (height));
-	stream.write ((char *) ((PixelBufferPacked *) filters[i].buffer)->memory, width * height * GrayFloat.depth);
+	PixelBufferPacked * pbp = (PixelBufferPacked *) filters[i].buffer;
+	stream.write ((char *) pbp->memory, height * pbp->stride);
   }
 }
 
