@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.4 thru 1.6  Copyright 2005 Sandia Corporation.
-Revisions 1.8 thru 1.15 Copyright 2007 Sandia Corporation.
+Revisions 1.8 thru 1.16 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.16  2007/08/12 14:36:41  Fred
+Use stride directly for byte size of rows.
+
 Revision 1.15  2007/03/23 02:32:02  Fred
 Use CVS Log to generate revision history.
 
@@ -266,13 +269,12 @@ ImageFileDelegateJPEG::read (Image & image, int x, int y, int width, int height)
   image.resize (cinfo.output_width, cinfo.output_height);
 
   char * p = (char *) buffer->memory;
-  int stride = buffer->stride * image.format->depth;
   JSAMPROW row[1];
   while (cinfo.output_scanline < cinfo.output_height)
   {
 	row[0] = (JSAMPLE *) p;
     jpeg_read_scanlines (&cinfo, row, 1);
-	p += stride;
+	p += buffer->stride;
   }
   jpeg_finish_decompress (&cinfo);
 
@@ -316,13 +318,12 @@ ImageFileDelegateJPEG::write (const Image & image, int x, int y)
 
   jpeg_start_compress (&cinfo, TRUE);
   char * p = (char *) buffer->memory;
-  int stride = buffer->stride * image.format->depth;
   JSAMPROW row[1];
   while (cinfo.next_scanline < cinfo.image_height)
   {
     row[0] = (JSAMPLE *) p;
     jpeg_write_scanlines (&cinfo, row, 1);
-	p += stride;
+	p += buffer->stride;
   }
   jpeg_finish_compress (&cinfo);
 
