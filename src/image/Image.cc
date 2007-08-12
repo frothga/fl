@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.6 and 1.8    Copyright 2005 Sandia Corporation.
-Revisions 1.10 thru 1.21 Copyright 2007 Sandia Corporation.
+Revisions 1.10 thru 1.22 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.22  2007/08/12 14:35:33  Fred
+Change PixelBufferPacked::depth to a float.
+
 Revision 1.21  2007/03/23 02:32:04  Fred
 Use CVS Log to generate revision history.
 
@@ -165,7 +168,7 @@ Image::Image (void * block, int width, int height, const PixelFormat & format)
   timestamp    = getTimestamp ();
   this->width  = max (0, width);
   this->height = max (0, height);
-  buffer       = new PixelBufferPacked (block, this->width, this->height, format.depth);
+  buffer       = new PixelBufferPacked (block, (int) ceil (format.depth * this->width), this->height, (int) format.depth);
   this->format = &format;
 }
 
@@ -238,7 +241,7 @@ Image::copyFrom (void * block, int width, int height, const PixelFormat & format
 	timestamp    = getTimestamp ();  // Actually, we don't know the timestamp on a bare buffer, but this guess is as good as any.
 	this->width  = max (0, width);
 	this->height = max (0, height);
-	p->copyFrom (block, this->width, this->height, format.depth);
+	p->copyFrom (block, (int) ceil (format.depth * this->width), this->height, (int) format.depth);
 	this->format = &format;
   }
 }
@@ -249,7 +252,7 @@ Image::attach (void * block, int width, int height, const PixelFormat & format)
   timestamp    = getTimestamp ();
   this->width  = max (0, width);
   this->height = max (0, height);
-  buffer       = new PixelBufferPacked (block, this->width, this->height, format.depth);
+  buffer       = new PixelBufferPacked (block, (int) ceil (format.depth * this->width), this->height, (int) format.depth);
   this->format = &format;
 }
 
@@ -413,7 +416,7 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
     } \
   }
 
-  switch (format->depth)
+  switch ((int) format->depth)
   {
     case 2:
 	  transfer (unsigned short);
