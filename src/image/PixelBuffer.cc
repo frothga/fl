@@ -2,7 +2,7 @@
 Author: Fred Rothganger
 
 
-Revision 1.1 thru 1.6 Copyright 2007 Sandia Corporation.
+Revision 1.1 thru 1.7 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -11,6 +11,11 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.7  2007/08/13 03:01:38  Fred
+Replace PixelBufferBits, PixelBufferYUYV, and PixelBufferUYYVYY with
+PixelBufferGroups.  This new buffer type generalizes the type of memory
+acces that each of the original 3 buffers handled.
+
 Revision 1.6  2007/08/02 12:32:05  Fred
 Change stride to mean bytes rather than pixels.
 
@@ -355,45 +360,48 @@ PixelBufferPlanar::operator == (const PixelBuffer & that) const
 }
 
 
-// class PixelBufferBits ------------------------------------------------------
+// class PixelBufferGroups ----------------------------------------------------
 
-PixelBufferBits::PixelBufferBits (int slices)
+PixelBufferGroups::PixelBufferGroups (int pixels, int bytes)
 {
   planes       = -1;
-  this->slices = slices;
+  this->pixels = pixels;
+  this->bytes  = bytes;
   stride       = 0;
 }
 
-PixelBufferBits::PixelBufferBits (int stride, int height, int slices)
+PixelBufferGroups::PixelBufferGroups (int stride, int height, int pixels, int bytes)
 {
   planes       = -1;
-  this->slices = slices;
+  this->pixels = pixels;
+  this->bytes  = bytes;
   this->stride = stride;
   memory.grow (stride * height);
 }
 
-PixelBufferBits::PixelBufferBits (void * buffer, int stride, int height, int slices)
+PixelBufferGroups::PixelBufferGroups (void * buffer, int stride, int height, int pixels, int bytes)
 {
   planes       = -1;
-  this->slices = slices;
+  this->pixels = pixels;
+  this->bytes  = bytes;
   this->stride = stride;
   memory.attach (buffer, stride * height);
 }
 
-PixelBufferBits::~PixelBufferBits ()
+PixelBufferGroups::~PixelBufferGroups ()
 {
 }
 
 void *
-PixelBufferBits::pixel (int x, int y)
+PixelBufferGroups::pixel (int x, int y)
 {
-  pixelData.address = (unsigned char *) memory + y * stride + x / slices;
-  pixelData.index   = x % slices;
+  pixelData.address = (unsigned char *) memory + (y * stride + (x / pixels) * bytes);
+  pixelData.index   = x % pixels;
   return & pixelData;
 }
 
 void
-PixelBufferBits::resize (int width, int height, const PixelFormat & format, bool preserve)
+PixelBufferGroups::resize (int width, int height, const PixelFormat & format, bool preserve)
 {
   if (width <= 0  ||  height <= 0)
   {
@@ -402,103 +410,16 @@ PixelBufferBits::resize (int width, int height, const PixelFormat & format, bool
 	return;
   }
 
-  if (! preserve  ||  format.depth != 1.0f / slices)
+  const PixelFormatPackedYUV * f = dynamic_cast<const PixelFormatPackedYUV *> (&format);
+  assert (f);
+  int newStride = (int) ceil ((float) width / f->pixels) * f->bytes;  // Always allocate a stride that can contain a whole number of groups and also the full width.  It is permissable to use part of a group for the last few pixels of the line, provided there is storage for the full group.
+
+  if (! preserve  ||  f->pixels != pixels  ||  f->bytes != bytes)
   {
-	slices = (int) (1.0f / format.depth);
-	stride = width / slices;
-	if (width % slices) stride++;
-	memory.grow (stride * height);
-	return;
-  }
-
-  int newStride = width / slices;
-  if (width % slices) newStride++;
-  reshapeBuffer (memory, stride, newStride, height);
-  stride = newStride;
-}
-
-PixelBuffer *
-PixelBufferBits::duplicate () const
-{
-  PixelBufferBits * result = new PixelBufferBits (slices);
-  result->memory.copyFrom (memory);
-  result->stride = stride;
-  return result;
-}
-
-void
-PixelBufferBits::clear ()
-{
-  memory.clear ();
-}
-
-bool
-PixelBufferBits::operator == (const PixelBuffer & that) const
-{
-  const PixelBufferBits * p = dynamic_cast<const PixelBufferBits *> (&that);
-  return    p
-         && stride == p->stride
-         && slices == p->slices
-         && memory == p->memory;
-}
-
-
-// class PixelBufferUYYVYY ----------------------------------------------------
-
-PixelBufferUYYVYY::PixelBufferUYYVYY ()
-{
-  planes = 3;
-  stride = 0;
-}
-
-PixelBufferUYYVYY::PixelBufferUYYVYY (void * buffer, int stride, int height)
-{
-  planes       = 3;
-  this->stride = stride;
-  memory.attach (buffer, stride * height);
-}
-
-PixelBufferUYYVYY::~PixelBufferUYYVYY ()
-{
-}
-
-void *
-PixelBufferUYYVYY::pixel (int x, int y)
-{
-  int h = x / 4;
-  int p = x % 4;
-  unsigned char * base = & ((unsigned char *) memory)[y * stride + h * 6];
-  if (p < 2)
-  {
-	pixelArray[0] = base + (p + 1);
-  }
-  else
-  {
-	pixelArray[0] = base + (p + 2);
-  }
-  pixelArray[1] = base;
-  pixelArray[2] = base + 3;
-
-  return pixelArray;
-}
-
-void
-PixelBufferUYYVYY::resize (int width, int height, const PixelFormat & format, bool preserve)
-{
-  assert (width % 4 == 0);
-
-  if (width <= 0  ||  height <= 0)
-  {
-	stride = 0;
-	memory.detach ();
-	return;
-  }
-
-  int newStride = width * 6 / 4;
-  if (! preserve)
-  {
+	pixels = f->pixels;
+	bytes  = f->bytes;
 	stride = newStride;
-	memory.grow (stride * height);
+	memory.grow (newStride * height);
 	return;
   }
 
@@ -507,118 +428,27 @@ PixelBufferUYYVYY::resize (int width, int height, const PixelFormat & format, bo
 }
 
 PixelBuffer *
-PixelBufferUYYVYY::duplicate () const
+PixelBufferGroups::duplicate () const
 {
-  PixelBufferUYYVYY * result = new PixelBufferUYYVYY;
+  PixelBufferGroups * result = new PixelBufferGroups (pixels, bytes);
   result->memory.copyFrom (memory);
   result->stride = stride;
   return result;
 }
 
 void
-PixelBufferUYYVYY::clear ()
+PixelBufferGroups::clear ()
 {
   memory.clear ();
 }
 
 bool
-PixelBufferUYYVYY::operator == (const PixelBuffer & that) const
+PixelBufferGroups::operator == (const PixelBuffer & that) const
 {
-  const PixelBufferUYYVYY * p = dynamic_cast<const PixelBufferUYYVYY *> (&that);
+  const PixelBufferGroups * p = dynamic_cast<const PixelBufferGroups *> (&that);
   return    p
          && stride == p->stride
-         && memory == p->memory;
-}
-
-
-// class PixelBufferYUYV ----------------------------------------------------
-
-PixelBufferYUYV::PixelBufferYUYV (bool swap)
-{
-  planes = 3;
-  stride = 0;
-  this->swap = swap;
-}
-
-PixelBufferYUYV::PixelBufferYUYV (void * buffer, int stride, int height, bool swap)
-{
-  planes       = 3;
-  this->stride = stride;
-  this->swap   = swap;
-  memory.attach (buffer, stride * height);
-}
-
-PixelBufferYUYV::~PixelBufferYUYV ()
-{
-}
-
-void *
-PixelBufferYUYV::pixel (int x, int y)
-{
-  int h = x / 2;
-  int p = x % 2;
-  unsigned char * base = & ((unsigned char *) memory)[y * stride + h * 4];
-  if (swap)
-  {
-	pixelArray[0] = base + (p * 2 + 1);
-	pixelArray[1] = base;
-	pixelArray[2] = base + 2;
-  }
-  else
-  {
-	pixelArray[0] = base + p * 2;
-	pixelArray[1] = base + 1;
-	pixelArray[2] = base + 3;
-  }
-
-  return pixelArray;
-}
-
-void
-PixelBufferYUYV::resize (int width, int height, const PixelFormat & format, bool preserve)
-{
-  assert (width % 2 == 0);
-
-  if (width <= 0  ||  height <= 0)
-  {
-	stride = 0;
-	memory.detach ();
-	return;
-  }
-
-  int newStride = width * 2;
-  if (! preserve)
-  {
-	stride = newStride;
-	memory.grow (stride * height);
-	return;
-  }
-
-  reshapeBuffer (memory, stride, newStride, height);
-  stride = newStride;
-}
-
-PixelBuffer *
-PixelBufferYUYV::duplicate () const
-{
-  PixelBufferYUYV * result = new PixelBufferYUYV (swap);
-  result->memory.copyFrom (memory);
-  result->stride = stride;
-  return result;
-}
-
-void
-PixelBufferYUYV::clear ()
-{
-  memory.clear ();
-}
-
-bool
-PixelBufferYUYV::operator == (const PixelBuffer & that) const
-{
-  const PixelBufferYUYV * p = dynamic_cast<const PixelBufferYUYV *> (&that);
-  return    p
-         && stride == p->stride
-         && swap   == p->swap
+         && pixels == p->pixels
+         && bytes  == p->bytes
          && memory == p->memory;
 }
