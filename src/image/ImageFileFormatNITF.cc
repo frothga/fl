@@ -3,7 +3,7 @@ Author: Fred Rothganger
 Created 2/26/2006
 
 
-Revisions 1.1 thru 1.10 Copyright 2007 Sandia Corporation.
+Revisions 1.1 thru 1.11 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -12,6 +12,10 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.11  2007/08/13 00:20:46  Fred
+blockSize must be exact.  Use round() rather than ceil() to cope with
+possible numeric error.
+
 Revision 1.10  2007/08/13 00:12:59  Fred
 Use stride directly for byte size of rows.  Handle depth as a float value.
 
@@ -1281,7 +1285,7 @@ public:
 	  // blocks.
 	  Image block (*image.format);
 	  if (x % NPPBH  ||  y % NPPBV  ||  width != NPPBH  ||  height % NPPBV) block.resize (NPPBH, NPPBV);
-	  int blockSize = (int) ceil (NPPBH * NPPBV * format->depth);
+	  int blockSize = (int) round (NPPBH * NPPBV * format->depth);
 	  char * blockBuffer = (char *) ((PixelBufferPacked *) block.buffer)->memory;
 
 	  for (int oy = 0; oy < height;)  // output y: position in output image
