@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.3, 1.5 and 1.6 Copyright 2005 Sandia Corporation.
-Revisions 1.8 thru 1.15    Copyright 2007 Sandia Corporation.
+Revisions 1.8 thru 1.16    Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.16  2007/08/13 00:15:39  Fred
+Use stride directly for byte size of rows.  Handle depth as a float value.
+
 Revision 1.15  2007/03/23 02:32:02  Fred
 Use CVS Log to generate revision history.
 
@@ -210,7 +213,7 @@ ImageFileDelegatePGM::read (Image & image, int x, int y, int ignorewidth, int ig
   PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
   if (! buffer) image.buffer = buffer = new PixelBufferPacked;
   image.resize (width, height);
-  in->read ((char *) buffer->memory, width * height * image.format->depth);
+  in->read ((char *) buffer->memory, buffer->stride * height);
 }
 
 void
@@ -247,7 +250,20 @@ ImageFileDelegatePGM::write (const Image & image, int x, int y)
 	(*out) << "P6" << endl;
   }
   (*out) << image.width << " " << image.height << " 255" << endl;
-  out->write ((char *) buffer->memory, image.width * image.height * image.format->depth);
+  int rowBytes = (int) (image.width * image.format->depth);
+  if (buffer->stride == rowBytes)
+  {
+	out->write ((char *) buffer->memory, rowBytes * image.height);
+  }
+  else
+  {
+	char * row = (char *) buffer->memory;
+	for (int y = 0; y < image.height; y++)
+	{
+	  out->write (row, rowBytes);
+	  row += buffer->stride;
+	}
+  }
 }
 
 

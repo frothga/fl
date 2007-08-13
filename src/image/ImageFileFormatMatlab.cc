@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.2 and 1.4   Copyright 2005 Sandia Corporation.
-Revisions 1.6 thru 1.13 Copyright 2007 Sandia Corporation.
+Revisions 1.6 thru 1.14 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.14  2007/08/13 00:10:18  Fred
+Use stride directly for byte size of rows.  Handle depth as a float value.
+
 Revision 1.13  2007/03/23 02:32:04  Fred
 Use CVS Log to generate revision history.
 
@@ -205,14 +208,15 @@ ImageFileDelegateMatlab::read (Image & image, int x, int y, int width, int heigh
   PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
   if (! buffer) image.buffer = buffer = new PixelBufferPacked;
   image.resize (columns, rows);
+  const int depth = (int) image.format->depth;
   for (int x = 0; x < columns; x++)
   {
 	char * p = (char *) buffer->memory;
-	p += x * image.format->depth;
+	p += x * depth;
 	for (int y = 0; y < rows; y++)
 	{
-	  in->read (p, image.format->depth);
-	  p += columns * image.format->depth;
+	  in->read (p, depth);
+	  p += buffer->stride;
 	}
   }
 
@@ -278,14 +282,15 @@ ImageFileDelegateMatlab::write (const Image & image, int x, int y)
   out->write (bogusName.c_str (), nameLength);
 
   // Write data...
+  const int depth = (int) image.format->depth;
   for (int x = 0; x < image.width; x++)
   {
 	char * p = (char *) buffer->memory;
-	p += x * image.format->depth;
+	p += x * depth;
 	for (int y = 0; y < image.height; y++)
 	{
-	  out->write (p, image.format->depth);
-	  p += buffer->stride * image.format->depth;
+	  out->write (p, depth);
+	  p += buffer->stride;
 	}
   }
 }

@@ -3,7 +3,7 @@ Author: Fred Rothganger
 Created 2/26/2006
 
 
-Revisions 1.1 thru 1.9 Copyright 2007 Sandia Corporation.
+Revisions 1.1 thru 1.10 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -12,6 +12,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.10  2007/08/13 00:12:59  Fred
+Use stride directly for byte size of rows.  Handle depth as a float value.
+
 Revision 1.9  2007/03/23 02:32:06  Fred
 Use CVS Log to generate revision history.
 
@@ -1272,14 +1275,13 @@ public:
 	  if (! width  ||  ! height) return;
 
 	  char * imageMemory = (char *) buffer->memory;
-	  int stride = format->depth * width;
 
 	  // If the requested image is anything other than exactly the union of a
 	  // set of blocks in the file, then must use temporary storage to read in
 	  // blocks.
 	  Image block (*image.format);
 	  if (x % NPPBH  ||  y % NPPBV  ||  width != NPPBH  ||  height % NPPBV) block.resize (NPPBH, NPPBV);
-	  int blockSize = NPPBH * NPPBV * format->depth;
+	  int blockSize = (int) ceil (NPPBH * NPPBV * format->depth);
 	  char * blockBuffer = (char *) ((PixelBufferPacked *) block.buffer)->memory;
 
 	  for (int oy = 0; oy < height;)  // output y: position in output image
@@ -1298,7 +1300,7 @@ public:
 
 		  if (w == width  &&  w == NPPBH  &&  h == NPPBV)
 		  {
-			read (stream, imageMemory + oy * stride, blockSize, bx, by, 0);
+			read (stream, imageMemory + oy * buffer->stride, blockSize, bx, by, 0);
 		  }
 		  else
 		  {
