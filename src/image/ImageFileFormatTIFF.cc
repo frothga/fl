@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.5  thru 1.9  Copyright 2005 Sandia Corporation.
-Revisions 1.11 thru 1.32 Copyright 2007 Sandia Corporation.
+Revisions 1.11 thru 1.33 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,10 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.33  2007/08/13 00:34:18  Fred
+Use PixelBufferPacked::stride directly for number of bytes in row.  Treat
+depth as a float value.
+
 Revision 1.32  2007/03/23 02:32:04  Fred
 Use CVS Log to generate revision history.
 
@@ -399,7 +403,6 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   if (! width  ||  ! height) return;
 
   unsigned char * imageMemory = (unsigned char *) buffer->memory;
-  int stride = image.format->depth * width;
 
   // If the requested image is anything other than exactly the union of a
   // vertical set of blocks in the file, then must use temporary storage
@@ -414,7 +417,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	uint32 blockHeight;
 	TIFFGetField (tif, TIFFTAG_TILELENGTH, &blockHeight);
 
-	tsize_t blockSize = blockWidth * blockHeight * image.format->depth;
+	tsize_t blockSize = blockWidth * blockHeight * (int) image.format->depth;
 
 	for (int oy = 0; oy < height;)  // output y: position in output image
 	{
@@ -431,7 +434,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		ttile_t tile = TIFFComputeTile (tif, rx, ry, 0, 0);
 		if (w == width  &&  w == blockWidth  &&  h == blockHeight)
 		{
-		  TIFFReadEncodedTile (tif, tile, imageMemory + oy * stride, blockSize);
+		  TIFFReadEncodedTile (tif, tile, imageMemory + oy * buffer->stride, blockSize);
 		}
 		else
 		{
@@ -455,7 +458,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	uint32 rowsPerStrip;
 	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
 
-	tsize_t blockSize = imageWidth * rowsPerStrip * image.format->depth;
+	tsize_t blockSize = imageWidth * rowsPerStrip * (int) image.format->depth;
 
 	for (int oy = 0; oy < height;)
 	{
@@ -466,7 +469,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 
 	  if (width == imageWidth  &&  iy == 0)
 	  {
-		TIFFReadEncodedStrip (tif, strip, imageMemory + oy * stride, h * stride);
+		TIFFReadEncodedStrip (tif, strip, imageMemory + oy * buffer->stride, h * buffer->stride);
 	  }
 	  else
 	  {
@@ -619,7 +622,6 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
   PixelBufferPacked * buffer = (PixelBufferPacked *) work.buffer;
   if (! buffer) throw "TIFF only handles packed buffers for now";
   unsigned char * workBuffer = (unsigned char *) buffer->memory;
-  int stride = format->depth * work.width;
 
   uint32 imageWidth  = 0;
   uint32 imageHeight = 0;
@@ -658,8 +660,8 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 	  TIFFSetField (tif, TIFFTAG_TILELENGTH, blockHeight);
 	}
 
-	tsize_t blockSize = blockWidth * blockHeight * format->depth;
-	int blockStride = blockWidth * format->depth;
+	int blockStride = blockWidth * (int) format->depth;
+	tsize_t blockSize = blockHeight * blockStride;
 
 	for (int iy = 0; iy < height;)  // input y: position in given image
 	{
@@ -676,7 +678,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 		ttile_t tile = TIFFComputeTile (tif, rx, ry, 0, 0);
 		if (w == work.width  &&  w == blockWidth  &&  h == blockHeight)
 		{
-		  TIFFWriteEncodedTile (tif, tile, workBuffer + iy * stride, blockSize);
+		  TIFFWriteEncodedTile (tif, tile, workBuffer + iy * buffer->stride, blockSize);
 		}
 		else
 		{
@@ -686,7 +688,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 			blockBuffer = (unsigned char *) ((PixelBufferPacked *) block.buffer)->memory;
 		  }
 		  block.bitblt (work, ox, oy, ix, iy, w, h);
-		  fillBlock (blockBuffer, blockStride, format->depth, blockWidth, blockHeight, ox, ox + w, oy, oy + h);
+		  fillBlock (blockBuffer, blockStride, (int) format->depth, blockWidth, blockHeight, ox, ox + w, oy, oy + h);
 		  TIFFWriteEncodedTile (tif, tile, blockBuffer, blockSize);
 		}
 
@@ -698,7 +700,6 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
   }
   else  // strip organization
   {
-	int stride = format->depth * buffer->stride;
 	uint32 rowsPerStrip = 0;
 	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
 	if (! rowsPerStrip)
@@ -708,7 +709,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 	  int bestDistance = INT_MAX;
 	  for (int rows = 1; rows <= work.height / 2; rows++)
 	  {
-		int size = rows * stride;
+		int size = rows * buffer->stride;
 		int distance = abs (size - 8192);
 		cerr << rows << " " << size << " " << distance << endl;
 		if (work.height % rows == 0  &&  distance < bestDistance)
@@ -722,7 +723,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 	  TIFFSetField (tif, TIFFTAG_ROWSPERSTRIP, rowsPerStrip);
 	}
 
-	int blockStride = imageWidth * format->depth;
+	int blockStride = imageWidth * (int) format->depth;
 
 	for (int iy = 0; iy < height;)
 	{
@@ -735,7 +736,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 
 	  if (work.width == imageWidth  &&  x == 0  &&  oy == 0)
 	  {
-		TIFFWriteEncodedStrip (tif, strip, workBuffer + iy * stride, blockSize);
+		TIFFWriteEncodedStrip (tif, strip, workBuffer + iy * buffer->stride, blockSize);
 	  }
 	  else
 	  {
@@ -745,7 +746,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 		  blockBuffer = (unsigned char *) ((PixelBufferPacked *) block.buffer)->memory;
 		}
 		block.bitblt (work, x, oy, 0, iy, width, h);
-		fillBlock (blockBuffer, blockStride, format->depth, imageWidth, rows, x, x + width, oy, oy + h);
+		fillBlock (blockBuffer, blockStride, (int) format->depth, imageWidth, rows, x, x + width, oy, oy + h);
 		TIFFWriteEncodedStrip (tif, strip, blockBuffer, blockSize);
 	  }
 
