@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.3, 1.5 and 1.6 Copyright 2005 Sandia Corporation.
-Revisions 1.8 thru 1.16    Copyright 2007 Sandia Corporation.
+Revisions 1.8 thru 1.17    Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.17  2007/08/13 02:55:06  Fred
+Make sure rowBytes is exact.
+
 Revision 1.16  2007/08/13 00:15:39  Fred
 Use stride directly for byte size of rows.  Handle depth as a float value.
 
@@ -250,7 +253,7 @@ ImageFileDelegatePGM::write (const Image & image, int x, int y)
 	(*out) << "P6" << endl;
   }
   (*out) << image.width << " " << image.height << " 255" << endl;
-  int rowBytes = (int) (image.width * image.format->depth);
+  int rowBytes = image.width * (int) image.format->depth;
   if (buffer->stride == rowBytes)
   {
 	out->write ((char *) buffer->memory, rowBytes * image.height);
