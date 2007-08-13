@@ -3,7 +3,7 @@ Author: Fred Rothganger
 Created 2/24/2006 to perform regression testing on the image library.
 
 
-Revisions 1.1 thru 1.9 Copyright 2007 Sandia Corporation.
+Revisions 1.1 thru 1.10 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -12,6 +12,21 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.10  2007/08/13 04:23:00  Fred
+Add test for Convolution1D.
+
+Move threshold constants outside of testFormat() so they can be used by other
+parts of program.  Make additional stride 13 so that no naturally occuring
+format fits in it by coincidence.  When source and dest formats are both YUV,
+average the UV values for a macro pixel directly, rather than converting to
+RGB, averaging, and converting back to UV.
+
+Add UYVYUYVYYYYY to format tests.
+
+Force generation of timestamp in video file.  Change assert() about image size
+to an explicit test.  Use thresholdLumaAccessor rather than a magic number
+for luma consistency check when reading video.
+
 Revision 1.9  2007/03/23 02:32:07  Fred
 Use CVS Log to generate revision history.
 
@@ -149,18 +164,167 @@ testTransform (Image & image)
   }
 }
 
+/**
+   This is kind of a mini ConvolutionDiscrete1D.  It is meant to be a reliable
+   comparison point for that code.
+ **/
+class Convoluter1D
+{
+public:
+  Convoluter1D (const Image & image, const Image & kernel, BorderMode mode, bool horizontal)
+  {
+	doubleImage = image * GrayDouble;  // assumes image is not double already, and that PixelFormat conversion results in packed buffer with gap between rows
+	this->image  = (double *) ((PixelBufferPacked *) doubleImage.buffer) ->memory;
+	doubleKernel = kernel * GrayDouble;
+	this->kernel = (double *) ((PixelBufferPacked *) doubleKernel.buffer)->memory;
+
+	imageWidth = image.width;
+	lastX = image.width - 1;
+	lastY = image.height - 1;
+	last = kernel.width - 1;
+	mid = kernel.width / 2;
+	offset = last - mid;
+
+	this->mode = mode;
+	this->horizontal = horizontal;
+	stride = horizontal ? 1 : image.width;
+  }
+
+  double response (int x, int y)
+  {
+	int low;
+	int high;
+	if (horizontal)
+	{
+	  low  = max (0,    x + mid - lastX);
+	  high = min (last, x + mid);
+	}
+	else  // vertical
+	{
+	  low  = max (0,    y + mid - lastY);
+	  high = min (last, y + mid);
+	}
+
+	if (low > 0  ||  high < last)
+	{
+	  if (mode == Crop  ||  mode == Undefined) return NAN;
+	  if (mode == ZeroFill) return 0;
+	  if (mode == Copy) return image[y * imageWidth + x];
+	}
+
+	double * a = kernel + low;
+	double * b = image + (y * imageWidth + x);
+	b += (mid - low) * stride;
+
+	double result = 0;
+	double weight = 0;
+	for (int i = low; i <= high; i++)
+	{
+	  result += *a * *b;
+	  weight += *a++;
+	  b -= stride;
+	}
+	if (mode == Boost  &&  (low  ||  high < last)) result /= weight;
+	return result;
+  }
+
+  Image doubleImage;
+  double * image;
+  Image doubleKernel;
+  double * kernel;
+  int imageWidth;
+  int lastX;
+  int lastY;
+  int last;
+  int mid;
+  int offset;
+  int stride;
+  BorderMode mode;
+  bool horizontal;
+};
+
+void
+testConvolutionDiscrete1D (const Image & image, const ConvolutionDiscrete1D & kernel)
+{
+  cerr << typeid (*kernel.format).name () << " image=" << image.width << "x" << image.height << " kernel=" << kernel.width << " mode=" << kernel.mode << " direction=" << kernel.direction << endl;
+
+  const double threshold = 3e-6;  // for regular C version
+  //const double threshold = 1e-3; // for assembly version (it must be broken somewhere, but nearly correct)
+
+  Image result = image * kernel;
+  Convoluter1D conv (image, kernel, kernel.mode, kernel.direction == Horizontal);
+
+  // Check dimensions
+  int expectedWidth = image.width;
+  int expectedHeight = image.height;
+  int offsetX = 0;
+  int offsetY = 0;
+  if (kernel.mode == Crop)
+  {
+	if (kernel.direction == Horizontal)
+	{
+	  expectedWidth = max (0, expectedWidth - conv.last);
+	  offsetX = conv.offset;
+	}
+	else
+	{
+	  expectedHeight = max (0, expectedHeight - conv.last);
+	  offsetY = conv.offset;
+	}
+  }
+  if (result.width != expectedWidth  ||  result.height != expectedHeight)
+  {
+	cout << "Expected size = " << expectedWidth << "x" << expectedHeight << "   got " << result.width << "x" << result.height << endl;
+	throw "Convolution1D fails";
+  }
+
+  // Check contents
+  for (int y = 0; y < expectedHeight; y++)
+  {
+	int fromY = y + offsetY;
+	for (int x = 0; x < expectedWidth; x++)
+	{
+	  int fromX = x + offsetX;
+
+	  double t = conv.response (fromX, fromY);
+	  if (isnan (t)) continue;  // indicates border when mode == Undefined
+
+	  float fr;
+	  result.getGray (x, y, fr);
+	  double e = fabs (fr - t);
+	  if (e > threshold)
+	  {
+		cout << "Unexpected result: " << x << " " << y << " " << e << " = |" << fr << " - " << t << "|" << endl;
+		throw "Convolution1D fails";
+	  }
+
+	  double dr = kernel.response (image, Point (fromX, fromY));
+	  e = fabs (dr - t);
+	  if (e > threshold)
+	  {
+		cout << "Unexpected response: " << x << " " << y << " " << e << " = |" << dr << " - " << t << "|" << endl;
+		throw "Convolution1D fails";
+	  }
+	}
+	//cerr << ".";
+  }
+  //cerr << endl;
+}
+
+const float thresholdRatio         = 1.01f;
+const float thresholdDifference    = 0.01f;
+const int   thresholdLuma          = 1;
+const int   thresholdChroma        = 1;
+const int   thresholdLumaClipped   = 3;
+const int   thresholdChromaClipped = 4;
+const int   thresholdLumaAccessor  = 2;  // higher because errors in YUV<->RGB conversion get magnified by gray conversion
+
+extern void reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight);
+
 void
 testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::PixelFormat * targetFormat)
 {
   cerr << typeid (*targetFormat).name () << endl;
-
-  const float thresholdRatio         = 1.01f;
-  const float thresholdDifference    = 0.01f;
-  const int   thresholdLuma          = 1;
-  const int   thresholdChroma        = 1;
-  const int   thresholdLumaClipped   = 3;
-  const int   thresholdChromaClipped = 4;
-  const int   thresholdLumaAccessor  = 2;  // higher because errors in YUV<->RGB conversion get magnified by gray conversion
 
   // Convert from every other format into the target one.
   for (int i = 0; i < formats.size (); i++)
@@ -171,7 +335,22 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	Image fromImage = test * *fromFormat;
 	// Make stride larger than width to verify PixelBufferPacked operation
 	// and correct looping in converters.
-	fromImage.buffer->resize (fromImage.width + 16, fromImage.height, *fromFormat, true);
+	int skew = 13;  // 16 works, but doesn't test hard enough
+	if (PixelBufferPacked * pbp = (PixelBufferPacked *) fromImage.buffer)
+	{
+	  // The advantage of reshapeBuffer() is that we can specify the stide directly in bytes...
+	  reshapeBuffer (pbp->memory, pbp->stride, pbp->stride + skew, fromImage.height);
+	  pbp->stride += skew;
+	}
+	else
+	{
+	  // ...whereas resize() can only change the number of pixels.
+	  if (PixelFormatYUV * pfyuv = (PixelFormatYUV *) fromFormat)
+	  {
+		skew = (skew / pfyuv->ratioH + 1) * pfyuv->ratioH;
+	  }
+	  fromImage.buffer->resize (fromImage.width + skew, fromImage.height, *fromFormat, true);
+	}
 
 	Image toImage = fromImage * *targetFormat;
 
@@ -228,34 +407,57 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	  int ratioH = pfyuv->ratioH;
 	  int ratioV = pfyuv->ratioV;
 	  //cerr << "    ratioH,V = " << ratioH << " " << ratioV << endl;
+	  PixelFormatYUV * frompfyuv = dynamic_cast<PixelFormatYUV *> (fromFormat);
 
 	  const unsigned int shift = 16 + (int) rint (log (ratioH * ratioV) / log (2));
-	  const int bias = 0x808 << (shift - 4);
+	  const int roundup = 0x8000 << (shift - 16);
+	  const int bias = 0x808 << (shift - 4);  // also includes roundup
 	  const int maximum = (~(unsigned int) 0) >> (24 - shift);
 
 	  for (int y = 0; y < fromImage.height; y += ratioV)
 	  {
 		for (int x = 0; x < fromImage.width; x += ratioH)
 		{
-		  // We need the average RGB value to detect cases where the pixel
-		  // value passes outside the RGB volume in YUV space.  In such
-		  // cases, the pixel value gets clipped, which can introduce
-		  // errors larger than a comfortable threshold.
-		  int r = 0;
-		  int g = 0;
-		  int b = 0;
-		  for (int yy = y; yy < y + ratioV; yy++)
+		  // "Clipping" occurs when the average UV value for a block of pixels,
+		  // when combined with the Y value from a particular pixel in the
+		  // block, results in a YUV value that falls outside the RGB volume
+		  // in YUV space.  When converting this YUV to RGB, the resulting
+		  // values are clipped to their min or max, producing errors larger
+		  // than the usual threshold.
+		  int u = 0;
+		  int v = 0;
+		  if (frompfyuv)  // average the UV values directly
 		  {
-			for (int xx = x; xx < x + ratioH; xx++)
+			for (int yy = y; yy < y + ratioV; yy++)
 			{
-			  unsigned int rgba = fromImage.getRGBA (xx, yy);
-			  r +=  rgba             >> 24;
-			  g += (rgba & 0xFF0000) >> 16;
-			  b += (rgba &   0xFF00) >>  8;
+			  for (int xx = x; xx < x + ratioH; xx++)
+			  {
+				unsigned int yuv = fromImage.getYUV (xx, yy);
+				u += (yuv & 0xFF00) << 8;
+				v += (yuv &   0xFF) << 16;
+			  }
 			}
+			u = (u + roundup) >> shift;
+			v = (v + roundup) >> shift;
 		  }
-		  int u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
-		  int v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
+		  else  // average RGB values and then convert to UV
+		  {
+			int r = 0;
+			int g = 0;
+			int b = 0;
+			for (int yy = y; yy < y + ratioV; yy++)
+			{
+			  for (int xx = x; xx < x + ratioH; xx++)
+			  {
+				unsigned int rgba = fromImage.getRGBA (xx, yy);
+				r +=  rgba             >> 24;
+				g += (rgba & 0xFF0000) >> 16;
+				b += (rgba &   0xFF00) >>  8;
+			  }
+			}
+			u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
+			v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
+		  }
 		  int tu = u - 128;
 		  int tv = v - 128;
 
@@ -267,9 +469,9 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 			{
 			  unsigned int oyuv = fromImage.getYUV (xx, yy);
 			  int ty = oyuv  &  0xFF0000;
-			  r = (ty                + 0x166F7 * tv + 0x8000) >> 16;
-			  g = (ty -  0x5879 * tu -  0xB6E9 * tv + 0x8000) >> 16;
-			  b = (ty + 0x1C560 * tu                + 0x8000) >> 16;
+			  int r = (ty                + 0x166F7 * tv + 0x8000) >> 16;
+			  int g = (ty -  0x5879 * tu -  0xB6E9 * tv + 0x8000) >> 16;
+			  int b = (ty + 0x1C560 * tu                + 0x8000) >> 16;
 			  clip = max (clip, 0 - r);
 			  clip = max (clip, 0 - g);
 			  clip = max (clip, 0 - b);
@@ -750,7 +952,6 @@ main (int argc, char * argv[])
   {
 	new ImageFileFormatJPEG;
 
-
 	// PixelFormat
 	{
 	  // Create some formats to more fully test RGBABits
@@ -769,10 +970,11 @@ main (int argc, char * argv[])
 	  formats.push_back (&RGBAFloat);
 	  formats.push_back (&RGBChar);
 	  formats.push_back (&RGBShort);
+	  formats.push_back (&UYV);
 	  formats.push_back (&UYVY);
 	  formats.push_back (&YUYV);
-	  formats.push_back (&UYV);
 	  formats.push_back (&UYYVYY);
+	  formats.push_back (&UYVYUYVYYYYY);
 	  formats.push_back (&YUV420);
 	  formats.push_back (&YUV411);
 	  formats.push_back (&HLSFloat);
@@ -827,8 +1029,76 @@ main (int argc, char * argv[])
 	  cout << "CanvasImage::drawFilledRectangle passes" << endl;
 	}
 
-	// ConvolutionDiscrete1D::filter -- zerofill X {float double}, usezeros X {float double} X {horz vert}, boost X {float double}  X {horz vert}, crop X {float double}
-	// ConvolutionDiscrete1D::response -- boost X {float double}, any other X {float double}
+	// ConvolutionDiscrete1D
+	{
+	  vector<ConvolutionDiscrete1D *> kernels;
+	  Gaussian1D oddKernel (1, Crop, GrayDouble);
+	  ConvolutionDiscrete1D evenKernel = oddKernel * Transform ((oddKernel.width + 1.0) / oddKernel.width, 1.0);
+	  kernels.push_back (&oddKernel);
+	  kernels.push_back (&evenKernel);
+
+	  vector<Image *> images;
+	  Image test ("test.jpg");
+	  //Image test ("mars.jpg");
+	  Image onebigger (*test.format);
+	  Image same (*test.format);
+	  Image onesmaller (*test.format);
+	  Image twosmaller (*test.format);
+	  Image one (1, 1, *test.format);
+	  Image zero (0, 0, *test.format);
+	  onebigger. bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width + 1, evenKernel.width + 1);
+	  same.      bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width,     evenKernel.width    );
+	  onesmaller.bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width - 1, evenKernel.width - 1);
+	  twosmaller.bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width - 2, evenKernel.width - 2);
+	  images.push_back (&test);
+	  images.push_back (&onebigger);
+	  images.push_back (&same);
+	  images.push_back (&onesmaller);
+	  images.push_back (&twosmaller);
+	  images.push_back (&one);
+	  images.push_back (&zero);
+
+	  vector<BorderMode> modes;
+	  modes.push_back (Crop);
+	  modes.push_back (ZeroFill);
+	  modes.push_back (Boost);
+	  modes.push_back (UseZeros);
+	  modes.push_back (Copy);
+	  modes.push_back (Undefined);
+
+	  vector<fl::PixelFormat *> formats;
+	  formats.push_back (&GrayFloat);
+	  formats.push_back (&GrayDouble);
+
+	  for (int f = 0; f < formats.size (); f++)
+	  {
+		fl::PixelFormat & format = *formats[f];
+
+		for (int i = 0; i < images.size (); i++)
+		{
+		  Image formattest = *images[i] * format;
+
+		  for (int k = 0; k < kernels.size (); k++)
+		  {
+			ConvolutionDiscrete1D kernel = *kernels[k] * format;
+
+			for (int m = 0; m < modes.size (); m++)
+			{
+			  kernel.mode = modes[m];
+
+			  kernel.direction = Vertical;
+			  testConvolutionDiscrete1D (formattest, kernel);
+			  kernel.direction = Horizontal;
+			  testConvolutionDiscrete1D (formattest, kernel);
+			}
+		  }
+		}
+	  }
+
+	  cout << "ConvlutionDiscrete1D passes" << endl;
+	}
+
+
 	// ConvolutionDiscrete2D::filter -- {zerofill, usezeros, boost, crop} X {float double}
 	// ConvolutionDiscrete2D::response -- {boost  etc} X {float double}
 
@@ -1096,6 +1366,7 @@ main (int argc, char * argv[])
 	  {
 		VideoOut vout ("test.mpg");
 		Image image (320, 240, RGBAChar);
+		image.timestamp = NAN;  // force auto-generation of PTS
 		for (unsigned int i = 128; i < 255; i++)
 		{
 		  if (! vout.good ())
@@ -1115,13 +1386,17 @@ main (int argc, char * argv[])
 		Image image;
 		vin >> image;
 		if (! vin.good ()) break;
-		assert (image.width == 320  &&  image.height == 240);
+		if (image.width != 320  ||  image.height != 240)
+		{
+		  cerr << "Unexpected image size: " << image.width << " x " << image.height << endl;
+		  throw "VideoFileFormatFFMPEG::read fails";
+		}
 		for (int y = 0; y < image.height; y++)
 		{
 		  for (int x = 0; x < image.width; x++)
 		  {
 			int g = image.getGray (x, y);
-			if (abs (g - i) > 1)
+			if (abs (g - i) > thresholdLumaAccessor)
 			{
 			  cout << x << " " << y << " expected " << i << " but got " << g << endl;
 			  throw "VideoFileFormatFFMPEG::read fails";
