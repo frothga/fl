@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.9  thru 1.17 Copyright 2005 Sandia Corporation.
-Revisions 1.19 thru 1.42 Copyright 2007 Sandia Corporation.
+Revisions 1.19 thru 1.43 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,14 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.43  2007/08/13 04:35:46  Fred
+Generalize PixelBufferBits into PixelBufferGroups.  Eliminate PixelBufferYUYV
+and PixelBufferUYYVYY.
+
+Create a general PixelFormatPackedYUV that represents any channel arrangement
+within a macropixel using a table.  Eliminate PixelFormatUYV, PixelFormatUYVY,
+PixelFormatYUYV, and PixelFormatUYYVYY.
+
 Revision 1.42  2007/08/02 12:37:10  Fred
 Add PixelBufferBits and PixelBufferYUYV.
 
@@ -479,84 +487,41 @@ namespace fl
   };
 
   /**
-	 Pixels are not (generally) an even multiple of 8-bits in size, and are
-	 packed contiguously in memory.  Otherwise, this is much the same as
-	 PixelBufferPacked.  For simplicity and efficiency, this version assumes
-	 that pixels never cross 8-bit boundaries and that they always completely
-	 fill an 8-bit byte.  This would be easy to generalize, but not worth
-	 the extra overhead per pixel until a case comes up that requires it.
+	 Describes a packed buffer in which the pixels on each row are divided
+	 into functionally inseparable groups.  There are at least two cases
+	 where this happens:
+	 <ul>
+	 <li>gray formats where each pixel is smaller than one byte, for example
+	 1-bit monochrome with 8 pixels per byte.
+	 <li>YUV formats where several Y values share a common pair of U and V
+	 values.
+	 </ul>
   **/
-  class PixelBufferBits : public PixelBuffer
+  class PixelBufferGroups : public PixelBuffer
   {
   public:
-	PixelBufferBits (int slices = 8);
-	PixelBufferBits (int stride, int height, int slices = 8);
-	PixelBufferBits (void * buffer, int stride, int height, int slices = 8);
-	virtual ~PixelBufferBits ();
+	PixelBufferGroups (int pixels, int bytes);
+	PixelBufferGroups (int stride, int height, int pixels, int bytes);
+	PixelBufferGroups (void * buffer, int stride, int height, int pixels, int bytes);
+	virtual ~PixelBufferGroups ();
 
 	virtual void * pixel (int x, int y);
-	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false);  ///< stride will be set to ceil (width * bits / 8).
+	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false);  ///< stride will be set to ceil (width * groupBytes / groupPixels).
 	virtual PixelBuffer * duplicate () const;
 	virtual void clear ();
 	virtual bool operator == (const PixelBuffer & that) const;
 
 	int stride;
-	int slices;  ///< Pixels per byte.  Should be one of {2, 4, 8} in current implementation.
+	int pixels;  ///< Pixels per group.
+	int bytes;  ///< Bytes per group.
 	Pointer memory;
 
 	struct PixelData
 	{
-	  unsigned char * address;  ///< actual location of the byte containing the pixel
-	  int             index;  ///< Indicates which pixel in byte to select.  Exact meaning depends on "endianness", which is known by PixelFormatGrayBits.  Here, it is simply x % slices.
+	  unsigned char * address;  ///< Pointer to first byte of pixel group.
+	  int             index;  ///< Indicates which pixel in group to select.  Defined simply as x % groupPixels.
 	};
 	PixelData pixelData;
-  };
-
-  /**
-	 Handle YUYV and UYVY.  Technically a packed format, but the positions of
-	 U and V depend on the x position of the pixel.  Therefore, we must
-	 marshall these values.
-  **/
-  class PixelBufferYUYV : public PixelBuffer
-  {
-  public:
-	PixelBufferYUYV (bool swap = false);
-	PixelBufferYUYV (void * buffer, int width, int height, bool swap = false);  ///< Binds to an external block of memory.
-	virtual ~PixelBufferYUYV ();
-
-	virtual void * pixel (int x, int y);
-	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false);
-	virtual PixelBuffer * duplicate () const;
-	virtual void clear ();
-	virtual bool operator == (const PixelBuffer & that) const;
-
-	int     stride;
-	Pointer memory;
-	bool    swap;  ///< Indicates that pixels are UYVY rather than YUYV.
-	void *  pixelArray[3];  ///< Temporary storage for marshalled addresses.  Not thread-safe.
-  };
-
-  /**
-	 Handle IEEE 1394 format 0 mode 2.  Technically a packed format, but the
-	 positions of Y, U and V depend on the x position of the pixel.  Therefore,
-	 we must marshall these values.
-  **/
-  class PixelBufferUYYVYY : public PixelBuffer
-  {
-  public:
-	PixelBufferUYYVYY ();
-	PixelBufferUYYVYY (void * buffer, int width, int height);  ///< Binds to an external block of memory.
-	virtual ~PixelBufferUYYVYY ();
-
-	virtual void * pixel (int x, int y);
-	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false);
-	virtual PixelBuffer * duplicate () const;
-	virtual void clear ();
-	virtual bool operator == (const PixelBuffer & that) const;
-
-	int     stride;
-	Pointer memory;
-	void *  pixelArray[3];  ///< Temporary storage for marshalled addresses.  Not thread-safe.
   };
 
   /**
@@ -817,8 +782,8 @@ namespace fl
 	virtual unsigned int  getRGBA  (void * pixel) const;
 	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
 
-	int           bits;
-	int           slices;  ///< Number of pixels in one byte.  Same as 8/bits or 1/depth.
+	int           bits;  ///< Number of bits in one pixel.
+	int           pixels;  ///< Number of pixels in one byte.  Same as 8/bits or 1/depth.
 	unsigned char masks[8];  ///< An array of bit masks for each pixel packed in one byte.  x % bits gives an offset into this array.  There may be some wasted entries, but this is a trivial loss in exchange for the simplicity of a fixed-size array.
 	int           shifts[8];  ///< How far to upshift the indexed pixel to put it in the most significant position.
   };
@@ -1046,19 +1011,34 @@ namespace fl
 	int ratioV;  ///< How many vertical luma samples per chroma sample.
   };
 
-  /**
-	 YUV 444 format (1394 format 0 mode 0)
-   **/
-  class PixelFormatUYV : public PixelFormatYUV
+  class PixelFormatPackedYUV : public PixelFormatYUV
   {
   public:
-	PixelFormatUYV ();
+	struct YUVindex
+	{
+	  int y;
+	  int u;
+	  int v;
+	};
+
+	PixelFormatPackedYUV (YUVindex * table);
+
+	virtual Image filter (const Image & image);
+	virtual PixelBuffer * buffer () const;
+	virtual void fromAny (const Image & image, Image & result) const;
+	void fromYUV         (const Image & image, Image & result) const;
+
+	virtual bool operator == (const PixelFormat & that) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
 	virtual unsigned int  getYUV  (void * pixel) const;
 	virtual unsigned char getGray (void * pixel) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
 	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
+
+	YUVindex * table;
+	int pixels;
+	int bytes;
   };
 
   class PixelFormatPlanarYUV : public PixelFormatYUV
@@ -1078,54 +1058,7 @@ namespace fl
   };
 
   /**
-	 YUV 422 format (1394 format 0 mode 1, etc).
-	 Inherits from PlanarYUV, even though this format is technically packed,
-	 because it uses a set of marshalled pointers.
-  **/
-  class PixelFormatUYVY : public PixelFormatPlanarYUV
-  {
-  public:
-	PixelFormatUYVY ();
-
-	virtual Image filter (const Image & image);
-	virtual PixelBuffer * buffer () const;
-	virtual void fromAny (const Image & image, Image & result) const;
-	void fromYUYV        (const Image & image, Image & result) const;
-
-	virtual bool operator == (const PixelFormat & that) const;
-  };
-
-  /// Same as UYVY, but with different ordering within the dwords
-  class PixelFormatYUYV : public PixelFormatPlanarYUV
-  {
-  public:
-	PixelFormatYUYV ();
-
-	virtual Image filter (const Image & image);
-	virtual PixelBuffer * buffer () const;
-	virtual void fromAny (const Image & image, Image & result) const;
-	void fromUYVY        (const Image & image, Image & result) const;
-
-	virtual bool operator == (const PixelFormat & that) const;
-  };
-
-  /**
-	 YUV 411 format (1394 format 0 mode 2).
-	 Inherits from PlanarYUV, even though this format is technically packed,
-	 because it uses a set of marshalled pointers.
-   **/
-  class PixelFormatUYYVYY : public PixelFormatPlanarYUV
-  {
-  public:
-	PixelFormatUYYVYY ();
-
-	virtual PixelBuffer * buffer () const;
-
-	virtual bool operator == (const PixelFormat & that) const;
-  };
-
-  /**
-	 Same as PixelFormatPlanarYUVChar, except that 16 <= Y <= 235 and
+	 Same as PixelFormatPlanarYUV, except that 16 <= Y <= 235 and
 	 16 <= U,V <= 240.  Video standards call for footroom and headroom
 	 to allow for analog signal overshoots.
    **/
@@ -1176,10 +1109,11 @@ namespace fl
   extern PixelFormatRGBChar            RGBChar;
   extern PixelFormatRGBShort           RGBShort;
   extern PixelFormatRGBABits           BGRChar;
-  extern PixelFormatUYVY               UYVY;
-  extern PixelFormatYUYV               YUYV;
-  extern PixelFormatUYV                UYV;
-  extern PixelFormatUYYVYY             UYYVYY;
+  extern PixelFormatPackedYUV          UYVY;
+  extern PixelFormatPackedYUV          YUYV;
+  extern PixelFormatPackedYUV          UYV;
+  extern PixelFormatPackedYUV          UYYVYY;
+  extern PixelFormatPackedYUV          UYVYUYVYYYYY;
   extern PixelFormatPlanarYCbCr        YUV420;
   extern PixelFormatPlanarYCbCr        YUV411;
   extern PixelFormatHLSFloat           HLSFloat;
