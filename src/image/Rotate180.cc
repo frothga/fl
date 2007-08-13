@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.5 thru 1.6 Copyright 2007 Sandia Corporation.
+Revisions 1.5 thru 1.7 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -15,6 +15,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.7  2007/08/13 03:19:26  Fred
+Treat depth as a float value.
+
 Revision 1.6  2007/03/23 02:32:06  Fred
 Use CVS Log to generate revision history.
 
@@ -78,7 +81,7 @@ Rotate180::filter (const Image & image)
 	} \
   }
 
-  switch (image.format->depth)
+  switch ((int) image.format->depth)
   {
     case 8:
 	  transfer (double);
