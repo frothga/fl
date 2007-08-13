@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.8  thru 1.12 Copyright 2005 Sandia Corporation.
-Revisions 1.15 thru 1.16 Copyright 2007 Sandia Corporation.
+Revisions 1.15 thru 1.17 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,13 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.17  2007/08/13 04:10:53  Fred
+Fix handling of pixels drawn from top and left boundaries in source image
+so that first available source pixel is extrapolated all the way to the edge
+of the resulting image.
+
+Handle the case where the source image is only one pixel tall.
+
 Revision 1.16  2007/03/23 02:32:05  Fred
 Use CVS Log to generate revision history.
 
@@ -268,22 +275,12 @@ Transform::filter (const Image & image)
 			  float * p01 = p00 + 1;
 			  float * p10 = p00 + that.width;
 			  float * p11 = p10 + 1;
-			  if (fromX < 0)
-			  {
-				p00 = p01;
-				p10 = p11;
-			  }
-			  else if (fromX == iLastX1)
+			  if (x < 0  ||  fromX == iLastX1)
 			  {
 				p01 = p00;
 				p11 = p10;
 			  }
-			  if (fromY < 0)
-			  {
-				p00 = p10;
-				p01 = p11;
-			  }
-			  else if (fromY == iLastY1)
+			  if (y < 0  ||  fromY == iLastY1)
 			  {
 				p10 = p00;
 				p11 = p01;
@@ -354,22 +351,12 @@ Transform::filter (const Image & image)
 			  double * p01 = p00 + 1;
 			  double * p10 = p00 + that.width;
 			  double * p11 = p10 + 1;
-			  if (fromX < 0)
-			  {
-				p00 = p01;
-				p10 = p11;
-			  }
-			  else if (fromX == iLastX1)
+			  if (x < 0  ||  fromX == iLastX1)
 			  {
 				p01 = p00;
 				p11 = p10;
 			  }
-			  if (fromY < 0)
-			  {
-				p00 = p10;
-				p01 = p11;
-			  }
-			  else if (fromY == iLastY1)
+			  if (y < 0  ||  fromY == iLastY1)
 			  {
 				p10 = p00;
 				p11 = p01;
@@ -447,22 +434,12 @@ Transform::filter (const Image & image)
 			  float * p01 = p00 + 4;
 			  float * p10 = p00 + that.width * 4;
 			  float * p11 = p10 + 4;
-			  if (fromX < 0)
-			  {
-				p00 = p01;
-				p10 = p11;
-			  }
-			  else if (fromX == iLastX1)
+			  if (x < 0  ||  fromX == iLastX1)
 			  {
 				p01 = p00;
 				p11 = p10;
 			  }
-			  if (fromY < 0)
-			  {
-				p00 = p10;
-				p01 = p11;
-			  }
-			  else if (fromY == iLastY1)
+			  if (y < 0  ||  fromY == iLastY1)
 			  {
 				p10 = p00;
 				p11 = p01;
@@ -539,22 +516,12 @@ Transform::filter (const Image & image)
 			  float * p01 = p00 + 1;
 			  float * p10 = p00 + that.width;
 			  float * p11 = p10 + 1;
-			  if (fromX < 0)
-			  {
-				p00 = p01;
-				p10 = p11;
-			  }
-			  else if (fromX == iLastX1)
+			  if (x < 0  ||  fromX == iLastX1)
 			  {
 				p01 = p00;
 				p11 = p10;
 			  }
-			  if (fromY < 0)
-			  {
-				p00 = p10;
-				p01 = p11;
-			  }
-			  else if (fromY == iLastY1)
+			  if (y < 0  ||  fromY == iLastY1)
 			  {
 				p10 = p00;
 				p11 = p01;
@@ -618,22 +585,12 @@ Transform::filter (const Image & image)
 			  double * p01 = p00 + 1;
 			  double * p10 = p00 + that.width;
 			  double * p11 = p10 + 1;
-			  if (fromX < 0)
-			  {
-				p00 = p01;
-				p10 = p11;
-			  }
-			  else if (fromX == iLastX1)
+			  if (x < 0  ||  fromX == iLastX1)
 			  {
 				p01 = p00;
 				p11 = p10;
 			  }
-			  if (fromY < 0)
-			  {
-				p00 = p10;
-				p01 = p11;
-			  }
-			  else if (fromY == iLastY1)
+			  if (y < 0  ||  fromY == iLastY1)
 			  {
 				p10 = p00;
 				p11 = p01;
@@ -704,22 +661,12 @@ Transform::filter (const Image & image)
 			  float * p01 = p00 + 4;
 			  float * p10 = p00 + that.width * 4;
 			  float * p11 = p10 + 4;
-			  if (fromX < 0)
-			  {
-				p00 = p01;
-				p10 = p11;
-			  }
-			  else if (fromX == iLastX1)
+			  if (x < 0  ||  fromX == iLastX1)
 			  {
 				p01 = p00;
 				p11 = p10;
 			  }
-			  if (fromY < 0)
-			  {
-				p00 = p10;
-				p01 = p11;
-			  }
-			  else if (fromY == iLastY1)
+			  if (y < 0  ||  fromY == iLastY1)
 			  {
 				p10 = p00;
 				p11 = p01;
@@ -971,8 +918,11 @@ Transform::prepareResult (const Image & image, int & w, int & h, Matrix3x3<doubl
   clip (rx0, ry0, rx1, ry1, 0,     lastY, 0,     0,     false, dLo, dHi, openLo, openHi);
 
   //   Set lo and hi based on parametric values dLo and dHi
-  dLo *= h1;
-  dHi *= h1;
+  if (h1 > 0)  // guard against height <= 1
+  {
+	dLo *= h1;
+	dHi *= h1;
+  }
   double iLo = ceil (dLo);
   double iHi = floor (dHi);
   if (openLo  &&  iLo - dLo < 1e-6) iLo++;
