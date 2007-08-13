@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.3 and 1.5   Copyright 2005 Sandia Corporation.
-Revisions 1.7 thru 1.10 Copyright 2007 Sandia Corporation.
+Revisions 1.7 thru 1.11 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,14 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.11  2007/08/13 04:25:46  Fred
+Guard against detached image (one with no PixelBuffer).
+
+Treat depth as a float value.
+
+Eliminate GNU extensions <? and >? (which is sad, because these were cool
+operators).
+
 Revision 1.10  2007/03/23 11:09:26  Fred
 Correct which revisions are under Sandia copyright.
 
@@ -365,7 +373,8 @@ XImage *
 fl::Visual::createImage (const Image & image, Image & formatted) const
 {
   formatted = image * format;
-  char * buffer = (char *) ((PixelBufferPacked *) formatted.buffer)->memory;
+  PixelBufferPacked * pbp = (PixelBufferPacked *) formatted.buffer;
+  char * buffer = pbp ? (char *) pbp->memory : 0;
   XImage * result = XCreateImage
   (
     screen->display->display,
@@ -375,7 +384,7 @@ fl::Visual::createImage (const Image & image, Image & formatted) const
 	0,
 	buffer,
 	formatted.width, formatted.height,
-	format.depth * 8,
+	(int) (format.depth * 8),
 	0
   );
 
@@ -423,8 +432,9 @@ fl::Drawable::putImage (const fl::GC & gc, const XImage * image, int toX, int to
   {
 	height = image->height;
   }
-  width = width <? image->width - fromX;
-  height = height <? image->height - fromY;
+  width = min (width, image->width - fromX);
+  height = min (height, image->height - fromY);
+  if (width <= 0  ||  height <= 0) return;  // no point in putting an image with no extent
   XPutImage
   (
     screen->display->display,
