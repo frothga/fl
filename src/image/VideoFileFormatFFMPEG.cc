@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.15, 1.16, 1.18 thru 1.22 Copyright 2005 Sandia Corporation.
-Revisions 1.24 thru 1.33             Copyright 2007 Sandia Corporation.
+Revisions 1.24 thru 1.34             Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.34  2007/08/13 04:12:14  Fred
+Use PixelBufferPacked::stride directly as the number of bytes in a row.
+
 Revision 1.33  2007/03/23 02:32:03  Fred
 Use CVS Log to generate revision history.
 
@@ -932,7 +935,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   else if (PixelBufferPacked * pb = (PixelBufferPacked *) converted.buffer)
   {
 	dest.data[0] = (unsigned char *) pb->memory;
-	dest.linesize[0] = pb->stride * pixelFormat->depth;
+	dest.linesize[0] = pb->stride;
   }
   else throw "Unhandled buffer type";
 
