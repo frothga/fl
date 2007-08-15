@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.8, 1.9, 1.11 thru 1.22 Copyright 2005 Sandia Corporation.
-Revisions 1.24 thru 1.42           Copyright 2007 Sandia Corporation.
+Revisions 1.24 thru 1.43           Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.43  2007/08/15 04:59:24  Fred
+Fix error copying buffer in attach().
+
 Revision 1.42  2007/08/15 03:48:05  Fred
 Move PixelFormat::buffer() to correct location and handle more cases.
 
@@ -556,7 +559,7 @@ PixelBuffer *
 PixelFormat::attach (void * block, int width, int height, bool copy) const
 {
   PixelBufferPacked * result = new PixelBufferPacked (block, width * (int) depth, height, (int) depth);
-  if (copy) result->memory.copyFrom (block);
+  if (copy) result->memory.copyFrom (result->memory);
   return result;
 }
 
@@ -780,7 +783,7 @@ PixelBuffer *
 PixelFormatGrayBits::attach (void * block, int width, int height, bool copy) const
 {
   PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil (width / pixels), height, pixels, 1);
-  if (copy) result->memory.copyFrom (block);
+  if (copy) result->memory.copyFrom (result->memory);
   return result;
 }
 
@@ -4266,7 +4269,7 @@ PixelBuffer *
 PixelFormatPackedYUV::attach (void * block, int width, int height, bool copy) const
 {
   PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil (width / pixels) * bytes, height, pixels, bytes);
-  if (copy) result->memory.copyFrom (block);
+  if (copy) result->memory.copyFrom (result->memory);
   return result;
 }
 
