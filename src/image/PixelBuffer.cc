@@ -2,7 +2,7 @@
 Author: Fred Rothganger
 
 
-Revision 1.1 thru 1.7 Copyright 2007 Sandia Corporation.
+Revision 1.1 thru 1.8 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -11,6 +11,14 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.8  2007/08/15 03:45:47  Fred
+Move PixelBufferPacked::resize() to "correct" location as indicated by header.
+
+Remove assert on depth in PixelBufferPlanar.resize(), since depth now refers
+to total amount of storage for one pixel.
+
+Make inspection of PixelFormat more thorough in PixelBufferGroups.resize().
+
 Revision 1.7  2007/08/13 03:01:38  Fred
 Replace PixelBufferBits, PixelBufferYUYV, and PixelBufferUYYVYY with
 PixelBufferGroups.  This new buffer type generalizes the type of memory
@@ -163,6 +171,29 @@ PixelBufferPacked::pixel (int x, int y)
   return & ((char *) memory)[y * stride + x * depth];
 }
 
+void
+PixelBufferPacked::resize (int width, int height, const PixelFormat & format, bool preserve)
+{
+  if (width <= 0  ||  height <= 0)
+  {
+	stride = 0;
+	depth  = (int) format.depth;
+	memory.detach ();
+	return;
+  }
+
+  if (! preserve  ||  format.depth != depth)
+  {
+	depth  = (int) format.depth;
+	stride = width * depth;
+	memory.grow (stride * height);
+	return;
+  }
+
+  reshapeBuffer (memory, stride, width * depth, height);
+  stride = width * depth;
+}
+
 PixelBuffer *
 PixelBufferPacked::duplicate () const
 {
@@ -195,29 +226,6 @@ PixelBufferPacked::copyFrom (void * buffer, int stride, int height, int depth)
   this->memory.copyFrom (buffer, stride * height);
   this->stride = stride;
   this->depth  = depth;
-}
-
-void
-PixelBufferPacked::resize (int width, int height, const PixelFormat & format, bool preserve)
-{
-  if (width <= 0  ||  height <= 0)
-  {
-	stride = 0;
-	depth  = (int) format.depth;
-	memory.detach ();
-	return;
-  }
-
-  if (! preserve  ||  format.depth != depth)
-  {
-	depth  = (int) format.depth;
-	stride = width * depth;
-	memory.grow (stride * height);
-	return;
-  }
-
-  reshapeBuffer (memory, stride, width * depth, height);
-  stride = width * depth;
 }
 
 
@@ -288,8 +296,6 @@ PixelBufferPlanar::resize (int width, int height, const PixelFormat & format, bo
 	plane2.detach ();
 	return;
   }
-
-  assert (format.depth == 1);  // may generalize to variable depth, if there exists a case that needs it
 
   const PixelFormatYUV * f = dynamic_cast<const PixelFormatYUV *> (&format);
   if (f)
@@ -410,14 +416,28 @@ PixelBufferGroups::resize (int width, int height, const PixelFormat & format, bo
 	return;
   }
 
-  const PixelFormatPackedYUV * f = dynamic_cast<const PixelFormatPackedYUV *> (&format);
-  assert (f);
-  int newStride = (int) ceil ((float) width / f->pixels) * f->bytes;  // Always allocate a stride that can contain a whole number of groups and also the full width.  It is permissable to use part of a group for the last few pixels of the line, provided there is storage for the full group.
-
-  if (! preserve  ||  f->pixels != pixels  ||  f->bytes != bytes)
+  int newBytes;
+  int newPixels;
+  if (const PixelFormatPackedYUV * f = dynamic_cast<const PixelFormatPackedYUV *> (&format))
   {
-	pixels = f->pixels;
-	bytes  = f->bytes;
+	newBytes  = f->bytes;
+	newPixels = f->pixels;
+  }
+  else if (const PixelFormatGrayBits * f = dynamic_cast<const PixelFormatGrayBits *> (&format))
+  {
+	newBytes  = 1;
+	newPixels = f->pixels;
+  }
+  else
+  {
+	throw "Need PixelFormat that specifies macropixel parameters.";
+  }
+  int newStride = (int) ceil ((float) width / newPixels) * newBytes;  // Always allocate a stride that can contain a whole number of groups and also the full width.  It is permissable to use part of a group for the last few pixels of the line, provided there is storage for the full group.
+
+  if (! preserve  ||  newPixels != pixels  ||  newBytes != bytes)
+  {
+	pixels = newPixels;
+	bytes  = newBytes;
 	stride = newStride;
 	memory.grow (newStride * height);
 	return;
