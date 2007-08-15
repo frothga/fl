@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.6 and 1.8    Copyright 2005 Sandia Corporation.
-Revisions 1.10 thru 1.22 Copyright 2007 Sandia Corporation.
+Revisions 1.10 thru 1.23 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,13 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.23  2007/08/15 03:42:07  Fred
+Move task of attaching to memory block into PixelFormat.  This allows a
+broader range of formats to work automatically, including some planar ones.
+The main limitation is that the memory must come as a single chunk and have
+a stride exactly equal to the row length.  This is usually true of image
+buffers in DirectShow.
+
 Revision 1.22  2007/08/12 14:35:33  Fred
 Change PixelBufferPacked::depth to a float.
 
@@ -168,7 +175,7 @@ Image::Image (void * block, int width, int height, const PixelFormat & format)
   timestamp    = getTimestamp ();
   this->width  = max (0, width);
   this->height = max (0, height);
-  buffer       = new PixelBufferPacked (block, (int) ceil (format.depth * this->width), this->height, (int) format.depth);
+  buffer       = format.attach (block, this->width, this->height);
   this->format = &format;
 }
 
@@ -231,19 +238,11 @@ Image::copyFrom (const Image & that)
 void
 Image::copyFrom (void * block, int width, int height, const PixelFormat & format)
 {
-  PixelBufferPacked * p = (PixelBufferPacked *) buffer;
-  if (! p)
-  {
-	buffer = p = new PixelBufferPacked ();
-  }
-  if (p->memory.memory != block)
-  {
-	timestamp    = getTimestamp ();  // Actually, we don't know the timestamp on a bare buffer, but this guess is as good as any.
-	this->width  = max (0, width);
-	this->height = max (0, height);
-	p->copyFrom (block, (int) ceil (format.depth * this->width), this->height, (int) format.depth);
-	this->format = &format;
-  }
+  timestamp    = getTimestamp ();
+  this->width  = max (0, width);
+  this->height = max (0, height);
+  buffer       = format.attach (block, this->width, this->height, true);
+  this->format = &format;
 }
 
 void
@@ -252,7 +251,7 @@ Image::attach (void * block, int width, int height, const PixelFormat & format)
   timestamp    = getTimestamp ();
   this->width  = max (0, width);
   this->height = max (0, height);
-  buffer       = new PixelBufferPacked (block, (int) ceil (format.depth * this->width), this->height, (int) format.depth);
+  buffer       = format.attach (block, this->width, this->height);
   this->format = &format;
 }
 
