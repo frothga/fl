@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.9  thru 1.17 Copyright 2005 Sandia Corporation.
-Revisions 1.19 thru 1.43 Copyright 2007 Sandia Corporation.
+Revisions 1.19 thru 1.44 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,17 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.44  2007/08/15 03:53:47  Fred
+Fix typo in comments for PixelBuffer::planes.
+
+Add attach() method and move buffer() next to it.  Add attach() overrides to
+PixelFormats that require special handling.  Remove buffer() method from
+formats that don't really require an override.
+
+Clarify comments on PixelFormat::depth.  This member now indicates the space
+required for one pixel in such a way that one can compute the total bytes
+need for an image as width * height * depth.
+
 Revision 1.43  2007/08/13 04:35:46  Fred
 Generalize PixelBufferBits into PixelBufferGroups.  Eliminate PixelBufferYUYV
 and PixelBufferUYYVYY.
@@ -406,7 +417,7 @@ namespace fl
 	   <LI>planes < 1 -- A pointer to a structure.  Each kind of structure is
 	   assigned a unique negative number.  Current structures are:
 	   <UL>
-	   <LI>-1 -- PixelBufferBits::PixelData
+	   <LI>-1 -- PixelBufferGroups::PixelData
 	   </UL>
 	   </OL>
 	   Any value other than planes==1 is not thread safe.  The structure or
@@ -713,8 +724,10 @@ namespace fl
 	virtual ~PixelFormat ();
 
 	virtual Image filter (const Image & image);  ///< Return an Image in this format
-	virtual PixelBuffer * buffer () const;  ///< Construct a PixelBuffer suitable for holding data of the type described by this object.
 	virtual void fromAny (const Image & image, Image & result) const;
+
+	virtual PixelBuffer * buffer () const;  ///< Construct a PixelBuffer suitable for holding data of the type described by this object.
+	virtual PixelBuffer * attach (void * block, int width, int height, bool copy = false) const;  ///< Creates a suitable PixelBuffer bound to the given external block of memory.  Makes best effort to guess the start of each plane in the case of planar formats.  (Default implementation assumes packed buffer.)
 
 	virtual bool operator == (const PixelFormat & that) const;  ///< Checks if this and that describe the same interpretation of memory contents.
 	bool operator != (const PixelFormat & that) const
@@ -738,7 +751,7 @@ namespace fl
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;  ///< Ignored by default.  Formats that actually have an alpha channel must override this method.
 
 	int planes;  ///< The number of entries in the array passed through the "pixel" parameter.  See PixelBuffer::planes for semantics.  This format must agree with the PixelBuffer on the meaning of the pixel pointer.
-	float depth;  ///< Number of bytes per pixel, including any padding.  If planes > 1, then this field only describes the first plane.  The other planes should in general have the same size associated with a single pixel, but a single datum may be shared by more than 1 pixel.
+	float depth;  ///< Number of bytes per pixel, including any padding.  This could have been defined as bits per pixel, but there actually exists a format (4CC==IF09) which has a non-integral number of bits per pixel.  Defined as bytes, this field allows one to compute the total number of bytes needed by the image (even for planar formats) as width * height * depth.
 	int precedence;  ///< Imposes a (partial?) order on formats according to information content.  Bigger numbers have more information.
 	// The following two flags could be implemented several different ways.
 	// One alternative would be to make a more complicated class hierarchy
@@ -777,7 +790,7 @@ namespace fl
 	**/
 	PixelFormatGrayBits (int bits = 1, bool bigendian = true);
 
-	virtual PixelBuffer * buffer () const;
+	virtual PixelBuffer * attach (void * block, int width, int height, bool copy = false) const;
 
 	virtual unsigned int  getRGBA  (void * pixel) const;
 	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
@@ -1024,9 +1037,10 @@ namespace fl
 	PixelFormatPackedYUV (YUVindex * table);
 
 	virtual Image filter (const Image & image);
-	virtual PixelBuffer * buffer () const;
 	virtual void fromAny (const Image & image, Image & result) const;
 	void fromYUV         (const Image & image, Image & result) const;
+
+	virtual PixelBuffer * attach (void * block, int width, int height, bool copy = false) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
@@ -1048,6 +1062,8 @@ namespace fl
 
 	virtual void fromAny (const Image & image, Image & result) const;
 
+	virtual PixelBuffer * attach (void * block, int width, int height, bool copy = false) const;
+
 	virtual bool operator == (const PixelFormat & that) const;
 
 	virtual unsigned int  getRGBA (void * pixel) const;
@@ -1068,6 +1084,8 @@ namespace fl
 	PixelFormatPlanarYCbCr (int ratioH, int ratioV);
 
 	virtual void fromAny (const Image & image, Image & result) const;
+
+	virtual PixelBuffer * attach (void * block, int width, int height, bool copy = false) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
 
