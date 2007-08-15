@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.8, 1.9, 1.11 thru 1.22 Copyright 2005 Sandia Corporation.
-Revisions 1.24 thru 1.41           Copyright 2007 Sandia Corporation.
+Revisions 1.24 thru 1.42           Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,12 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.42  2007/08/15 03:48:05  Fred
+Move PixelFormat::buffer() to correct location and handle more cases.
+
+Add default attach method for packed buffers.  Override attach() methods for
+select formats.
+
 Revision 1.41  2007/08/13 03:06:51  Fred
 Replace PixelFormatUYVY, PixelFormatYUYV, and PixelFormatUYV with
 PixelFormatPackedYUV.  This new format handles all possible packed YUV
@@ -452,23 +458,6 @@ PixelFormat::filter (const Image & image)
   return result;
 }
 
-PixelBuffer *
-PixelFormat::buffer () const
-{
-  if (planes == 1)
-  {
-	return new PixelBufferPacked;
-  }
-  else if (planes > 1)
-  {
-	return new PixelBufferPlanar;
-  }
-  else
-  {
-	throw "Need to override default PixelFormat::buffer()";
-  }
-}
-
 /**
    Uses getRGBA() and setRGBA().  XYZ would be more accurate, but this
    is also adequate, since RGB values are well defined (as non-linear sRGB).
@@ -540,6 +529,35 @@ PixelFormat::fromAny (const Image & image, Image & result) const
 	  }
 	}
   }
+}
+
+PixelBuffer *
+PixelFormat::buffer () const
+{
+  if (planes == 1)
+  {
+	return new PixelBufferPacked;
+  }
+  else if (planes > 1)
+  {
+	return new PixelBufferPlanar;
+  }
+  else if (planes == -1)
+  {
+	return new PixelBufferGroups (1, 1);
+  }
+  else
+  {
+	throw "Need to override default PixelFormat::buffer()";
+  }
+}
+
+PixelBuffer *
+PixelFormat::attach (void * block, int width, int height, bool copy) const
+{
+  PixelBufferPacked * result = new PixelBufferPacked (block, width * (int) depth, height, (int) depth);
+  if (copy) result->memory.copyFrom (block);
+  return result;
 }
 
 bool
@@ -759,9 +777,11 @@ PixelFormatGrayBits::PixelFormatGrayBits (int bits, bool bigendian)
 }
 
 PixelBuffer *
-PixelFormatGrayBits::buffer () const
+PixelFormatGrayBits::attach (void * block, int width, int height, bool copy) const
 {
-  return new PixelBufferGroups (pixels, 1);
+  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil (width / pixels), height, pixels, 1);
+  if (copy) result->memory.copyFrom (block);
+  return result;
 }
 
 unsigned int
@@ -4094,12 +4114,6 @@ PixelFormatPackedYUV::filter (const Image & image)
   return result;
 }
 
-PixelBuffer *
-PixelFormatPackedYUV::buffer () const
-{
-  return new PixelBufferGroups (pixels, bytes);
-}
-
 void
 PixelFormatPackedYUV::fromAny (const Image & image, Image & result) const
 {
@@ -4246,6 +4260,14 @@ PixelFormatPackedYUV::fromYUV (const Image & image, Image & result) const
 	address += toStep;
 	y++;
   }
+}
+
+PixelBuffer *
+PixelFormatPackedYUV::attach (void * block, int width, int height, bool copy) const
+{
+  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil (width / pixels) * bytes, height, pixels, bytes);
+  if (copy) result->memory.copyFrom (block);
+  return result;
 }
 
 bool
@@ -4556,6 +4578,24 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
   }
 }
 
+PixelBuffer *
+PixelFormatPlanarYUV::attach (void * block, int width, int height, bool copy) const
+{
+  int size = width * height;
+  char * buffer1 = (char *) block + size;
+  char * buffer2 = buffer1 + size / (ratioH * ratioV);
+  PixelBufferPlanar * result = new PixelBufferPlanar (block, buffer1, buffer2, width, width / ratioH, height, ratioH, ratioV);
+
+  if (copy)
+  {
+	PixelBufferPlanar * temp = result;
+	result = (PixelBufferPlanar *) temp->duplicate ();
+	delete temp;
+  }
+
+  return result;
+}
+
 bool
 PixelFormatPlanarYUV::operator == (const PixelFormat & that) const
 {
@@ -4786,6 +4826,24 @@ PixelFormatPlanarYCbCr::fromAny (const Image & image, Image & result) const
 	  Cr += step12;
 	}
   }
+}
+
+PixelBuffer *
+PixelFormatPlanarYCbCr::attach (void * block, int width, int height, bool copy) const
+{
+  int size = width * height;
+  char * buffer1 = (char *) block + size;
+  char * buffer2 = buffer1 + size / (ratioH * ratioV);
+  PixelBufferPlanar * result = new PixelBufferPlanar (block, buffer1, buffer2, width, width / ratioH, height, ratioH, ratioV);
+
+  if (copy)
+  {
+	PixelBufferPlanar * temp = result;
+	result = (PixelBufferPlanar *) temp->duplicate ();
+	delete temp;
+  }
+
+  return result;
 }
 
 bool
