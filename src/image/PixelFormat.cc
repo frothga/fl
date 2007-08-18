@@ -16,6 +16,21 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.44  2007/08/18 00:30:49  Fred
+Switch to the "central format" approach to conversion.  Specifically, the
+generic fromAny() is implemented as a conversion to RGBAChar followed by a
+conversion to the target format.  To maximize efficiency, there should be a
+conversion to and from RGBAChar for every format.  To remain consistent with
+current style, conversions to RGBAChar reside in the class PixelFormatRGBAChar
+rather than in other classes.  Could move these to individual classes and
+name them toRGBAChar().  However, we wouldn't really gain anything from this
+arrangement, because we also have direct conversions, which inevitably require
+a function in one class to know the internals of another pixel format.
+
+The regression tests (test.cc) all work except for R9G9B9A5, because it is now
+routed through a conversion that does not rescale channels with other than
+8 bits.  Will address this by adding "dublicate" to all bit-twiddler functions.
+
 Revision 1.43  2007/08/15 04:59:24  Fred
 Fix error copying buffer in attach().
 
@@ -462,74 +477,55 @@ PixelFormat::filter (const Image & image)
 }
 
 /**
-   Uses getRGBA() and setRGBA().  XYZ would be more accurate, but this
+   Uses RGBAChar as a central format.  XYZ would be more accurate, but this
    is also adequate, since RGB values are well defined (as non-linear sRGB).
 **/
 void
 PixelFormat::fromAny (const Image & image, Image & result) const
 {
-  const PixelFormat * sourceFormat = image.format;
+  // First convert to central format.
+  Image central = image * RGBAChar;
 
-  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  // Then conver to destination format.
+  PixelBufferPacked * i = (PixelBufferPacked *) central.buffer;
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
-  const int destDepth = (int) depth;
-  if (i)
+  assert (i);
+  unsigned int * source = (unsigned int *) i->memory;
+  const int step        = i->stride - central.width * sizeof (unsigned int);
+  if (o)
   {
-	unsigned char * source = (unsigned char *) i->memory;
-	const int sourceDepth = (int) sourceFormat->depth;
-	if (o)
+	const int destDepth    = (int) depth;
+	unsigned char * dest   = (unsigned char *) o->memory;
+	unsigned char * end    = dest + o->stride * result.height;
+	unsigned char * rowEnd = dest + result.width * destDepth;
+	while (dest < end)
 	{
-	  unsigned char * dest   = (unsigned char *) o->memory;
-	  unsigned char * end    = dest + o->stride * result.height;
-	  unsigned char * rowEnd = dest + result.width * destDepth;
-	  const int step = i->stride - image.width * sourceDepth;
-	  while (dest < end)
+	  while (dest < rowEnd)
 	  {
-		while (dest < rowEnd)
-		{
-		  setRGBA (dest, sourceFormat->getRGBA (source));
-		  source += sourceDepth;
-		  dest += destDepth;
-		}
-		source += step;
-		rowEnd += o->stride;
+#       if BYTE_ORDER == LITTLE_ENDIAN
+		setRGBA (dest, bswap(*source++));
+#       elif BYTE_ORDER == BIG_ENDIAN
+		setRGBA (dest, *source++);
+#       endif
+		dest += destDepth;
 	  }
-	}
-	else
-	{
-	  for (int y = 0; y < image.height; y++)
-	  {
-		for (int x = 0; x < image.width; x++)
-		{
-		  setRGBA (result.buffer->pixel (x, y), sourceFormat->getRGBA (source));
-		  source += sourceDepth;
-		}
-	  }
+	  source = (unsigned int *) ((char *) source + step);
+	  rowEnd += o->stride;
 	}
   }
   else
   {
-	if (o)
+	for (int y = 0; y < image.height; y++)
 	{
-	  unsigned char * dest = (unsigned char *) o->memory;
-	  for (int y = 0; y < image.height; y++)
+	  for (int x = 0; x < image.width; x++)
 	  {
-		for (int x = 0; x < image.width; x++)
-		{
-		  setRGBA (dest, sourceFormat->getRGBA (image.buffer->pixel (x, y)));
-		  dest += destDepth;
-		}
+#       if BYTE_ORDER == LITTLE_ENDIAN
+		setRGBA (result.buffer->pixel (x, y), bswap(*source++));
+#       elif BYTE_ORDER == BIG_ENDIAN
+		setRGBA (result.buffer->pixel (x, y), *source++);
+#       endif
 	  }
-	}
-	else
-	{
-	  for (int y = 0; y < image.height; y++)
-	  {
-		for (int x = 0; x < image.width; x++)
-		{
-		  setRGBA (result.buffer->pixel (x, y), sourceFormat->getRGBA (image.buffer->pixel (x, y)));
-		}
-	  }
+	  source = (unsigned int *) ((char *) source + step);
 	}
   }
 }
@@ -3537,6 +3533,10 @@ PixelFormatRGBAChar::filter (const Image & image)
   {
 	fromGrayChar (image, result);
   }
+  else if (typeid (* image.format) == typeid (PixelFormatGrayShort))
+  {
+	fromGrayShort (image, result);
+  }
   else if (typeid (* image.format) == typeid (PixelFormatGrayFloat))
   {
 	fromGrayFloat (image, result);
@@ -3549,9 +3549,13 @@ PixelFormatRGBAChar::filter (const Image & image)
   {
 	fromRGBChar (image, result);
   }
-  else if (typeid (* image.format) == typeid (PixelFormatRGBABits))
+  else if (dynamic_cast<const PixelFormatRGBABits *> (image.format))
   {
 	fromRGBABits (image, result);
+  }
+  else if (typeid (* image.format) == typeid (PixelFormatPlanarYCbCr))
+  {
+	fromYCbCr (image, result);
   }
   else
   {
@@ -3668,6 +3672,55 @@ PixelFormatRGBAChar::fromRGBChar (const Image & image, Image & result) const
 	  fromPixel += 3;
 	}
 	fromPixel += step;
+  }
+}
+
+void
+PixelFormatRGBAChar::fromAny (const Image & image, Image & result) const
+{
+  const PixelFormat * sourceFormat = image.format;
+
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (o);
+
+  unsigned int * dest = (unsigned int *) o->memory;
+
+  if (i)
+  {
+	unsigned int * end     = dest + result.width * result.height;
+	unsigned int * rowEnd  = dest + result.width;  // Output of this conversion must have stride == row length.
+	unsigned char * source = (unsigned char *) i->memory;
+	const int sourceDepth  = (int) sourceFormat->depth;
+	const int step         = i->stride - image.width * sourceDepth;
+	while (dest < end)
+	{
+	  while (dest < rowEnd)
+	  {
+#       if BYTE_ORDER == LITTLE_ENDIAN
+		*dest++ = bswap (sourceFormat->getRGBA (source));
+#       else
+		*dest++ = sourceFormat->getRGBA (source);
+#       endif
+		source += sourceDepth;
+	  }
+	  source += step;
+	  rowEnd += result.width;
+	}
+  }
+  else
+  {
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+#       if BYTE_ORDER == LITTLE_ENDIAN
+		*dest++ = bswap (sourceFormat->getRGBA (image.buffer->pixel (x, y)));
+#       else
+		*dest++ = sourceFormat->getRGBA (image.buffer->pixel (x, y));
+#       endif
+	  }
+	}
   }
 }
 
