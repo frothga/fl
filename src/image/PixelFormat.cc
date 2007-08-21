@@ -16,6 +16,16 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.45  2007/08/21 03:41:25  Fred
+Convert all bit shifters to call roll().  This is a preparatory step for
+converting to dublicate().  Benchmark test showed that no single implementation
+of roll() worked best for all conversion functions.  The macro version, when
+implemented as both "roll" and "rollback", did best overall.  Inline assembly
+version was somewhat in the middle.  I am checking this in with the inline
+assembly version active, because its performance is equal to the macro version
+without "rollback", and I cherish a foolish belief that it is somehow doing
+better even though the test prove otherwise.
+
 Revision 1.44  2007/08/18 00:30:49  Fred
 Switch to the "central format" approach to conversion.  Specifically, the
 generic fromAny() is implemented as a conversion to RGBAChar followed by a
@@ -445,6 +455,60 @@ union Int2Char
 #   endif
   };
 };
+
+
+// Support for shifting and scaling bit channels ------------------------------
+
+/**
+   Shift a 32-bit word up or down by a given number of bits.
+
+   Timing on the pixel format test in test.cc shows that there is no single
+   implementation of this function that works best for all conversion routines,
+   at least under GCC.  The possible implementations tested are:
+   inline assembly, inline C, macro.
+
+   @param a The 32-bit word to be rotated.
+   @param b The number of bits to rotate.  Positive means towards the most
+   significant end of the word ("left"), and negative means towards the least
+   significant end.  You should limit this value to [-31,31] (although the
+   x86 does take the modulus of the value in hardware).
+ **/
+inline uint32_t
+roll (uint32_t a, int b)
+{
+# if defined (__GNUC__)  &&  defined (__i386__)
+
+  uint32_t result;
+  __asm (
+		 "roll %%cl, %0\n"
+		 : "=g" (result)
+		 : "c" (b), "0" (a)
+		 :
+		 );
+  return result;
+
+# elif defined (_MSC_VER)  &&  defined (_M_IX86)
+
+  // TODO: benchmark this as well, to make sure asm is really helping
+  __asm
+  {
+	mov eax, a
+	mov ecx, b
+	rol eax, cl
+  }
+  // return with result in eax
+
+# else
+
+  //b &= 0x1F;
+  //return a << b | a >> 32 - b;
+  return b > 0 ? a << b : a >> -b;
+
+# endif
+}
+
+//#define roll(a,b) ((b) > 0 ? (a) << (b) : (a) >> -(b))
+//#define rollback(a,b) ((b) > 0 ? (a) >> (b) : (a) << -(b))
 
 
 // class PixelFormat ----------------------------------------------------------
@@ -992,9 +1056,9 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 		unsigned int g = *fromPixel & that->greenMask; \
 		unsigned int b = *fromPixel & that->blueMask; \
 		fromPixel++; \
-		*toPixel++ = ((  (redShift   > 0 ? r << redShift   : r >> -redShift)   * redWeight \
-					   + (greenShift > 0 ? g << greenShift : g >> -greenShift) * greenWeight \
-					   + (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  * blueWeight \
+		*toPixel++ = ((  roll (r, redShift)   * redWeight \
+					   + roll (g, greenShift) * greenWeight \
+					   + roll (b, blueShift)  * blueWeight \
 					  ) / totalWeight + 0x80) >> 8; \
 	  } \
 	  fromPixel = (unsigned fromSize *) ((char *) fromPixel + step); \
@@ -1027,9 +1091,9 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 	  unsigned int r = t.all & that->redMask;
 	  unsigned int g = t.all & that->greenMask;
 	  unsigned int b = t.all & that->blueMask;
-	  *toPixel-- = ((  (redShift   > 0 ? r << redShift   : r >> -redShift)   * redWeight
-					 + (greenShift > 0 ? g << greenShift : g >> -greenShift) * greenWeight
-					 + (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  * blueWeight
+	  *toPixel-- = ((  roll (r, redShift)   * redWeight
+					 + roll (g, greenShift) * greenWeight
+					 + roll (b, blueShift)  * blueWeight
 					) / totalWeight + 0x80) >> 8;
 	  // process other pixels
 	  while (toPixel >= begin)
@@ -1041,9 +1105,9 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
 		  b = t & that->blueMask;
-		  *toPixel-- = ((  (redShift   > 0 ? r << redShift   : r >> -redShift)   * redWeight
-						 + (greenShift > 0 ? g << greenShift : g >> -greenShift) * greenWeight
-						 + (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  * blueWeight
+		  *toPixel-- = ((  roll (r, redShift)   * redWeight
+						 + roll (g, greenShift) * greenWeight
+						 + roll (b, blueShift)  * blueWeight
 						) / totalWeight + 0x80) >> 8;
 		}
 		fromPixel -= step;
@@ -1063,9 +1127,9 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 	  unsigned int r = t.all & that->redMask;
 	  unsigned int g = t.all & that->greenMask;
 	  unsigned int b = t.all & that->blueMask;
-	  *toPixel++ = ((  (redShift   > 0 ? r << redShift   : r >> -redShift)   * redWeight
-					 + (greenShift > 0 ? g << greenShift : g >> -greenShift) * greenWeight
-					 + (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  * blueWeight
+	  *toPixel++ = ((  roll (r, redShift)   * redWeight
+					 + roll (g, greenShift) * greenWeight
+					 + roll (b, blueShift)  * blueWeight
 					) / totalWeight + 0x80) >> 8;
 	  // process other pixels
 	  while (toPixel < end)
@@ -1077,9 +1141,9 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
 		  b = t & that->blueMask;
-		  *toPixel++ = ((  (redShift   > 0 ? r << redShift   : r >> -redShift)   * redWeight
-						 + (greenShift > 0 ? g << greenShift : g >> -greenShift) * greenWeight
-						 + (blueShift  > 0 ? b << blueShift  : b >> -blueShift)  * blueWeight
+		  *toPixel++ = ((  roll (r, redShift)   * redWeight
+						 + roll (g, greenShift) * greenWeight
+						 + roll (b, blueShift)  * blueWeight
 						) / totalWeight + 0x80) >> 8;
 		}
 		fromPixel += step;
@@ -1675,9 +1739,9 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 		unsigned int g = *fromPixel & that->greenMask; \
 		unsigned int b = *fromPixel & that->blueMask; \
 		fromPixel++; \
-		float fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift]; \
-		float fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift]; \
-		float fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift]; \
+		float fr = lutChar2Float[roll (r, redShift)]; \
+		float fg = lutChar2Float[roll (g, greenShift)]; \
+		float fb = lutChar2Float[roll (b, blueShift)]; \
 		*toPixel++ = redToY * fr + greenToY * fg + blueToY * fb; \
 	  } \
 	  fromPixel = (unsigned imageSize *) ((char *) fromPixel + step); \
@@ -1710,9 +1774,9 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 	  unsigned int r = t.all & that->redMask;
 	  unsigned int g = t.all & that->greenMask;
 	  unsigned int b = t.all & that->blueMask;
-	  float fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift];
-	  float fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift];
-	  float fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift];
+	  float fr = lutChar2Float[roll (r, redShift)];
+	  float fg = lutChar2Float[roll (g, greenShift)];
+	  float fb = lutChar2Float[roll (b, blueShift)];
 	  *toPixel-- = redToY * fr + greenToY * fg + blueToY * fb;
 	  // Process other pixels
 	  while (toPixel >= begin)
@@ -1724,9 +1788,9 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
 		  b = t & that->blueMask;
-		  fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift];
-		  fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift];
-		  fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift];
+		  fr = lutChar2Float[roll (r, redShift)];
+		  fg = lutChar2Float[roll (g, greenShift)];
+		  fb = lutChar2Float[roll (b, blueShift)];
 		  *toPixel-- = redToY * fr + greenToY * fg + blueToY * fb;
 		}
 		fromPixel -= step;
@@ -1746,9 +1810,9 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 	  unsigned int r = t.all & that->redMask;
 	  unsigned int g = t.all & that->greenMask;
 	  unsigned int b = t.all & that->blueMask;
-	  float fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift];
-	  float fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift];
-	  float fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift];
+	  float fr = lutChar2Float[roll (r, redShift)];
+	  float fg = lutChar2Float[roll (g, greenShift)];
+	  float fb = lutChar2Float[roll (b, blueShift)];
 	  *toPixel++ = redToY * fr + greenToY * fg + blueToY * fb;
 	  // Process other pixels
 	  while (toPixel < end)
@@ -1760,9 +1824,9 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
 		  b = t & that->blueMask;
-		  fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift];
-		  fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift];
-		  fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift];
+		  fr = lutChar2Float[roll (r, redShift)];
+		  fg = lutChar2Float[roll (g, greenShift)];
+		  fb = lutChar2Float[roll (b, blueShift)];
 		  *toPixel++ = redToY * fr + greenToY * fg + blueToY * fb;
 		}
 		fromPixel += step;
@@ -2119,9 +2183,9 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 		unsigned int g = *fromPixel & that->greenMask; \
 		unsigned int b = *fromPixel & that->blueMask; \
 		fromPixel++; \
-		double fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift]; \
-		double fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift]; \
-		double fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift]; \
+		double fr = lutChar2Float[roll (r, redShift)]; \
+		double fg = lutChar2Float[roll (g, greenShift)]; \
+		double fb = lutChar2Float[roll (b, blueShift)]; \
 		*toPixel++ = redToY * fr + greenToY * fg + blueToY * fb; \
 	  } \
 	  fromPixel = (unsigned imageSize *) ((char *) fromPixel + step); \
@@ -2154,9 +2218,9 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 	  unsigned int r = t.all & that->redMask;
 	  unsigned int g = t.all & that->greenMask;
 	  unsigned int b = t.all & that->blueMask;
-	  double fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift];
-	  double fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift];
-	  double fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift];
+	  double fr = lutChar2Float[roll (r, redShift)];
+	  double fg = lutChar2Float[roll (g, greenShift)];
+	  double fb = lutChar2Float[roll (b, blueShift)];
 	  *toPixel-- = redToY * fr + greenToY * fg + blueToY * fb;
 	  // Process other pixels
 	  while (toPixel >= begin)
@@ -2168,9 +2232,9 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
 		  b = t & that->blueMask;
-		  fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift];
-		  fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift];
-		  fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift];
+		  fr = lutChar2Float[roll (r, redShift)];
+		  fg = lutChar2Float[roll (g, greenShift)];
+		  fb = lutChar2Float[roll (b, blueShift)];
 		  *toPixel-- = redToY * fr + greenToY * fg + blueToY * fb;
 		}
 		fromPixel -= step;
@@ -2190,9 +2254,9 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 	  unsigned int r = t.all & that->redMask;
 	  unsigned int g = t.all & that->greenMask;
 	  unsigned int b = t.all & that->blueMask;
-	  double fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift];
-	  double fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift];
-	  double fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift];
+	  double fr = lutChar2Float[roll (r, redShift)];
+	  double fg = lutChar2Float[roll (g, greenShift)];
+	  double fb = lutChar2Float[roll (b, blueShift)];
 	  *toPixel++ = redToY * fr + greenToY * fg + blueToY * fb;
 	  // Process other pixels
 	  while (toPixel < end)
@@ -2204,9 +2268,9 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
 		  b = t & that->blueMask;
-		  fr = lutChar2Float[redShift   > 0 ? r << redShift   : r >> -redShift];
-		  fg = lutChar2Float[greenShift > 0 ? g << greenShift : g >> -greenShift];
-		  fb = lutChar2Float[blueShift  > 0 ? b << blueShift  : b >> -blueShift];
+		  fr = lutChar2Float[roll (r, redShift)];
+		  fg = lutChar2Float[roll (g, greenShift)];
+		  fb = lutChar2Float[roll (b, blueShift)];
 		  *toPixel++ = redToY * fr + greenToY * fg + blueToY * fb;
 		}
 		fromPixel += step;
@@ -2439,10 +2503,10 @@ PixelFormatRGBABits::filter (const Image & image)
 	  unsigned int b = *fromPixel & fromBlue; \
 	  unsigned int a = fromAlpha ? *fromPixel & fromAlpha : 0xFFFFFFFF; \
 	  fromPixel++; \
-	  *toPixel++ =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-		           | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-		           | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-		           | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+	  *toPixel++ =   (roll (r, redShift)   & toRed) \
+		           | (roll (g, greenShift) & toGreen) \
+		           | (roll (b, blueShift)  & toBlue) \
+		           | (roll (a, alphaShift) & toAlpha); \
 	} \
 	fromPixel = (unsigned fromSize *) ((char *) fromPixel + step); \
   } \
@@ -2460,9 +2524,9 @@ PixelFormatRGBABits::filter (const Image & image)
 	{ \
 	  fromSize v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
 	  unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)]; \
-	  *toPixel++ =   ((redShift   > 0 ? t << redShift   : t >> -redShift)   & redMask) \
-	               | ((greenShift > 0 ? t << greenShift : t >> -greenShift) & greenMask) \
-	               | ((blueShift  > 0 ? t << blueShift  : t >> -blueShift)  & blueMask) \
+	  *toPixel++ =   (roll (t, redShift)   & redMask) \
+	               | (roll (t, greenShift) & greenMask) \
+	               | (roll (t, blueShift)  & blueMask) \
 	               | alphaMask; \
 	} \
 	fromPixel = (fromSize *) ((char *) fromPixel + step); \
@@ -2489,10 +2553,10 @@ PixelFormatRGBABits::filter (const Image & image)
   unsigned int g = t.all & fromGreen; \
   unsigned int b = t.all & fromBlue; \
   unsigned int a = fromAlpha ? t.all & fromAlpha : 0xFFFFFFFF; \
-  *toPixel-- =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-               | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-               | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-               | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+  *toPixel-- =   (roll (r, redShift)   & toRed) \
+               | (roll (g, greenShift) & toGreen) \
+               | (roll (b, blueShift)  & toBlue) \
+               | (roll (a, alphaShift) & toAlpha); \
   while (toPixel >= begin) \
   { \
 	while (toPixel >= rowBegin) \
@@ -2503,10 +2567,10 @@ PixelFormatRGBABits::filter (const Image & image)
 	  g = t & fromGreen; \
 	  b = t & fromBlue; \
 	  a = fromAlpha ? t & fromAlpha : 0xFFFFFFFF; \
-	  *toPixel-- =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-	               | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-	               | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-	               | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+	  *toPixel-- =   (roll (r, redShift)   & toRed) \
+	               | (roll (g, greenShift) & toGreen) \
+	               | (roll (b, blueShift)  & toBlue) \
+	               | (roll (a, alphaShift) & toAlpha); \
 	} \
 	fromPixel -= step; \
 	rowBegin -= result.width; \
@@ -2532,10 +2596,10 @@ PixelFormatRGBABits::filter (const Image & image)
 	  b = *fromPixel & fromBlue; \
 	  a = fromAlpha ? *fromPixel & fromAlpha : 0xFFFFFFFF; \
 	  fromPixel++; \
-	  * (unsigned int *) toPixel =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-		                           | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-		                           | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-		                           | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+	  * (unsigned int *) toPixel =   (roll (r, redShift)   & toRed) \
+		                           | (roll (g, greenShift) & toGreen) \
+		                           | (roll (b, blueShift)  & toBlue) \
+		                           | (roll (a, alphaShift) & toAlpha); \
 	  toPixel += 3; \
 	} \
 	fromPixel = (unsigned fromSize *) ((char *) fromPixel + step); \
@@ -2546,10 +2610,10 @@ PixelFormatRGBABits::filter (const Image & image)
   b = *fromPixel & fromBlue; \
   a = fromAlpha ? *fromPixel & fromAlpha : 0xFFFFFFFF; \
   Int2Char t; \
-  t.all =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-	      | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-	      | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-	      | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+  t.all =   (roll (r, redShift)   & toRed) \
+	      | (roll (g, greenShift) & toGreen) \
+	      | (roll (b, blueShift)  & toBlue) \
+	      | (roll (a, alphaShift) & toAlpha); \
   toPixel[0] = t.piece0; \
   toPixel[1] = t.piece1; \
   toPixel[2] = t.piece2; \
@@ -2575,10 +2639,10 @@ PixelFormatRGBABits::filter (const Image & image)
 	  g = t & fromGreen; \
 	  b = t & fromBlue; \
 	  a = fromAlpha ? t & fromAlpha : 0xFFFFFFFF; \
-	  * (unsigned int *) toPixel =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-	                               | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-	                               | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-	                               | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+	  * (unsigned int *) toPixel =   (roll (r, redShift)   & toRed) \
+	                               | (roll (g, greenShift) & toGreen) \
+	                               | (roll (b, blueShift)  & toBlue) \
+	                               | (roll (a, alphaShift) & toAlpha); \
 	  toPixel += 3; \
 	} \
 	fromPixel += step; \
@@ -2592,10 +2656,10 @@ PixelFormatRGBABits::filter (const Image & image)
   g = t.all & fromGreen; \
   b = t.all & fromBlue; \
   a = fromAlpha ? t.all & fromAlpha : 0xFFFFFFFF; \
-  t.all =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-          | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-          | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-          | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+  t.all =   (roll (r, redShift)   & toRed) \
+          | (roll (g, greenShift) & toGreen) \
+          | (roll (b, blueShift)  & toBlue) \
+          | (roll (a, alphaShift) & toAlpha); \
   toPixel[0] = t.piece0; \
   toPixel[1] = t.piece1; \
   toPixel[2] = t.piece2; \
@@ -2614,9 +2678,9 @@ PixelFormatRGBABits::filter (const Image & image)
 	{ \
 	  v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
 	  unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)]; \
-	  * (unsigned int *) toPixel =   ((redShift   > 0 ? t << redShift   : t >> -redShift)   & redMask) \
-	                               | ((greenShift > 0 ? t << greenShift : t >> -greenShift) & greenMask) \
-	                               | ((blueShift  > 0 ? t << blueShift  : t >> -blueShift)  & blueMask) \
+	  * (unsigned int *) toPixel =   (roll (t, redShift)   & redMask) \
+	                               | (roll (t, greenShift) & greenMask) \
+	                               | (roll (t, blueShift)  & blueMask) \
 	                               | alphaMask; \
 	  toPixel += 3; \
 	} \
@@ -2626,9 +2690,9 @@ PixelFormatRGBABits::filter (const Image & image)
   v = min (max (*fromPixel, (fromSize) 0.0), (fromSize) 1.0); \
   Int2Char t; \
   t.all = lutFloat2Char[(unsigned short) (65535 * v)]; \
-  t.all =   ((redShift   > 0 ? t.all << redShift   : t.all >> -redShift)   & redMask) \
-          | ((greenShift > 0 ? t.all << greenShift : t.all >> -greenShift) & greenMask) \
-          | ((blueShift  > 0 ? t.all << blueShift  : t.all >> -blueShift)  & blueMask) \
+  t.all =   (roll (t.all, redShift)   & redMask) \
+          | (roll (t.all, greenShift) & greenMask) \
+          | (roll (t.all, blueShift)  & blueMask) \
           | alphaMask; \
   toPixel[0] = t.piece0; \
   toPixel[1] = t.piece1; \
@@ -2652,10 +2716,10 @@ PixelFormatRGBABits::filter (const Image & image)
   unsigned int g = t.all & fromGreen; \
   unsigned int b = t.all & fromBlue; \
   unsigned int a = fromAlpha ? t.all & fromAlpha : 0xFFFFFFFF; \
-  *toPixel++ =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-               | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-               | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-               | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+  *toPixel++ =   (roll (r, redShift)   & toRed) \
+               | (roll (g, greenShift) & toGreen) \
+               | (roll (b, blueShift)  & toBlue) \
+               | (roll (a, alphaShift) & toAlpha); \
   while (toPixel < end) \
   { \
 	while (toPixel < rowEnd) \
@@ -2666,10 +2730,10 @@ PixelFormatRGBABits::filter (const Image & image)
 	  g = t & fromGreen; \
 	  b = t & fromBlue; \
 	  a = fromAlpha ? t & fromAlpha : 0xFFFFFFFF; \
-	  *toPixel++ =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-	               | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-	               | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-	               | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+	  *toPixel++ =   (roll (r, redShift)   & toRed) \
+	               | (roll (g, greenShift) & toGreen) \
+	               | (roll (b, blueShift)  & toBlue) \
+	               | (roll (a, alphaShift) & toAlpha); \
 	} \
 	fromPixel += step; \
 	rowEnd += result.width; \
@@ -2695,10 +2759,10 @@ PixelFormatRGBABits::filter (const Image & image)
 	  b = *fromPixel & fromBlue; \
 	  a = fromAlpha ? *fromPixel & fromAlpha : 0xFFFFFFFF; \
 	  fromPixel--; \
-	  * (unsigned int *) toPixel =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-		                           | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-		                           | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-		                           | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+	  * (unsigned int *) toPixel =   (roll (r, redShift)   & toRed) \
+		                           | (roll (g, greenShift) & toGreen) \
+		                           | (roll (b, blueShift)  & toBlue) \
+		                           | (roll (a, alphaShift) & toAlpha); \
 	  toPixel -= 3; \
 	} \
 	fromPixel = (unsigned fromSize *) ((char *) fromSize + step); \
@@ -2710,10 +2774,10 @@ PixelFormatRGBABits::filter (const Image & image)
   b = *fromPixel & fromBlue; \
   a = fromAlpha ? *fromPixel & fromAlpha : 0xFFFFFFFF; \
   Int2Char t; \
-  t.all =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-	      | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-	      | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-	      | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+  t.all =   (roll (r, redShift)   & toRed) \
+	      | (roll (g, greenShift) & toGreen) \
+	      | (roll (b, blueShift)  & toBlue) \
+	      | (roll (a, alphaShift) & toAlpha); \
   toPixel[0] = t.piece0; \
   toPixel[1] = t.piece1; \
   toPixel[2] = t.piece2; \
@@ -2739,10 +2803,10 @@ PixelFormatRGBABits::filter (const Image & image)
 	  g = t & fromGreen; \
 	  b = t & fromBlue; \
 	  a = fromAlpha ? t & fromAlpha : 0xFFFFFFFF; \
-	  * (unsigned int *) toPixel =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-	                               | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-	                               | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-	                               | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+	  * (unsigned int *) toPixel =   (roll (r, redShift)   & toRed) \
+	                               | (roll (g, greenShift) & toGreen) \
+	                               | (roll (b, blueShift)  & toBlue) \
+	                               | (roll (a, alphaShift) & toAlpha); \
 	  toPixel -= 3; \
 	} \
 	fromPixel -= step; \
@@ -2757,10 +2821,10 @@ PixelFormatRGBABits::filter (const Image & image)
   g = t.all & fromGreen; \
   b = t.all & fromBlue; \
   a = fromAlpha ? t.all & fromAlpha : 0xFFFFFFFF; \
-  t.all =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & toRed) \
-          | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & toGreen) \
-          | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & toBlue) \
-          | ((alphaShift > 0 ? a << alphaShift : a >> -alphaShift) & toAlpha); \
+  t.all =   (roll (r, redShift)   & toRed) \
+          | (roll (g, greenShift) & toGreen) \
+          | (roll (b, blueShift)  & toBlue) \
+          | (roll (a, alphaShift) & toAlpha); \
   toPixel[0] = t.piece0; \
   toPixel[1] = t.piece1; \
   toPixel[2] = t.piece2; \
@@ -2778,9 +2842,9 @@ PixelFormatRGBABits::filter (const Image & image)
 	{ \
 	  fromSize v = min (max (*fromPixel--, (fromSize) 0.0), (fromSize) 1.0); \
 	  unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)]; \
-	  * (unsigned int *) toPixel =   ((redShift   > 0 ? t << redShift   : t >> -redShift)   & redMask) \
-	                               | ((greenShift > 0 ? t << greenShift : t >> -greenShift) & greenMask) \
-	                               | ((blueShift  > 0 ? t << blueShift  : t >> -blueShift)  & blueMask) \
+	  * (unsigned int *) toPixel =   (roll (t, redShift)   & redMask) \
+	                               | (roll (t, greenShift) & greenMask) \
+	                               | (roll (t, blueShift)  & blueMask) \
 	                               | alphaMask; \
 	  toPixel -= 3; \
 	} \
@@ -2791,9 +2855,9 @@ PixelFormatRGBABits::filter (const Image & image)
   fromSize v = min (max (*fromPixel, (fromSize) 0.0), (fromSize) 1.0); \
   Int2Char t; \
   t.all = lutFloat2Char[(unsigned short) (65535 * v)]; \
-  t.all =   ((redShift   > 0 ? t.all << redShift   : t.all >> -redShift)   & redMask) \
-          | ((greenShift > 0 ? t.all << greenShift : t.all >> -greenShift) & greenMask) \
-          | ((blueShift  > 0 ? t.all << blueShift  : t.all >> -blueShift)  & blueMask) \
+  t.all =   (roll (t, redShift)   & redMask) \
+          | (roll (t, greenShift) & greenMask) \
+          | (roll (t, blueShift)  & blueMask) \
           | alphaMask; \
   toPixel[0] = t.piece0; \
   toPixel[1] = t.piece1; \
@@ -2868,9 +2932,9 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
 	  while (toPixel < rowEnd) \
 	  { \
 		unsigned int t = lutFloat2Char[*fromPixel++ << grayShift]; \
-		*toPixel++ =   ((redShift   > 0 ? t << redShift   : t >> -redShift)   & redMask) \
-		             | ((greenShift > 0 ? t << greenShift : t >> -greenShift) & greenMask) \
-		             | ((blueShift  > 0 ? t << blueShift  : t >> -blueShift)  & blueMask) \
+		*toPixel++ =   (roll (t, redShift)   & redMask) \
+		             | (roll (t, greenShift) & greenMask) \
+		             | (roll (t, blueShift)  & blueMask) \
 		             | alphaMask; \
 	  } \
 	  fromPixel = (unsigned short *) ((char *) fromPixel + step); \
@@ -2897,9 +2961,9 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
 		while (toPixel < rowEnd)
 		{
 		  unsigned int v = lutFloat2Char[*fromPixel++ << grayShift];
-		  * (unsigned int *) toPixel =   ((redShift   > 0 ? v << redShift   : v >> -redShift)   & redMask)
-		                               | ((greenShift > 0 ? v << greenShift : v >> -greenShift) & greenMask)
-		                               | ((blueShift  > 0 ? v << blueShift  : v >> -blueShift)  & blueMask)
+		  * (unsigned int *) toPixel =   (roll (v, redShift)   & redMask)
+		                               | (roll (v, greenShift) & greenMask)
+		                               | (roll (v, blueShift)  & blueMask)
 		                               | alphaMask;
 		  toPixel += 3;
 		}
@@ -2908,9 +2972,9 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
 	  fromPixel = (unsigned short *) ((char *) fromPixel - step);
 	  unsigned int v = lutFloat2Char[*fromPixel++ << grayShift];
 	  Int2Char t;
-	  t.all =   ((redShift   > 0 ? v << redShift   : v >> -redShift)   & redMask)
-		      | ((greenShift > 0 ? v << greenShift : v >> -greenShift) & greenMask)
-		      | ((blueShift  > 0 ? v << blueShift  : v >> -blueShift)  & blueMask)
+	  t.all =   (roll (v, redShift)   & redMask)
+		      | (roll (v, greenShift) & greenMask)
+		      | (roll (v, blueShift)  & blueMask)
 		      | alphaMask;
 	  toPixel[0] = t.piece0;
 	  toPixel[1] = t.piece1;
@@ -2925,9 +2989,9 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
 		while (toPixel > rowBegin)
 		{
 		  unsigned int v = lutFloat2Char[*fromPixel-- << grayShift];
-		  * (unsigned int *) toPixel =   ((redShift   > 0 ? v << redShift   : v >> -redShift)   & redMask)
-		                               | ((greenShift > 0 ? v << greenShift : v >> -greenShift) & greenMask)
-		                               | ((blueShift  > 0 ? v << blueShift  : v >> -blueShift)  & blueMask)
+		  * (unsigned int *) toPixel =   (roll (v, redShift)   & redMask)
+		                               | (roll (v, greenShift) & greenMask)
+		                               | (roll (v, blueShift)  & blueMask)
 		                               | alphaMask;
 		  toPixel -= 3;
 		}
@@ -2937,9 +3001,9 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
 	  toPixel++;
 	  unsigned int v = lutFloat2Char[*fromPixel << grayShift];
 	  Int2Char t;
-	  t.all =   ((redShift   > 0 ? v << redShift   : v >> -redShift)   & redMask)
-		      | ((greenShift > 0 ? v << greenShift : v >> -greenShift) & greenMask)
-		      | ((blueShift  > 0 ? v << blueShift  : v >> -blueShift)  & blueMask)
+	  t.all =   (roll (v, redShift)   & redMask)
+		      | (roll (v, greenShift) & greenMask)
+		      | (roll (v, blueShift)  & blueMask)
 		      | alphaMask;
 	  toPixel[0] = t.piece0;
 	  toPixel[1] = t.piece1;
@@ -3174,9 +3238,9 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
 		  unsigned int r = min (max (y + tr + 0x8000, 0), 0xFFFFFF); \
 		  unsigned int g = min (max (y - tg + 0x8000, 0), 0xFFFFFF); \
 		  unsigned int b = min (max (y + tb + 0x8000, 0), 0xFFFFFF); \
-		  *toPixel++ =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & redMask) \
-			           | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & greenMask) \
-			           | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & blueMask) \
+		  *toPixel++ =   (roll (r, redShift)   & redMask) \
+			           | (roll (g, greenShift) & greenMask) \
+			           | (roll (b, blueShift)  & blueMask) \
 			           | alphaMask; \
 		} \
 		toPixel += toBlockRowStep; \
@@ -3231,9 +3295,9 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
 			  unsigned int g = min (max (y - tg + 0x8000, 0), 0xFFFFFF);
 			  unsigned int b = min (max (y + tb + 0x8000, 0), 0xFFFFFF);
 			  Int2Char t;
-			  t.all =   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & redMask)
-				      | ((greenShift > 0 ? g << greenShift : g >> -greenShift) & greenMask)
-				      | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  & blueMask)
+			  t.all =   (roll (r, redShift)   & redMask)
+				      | (roll (g, greenShift) & greenMask)
+				      | (roll (b, blueShift)  & blueMask)
 				      | alphaMask;
 			  toPixel[0] = t.piece0;
 			  toPixel[1] = t.piece1;
@@ -3403,10 +3467,10 @@ PixelFormatRGBABits::getRGBA (void * pixel) const
 	ab = 8;
   }
 
-  return   ((redShift   > 0 ? r << redShift   : r >> -redShift)   & 0xFF000000)
-		 | ((greenShift > 0 ? g << greenShift : g >> -greenShift) &   0xFF0000)
-		 | ((blueShift  > 0 ? b << blueShift  : b >> -blueShift)  &     0xFF00)
-		 | (dublicate (a, alphaShift, alphaBits, 7 / ab + 1)      &       0xFF);
+  return   (roll (r, redShift)   & 0xFF000000)
+		 | (roll (g, greenShift) &   0xFF0000)
+		 | (roll (b, blueShift)  &     0xFF00)
+		 | (dublicate (a, alphaShift, alphaBits, 7 / ab + 1) & 0xFF);
 }
 
 unsigned char
@@ -3460,10 +3524,10 @@ PixelFormatRGBABits::setRGBA (void * pixel, unsigned int rgba) const
   // suggest.  The negation is handled by switching the shifts below.
 
   Int2Char value;
-  value.all =   ((redShift   > 0 ? r >> redShift   : r << -redShift)   & redMask)
-	          | ((greenShift > 0 ? g >> greenShift : g << -greenShift) & greenMask)
-              | ((blueShift  > 0 ? b >> blueShift  : b << -blueShift)  & blueMask)
-              | ((alphaShift > 0 ? a >> alphaShift : a << -alphaShift) & alphaMask);
+  value.all =   (roll (r, -redShift)   & redMask)
+	          | (roll (g, -greenShift) & greenMask)
+              | (roll (b, -blueShift)  & blueMask)
+              | (roll (a, -alphaShift) & alphaMask);
 
   switch ((int) depth)
   {
@@ -3497,7 +3561,7 @@ PixelFormatRGBABits::setAlpha (void * pixel, unsigned char alpha) const
   while (mask >>= 1) {shift++;}
 
   unsigned int a = alpha;
-  a = (shift > 0 ? a << shift : a >> -shift) & alphaMask;
+  a = roll (a, shift) & alphaMask;
 
   * (unsigned int *) pixel = a | ((* (unsigned int *) pixel) & ~alphaMask);
 }
