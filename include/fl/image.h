@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.9  thru 1.17 Copyright 2005 Sandia Corporation.
-Revisions 1.19 thru 1.44 Copyright 2007 Sandia Corporation.
+Revisions 1.19 thru 1.45 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.45  2007/08/26 12:36:49  Fred
+Support central format style conversions.
+
 Revision 1.44  2007/08/15 03:53:47  Fred
 Fix typo in comments for PixelBuffer::planes.
 
@@ -955,6 +958,7 @@ namespace fl
 	PixelFormatRGBAChar ();
 
 	virtual Image filter (const Image & image);
+	virtual void fromAny (const Image & image, Image & result) const;
 	void fromGrayChar    (const Image & image, Image & result) const;
 	void fromGrayFloat   (const Image & image, Image & result) const;
 	void fromGrayDouble  (const Image & image, Image & result) const;
