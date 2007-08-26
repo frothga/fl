@@ -12,6 +12,14 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.11  2007/08/26 12:09:08  Fred
+Fine-tune thresholds to work with dublicate().  Use finer granularity in float
+thresholds when testing accessors.  Better calculation of bit-loss.
+
+Time the entire pixel format test in order to compare speed cost for
+implementing dublicate().  It seems to only cost about 2.5% on whole image
+conversions (didn't test accessors because they take too long to run).
+
 Revision 1.10  2007/08/13 04:23:00  Fred
 Add test for Convolution1D.
 
@@ -82,6 +90,7 @@ self-verification.  The old test.cc is now called junk.cc
 #include "fl/random.h"
 #include "fl/video.h"
 #include "fl/interest.h"
+#include "fl/time.h"
 
 #include <float.h>
 
@@ -312,7 +321,7 @@ testConvolutionDiscrete1D (const Image & image, const ConvolutionDiscrete1D & ke
 }
 
 const float thresholdRatio         = 1.01f;
-const float thresholdDifference    = 0.01f;
+const float thresholdDifference    = 0.013f;
 const int   thresholdLuma          = 1;
 const int   thresholdChroma        = 1;
 const int   thresholdLumaClipped   = 3;
@@ -395,7 +404,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 			}
 			else
 			{
-			  cout << x << " " << y << " unexpected change in gray level: " << difference << " = | " << original << " - " << converted << " |" << endl;
+			  cout << x << " " << y << " unexpected change in gray level: " << difference << " = | " << original << " -> " << converted << " |" << endl;
 			  throw "PixelFormat fails";
 			}
 		  }
@@ -521,34 +530,28 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	}
 	else if (const PixelFormatRGBABits * pfbits = dynamic_cast<const PixelFormatRGBABits *> (targetFormat))
 	{
-	  int rbits = pfbits->redBits;
-	  int gbits = pfbits->greenBits;
-	  int bbits = pfbits->blueBits;
-	  int abits = 8;
-	  if (const PixelFormatRGBABits * frombits = dynamic_cast<const PixelFormatRGBABits *> (fromFormat))
+	  // Determine mask for significant bits, that is, bits that can/should be
+	  // compared.  Eventually change this to determine threshold based on bits
+	  // lost in each channel.
+	  int rbits = min (8, pfbits->redBits);
+	  int gbits = min (8, pfbits->greenBits);
+	  int bbits = min (8, pfbits->blueBits);
+	  int abits = min (8, pfbits->alphaBits ? pfbits->alphaBits : 8);  // if no alpha channel, then expect it to be faked as 0xFF by getRGBA()
+	  if (pfbits = dynamic_cast<const PixelFormatRGBABits *> (fromFormat))
 	  {
-		if (*fromFormat != *targetFormat)
-		{
-		  int oabits = frombits->alphaBits;
-		  if (oabits < 8)
-		  {
-			abits = pfbits->alphaBits;
-			abits = min (abits, oabits);
-			if (abits == 0) abits = 8;  // if no alpha channel, then expect it to be faked as 0xFF
-		  }
-		}
+		rbits = min (rbits, pfbits->redBits);
+		gbits = min (gbits, pfbits->greenBits);
+		bbits = min (bbits, pfbits->blueBits);
+		abits = min (abits, pfbits->alphaBits ? pfbits->alphaBits : 8);
 	  }
-	  rbits = min (rbits, 8);
-	  gbits = min (gbits, 8);
-	  bbits = min (bbits, 8);
 	  rbits = 8 - rbits;
 	  gbits = 8 - gbits;
 	  bbits = 8 - bbits;
 	  abits = 8 - abits;
-	  unsigned int omask =   ((0xFF >> rbits) << (24 + rbits))
-	                       | ((0xFF >> gbits) << (16 + gbits))
-	                       | ((0xFF >> bbits) << ( 8 + bbits))
-	                       | ((0xFF >> abits) <<       abits );
+	  unsigned int mask =   ((0xFF >> rbits) << (24 + rbits))
+	                      | ((0xFF >> gbits) << (16 + gbits))
+	                      | ((0xFF >> bbits) << ( 8 + bbits))
+	                      | ((0xFF >> abits) <<       abits );
 
 	  for (int y = 0; y < fromImage.height; y++)
 	  {
@@ -556,7 +559,8 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 		{
 		  unsigned int original  = fromImage.getRGBA (x, y);
 		  unsigned int converted = toImage.getRGBA (x, y);
-		  original &= omask;
+		  original &= mask;
+		  converted &= mask;
 
 		  int r =  original             >> 24;
 		  int g = (original & 0xFF0000) >> 16;
@@ -575,7 +579,8 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 		  int error = max (er, eg, eb, ea);
 		  if (error > thresholdLuma)
 		  {
-			cout << x << " " << y << " unexpected change in color value: " << error << " " << hex << original << " " << converted << dec << endl;
+			cout << x << " " << y << " unexpected change in color value: " << error << " " << hex << original << " -> " << converted << endl;
+			cout << "  mask = " << mask << "  " << fromImage.getRGBA (x, y) << " -> " << toImage.getRGBA (x, y) << dec << endl;
 			throw "PixelFormat fails";
 		  }
 		}
@@ -599,6 +604,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 			if (ratio > thresholdRatio  &&  difference > thresholdDifference)
 			{
 			  cout << x << " " << y << " unexpected change in color value: " << ratio << endl << original << endl << converted << endl;
+			  cout << hex << fromImage.getRGBA (x, y) << dec << endl;
 			  throw "PixelFormat fails";
 			}
 		  }
@@ -610,6 +616,15 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 
   // Verify all accessors
   cerr << "  checking accessors";
+
+  //   Expectations for alpha channel  (independent of whether format is color or monochrome)
+  int tAlpha = thresholdLuma;
+  if (const PixelFormatRGBABits * pfbits = dynamic_cast<const PixelFormatRGBABits *> (targetFormat))
+  {
+	int abits = 8 - min (8, pfbits->alphaBits ? pfbits->alphaBits : 8);
+	tAlpha = max (tAlpha, 1 << abits);
+  }
+
   Image target (16, 16, *targetFormat);
   if (targetFormat->monochrome)
   {
@@ -757,47 +772,63 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
   else
   {
 	// Expectations
-	unsigned int rmask = 0xFF;
-	unsigned int gmask = 0xFF;
-	unsigned int bmask = 0xFF;
 	float tRatio      = thresholdRatio;
-	float tDifference = thresholdDifference;
 	int tLuma         = thresholdLuma;
 	int tChroma       = thresholdChroma;
+	int tRed          = thresholdChroma;
+	int tGreen        = thresholdChroma;
+	int tBlue         = thresholdChroma;
+	Vector<float> tDifference (7);  // RGBAXYZ
+	tDifference.clear (thresholdDifference);
+
 	if (PixelFormatPlanarYCbCr * pfycbcr = dynamic_cast<PixelFormatPlanarYCbCr *> (targetFormat))
 	{
 	  tChroma = max (tChroma, 2);
+	  tRed    = tChroma;
+	  tGreen  = tChroma;
+	  tBlue   = tChroma;
 	  tRatio  = max (tRatio,  1.035f);
+	  tDifference.clear (1.0 - fl::PixelFormat::lutChar2Float[255 - tChroma]);
+	  tDifference[3] = tAlpha / 255.0;
 	}
 	else if (const PixelFormatHLSFloat * hls = dynamic_cast<const PixelFormatHLSFloat *> (targetFormat))
 	{
 	  // Very loose thresholds because HLS has abysmal color fidelity due to
 	  // singularities.
-	  tChroma     = max (tChroma,     6);
-	  tLuma       = max (tLuma,       6);
-	  tDifference = max (tDifference, 0.06f);
+	  tChroma = max (tChroma, 6);
+	  tRed    = tChroma;
+	  tGreen  = tChroma;
+	  tBlue   = tChroma;
+	  tLuma   = max (tLuma, 6);
+	  tDifference.clear (max (thresholdDifference, 0.06f));
+	  tDifference[3] = tAlpha / 255.0;
 	}
 	else if (const PixelFormatRGBABits * pfbits = dynamic_cast<const PixelFormatRGBABits *> (targetFormat))
 	{
-	  int rbits = pfbits->redBits;
-	  int gbits = pfbits->greenBits;
-	  int bbits = pfbits->blueBits;
-	  rbits = min (rbits, 8);
-	  gbits = min (gbits, 8);
-	  bbits = min (bbits, 8);
-	  rbits = 8 - rbits;
-	  gbits = 8 - gbits;
-	  bbits = 8 - bbits;
-	  rmask = (0xFF >> rbits) << rbits;
-	  gmask = (0xFF >> gbits) << gbits;
-	  bmask = (0xFF >> bbits) << bbits;
+	  int rbits = 8 - min (8, pfbits->redBits);
+	  int gbits = 8 - min (8, pfbits->greenBits);
+	  int bbits = 8 - min (8, pfbits->blueBits);
+	  int xbits = (int) ceil (0.4124f * rbits + 0.3576f * gbits + 0.1805f * bbits);
+	  int ybits = (int) ceil (0.2126f * rbits + 0.7152f * gbits + 0.0722f * bbits);
+	  int zbits = (int) ceil (0.0193f * rbits + 0.1192f * gbits + 0.9505f * bbits);
 
-	  int chromabits = max (rbits, max (gbits, bbits));
-	  if (chromabits) chromabits--;
-	  int lumabits   = (int) ceil (0.2126f * rbits + 0.7152f * gbits + 0.0722f * bbits);
-	  tChroma     = max (tChroma,     1 << chromabits);
-	  tLuma       = max (tLuma,       1 << lumabits);
-	  tDifference = max (tDifference, max (tChroma, tLuma) / 125.0f);
+	  tRed    = max (tRed,   1 << rbits);
+	  tGreen  = max (tGreen, 1 << gbits);
+	  tBlue   = max (tBlue,  1 << bbits);
+	  tChroma = max (tRed, max (tGreen, tBlue));
+	  tLuma   = max (tLuma,  1 << ybits);
+
+	  tDifference[0] = 1.0 - fl::PixelFormat::lutChar2Float[255 - tRed];
+	  tDifference[1] = 1.0 - fl::PixelFormat::lutChar2Float[255 - tGreen];
+	  tDifference[2] = 1.0 - fl::PixelFormat::lutChar2Float[255 - tBlue];
+	  tDifference[3] = tAlpha / 255.0;
+	  tDifference[4] = 1.0 - fl::PixelFormat::lutChar2Float[255 - (1 << xbits)];
+	  tDifference[5] = 1.0 - fl::PixelFormat::lutChar2Float[255 - tLuma];
+	  tDifference[6] = 1.0 - fl::PixelFormat::lutChar2Float[255 - (1 << zbits)];
+
+	  //cerr << "thresholds: " << tRed << " " << tGreen << " " << tBlue << " " << tAlpha << " " << tChroma << " " << tLuma << endl;
+	  //cerr << "difference: " << tDifference << endl;
+	  //cerr << "bits: " << rbits << " " << gbits << " " << bbits << " " << xbits << " " << ybits << " " << zbits << endl;
 	}
 
 	Vector<float> rgbaFloatIn (4);
@@ -820,14 +851,15 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 		  int cg = (rgbaOut & 0xFF0000) >> 16;
 		  int cb = (rgbaOut &   0xFF00) >>  8;
 		  int ca =  rgbaOut &     0xFF;
-		  int er = abs ((int) (r & rmask) - cr);
-		  int eg = abs ((int) (g & gmask) - cg);
-		  int eb = abs ((int) (b & bmask) - cb);
-		  int ea = abs (       0xFF       - ca);
-		  int error = max (er, eg, eb, ea);
-		  if (error > tChroma)
+		  int er = abs (r    - cr);
+		  int eg = abs (g    - cg);
+		  int eb = abs (b    - cb);
+		  int ea = abs (0xFF - ca);
+		  if (er > tRed  ||  eg > tGreen  ||  eb > tBlue  ||  ea > tAlpha)
 		  {
-			cout << r << " " << g << " " << b << " getRGBA returned unexpected value: " << error << " " << hex << " " << rgbaIn << " " << rgbaOut << dec << endl;
+			cout << r << " " << g << " " << b << " getRGBA returned unexpected value: {";
+			cout << er << " " << eg << " " << eb << " " << ea << "} > {" << tRed << " " << tGreen << " " << tBlue << " " << tAlpha << "} ";
+			cout << hex << " " << rgbaIn << " -> " << rgbaOut << dec << endl;
 			throw "PixelFormat fails";
 		  }
 
@@ -840,9 +872,11 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 			float ratio = rgbaFloatOut[j] / rgbaFloatIn[j];
 			if (ratio < 1.0f) ratio = 1.0f / ratio;
 			float difference = fabs (rgbaFloatOut[j] - rgbaFloatIn[j]);
-			if (ratio > tRatio  &&  difference > tDifference)
+			if (ratio > tRatio  &&  difference > tDifference[j])
 			{
-			  cout << r << " " << g << " " << b << " getRGBA returned unexpected value: " << ratio << endl << rgbaFloatIn << endl << rgbaFloatOut << endl;
+			  cout << r << " " << g << " " << b << " getRGBA returned unexpected value: " << ratio << endl;
+			  cout << rgbaFloatIn << endl;
+			  cout << rgbaFloatOut << endl;
 			  throw "PixelFormat fails";
 			}
 		  }
@@ -860,7 +894,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 			float ratio = xyzOut[j] / xyzIn[j];
 			if (ratio < 1.0f) ratio = 1.0f / ratio;
 			float difference = fabs (xyzOut[j] - xyzIn[j]);
-			if (ratio > tRatio  &&  difference > tDifference)
+			if (ratio > tRatio  &&  difference > tDifference[4+j])
 			{
 			  cout << r << " " << g << " " << b << " getXYZ returned unexpected value: " << ratio << endl << xyzIn << endl << xyzOut << endl;
 			  throw "PixelFormat fails";
@@ -883,7 +917,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 		  int ey = abs (y - cy);
 		  int eu = abs (u - cu);
 		  int ev = abs (v - cv);
-		  error = max (eu, ev);
+		  int error = max (eu, ev);
 		  if (ey > tLuma  ||  error > tChroma)
 		  {
 			cout << r << " " << g << " " << b << " getYUV returned unexpected value: " << hex << yuvIn << " " << yuvOut << dec << endl;
@@ -906,9 +940,10 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 		  float ratio = grayFloatOut / xyzIn[1];
 		  if (ratio < 1.0f) ratio = 1.0f / ratio;
 		  float difference = fabs (grayFloatOut - xyzIn[1]);
-		  if (ratio > tRatio  &&  difference > tDifference)
+		  if (ratio > tRatio  &&  difference > tDifference[5])
 		  {
-			cout << r << " " << g << " " << b << " getGray returned unexpected value: " << ratio << " " << xyzIn[1] << " " << grayFloatOut << endl;
+			cout << r << " " << g << " " << b << " getGray returned unexpected value: ratio=" << ratio << " difference=" << difference << "  " << xyzIn[1] << " -> " << grayFloatOut << endl;
+			cout << "tRatio = " << tRatio << "  tDifference = " << tDifference << endl;
 			throw "PixelFormat fails";
 		  }
 		}
@@ -919,16 +954,6 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
   }
 
   // get/setAlpha
-  //   Expectations
-  int tAlpha = thresholdLuma;
-  if (const PixelFormatRGBABits * pfbits = dynamic_cast<const PixelFormatRGBABits *> (targetFormat))
-  {
-	int abits = pfbits->alphaBits;
-	abits = min (abits, 8);
-	abits = 8 - abits;
-	tAlpha = max (tAlpha, 1 << abits);
-  }
-  //   test
   if (targetFormat->hasAlpha)
   {
 	for (int a = 0; a < 256; a++)
@@ -986,12 +1011,14 @@ main (int argc, char * argv[])
 
 	  Image test ("test.jpg");
 
+	  Stopwatch timer;
 	  for (int i = 0; i < formats.size (); i++)
 	  {
 		testFormat (test, formats, formats[i]);
 	  }
+	  timer.stop ();
 
-	  cout << "PixelFormat passes" << endl;
+	  cout << "PixelFormat passes " << timer << endl;
 	}
 
 	// AbsoluteValue -- float and double
