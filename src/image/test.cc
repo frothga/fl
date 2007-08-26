@@ -3,7 +3,7 @@ Author: Fred Rothganger
 Created 2/24/2006 to perform regression testing on the image library.
 
 
-Revisions 1.1 thru 1.10 Copyright 2007 Sandia Corporation.
+Revisions 1.1 thru 1.12 Copyright 2007 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -12,6 +12,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.12  2007/08/26 12:10:29  Fred
+Update SNL copyright notice.
+
 Revision 1.11  2007/08/26 12:09:08  Fred
 Fine-tune thresholds to work with dublicate().  Use finer granularity in float
 thresholds when testing accessors.  Better calculation of bit-loss.
