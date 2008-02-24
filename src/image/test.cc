@@ -3,7 +3,7 @@ Author: Fred Rothganger
 Created 2/24/2006 to perform regression testing on the image library.
 
 
-Revisions 1.1 thru 1.12 Copyright 2007 Sandia Corporation.
+Revisions 1.1 thru 1.13 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -12,6 +12,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.13  2008/02/24 14:20:35  Fred
+Fix MSVC 2005 compilation issue.
+
 Revision 1.12  2007/08/26 12:10:29  Fred
 Update SNL copyright notice.
 
@@ -421,7 +424,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	  //cerr << "    ratioH,V = " << ratioH << " " << ratioV << endl;
 	  PixelFormatYUV * frompfyuv = dynamic_cast<PixelFormatYUV *> (fromFormat);
 
-	  const unsigned int shift = 16 + (int) rint (log (ratioH * ratioV) / log (2));
+	  const unsigned int shift = 16 + (int) rint (log ((double) ratioH * ratioV) / log (2.0));
 	  const int roundup = 0x8000 << (shift - 16);
 	  const int bias = 0x808 << (shift - 4);  // also includes roundup
 	  const int maximum = (~(unsigned int) 0) >> (24 - shift);
