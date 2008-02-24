@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.7 and 1.9    Copyright 2005 Sandia Corporation.
-Revisions 1.11 thru 1.15 Copyright 2007 Sandia Corporation.
+Revisions 1.11 thru 1.16 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,10 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.16  2008/02/24 13:57:46  Fred
+Add extern "C" to include of FFMEG headers, since they had the ingenious idea
+of removing the internal declaration.
+
 Revision 1.15  2007/02/18 14:50:37  Fred
 Use CVS Log to generate revision history.
 
@@ -91,7 +95,10 @@ Imported sources
 #include "fl/image.h"
 
 // This include is needed to declare data members in VideoFileFFMPEG
+extern "C"
+{
 #include <ffmpeg/avformat.h>
+}
 
 
 namespace fl
