@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.4 thru 1.6  Copyright 2005 Sandia Corporation.
-Revisions 1.8 thru 1.16 Copyright 2007 Sandia Corporation.
+Revisions 1.8 thru 1.17 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.17  2008/02/24 14:08:34  Fred
+Read and write named values in jpeg files.
+
 Revision 1.16  2007/08/12 14:36:41  Fred
 Use stride directly for byte size of rows.
 
@@ -86,12 +89,15 @@ Imported sources
 
 #include "fl/image.h"
 #include "fl/string.h"
+#include "fl/parms.h"
 
 extern "C"
 {
   #include <jpeglib.h>
   #include <jmorecfg.h>
 }
+
+#include <strstream>
 
 
 using namespace std;
@@ -204,28 +210,119 @@ term_source (j_decompress_ptr cinfo)
 class ImageFileDelegateJPEG : public ImageFileDelegate
 {
 public:
-  ImageFileDelegateJPEG (istream * in, ostream * out, bool ownStream = false)
-  {
-	this->in = in;
-	this->out = out;
-	this->ownStream = ownStream;
-  }
+  ImageFileDelegateJPEG (istream * in, ostream * out, bool ownStream = false);
   ~ImageFileDelegateJPEG ();
+
+  void parseComments (jpeg_saved_marker_ptr marker);
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
+  virtual void get (const string & name, string & value);
+  virtual void get (const string & name, int & value);
+  virtual void get (const string & name, double & value);
+  virtual void get (const string & name, Matrix<double> & value);
+
+  virtual void set (const string & name, const string & value);
+  virtual void set (const string & name, int value);
+  virtual void set (const string & name, double value);
+  virtual void set (const string & name, const Matrix<double> & value);
+
   istream * in;
   ostream * out;
   bool ownStream;
+
+  // It is a little wasteful of space to hold all the structures for both
+  // read and write.  However, it shouldn't waste any time.
+  struct jpeg_decompress_struct dinfo;
+  struct jpeg_compress_struct cinfo;
+  struct jpeg_error_mgr jerr;
+  SourceManager sm;
+  DestinationManager dm;
+
+  int quality;  ///< Value in [0,100] that guides compression level.
+  map<string, string> namedValues;
+  string comments;  ///< A concatenation of any JPEG_COM data read which does not fit the name=value form.
 };
+
+ImageFileDelegateJPEG::ImageFileDelegateJPEG (istream * in, ostream * out, bool ownStream)
+{
+  this->in = in;
+  this->out = out;
+  this->ownStream = ownStream;
+  quality = 75;
+
+  if (in)
+  {
+	dinfo.err = jpeg_std_error (&jerr);
+	jerr.output_message = output_message;
+	jpeg_create_decompress (&dinfo);
+
+	sm.jsm.init_source       = init_source;
+	sm.jsm.fill_input_buffer = fill_input_buffer;
+	sm.jsm.skip_input_data   = skip_input_data;
+	sm.jsm.resync_to_restart = jpeg_resync_to_restart;
+	sm.jsm.term_source       = term_source;
+	sm.stream = in;
+	dinfo.src = (jpeg_source_mgr *) &sm;
+
+	jpeg_save_markers (&dinfo, JPEG_COM, 0xFFFF);
+	jpeg_read_header (&dinfo, TRUE);
+	jpeg_calc_output_dimensions (&dinfo);
+
+	parseComments (dinfo.marker_list);  // Parse any comments that arrived with header
+  }
+
+  if (out)
+  {
+	cinfo.err = jpeg_std_error (&jerr);
+	jpeg_create_compress (&cinfo);
+
+	dm.jdm.init_destination    = init_destination;
+	dm.jdm.empty_output_buffer = empty_output_buffer;
+	dm.jdm.term_destination    = term_destination;
+	dm.stream = out;
+	cinfo.dest = (jpeg_destination_mgr *) &dm;
+  }
+}
 
 ImageFileDelegateJPEG::~ImageFileDelegateJPEG ()
 {
+  if (in)  jpeg_destroy_decompress (&dinfo);
+  if (out) jpeg_destroy_compress   (&cinfo);
+
   if (ownStream)
   {
-	if (in) delete in;
+	if (in)  delete in;
 	if (out) delete out;
+  }
+}
+
+void
+ImageFileDelegateJPEG::parseComments (jpeg_saved_marker_ptr marker)
+{
+  namedValues.clear ();
+  comments.clear ();
+
+  while (marker)
+  {
+	string temp ((char *) marker->data, marker->data_length);
+
+	string name;
+	string value;
+	split (temp, "=", name, value);
+	trim (name);
+	trim (value);
+	if (value.size ())
+	{
+	  namedValues.insert (make_pair (name, value));
+	}
+	else
+	{
+	  comments = comments + name;
+	}
+
+	marker = marker->next;
   }
 }
 
@@ -234,31 +331,14 @@ ImageFileDelegateJPEG::read (Image & image, int x, int y, int width, int height)
 {
   if (! in) throw "ImageFileDelegateJPEG not open for reading";
 
-  struct jpeg_decompress_struct cinfo;
-  struct jpeg_error_mgr jerr;
-  cinfo.err = jpeg_std_error (&jerr);
-  jerr.output_message = output_message;
-  jpeg_create_decompress (&cinfo);
-
-  SourceManager * sm = new SourceManager;
-  sm->jsm.init_source = init_source;
-  sm->jsm.fill_input_buffer = fill_input_buffer;
-  sm->jsm.skip_input_data = skip_input_data;
-  sm->jsm.resync_to_restart = jpeg_resync_to_restart;
-  sm->jsm.term_source = term_source;
-  sm->stream = in;
-  cinfo.src = (jpeg_source_mgr *) sm;
-
-  jpeg_read_header (&cinfo, TRUE);
-
-  jpeg_start_decompress (&cinfo);
+  jpeg_start_decompress (&dinfo);
 
   PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
   if (! buffer) image.buffer = buffer = new PixelBufferPacked;
 
   // Should do something more sophisticated here, like handle different color
   // spaces or different number of components.
-  if (cinfo.output_components == 1)
+  if (dinfo.output_components == 1)
   {
 	image.format = &GrayChar;
   }
@@ -266,20 +346,22 @@ ImageFileDelegateJPEG::read (Image & image, int x, int y, int width, int height)
   {
 	image.format = &RGBChar;
   }
-  image.resize (cinfo.output_width, cinfo.output_height);
+  image.resize (dinfo.output_width, dinfo.output_height);
 
+  // Read image
   char * p = (char *) buffer->memory;
   JSAMPROW row[1];
-  while (cinfo.output_scanline < cinfo.output_height)
+  while (dinfo.output_scanline < dinfo.output_height)
   {
 	row[0] = (JSAMPLE *) p;
-    jpeg_read_scanlines (&cinfo, row, 1);
+	jpeg_read_scanlines (&dinfo, row, 1);
 	p += buffer->stride;
   }
-  jpeg_finish_decompress (&cinfo);
 
-  jpeg_destroy_decompress (&cinfo);
-  delete sm;
+  // Re-parse comments in case some arrived with image data
+  parseComments (dinfo.marker_list);
+
+  jpeg_finish_decompress (&dinfo);
 }
 
 void
@@ -287,49 +369,272 @@ ImageFileDelegateJPEG::write (const Image & image, int x, int y)
 {
   if (! out) throw "ImageFileDelegateJPEG not open for writing";
 
-  if (*image.format != RGBChar)
-  {
-	Image temp = image * RGBChar;
-	write (temp);
-	return;
-  }
+  PixelFormat * format;
+  if (image.format->monochrome) format = &GrayChar;
+  else                          format = &RGBChar;
+  Image work = image * *format;
 
-  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
+  PixelBufferPacked * buffer = (PixelBufferPacked *) work.buffer;
   if (! buffer) throw "JPEG only handles packed buffers for now.";
 
-  struct jpeg_compress_struct cinfo;
-  struct jpeg_error_mgr jerr;
-  cinfo.err = jpeg_std_error (&jerr);
-  jpeg_create_compress (&cinfo);
-
-  DestinationManager * dm = new DestinationManager;
-  dm->jdm.init_destination = init_destination;
-  dm->jdm.empty_output_buffer = empty_output_buffer;
-  dm->jdm.term_destination = term_destination;
-  dm->stream = out;
-  cinfo.dest = (jpeg_destination_mgr *) dm;
-
-  cinfo.image_width      = image.width;
-  cinfo.image_height     = image.height;
-  cinfo.input_components = 3;
-  cinfo.in_color_space   = JCS_RGB;
+  cinfo.image_width      = work.width;
+  cinfo.image_height     = work.height;
+  if (*format == GrayChar)
+  {
+	cinfo.input_components = 1;
+	cinfo.in_color_space   = JCS_GRAYSCALE;
+  }
+  else
+  {
+	cinfo.input_components = 3;
+	cinfo.in_color_space   = JCS_RGB;
+  }
+  // It would also be possible to support YCbCr, but currently this is only a planar format.
   jpeg_set_defaults (&cinfo);
-  //jpeg_set_quality (&cinfo, quality, TRUE);
+  jpeg_set_quality (&cinfo, quality, TRUE);
 
   jpeg_start_compress (&cinfo, TRUE);
+
+  // Write comments
+  map<string, string>::iterator it;
+  for (it = namedValues.begin (); it != namedValues.end (); it++)
+  {
+	string namedValue = it->first + "=" + it->second;
+	jpeg_write_marker (&cinfo, JPEG_COM, (JOCTET *) namedValue.c_str (), namedValue.size ());  // stored text does not inlcude null terminator!
+  }
+  if (comments.size ()) jpeg_write_marker (&cinfo, JPEG_COM, (JOCTET *) comments.c_str (), comments.size ());
+
+  // Write image data
   char * p = (char *) buffer->memory;
   JSAMPROW row[1];
   while (cinfo.next_scanline < cinfo.image_height)
   {
-    row[0] = (JSAMPLE *) p;
-    jpeg_write_scanlines (&cinfo, row, 1);
+	row[0] = (JSAMPLE *) p;
+	jpeg_write_scanlines (&cinfo, row, 1);
 	p += buffer->stride;
   }
-  jpeg_finish_compress (&cinfo);
 
-  jpeg_destroy_compress (&cinfo);
-  delete dm;
+  jpeg_finish_compress (&cinfo);
 }
+
+void
+ImageFileDelegateJPEG::get (const string & name, string & value)
+{
+  if (out)
+  {
+	if (name == "width"  ||  name == "blockWidth")
+	{
+	  ostrstream sv;
+	  sv << dinfo.output_width;
+	  value = sv.str ();
+	  return;
+	}
+	if (name == "height"  ||  name == "blockHeight")
+	{
+	  ostrstream sv;
+	  sv << dinfo.output_height;
+	  value = sv.str ();
+	  return;
+	}
+  }
+
+  if (name == "quality")
+  {
+	ostrstream sv;
+	sv << quality;
+	value = sv.str ();
+	return;
+  }
+
+  if (name == "comments"  &&  comments.size ())
+  {
+	value = comments;
+	return;
+  }
+
+  map<string, string>::iterator it = namedValues.find (name);
+  if (it != namedValues.end ())
+  {
+	value = it->second;
+	return;
+  }
+}
+
+void
+ImageFileDelegateJPEG::get (const string & name, int & value)
+{
+  Matrix<double> v;
+  get (name, v);
+  if (v.rows () > 0  &&  v.columns () > 0)
+  {
+	value = (int) rint (v(0,0));
+  }
+}
+
+void
+ImageFileDelegateJPEG::get (const string & name, double & value)
+{
+  Matrix<double> v;
+  get (name, v);
+  if (v.rows () > 0  &&  v.columns () > 0)
+  {
+	value = v(0,0);
+  }
+}
+
+void
+ImageFileDelegateJPEG::get (const string & name, Matrix<double> & value)
+{
+  if (out)
+  {
+	if (name == "width"  ||  name == "blockWidth")
+	{
+	  value.resize (1, 1);
+	  value(0,0) = dinfo.output_width;
+	  return;
+	}
+	if (name == "height"  ||  name == "blockHeight")
+	{
+	  value.resize (1, 1);
+	  value(0,0) = dinfo.output_height;
+	  return;
+	}
+  }
+
+  if (name == "quality")
+  {
+	value.resize (1,1);
+	value(0,0) = quality;
+	return;
+  }
+
+  if (name == "comments"  &&  comments.size ())
+  {
+	value.resize (1,1);
+	value(0,0) = atol (comments.c_str ());
+	return;
+  }
+
+  map<string, string>::iterator it = namedValues.find (name);
+  if (it != namedValues.end ())
+  {
+	// Scan value to count rows and columns
+	int rows = 0;
+	int columns = 0;
+	istrstream sv (it->second.c_str ());
+	while (sv.good ())
+	{
+	  string line;
+	  getline (sv, line);
+	  if (line.size ()) rows++;
+	  if (! columns)
+	  {
+		trim (line);
+		while (line.size ())
+		{
+		  columns++;
+		  int pos = line.find_first_of (" \t");
+		  if (pos == string::npos) break;
+		  line = line.substr (pos);
+		  trim (line);
+		}
+	  }
+	}
+
+	// Extract the matrix
+	value.resize (rows, columns);
+	value << it->second;
+
+	return;
+  }
+}
+
+void
+ImageFileDelegateJPEG::set (const string & name, const string & value)
+{
+  if (name == "quality")
+  {
+	quality = atoi (value.c_str ());
+	return;
+  }
+
+  if (name == "comments")
+  {
+	comments = value;
+	return;
+  }
+
+  if (name.size ())
+  {
+	if (value.size ())
+	{
+	  namedValues.insert (make_pair (name, value));
+	}
+	else
+	{
+	  namedValues.erase (name);
+	}
+  }
+  else if (value.size ())
+  {
+	comments = comments + value;
+  }
+}
+
+void
+ImageFileDelegateJPEG::set (const string & name, int value)
+{
+  Matrix<double> v (1, 1);
+  v(0,0) = value;
+  set (name, v);
+}
+
+void
+ImageFileDelegateJPEG::set (const string & name, double value)
+{
+  Matrix<double> v (1, 1);
+  v(0,0) = value;
+  set (name, v);
+}
+
+void
+ImageFileDelegateJPEG::set (const string & name, const Matrix<double> & value)
+{
+  if (name == "quality")
+  {
+	quality = (int) rint (value(0,0));
+	return;
+  }
+
+  if (name == "comments")
+  {
+	ostrstream sv;
+	sv << value;
+	comments += sv.str ();
+	return;
+  }
+
+  if (name.size ())
+  {
+	if (value.rows () > 0  &&  value.columns () > 0)
+	{
+	  ostrstream sv;
+	  sv << value;
+	  namedValues.insert (make_pair (name, sv.str ()));
+	}
+	else
+	{
+	  namedValues.erase (name);
+	}
+  }
+  else if (value.rows () > 0  &&  value.columns () > 0)
+  {
+	ostrstream sv;
+	sv << value;
+	comments += sv.str ();
+  }
+}
+
 
 // class ImageFileFormatJPEG --------------------------------------------------
 
