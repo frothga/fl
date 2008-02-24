@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.2, 1.3, 1.5 Copyright 2005 Sandia Corporation.
-Revisions 1.7 thru 1.9  Copyright 2007 Sandia Corporation.
+Revisions 1.7 thru 1.10 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.10  2008/02/24 13:53:35  Fred
+More carefully constrain when pow(int,int) is added.
+
 Revision 1.9  2007/03/25 13:31:09  Fred
 Fix MSVC 2005 compile errors.  It doesn't define pow(int,int).
 
@@ -83,11 +86,13 @@ namespace std
 	return powf ((float) a, b);
   }
 
+#if ! defined (_MSC_VER)  ||  _MSC_VER > 1310
   inline int
   pow (int a, int b)
   {
 	return (int) floor (pow ((double) a, b));
   }
+#endif
 
 #ifndef _MSC_VER
 
