@@ -16,6 +16,10 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.46  2008/02/24 13:50:02  Fred
+Add PixelFormatRGBAChar::fromPackedYUV(), in effort to maintain RGBAChar as
+central format.
+
 Revision 1.45  2007/08/26 12:36:49  Fred
 Support central format style conversions.
 
@@ -963,6 +967,7 @@ namespace fl
 	void fromGrayFloat   (const Image & image, Image & result) const;
 	void fromGrayDouble  (const Image & image, Image & result) const;
 	void fromRGBChar     (const Image & image, Image & result) const;
+	void fromPackedYUV   (const Image & image, Image & result) const;
 
 	virtual unsigned int  getRGBA  (void * pixel) const;
 	virtual unsigned char getAlpha (void * pixel) const;
