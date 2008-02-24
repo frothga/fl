@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.8, 1.9, 1.11 thru 1.22 Copyright 2005 Sandia Corporation.
-Revisions 1.24 thru 1.43           Copyright 2007 Sandia Corporation.
+Revisions 1.24 thru 1.47           Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,13 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.47  2008/02/24 14:18:58  Fred
+Add PixelFormatRGBAChar::fromPackedYUV().
+
+Use float calculation when sizing PixelBufferGroups.
+
+Define standard int types for MSVC.
+
 Revision 1.46  2007/08/26 03:17:00  Fred
 Change names of formal parameters to roll().
 
@@ -330,6 +337,12 @@ Imported sources
 
 #include <algorithm>
 #include <set>
+
+// Temporary hack for c99 int types in MSVC
+#ifdef _MSC_VER
+typedef unsigned int       uint32_t;
+typedef unsigned long long uint64_t;
+#endif
 
 
 // Include for tracing
@@ -915,7 +928,7 @@ PixelFormatGrayBits::PixelFormatGrayBits (int bits, bool bigendian)
 PixelBuffer *
 PixelFormatGrayBits::attach (void * block, int width, int height, bool copy) const
 {
-  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil (width / pixels), height, pixels, 1);
+  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil ((float) width / pixels), height, pixels, 1);
   if (copy) result->memory.copyFrom (result->memory);
   return result;
 }
@@ -3703,6 +3716,10 @@ PixelFormatRGBAChar::filter (const Image & image)
   {
 	fromRGBABits (image, result);
   }
+  else if (typeid (* image.format) == typeid (PixelFormatPackedYUV))
+  {
+	fromPackedYUV (image, result);
+  }
   else if (typeid (* image.format) == typeid (PixelFormatPlanarYCbCr))
   {
 	fromYCbCr (image, result);
@@ -3822,6 +3839,57 @@ PixelFormatRGBAChar::fromRGBChar (const Image & image, Image & result) const
 	  fromPixel += 3;
 	}
 	fromPixel += step;
+  }
+}
+
+void
+PixelFormatRGBAChar::fromPackedYUV (const Image & image, Image & result) const
+{
+  const PixelFormatPackedYUV *     sourceFormat = dynamic_cast<const PixelFormatPackedYUV *> (image.format);
+  assert (sourceFormat);
+  PixelBufferGroups *              i            = (PixelBufferGroups *) image.buffer;
+  assert (i);
+  PixelFormatPackedYUV::YUVindex * table        = sourceFormat->table;
+  unsigned char *                  fromPixel    = (unsigned char *) i->memory;
+  const int                        bytes        = i->bytes;
+  const int                        fromStep     = i->stride - (int) floor ((image.width + 0.5) / i->pixels) * bytes;
+
+  PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
+  assert (o);
+  unsigned int *       toPixel  = (unsigned int *) o->memory;
+  const unsigned int * end      = (unsigned int *) ((char *) toPixel + o->stride * result.height);
+  const int            rowWidth = (int) rint (result.width * depth);
+  const int            toStep   = o->stride - rowWidth;
+
+  while (toPixel < end)
+  {
+	PixelFormatPackedYUV::YUVindex * index = table;
+	const unsigned int * rowEnd = (unsigned int *) ((char *) toPixel + rowWidth);
+	while (toPixel < rowEnd)
+	{
+	  int y = fromPixel[index->y] << 16;
+	  int u = fromPixel[index->u] - 128;
+	  int v = fromPixel[index->v] - 128;
+
+	  unsigned int r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
+	  unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
+	  unsigned int b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
+
+#     if BYTE_ORDER == LITTLE_ENDIAN
+	  *toPixel++ = (b & 0xFF0000) | ((g >> 8) & 0xFF00) | ((r >> 16) & 0xFF) | 0xFF000000;
+#     elif BYTE_ORDER == BIG_ENDIAN
+	  *toPixel++ = ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF;
+#     endif
+
+	  index++;
+	  if (index->y < 0)
+	  {
+		index = table;
+		fromPixel += bytes;
+	  }
+	}
+	fromPixel += fromStep;
+	toPixel = (unsigned int *) ((char *) toPixel + toStep);
   }
 }
 
@@ -4471,7 +4539,7 @@ PixelFormatPackedYUV::fromYUV (const Image & image, Image & result) const
 PixelBuffer *
 PixelFormatPackedYUV::attach (void * block, int width, int height, bool copy) const
 {
-  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil (width / pixels) * bytes, height, pixels, bytes);
+  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil ((float) width / pixels) * bytes, height, pixels, bytes);
   if (copy) result->memory.copyFrom (result->memory);
   return result;
 }
