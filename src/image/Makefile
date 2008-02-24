@@ -6,7 +6,7 @@
 #
 #
 # Revisions 1.6 and 1.8    Copyright 2005 Sandia Corporation.
-# Revisions 1.10 thru 1.20 Copyright 2007 Sandia Corporation.
+# Revisions 1.10 thru 1.21 Copyright 2008 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Lesser General Public License.  See the file
@@ -15,6 +15,9 @@
 #
 #------------------------------------------------------------------------------
 # $Log$
+# Revision 1.21  2008/02/24 14:15:37  Fred
+# Change link order for JPEG lib.
+#
 # Revision 1.20  2007/08/26 12:18:48  Fred
 # Fix rules for test and junk to link the library file rather than all the
 # object files separately.  The individual objects form seems not to link
@@ -206,7 +209,7 @@ test: test.o $(LIBPREF)$(MODULE)$(LIBSUFF)
 	g++ -o $@ -L$(SOURCE_LIB) $^ -l$(NS)Base -l$(NS)Image -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB) $(GTIFF_LIB) $(TIFF_LIB)
 
 junk: junk.o $(LIBPREF)$(MODULE)$(LIBSUFF)
-	g++ -o $@ -L$(SOURCE_LIB) $^ -l$(NS)Base -l$(NS)Image -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB) $(GTIFF_LIB) $(TIFF_LIB) $(JPEG_LIB)
+	g++ -o $@ -L$(SOURCE_LIB) $^ -l$(NS)Base -l$(NS)Image -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB) $(GTIFF_LIB) $(TIFF_LIB)
 
 
 clean:
