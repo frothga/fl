@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.9  thru 1.17 Copyright 2005 Sandia Corporation.
-Revisions 1.19 thru 1.45 Copyright 2007 Sandia Corporation.
+Revisions 1.19 thru 1.47 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,9 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.47  2008/02/24 13:51:29  Fred
+Update copyright notice.
+
 Revision 1.46  2008/02/24 13:50:02  Fred
 Add PixelFormatRGBAChar::fromPackedYUV(), in effort to maintain RGBAChar as
 central format.
