@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.5  thru 1.9  Copyright 2005 Sandia Corporation.
-Revisions 1.11 thru 1.33 Copyright 2007 Sandia Corporation.
+Revisions 1.11 thru 1.34 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,6 +16,13 @@ for details.
 
 -------------------------------------------------------------------------------
 $Log$
+Revision 1.34  2008/02/24 14:13:33  Fred
+Eliminate dependency on libtiffxx.
+
+Clean up location of constructor code.
+
+Remove old tracer.
+
 Revision 1.33  2007/08/13 00:34:18  Fred
 Use PixelBufferPacked::stride directly for number of bytes in row.  Treat
 depth as a float value.
@@ -189,7 +196,6 @@ Imported sources
 #include "fl/lapack.h"
 
 #include <tiffio.h>
-#include <tiffio.hxx>
 #ifdef HAVE_GEOTIFF
 #  include <xtiffio.h>
 #  include <geotiff.h>
@@ -197,6 +203,7 @@ Imported sources
 
 #include <strstream>
 
+#include <errno.h>
 #include <fcntl.h>
 // On Cygwin, O_WRONLY == 1, but fcntl() returns 2 for that state, so can't
 // use O_WRONLY directly in comparisons.  Not sure if this is the case for
@@ -216,18 +223,7 @@ using namespace fl;
 class ImageFileDelegateTIFF : public ImageFileDelegate
 {
 public:
-  ImageFileDelegateTIFF (TIFF * tif, ios * stream)
-  {
-	this->tif = tif;
-	this->stream = stream;
-
-#   ifdef HAVE_GEOTIFF
-	gtif = GTIFNew (tif);
-#   endif
-
-	format = 0;
-	ownFormat = false;
-  }
+  ImageFileDelegateTIFF (istream * in, ostream * out, bool ownStream = false);
   virtual ~ImageFileDelegateTIFF ();
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
@@ -243,8 +239,20 @@ public:
   virtual void set (const string & name, double value);
   virtual void set (const string & name, const Matrix<double> & value);
 
+  static tsize_t tiffRead  (thandle_t handle, tdata_t data, tsize_t size);
+  static tsize_t tiffWrite (thandle_t handle, tdata_t data, tsize_t size);
+  static toff_t  tiffSeek  (thandle_t handle, toff_t offset, int direction);
+  static int     tiffClose (thandle_t handle);
+  static toff_t  tiffSize  (thandle_t handle);
+  static int     tiffMap   (thandle_t handle, tdata_t * data, toff_t * offset);
+  static void    tiffUnmap (thandle_t handle, tdata_t data, toff_t offset);
+
+  istream * in;
+  ostream * out;
+  bool ownStream;
+  toff_t startPosition;
+
   TIFF * tif;
-  ios * stream;
 # ifdef HAVE_GEOTIFF
   GTIF * gtif;
 # endif
@@ -252,6 +260,40 @@ public:
   const PixelFormat * format;
   bool ownFormat;
 };
+
+ImageFileDelegateTIFF::ImageFileDelegateTIFF (istream * in, ostream * out, bool ownStream)
+{
+  this->in        = in;
+  this->out       = out;
+  this->ownStream = ownStream;
+  if (in) startPosition = (toff_t) in->tellg ();
+  else    startPosition = (toff_t) out->tellp ();
+
+  tif = TIFFClientOpen
+  (
+    "",
+	in ? "r" : "w",
+	(thandle_t) this,
+	tiffRead,
+	tiffWrite,
+	tiffSeek,
+	tiffClose,
+	tiffSize,
+	tiffMap,
+	tiffUnmap
+  );
+  if (! tif)
+  {
+	throw "Unable to open file.";
+  }
+
+# ifdef HAVE_GEOTIFF
+  gtif = GTIFNew (tif);
+# endif
+
+  format = 0;
+  ownFormat = false;
+}
 
 ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
 {
@@ -271,7 +313,8 @@ ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
 #   endif
 	TIFFClose (tif);
   }
-  if (stream) delete stream;
+  if (in)  delete in;
+  if (out) delete out;
 }
 
 void
@@ -711,10 +754,8 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 	  {
 		int size = rows * buffer->stride;
 		int distance = abs (size - 8192);
-		cerr << rows << " " << size << " " << distance << endl;
 		if (work.height % rows == 0  &&  distance < bestDistance)
 		{
-		  cerr << "     accepted" << endl;
 		  bestDistance = distance;
 		  rowsPerStrip = rows;
 		}
@@ -1513,6 +1554,104 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 # endif
 }
 
+tsize_t
+ImageFileDelegateTIFF::tiffRead (thandle_t handle, tdata_t data, tsize_t size)
+{
+  ImageFileDelegateTIFF * me = (ImageFileDelegateTIFF *) handle;
+  if (me->out) return 0;
+  me->in->read ((char *) data, size);
+  return me->in->gcount ();
+}
+
+tsize_t
+ImageFileDelegateTIFF::tiffWrite (thandle_t handle, tdata_t data, tsize_t size)
+{
+  ImageFileDelegateTIFF * me = (ImageFileDelegateTIFF *) handle;
+  if (me->in) return 0;
+  me->out->write ((char *) data, size);
+  if (me->out->fail ()) return -1;
+  return size;  // If we succeed at all, then it will be a complete write.
+}
+
+toff_t
+ImageFileDelegateTIFF::tiffSeek (thandle_t handle, toff_t offset, int direction)
+{
+  ImageFileDelegateTIFF * me = (ImageFileDelegateTIFF *) handle;
+
+  ios::seekdir dir;
+  switch (direction)
+  {
+	case SEEK_CUR:
+	  dir = ios::cur;
+	  break;
+	case SEEK_SET:
+	  dir = ios::beg;
+	  offset += me->startPosition;
+	  break;
+	case SEEK_END:
+	  dir = ios::end;
+	  break;
+	default:
+	  errno = EINVAL;
+	  return (toff_t) -1;
+  }
+
+  if (me->in)
+  {
+	me->in->seekg (offset, dir);
+	if (! me->in->fail ()) return (toff_t) me->in->tellg () - me->startPosition;
+  }
+  else
+  {
+	me->out->seekp (offset, dir);
+	if (! me->out->fail ()) return (toff_t) me->out->tellp () - me->startPosition;
+	// String streams will fail to seek past end.  Solution is to zero-fill.
+  }
+
+  errno = EINVAL;
+  return (toff_t) -1;
+}
+
+int
+ImageFileDelegateTIFF::tiffClose (thandle_t handle)
+{
+  return 0;
+}
+
+toff_t
+ImageFileDelegateTIFF::tiffSize (thandle_t handle)
+{
+  ImageFileDelegateTIFF * me = (ImageFileDelegateTIFF *) handle;
+
+  if (me->in)
+  {
+	toff_t position = me->in->tellg ();
+	me->in->seekg (0, ios::end);
+	toff_t result = (toff_t) me->in->tellg () - me->startPosition;
+	me->in->seekg (position);
+	return result;
+  }
+  else
+  {
+	toff_t position = me->out->tellp ();
+	me->out->seekp (0, ios::end);
+	toff_t result = (toff_t) me->out->tellp () - me->startPosition;
+	me->out->seekp (position);
+	return result;
+  }
+}
+
+int
+ImageFileDelegateTIFF::tiffMap (thandle_t handle, tdata_t * data, toff_t * offset)
+{
+  return 0;  // No-can-do
+}
+
+void
+ImageFileDelegateTIFF::tiffUnmap (thandle_t handle, tdata_t data, toff_t offset)
+{
+}
+
 
 // class ImageFileFormatTIFF --------------------------------------------------
 
@@ -1526,23 +1665,13 @@ ImageFileFormatTIFF::ImageFileFormatTIFF ()
 ImageFileDelegate *
 ImageFileFormatTIFF::open (istream & stream, bool ownStream) const
 {
-  TIFF * tif = TIFFStreamOpen ("", &stream);
-  if (! tif)
-  {
-	throw "Unable to open file.";
-  }
-  return new ImageFileDelegateTIFF (tif, ownStream ? &stream : 0);
+  return new ImageFileDelegateTIFF (&stream, 0, ownStream);
 }
 
 ImageFileDelegate *
 ImageFileFormatTIFF::open (ostream & stream, bool ownStream) const
 {
-  TIFF * tif = TIFFStreamOpen ("", &stream);
-  if (! tif)
-  {
-	throw "Unable to open file.";
-  }
-  return new ImageFileDelegateTIFF (tif, ownStream ? &stream : 0);
+  return new ImageFileDelegateTIFF (0, &stream, ownStream);
 }
 
 float
