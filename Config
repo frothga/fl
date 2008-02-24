@@ -6,7 +6,7 @@
 #
 #
 # Revisions 1.3 and 1.5   Copyright 2005 Sandia Corporation.
-# Revisions 1.7 thru 1.10 Copyright 2007 Sandia Corporation.
+# Revisions 1.7 thru 1.11 Copyright 2008 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Leser General Public License.  See the file
@@ -15,6 +15,12 @@
 #
 #------------------------------------------------------------------------------
 # $Log$
+# Revision 1.11  2008/02/24 13:47:59  Fred
+# Eliminate libtiffxx from linkage, since same functionality is now in
+# ImageFileFormatTIFF.
+#
+# Add optional S flag for examining assembler output.
+#
 # Revision 1.10  2007/03/23 12:02:08  Fred
 # Use CVS Log to generate revision history.
 #
@@ -99,7 +105,7 @@ MPEG_LIB = -L$(MPEG_DIR)/lib -lavformat -lavcodec -lavutil -lz
 # Tiff library
 TIFF_DIR = /usr
 TIFF_INC = -I$(TIFF_DIR)/include
-TIFF_LIB = -L$(TIFF_DIR)/lib -ltiffxx -ltiff -lz
+TIFF_LIB = -L$(TIFF_DIR)/lib -ltiff -lz
 
 # GeoTiff Library
 GTIFF_DIR = /usr
@@ -145,6 +151,7 @@ CXXFLAGS += -O3  # full optimization
 CXXFLAGS += -march=pentium4 -mfpmath=sse  # P4 architecture
 CXXFLAGS += -g1   # minimal debug symbols
 #CXXFLAGS += -g   # full debug symbols
+#CXXFLAGS += -S  # temp, for examining assembly code
 
 # Misc configuration
 #EXESUF = .exe  # for cygwin
