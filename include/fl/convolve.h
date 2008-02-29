@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.8, 1.10 thru 1.13 Copyright 2005 Sandia Corporation.
-Revisions 1.15 thru 1.17      Copyright 2007 Sandia Corporation.
+Revisions 1.15 thru 1.17      Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -573,11 +573,11 @@ namespace fl
 			   const double sx0, const double sy0, const double sx1, const double sy1,
 			   const bool open,
 			   double & dLo, double & dHi, bool & openHi, bool & openLo);
-	void prepareResult (const Image & image, int & w, int & h, Matrix3x3<double> & H, int & lo, int & hi);  ///< Subroutine of filter ().  Finalizes parameters that control fit between source and destination images.
+	void prepareResult (const Image & image, int & w, int & h, MatrixFixed<double,3,3> & H, int & lo, int & hi);  ///< Subroutine of filter ().  Finalizes parameters that control fit between source and destination images.
 	Transform operator * (const Transform & that) const;
 
-	Matrix3x3<double> A;  ///< Maps coordinates from input image to output image.
-	Matrix3x3<double> IA;  ///< Inverse of A.  Maps coordinates from output image back to input image.
+	MatrixFixed<double,3,3> A;  ///< Maps coordinates from input image to output image.
+	MatrixFixed<double,3,3> IA;  ///< Inverse of A.  Maps coordinates from output image back to input image.
 	bool inverse;  ///< Indicates whether the matrix given to the constructor was A or IA.
 
 	bool peg;  ///< Indicates that (centerX, centerY) refers to source image rather than resulting image.

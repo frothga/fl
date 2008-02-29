@@ -7,6 +7,7 @@ for details.
 
 
 Revisions 1.8 thru 1.9 Copyright 2005 Sandia Corporation.
+Revisions 1.11         Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -183,7 +184,7 @@ namespace fl
 	   the original image.  It is the same as the "U" matrix in Krystian
 	   Mikolajczyk's paper "An affine invariant interest point detector".
 	**/
-	Matrix2x2<double> A;
+	MatrixFixed<double,2,2> A;
 	float angle;  ///< characteristic angle; generally the direction of the gradient.
   };
 
@@ -246,7 +247,7 @@ namespace fl
 
   template <class T>
   inline Point
-  operator * (const Matrix2x2<T> & M, const Point & p)
+  operator * (const MatrixFixed<T,2,2> & M, const Point & p)
   {
 	Point result;
 	result.x = M.data[0][0] * p.x + M.data[1][0] * p.y;

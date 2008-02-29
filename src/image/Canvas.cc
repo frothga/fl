@@ -7,6 +7,7 @@ for details.
 
 
 Revisions 1.4, 1.6 thru 1.10 Copyright 2005 Sandia Corporation.
+Revisions Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -140,7 +141,7 @@ Canvas::drawParallelogram (const Matrix<double> & S, float radius, unsigned int 
 void
 Canvas::drawParallelogram (const PointAffine & p, float radius, unsigned int color)
 {
-  Matrix2x2<double> R;
+  MatrixFixed<double,2,2> R;
   R(0,0) = cos (p.angle);
   R(0,1) = -sin (p.angle);
   R(1,0) = -R(0,1);
@@ -163,13 +164,13 @@ Canvas::drawFilledRectangle (const Point & corner0, const Point & corner1, unsig
 void
 Canvas::drawCircle (const Point & center, float radius, unsigned int color, float startAngle, float endAngle)
 {
-  Matrix2x2<double> A;
+  MatrixFixed<double,2,2> A;
   A.identity ();
   drawEllipse (center, A, radius, color, startAngle, endAngle);
 }
 
 void
-Canvas::drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
+Canvas::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
 {
   throw "drawEllipse not implemented for this type of Canvas";
 }
@@ -178,7 +179,7 @@ void
 Canvas::drawEllipse (const Matrix<double> & S, float radius, unsigned int color)
 {
   Point center (S(0,2), S(1,2));
-  Matrix2x2<double> shape = S.region (0, 0, 1, 1);
+  MatrixFixed<double,2,2> shape = S.region (0, 0, 1, 1);
   shape = shape * ~shape;
   drawEllipse (center, shape, radius, color);
 }

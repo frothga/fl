@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.8 thru 1.9 Copyright 2007 Sandia Corporation.
+Revisions 1.8 thru 1.9 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -90,7 +90,7 @@ DescriptorPatch::value (const Image & image, const PointAffine & point)
 {
   float half = width / 2.0;
 
-  Matrix2x2<double> R;
+  MatrixFixed<double,2,2> R;
   R(0,0) = cos (point.angle);
   R(1,0) = sin (point.angle);
   R(0,1) = -R(1,0);

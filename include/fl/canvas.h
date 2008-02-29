@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.6, 1.8 thru 1.12 Copyright 2005 Sandia Corporation.
-Revisions 1.14 and 1.15      Copyright 2007 Sandia Corporation.
+Revisions 1.14, 1.15         Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -112,7 +112,7 @@ namespace fl
 	virtual void drawParallelogram (const PointAffine & p, float radius = 1.0f, unsigned int color = WHITE);  ///< Determines an S based on the shape and position of p, then calls drawParallelogram (S, ...).
 	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = WHITE);
 	virtual void drawCircle (const Point & center, float radius, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI);
-	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1.0f, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
+	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1.0f, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
 	virtual void drawEllipse (const Matrix<double> & S, float radius = 1.0f, unsigned int color = WHITE);  ///< S projects a unit circle centered at the origin into the image.  radius scales up the unit circle.  This is a convenience function for marking affine-adapted patches.
 	virtual void drawMSER (const PointMSER & p, const Image & image, unsigned int colorFill = GRAY50, unsigned int colorBorder = WHITE);
 	virtual void drawText (const std::string & text, const Point & point, unsigned int color = WHITE, float angle = 0);
@@ -144,7 +144,7 @@ namespace fl
 	virtual void drawRay (const Point & p, float angle, unsigned int color = WHITE);
 	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
 	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = WHITE);
-	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
+	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
 	virtual void drawMSER (const PointMSER & p, const Image & image, unsigned int colorFill = GRAY50, unsigned int colorBorder = WHITE);
 	virtual void drawText (const std::string & text, const Point & point, unsigned int color = WHITE, float angle = 0);
 
@@ -190,7 +190,7 @@ namespace fl
 	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = BLACK);
 	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = BLACK);
 	virtual void drawCircle (const Point & center, float radius, unsigned int color = BLACK, float startAngle = 0, float endAngle = 2 * PI);
-	virtual void drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius = 1, unsigned int color = BLACK, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
+	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, unsigned int color = BLACK, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
 	virtual void drawImage (const Image & image, Point & p, float width = -1, float height = -1);
 
 	virtual void setTranslation (float x, float y);

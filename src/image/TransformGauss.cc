@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.4, 1.6 and 1.7 Copyright 2005 Sandia Corporation.
-Revisions 1.9 thru 1.10    Copyright 2007 Sandia Corporation.
+Revisions 1.9 thru 1.10    Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -94,7 +94,7 @@ TransformGauss::prepareG ()
   const float C = 1.0 / (2.0 * PI * sigma2);
 
   // Calculate size and shape of Gaussian
-  Matrix2x2<float> S = IA.region (0, 0, 1, 1) * ~IA.region (0, 0, 1, 1) * sigma2;
+  MatrixFixed<float,2,2> S = IA.region (0, 0, 1, 1) * ~IA.region (0, 0, 1, 1) * sigma2;
   sigmaX = sqrt (S(0,0));  // Distance of one standard deviation ("Z") from origin along x-axis in source image
   sigmaY = sqrt (S(1,1));  // ditto for y-axis
   Gshw = (int) ceil (sigmaX * 3);  // Desired size of kernel in source pixels
@@ -137,7 +137,7 @@ TransformGauss::filter (const Image & image)
 	prepareG ();
   }
 
-  Matrix3x3<double> H;  // homography from destination image to source image
+  MatrixFixed<double,3,3> H;  // homography from destination image to source image
   int w;
   int h;
   int lo;

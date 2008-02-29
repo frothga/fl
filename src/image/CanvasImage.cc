@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.3, 1.5 thru 1.10 Copyright 2005 Sandia Corporation.
-Revisions 1.12 thru 1.14     Copyright 2007 Sandia Corporation.
+Revisions 1.12 thru 1.14     Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -424,11 +424,11 @@ CanvasImage::drawFilledRectangle (const Point & corner0, const Point & corner1, 
 }
 
 void
-CanvasImage::drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
+CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
 {
   // Adjust for scaling and translation
   Point tcenter = trans (center);
-  Matrix2x2<double> tshape;
+  MatrixFixed<double,2,2> tshape;
   if (inverse)
   {
 	tshape(0,0) = shape(0,0) / (scaleX * scaleX);

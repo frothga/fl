@@ -6,7 +6,7 @@
 #
 #
 # Revisions 1.6, 1.8 thru 1.11 Copyright 2005 Sandia Corporation.
-# Revisions 1.13 thru 1.15     Copyright 2007 Sandia Corporation.
+# Revisions 1.13 thru 1.15     Copyright 2008 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Lesser General Public License.  See the file
@@ -96,8 +96,8 @@ LOADLIBS = -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Net $(LAPACK_LIB)
 MATRIX_DOUBLE_O = \
 	MatrixDouble.o \
 	VectorDouble.o \
-	Matrix2x2Double.o \
-	Matrix3x3Double.o \
+	MatrixFixedDouble22.o \
+	MatrixFixedDouble33.o \
 	MatrixPackedDouble.o \
 	MatrixIdentityDouble.o \
 	MatrixDiagonalDouble.o \
@@ -106,8 +106,8 @@ MATRIX_DOUBLE_O = \
 MATRIX_FLOAT_O = \
 	MatrixFloat.o \
 	VectorFloat.o \
-	Matrix2x2Float.o \
-	Matrix3x3Float.o \
+	MatrixFixedFloat22.o \
+	MatrixFixedFloat33.o \
 	MatrixPackedFloat.o \
 	MatrixIdentityFloat.o \
 	MatrixDiagonalFloat.o \

@@ -7,6 +7,7 @@ for details.
 
 
 Revisions 1.1 thru 1.3 Copyright 2005 Sandia Corporation.
+Revisions Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -105,13 +106,6 @@ namespace fl
   MatrixAbstract<double>::operator ! () const
   {
 	return ! Matrix<double> (*this);
-  }
-
-  template<>
-  Matrix<double>
-  Matrix3x3<double>::operator ! () const
-  {
-	return ! Matrix<double> (const_cast<double *> (&data[0][0]), 3, 3);
   }
 
   template<>

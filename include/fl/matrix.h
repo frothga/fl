@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.10, 1.11, 1.13 thru 1.17 Copyright 2005 Sandia Corporation.
-Revisions 1.19 thru 1.21             Copyright 2007 Sandia Corporation.
+Revisions 1.19 thru 1.21             Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -626,22 +626,25 @@ namespace fl
   // 2) Certain numerical operations (such as computing eigenvalues) have
   //    direct implementations in small matrix sizes (particularly 2x2).
 
-  template<class T>
-  class Matrix2x2 : public MatrixAbstract<T>
+  template<class T, int R, int C>
+  class MatrixFixed : public MatrixAbstract<T>
   {
   public:
-	Matrix2x2 ();
+	MatrixFixed ();
 	template<class T2>
-	Matrix2x2 (const MatrixAbstract<T2> & that)
+	MatrixFixed (const MatrixAbstract<T2> & that)
 	{
-	  // We assume that we wouldn't assign to an explicit Matrix2x2 unless
-	  // we knew that the source is in fact at least 2 by 2.
-	  data[0][0] = (T) that(0,0);
-	  data[0][1] = (T) that(1,0);
-	  data[1][0] = (T) that(0,1);
-	  data[1][1] = (T) that(1,1);
+	  const int h = std::min (that.rows (),    R);
+	  const int w = std::min (that.columns (), C);
+	  for (int c = 0; c < w; c++)
+	  {
+		for (int r = 0; r < h; r++)
+		{
+		  data[c][r] = (T) that(r,c);
+		}
+	  }
 	}
-	Matrix2x2 (std::istream & stream);
+	MatrixFixed (std::istream & stream);
 
 	virtual T & operator () (const int row, const int column) const
 	{
@@ -654,75 +657,34 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void resize (const int rows = 2, const int columns = 2);
-	// We don't need copyFrom () because all assignments and constructors do
-	// deep copy.
+	virtual void resize (const int rows = R, const int columns = C);
 
-	virtual Matrix2x2<T> operator ! () const;
-	virtual Matrix2x2<T> operator ~ () const;
-	virtual Matrix<T> operator * (const MatrixAbstract<T> & B) const;
-	virtual Matrix2x2<T> operator * (const Matrix2x2<T> & B) const;
-	virtual Matrix2x2<T> operator * (const T scalar) const;
-	virtual Matrix2x2<T> operator / (const T scalar) const;
-	virtual Matrix2x2<T> & operator *= (const Matrix2x2<T> & B);
-	virtual MatrixAbstract<T> & operator *= (const T scalar);
+	virtual MatrixFixed<T,C,R>   operator ~  () const;
+	virtual Matrix<T>            operator *  (const MatrixAbstract<T> & B) const;
+	virtual MatrixFixed<T,R,C>   operator *  (const MatrixFixed<T,R,C> & B) const;
+	virtual MatrixFixed<T,R,C>   operator *  (const T scalar) const;
+	virtual MatrixFixed<T,R,C>   operator /  (const T scalar) const;
+	virtual MatrixFixed<T,R,C> & operator *= (const MatrixFixed<T,R,C> & B);
+	virtual MatrixAbstract<T> &  operator *= (const T scalar);
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream, bool withName = false) const;
 
 	// Data
-	T data[2][2];
+	T data[C][R];
   };
 
-  template<class T>
-  void geev (const Matrix2x2<T> & A, Matrix<T> & eigenvalues);
+  template<class T, int R, int C>
+  Matrix<T> operator ! (const MatrixFixed<T,R,C> & A);
 
   template<class T>
-  void geev (const Matrix2x2<T> & A, Matrix<std::complex<T> > & eigenvalues);
-
+  MatrixFixed<T,2,2> operator ! (const MatrixFixed<T,2,2> & A);
 
   template<class T>
-  class Matrix3x3 : public MatrixAbstract<T>
-  {
-  public:
-	Matrix3x3 ();
-	template<class T2>
-	Matrix3x3 (const MatrixAbstract<T2> & that)
-	{
-	  data[0][0] = (T) that(0,0);
-	  data[0][1] = (T) that(1,0);
-	  data[0][2] = (T) that(2,0);
-	  data[1][0] = (T) that(0,1);
-	  data[1][1] = (T) that(1,1);
-	  data[1][2] = (T) that(2,1);
-	  data[2][0] = (T) that(0,2);
-	  data[2][1] = (T) that(1,2);
-	  data[2][2] = (T) that(2,2);
-	}
-	Matrix3x3 (std::istream & stream);
+  void geev (const MatrixFixed<T,2,2> & A, Matrix<T> & eigenvalues);
 
-	virtual T & operator () (const int row, const int column) const
-	{
-	  return (T &) data[column][row];
-	}
-    virtual T & operator [] (const int row) const
-	{
-	  return ((T *) data)[row];
-	}
-	virtual int rows () const;
-	virtual int columns () const;
-	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void resize (const int rows = 3, const int columns = 3);
-
-	Matrix<T> operator ! () const;
-	virtual Matrix<T> operator * (const MatrixAbstract<T> & B) const;
-
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false) const;
-
-	// Data
-	T data[3][3];
-  };
+  template<class T>
+  void geev (const MatrixFixed<T,2,2> & A, Matrix<std::complex<T> > & eigenvalues);
 }
 
 

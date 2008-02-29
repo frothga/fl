@@ -195,7 +195,7 @@ CanvasPS::drawCircle (const Point & center, float radius, unsigned int color, fl
 }
 
 void
-CanvasPS::drawEllipse (const Point & center, const Matrix2x2<double> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
+CanvasPS::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
 {
   Matrix<double> D;
   Matrix<double> rot;

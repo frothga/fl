@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.1 thru 1.2 Copyright 2005 Sandia Corporation.
-Revisions 1.4 thru 1.8 Copyright 2007 Sandia Corporation.
+Revisions 1.4 thru 1.8 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -227,6 +227,15 @@ namespace fl
   **/
   template<class T>
   int rank (const MatrixAbstract<T> & A, T threshold = -1, T epsilon = -1);
+
+  /**
+	 Generic implementation of fixed size matrix inversion.
+   **/
+  template<class T, int R, int C>
+  Matrix<T> operator ! (const MatrixFixed<T,R,C> & A)
+  {
+	return ! Matrix<T> (const_cast<T *> ((T *) A.data), R, C);
+  }
 }
 
 

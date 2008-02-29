@@ -6,9 +6,16 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
+Revisions Copyright 2008 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
 -------------------------------------------------------------------------------
 $Log$
-Revision 1.4  2007/03/23 10:57:27  Fred
+Revision 1.4  2007/03/23 10:57:29  Fred
 Use CVS Log to generate revision history.
 
 Revision 1.3  2005/10/13 04:14:25  Fred
@@ -27,10 +34,10 @@ Imported sources
 */
 
 
-#include "fl/Matrix3x3.tcc"
+#include "fl/MatrixFixed.tcc"
 
 
 using namespace fl;
 
 
-template class Matrix3x3<float>;
+template class MatrixFixed<double,3,3>;

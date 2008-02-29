@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.8  thru 1.12 Copyright 2005 Sandia Corporation.
-Revisions 1.15 thru 1.17 Copyright 2007 Sandia Corporation.
+Revisions 1.15 thru 1.17 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -97,6 +97,7 @@ Imported sources
 
 
 #include "fl/convolve.h"
+#include "fl/lapack.h"
 
 
 using namespace std;
@@ -147,7 +148,7 @@ Transform::Transform (double scaleX, double scaleY)
 void
 Transform::initialize (const Matrix<double> & A, bool inverse)
 {
-  Matrix3x3<double> temp;
+  MatrixFixed<double,3,3> temp;
   temp.identity ();
   int r = min (2, A.rows () - 1);
   int c = min (2, A.columns () - 1);
@@ -189,7 +190,7 @@ Transform::filter (const Image & image)
 	}
   }
 
-  Matrix3x3<double> H;  // homography from destination image to source image
+  MatrixFixed<double,3,3> H;  // homography from destination image to source image
   int w;
   int h;
   int lo;
@@ -823,7 +824,7 @@ Transform::clip (const double dx0, const double dy0, const double dx1, const dou
 }
 
 void
-Transform::prepareResult (const Image & image, int & w, int & h, Matrix3x3<double> & C, int & lo, int & hi)
+Transform::prepareResult (const Image & image, int & w, int & h, MatrixFixed<double,3,3> & C, int & lo, int & hi)
 {
   if (defaultViewport)
   {
