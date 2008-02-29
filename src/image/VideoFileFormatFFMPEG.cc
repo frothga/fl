@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.15, 1.16, 1.18 thru 1.22 Copyright 2005 Sandia Corporation.
-Revisions 1.24 thru 1.34             Copyright 2007 Sandia Corporation.
+Revisions 1.24 thru 1.34             Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -816,7 +816,7 @@ VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
 
   if (fc)
   {
-	url_fclose (& fc->pb);
+	url_fclose (fc->pb);
 	av_free (fc);
 	fc = 0;
   }
