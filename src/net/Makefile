@@ -96,3 +96,4 @@ depend:
 	  $(CXX) -MM $(CPPFLAGS) $$SOURCEFILE >> Dependencies; \
 	done
 
+-include Dependencies
