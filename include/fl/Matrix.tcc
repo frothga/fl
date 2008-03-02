@@ -82,6 +82,7 @@ Imported sources
 
 
 #include "fl/matrix.h"
+#include "fl/string.h"
 
 #include <algorithm>
 
@@ -513,44 +514,64 @@ namespace fl
 	}
   }
 
+  /**
+	 Relies on ostream to absorb the variability in the type T.
+	 This function should be specialized for char (since ostreams treat
+	 chars as characters, not numbers).
+  **/
+  template<class T>
+  std::string elementToString (const T & value)
+  {
+	std::ostringstream formatted;
+	formatted.precision (MatrixAbstract<T>::displayPrecision);
+	formatted << value;
+	return formatted.str ();
+  }
+
+  template<class T>
+  T elementFromString (const std::string & value)
+  {
+	return (T) atof (value.c_str ());
+  }
+
   template<class T>
   std::ostream &
   operator << (std::ostream & stream, const MatrixAbstract<T> & A)
   {
-	for (int r = 0; r < A.rows (); r++)
+	const int rows = A.rows ();
+	const int columns = A.columns ();
+
+	std::string line = "[";
+	int r = 0;
+	while (true)
 	{
-	  if (r > 0)
+	  int c = 0;
+	  while (true)
 	  {
-		if (A.columns () > 1)
-		{
-		  stream << std::endl;
-		}
-		else  // This is really a vector, so don't break lines.
-		{
-		  stream << " ";
-		}
-	  }
-	  std::string line;
-	  for (int c = 0; c < A.columns (); c++)
-	  {
-		// Let ostream absorb the variability in the type T of the matrix.
-		// This may not work as expected for type char, because ostreams treat
-		// chars as characters, not numbers.
-		std::ostringstream formatted;
-		formatted.precision (A.displayPrecision);
-		formatted << A (r, c);
-		if (c > 0)
+		line += elementToString (A(r,c));
+		if (++c >= columns) break;
+		line += ' ';
+		while (line.size () < c * A.displayWidth + 1)  // +1 to allow for opening "[" all the way down
 		{
 		  line += ' ';
 		}
-		while (line.size () < c * A.displayWidth)
-		{
-		  line += ' ';
-		}
-		line += formatted.str ();
 	  }
 	  stream << line;
+
+	  if (++r >= rows) break;
+	  if (columns > 1)
+	  {
+		stream << std::endl;
+		line = " ";  // adjust for opening "["
+	  }
+	  else
+	  {
+		stream << " ";
+		line.clear ();
+	  }
 	}
+	stream << "]";
+
 	return stream;
   }
 
@@ -558,18 +579,88 @@ namespace fl
   std::istream &
   operator >> (std::istream & stream, MatrixAbstract<T> & A)
   {
-	int rows;
-	int columns;
-	stream >> rows >> columns;
-	A.resize (rows, columns);
+	std::vector<std::vector<T> > temp;
+	int columns = 0;
 
-	for (int r = 0; r < rows; r++)
+	// Scan for opening "["
+	char token;
+	do
 	{
-	  for (int c = 0; c < columns; c++)
+	  stream.get (token);
+	}
+	while (token != '['  &&  stream.good ());
+
+	// Read rows until closing "]"
+	std::string line;
+	bool comment = false;
+	bool done = false;
+	while (stream.good ()  &&  ! done)
+	{
+	  stream.get (token);
+	  std::cerr << "got " << token << std::endl;
+
+	  bool processLine = false;
+	  switch (token)
 	  {
-		stream >> A(r, c);
+		case '\r':
+		  break;  // ignore CR characters
+		case '#':
+		  comment = true;
+		  break;
+		case '\n':
+		  comment = false;
+		case ';':
+		  if (! comment) processLine = true;
+		  break;
+		case ']':
+		  if (! comment)
+		  {
+			done = true;
+			processLine = true;
+		  }
+		  break;
+		default:
+		  if (! comment) line += token;
+	  }
+
+	  if (processLine)
+	  {
+		std::cerr << "processing line: " << line << std::endl;
+		std::vector<T> row;
+		std::string element;
+		trim (line);
+		while (line.size ())
+		{
+		  int position = line.find_first_of (" \t");
+		  element = line.substr (0, position);
+		  row.push_back (elementFromString<T> (element));
+		  if (position == std::string::npos) break;
+		  line = line.substr (position);
+		  trim (line);
+		}
+		int c = row.size ();
+		if (c)
+		{
+		  temp.push_back (row);
+		  columns = std::max (columns, c);
+		}
+		line.clear ();
 	  }
 	}
+
+	// Assign elements to A.
+	const int rows = temp.size ();
+	A.resize (rows, columns);
+	A.clear ();
+	for (int r = 0; r < rows; r++)
+	{
+	  std::vector<T> & row = temp[r];
+	  for (int c = 0; c < row.size (); c++)
+	  {
+		A(r,c) = row[c];
+	  }
+	}
+
 	return stream;
   }
 
@@ -578,15 +669,7 @@ namespace fl
   operator << (MatrixAbstract<T> & A, const std::string & source)
   {
 	std::istringstream stream (source);
-	int rows = A.rows ();
-	int columns = A.columns ();
-	for (int r = 0; r < rows; r++)
-	{
-	  for (int c = 0; c < columns; c++)
-	  {
-		stream >> A(r,c);
-	  }
-	}
+	stream >> A;
 	return A;
   }
 

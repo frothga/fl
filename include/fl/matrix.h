@@ -257,24 +257,42 @@ namespace fl
 	static int displayPrecision;  ///< Number of significant digits to output.
   };
 
-  /// Dump human readable matrix.  Intended for printable output only.
+  template<class T>
+  std::string elementToString (const T & value);
+
+  template<class T>
+  T elementFromString (const std::string & value);
+
+  /**
+	 Print human readable matrix to stream.  Formatted to be readable by
+	 operator >> (istream, Matrix).
+  **/
   template<class T>
   std::ostream &
   operator << (std::ostream & stream, const MatrixAbstract<T> & A);
 
   /**
-	 Load matrix from human-readable stream.  Not idempotent with operator <<
-	 because this function expects to encounter number of rows
-	 and columns as part of stream.  (However, one can easily output them
-	 directly before using operator <<.)
+	 Load human-readable matrix from stream.  Format rules:
+	 <ul>
+	 <li>All matrices begin with "[" and end with "]".  Everything before the
+	 first "[" is ignored.
+	 <li>Rows end with a LF character or a ";" (or both).
+	 <li>The number of columns equals the longest row.
+	 <li>Rows containing less than the full number of columns will be filled
+	 out with zeros.
+	 <li>All characters between a "#" and a LF character are ignored.
+	 <li>Empty lines are ignored.  Equivalently, rows containing no elements
+	 are ignored.  Note that the value zero counts as an element, so a row of
+	 zeros can be created by simply putting a "0" on a line by itself.
+	 </ul>
   **/
   template<class T>
   std::istream &
   operator >> (std::istream & stream, MatrixAbstract<T> & A);
 
   /**
-	 Load matrix from human-readable string.  Matrix must already be sized
-	 correctly.  Elements are read on row-major order.
+	 Load human-readable matrix from string.  Follows same rules as
+	 operator >> (istream, Matrix).
   **/
   template<class T>
   MatrixAbstract<T> &
