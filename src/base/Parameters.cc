@@ -6,6 +6,13 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
+Revisions Copyright 2008 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
 -------------------------------------------------------------------------------
 $Log$
 Revision 1.6  2007/02/25 14:48:28  Fred
@@ -119,6 +126,29 @@ Parameters::read (std::istream & stream)
   {
 	string line;
 	getline (stream, line);
+
+	// Check for multi-line literal, which is delimited by double-quote marks.
+	int first = line.find_first_of ('"');
+	int last  = line.find_last_of  ('"');
+	if (first != string::npos)
+	{
+	  line = line.erase (first, 1);
+	  if (last != first)
+	  {
+		line.erase (last - 1, 1);
+	  }
+	  else
+	  {
+		line += '\n';
+		while (true)
+		{
+		  char c;
+		  stream.get (c);
+		  if (! stream.good ()  ||  c == '"') break;
+		  line += c;
+		}
+	  }
+	}
 
 	trim (line);
 	if (line == "endOfParms")
