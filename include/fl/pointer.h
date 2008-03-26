@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.4, 1.6, 1.7 Copyright 2005 Sandia Corporation.
-Revisions 1.9 thru 1.11 Copyright 2007 Sandia Corporation.
+Revisions 1.9 thru 1.11 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -74,16 +74,36 @@ Imported sources
 
 namespace fl
 {
+  /*  Preliminary scratchings on atomic operations.
+#if defined (__GNUC__)  &&  defined (__i386__)
+#elif defined (_MSC_VER)
+__declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
+{
+    __asm
+    {
+        lock xadd dword ptr [ECX], EDX
+        mov EAX, EDX
+        ret
+    }
+}
+#else
+  int atomicInc (int * a)
+  {
+	return ++(*a);
+  }
+
+  int atomicDec (int * a)
+  {
+	return --(*a);
+  }
+#endif
+  */
+
   /**
 	 Keeps track of a block of memory, which can be shared by multiple objects
 	 and multiple threads.  The block can either be managed by Pointer, or
 	 it can belong to any other part of the system.  Only managed blocks get
 	 reference counting, automatic deletion, and reallocation.
-	 This class is intended to be thread-safe, but in its current state it is
-	 not.  Need to implement a semaphore
-	 of some sort for the reference count.  IE: use an atomic operation such
-	 as XADD that includes an exchange.  Want to avoid using pthreads so we
-	 don't have to link another library.
   **/
   class Pointer
   {
@@ -446,7 +466,7 @@ namespace fl
   {
   public:
 	ReferenceCounted () {PointerPolyReferenceCount = 0;}
-	int PointerPolyReferenceCount;  ///< The number of PointerPolys that are attached to this instance.
+	mutable int PointerPolyReferenceCount;  ///< The number of PointerPolys that are attached to this instance.
   };
   
 
@@ -475,11 +495,13 @@ namespace fl
 
 	PointerPoly (const PointerPoly & that)
 	{
+	  memory = 0;
 	  attach (that.memory);
 	}
 
 	PointerPoly (T * that)
 	{
+	  memory = 0;
 	  attach (that);
 	}
 
@@ -533,6 +555,26 @@ namespace fl
 	operator T2 * () const
 	{
 	  return dynamic_cast<T2 *> (memory);
+	}
+
+	bool operator == (const PointerPoly & that) const
+	{
+	  return memory == that.memory;
+	}
+
+	bool operator == (const T * that) const
+	{
+	  return memory == that;
+	}
+
+	bool operator != (const PointerPoly & that) const
+	{
+	  return memory != that.memory;
+	}
+
+	bool operator != (const T * that) const
+	{
+	  return memory != that;
 	}
 
 	/**

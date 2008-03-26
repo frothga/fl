@@ -427,6 +427,33 @@ PixelFormatRGBABits   fl::BGRChar (3, 0xFF, 0xFF00, 0xFF0000, 0x0);
 #  error This endian is not currently handled.
 #endif
 
+// Increment reference count for standard formats so they won't be destroyed
+// when the last external reference release them.
+static int incrementRefcount ()
+{
+  GrayChar    .PointerPolyReferenceCount++;
+  GrayShort   .PointerPolyReferenceCount++;
+  GrayFloat   .PointerPolyReferenceCount++;
+  GrayDouble  .PointerPolyReferenceCount++;
+  RGBAChar    .PointerPolyReferenceCount++;
+  RGBAShort   .PointerPolyReferenceCount++;
+  RGBAFloat   .PointerPolyReferenceCount++;
+  RGBChar     .PointerPolyReferenceCount++;
+  RGBShort    .PointerPolyReferenceCount++;
+  UYVY        .PointerPolyReferenceCount++;
+  YUYV        .PointerPolyReferenceCount++;
+  UYV         .PointerPolyReferenceCount++;
+  UYYVYY      .PointerPolyReferenceCount++;
+  UYVYUYVYYYYY.PointerPolyReferenceCount++;
+  YUV420      .PointerPolyReferenceCount++;
+  YUV411      .PointerPolyReferenceCount++;
+  HLSFloat    .PointerPolyReferenceCount++;
+  BGRChar     .PointerPolyReferenceCount++;
+
+  return 1;
+}
+static int refcountIncremented = incrementRefcount ();
+
 
 // Color->gray conversion factors
 // Make these user modfiable if at some point it turns out to be useful.
@@ -895,6 +922,86 @@ PixelFormat::buildChar2Float ()
 }
 
 
+// class PixelFormatPaletteChar -----------------------------------------------
+
+PixelFormatPaletteChar::PixelFormatPaletteChar (unsigned char * r, unsigned char * g, unsigned char * b, int stride)
+{
+  planes      = 1;
+  depth       = 1;
+  precedence  = 0;  // Below everything.
+  monochrome  = false;
+  hasAlpha    = false;
+
+  unsigned int * p   = palette;
+  unsigned int * end = p + 256;
+  while (p < end)
+  {
+	*p++ = (*r << 24) | (*g << 16) | (*b << 8) | 0xFF;
+	r += stride;
+	g += stride;
+	b += stride;
+  }
+}
+
+PixelFormatPaletteChar::PixelFormatPaletteChar (unsigned short * r, unsigned short * g, unsigned short * b, int stride)
+{
+  planes      = 1;
+  depth       = 1;
+  precedence  = 0;  // Below everything.
+  monochrome  = false;
+  hasAlpha    = false;
+
+  unsigned int * p   = palette;
+  unsigned int * end = p + 256;
+  while (p < end)
+  {
+	*p++ = ((*r & 0xFF00) << 16) | ((*g & 0xFF00) << 8) | (*b & 0xFF00) | 0xFF;
+	r = (unsigned short *) ((unsigned char *) r + stride);
+	g = (unsigned short *) ((unsigned char *) g + stride);
+	b = (unsigned short *) ((unsigned char *) b + stride);
+  }
+}
+
+unsigned int
+PixelFormatPaletteChar::getRGBA  (void * pixel) const
+{
+  return palette[* (unsigned char *) pixel];
+}
+
+void
+PixelFormatPaletteChar::setRGBA  (void * pixel, unsigned int rgba) const
+{
+  // Naive linear search for closest color
+  int r =  rgba             >> 24;
+  int g = (rgba & 0xFF0000) >> 16;
+  int b = (rgba &   0xFF00) >>  8;
+
+  const unsigned int * p         = palette;
+  const unsigned int * end       = p + 256;
+  const unsigned int * bestEntry = p;
+  int smallestDifference = INT_MAX;
+  while (p < end)
+  {
+	// Compute difference
+	int pr =  *p             >> 24;
+	int pg = (*p & 0xFF0000) >> 16;
+	int pb = (*p &   0xFF00) >>  8;
+	int difference = redWeight * abs (pr - r) + greenWeight * abs (pg - g) + blueWeight * abs (pb - b);
+
+	// Compare
+	if (difference < smallestDifference)
+	{
+	  smallestDifference = difference;
+	  bestEntry = p;
+	}
+
+	p++;
+  }
+
+  * (unsigned char *) pixel = bestEntry - palette;
+}
+
+
 // class PixelFormatGrayBits --------------------------------------------------
 
 PixelFormatGrayBits::PixelFormatGrayBits (int bits, bool bigendian)
@@ -1000,7 +1107,7 @@ PixelFormatGrayChar::filter (const Image & image)
   {
 	fromRGBAChar (image, result);
   }
-  else if (dynamic_cast<const PixelFormatRGBABits *> (image.format))
+  else if ((const PixelFormatRGBABits *) image.format)
   {
 	fromRGBABits (image, result);
   }
@@ -1026,7 +1133,7 @@ PixelFormatGrayChar::fromGrayShort (const Image & image, Image & result) const
   unsigned short * fromPixel = (unsigned short *) i->memory;
   unsigned char *  toPixel   = (unsigned char *)  o->memory;
   unsigned char *  end       = toPixel + result.width * result.height;
-  const int grayShift = ((PixelFormatGrayShort *) image.format)->grayShift;
+  const int grayShift = ((const PixelFormatGrayShort *) image.format)->grayShift;
   const int step = i->stride - image.width * sizeof (short);
   while (toPixel < end)
   {
@@ -1119,7 +1226,7 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  PixelFormatRGBABits * that = (PixelFormatRGBABits *) image.format;
+  const PixelFormatRGBABits * that = (const PixelFormatRGBABits *) image.format;
 
   const unsigned int grayMask = 0xFF00;
   int redShift;
@@ -1713,7 +1820,7 @@ PixelFormatGrayFloat::fromGrayShort (const Image & image, Image & result) const
   float *          toPixel   = (float *)          o->memory;
   float *          end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (short);
-  const float grayMask = ((PixelFormatGrayShort *) image.format)->grayMask;
+  const float grayMask = ((const PixelFormatGrayShort *) image.format)->grayMask;
   while (toPixel < end)
   {
 	float * rowEnd = toPixel + result.width;
@@ -1806,7 +1913,7 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  PixelFormatRGBABits * that = (PixelFormatRGBABits *) image.format;
+  const PixelFormatRGBABits * that = (const PixelFormatRGBABits *) image.format;
 
   int redShift;
   int greenShift;
@@ -2160,7 +2267,7 @@ PixelFormatGrayDouble::fromGrayShort (const Image & image, Image & result) const
   double *         toPixel   = (double *)         o->memory;
   double *         end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (short);
-  const double grayMask = ((PixelFormatGrayShort *) image.format)->grayMask;
+  const double grayMask = ((const PixelFormatGrayShort *) image.format)->grayMask;
   while (toPixel < end)
   {
 	double * rowEnd = toPixel + result.width;
@@ -2253,7 +2360,7 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  PixelFormatRGBABits * that = (PixelFormatRGBABits *) image.format;
+  const PixelFormatRGBABits * that = (const PixelFormatRGBABits *) image.format;
 
   int redShift;
   int greenShift;
@@ -2568,7 +2675,7 @@ PixelFormatRGBABits::filter (const Image & image)
   {
 	fromGrayDouble (image, result);
   }
-  else if (dynamic_cast<const PixelFormatRGBABits *> (image.format))
+  else if ((const PixelFormatRGBABits *) image.format)
   {
 	fromRGBABits (image, result);
   }
@@ -3009,7 +3116,7 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  const int grayShift = ((PixelFormatGrayShort *) image.format)->grayShift;
+  const int grayShift = ((const PixelFormatGrayShort *) image.format)->grayShift;
   int redShift;
   int greenShift;
   int blueShift;
@@ -3194,7 +3301,7 @@ PixelFormatRGBABits::fromRGBABits (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  PixelFormatRGBABits * that = (PixelFormatRGBABits *) image.format;
+  const PixelFormatRGBABits * that = (const PixelFormatRGBABits *) image.format;
 
   int redShift;
   int greenShift;
@@ -3712,7 +3819,7 @@ PixelFormatRGBAChar::filter (const Image & image)
   {
 	fromRGBChar (image, result);
   }
-  else if (dynamic_cast<const PixelFormatRGBABits *> (image.format))
+  else if ((const PixelFormatRGBABits *) image.format)
   {
 	fromRGBABits (image, result);
   }
@@ -3845,7 +3952,7 @@ PixelFormatRGBAChar::fromRGBChar (const Image & image, Image & result) const
 void
 PixelFormatRGBAChar::fromPackedYUV (const Image & image, Image & result) const
 {
-  const PixelFormatPackedYUV *     sourceFormat = dynamic_cast<const PixelFormatPackedYUV *> (image.format);
+  const PixelFormatPackedYUV *     sourceFormat = (const PixelFormatPackedYUV *) image.format;
   assert (sourceFormat);
   PixelBufferGroups *              i            = (PixelBufferGroups *) image.buffer;
   assert (i);
@@ -4069,7 +4176,7 @@ PixelFormatRGBChar::fromGrayShort (const Image & image, Image & result) const
   unsigned short * fromPixel = (unsigned short *) i->memory;
   unsigned char *  toPixel   = (unsigned char *)  o->memory;
   unsigned char *  end       = toPixel + result.width * result.height * 3;
-  const int grayShift = ((PixelFormatGrayShort *) image.format)->grayShift;
+  const int grayShift = ((const PixelFormatGrayShort *) image.format)->grayShift;
   const int step = i->stride - image.width * sizeof (short);
   while (toPixel < end)
   {
@@ -4376,7 +4483,7 @@ PixelFormatPackedYUV::filter (const Image & image)
   result.timestamp = image.timestamp;
   if (result.width <= 0  ||  result.height <= 0) return result;
 
-  if (dynamic_cast<const PixelFormatYUV *> (image.format))
+  if ((const PixelFormatYUV *) image.format)
   {
 	fromYUV (image, result);
   }

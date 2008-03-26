@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.5 thru 1.6 Copyright 2007 Sandia Corporation.
+Revisions 1.5 thru 1.6 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -140,14 +140,14 @@ namespace fl
 	XImage * createImage (const Image & image, Image & formatted) const;  // Returns pointer to an XImage containing "image".  "formatted" is bound to the same memory buffer as result.
 
 	// Data
-	fl::Screen *        screen;
-	::Visual *          visual;
-	VisualID            id;
-	unsigned int        depth;
-	int                 colorClass;
-	PixelFormatRGBABits format;
-	int                 colormapSize;
-	int                 bitsPerChannel;
+	fl::Screen *             screen;
+	::Visual *               visual;
+	VisualID                 id;
+	unsigned int             depth;
+	int                      colorClass;
+	PointerPoly<PixelFormat> format;
+	int                      colormapSize;
+	int                      bitsPerChannel;
   };
 
   /**

@@ -861,7 +861,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	  PixelFormatMapping * m = pixelFormatMap;
 	  while (m->fl)
 	  {
-		if (image.format == m->fl) break;
+		if ((const fl::PixelFormat *) image.format == m->fl) break;
 		m++;
 	  }
 	  enum ::PixelFormat target = m->av;

@@ -328,14 +328,12 @@ fl::Screen::defaultVisual () const
 // class Visual ---------------------------------------------------------------
 
 fl::Visual::Visual ()
-: format (0, 0, 0, 0, 0)
 {
   screen = NULL;
   visual = NULL;
 }
 
 fl::Visual::Visual (fl::Screen & screen, ::Visual * visual)
-: format (0, 0, 0, 0, 0)
 {
   XVisualInfo vinfo;
   vinfo.visualid = XVisualIDFromVisual (visual);
@@ -362,17 +360,13 @@ fl::Visual::initialize (fl::Screen & screen, XVisualInfo * vinfo)
   {
 	d = 4;
   }
-  format.depth     = d;
-  format.redMask   = vinfo->red_mask;
-  format.greenMask = vinfo->green_mask;
-  format.blueMask  = vinfo->blue_mask;
-  format.alphaMask = 0x0;
+  format = new PixelFormatRGBABits (d, vinfo->red_mask, vinfo->green_mask, vinfo->blue_mask, 0x0);
 }
 
 XImage *
 fl::Visual::createImage (const Image & image, Image & formatted) const
 {
-  formatted = image * format;
+  formatted = image * *format;
   PixelBufferPacked * pbp = (PixelBufferPacked *) formatted.buffer;
   char * buffer = pbp ? (char *) pbp->memory : 0;
   XImage * result = XCreateImage
@@ -384,7 +378,7 @@ fl::Visual::createImage (const Image & image, Image & formatted) const
 	0,
 	buffer,
 	formatted.width, formatted.height,
-	(int) (format.depth * 8),
+	(int) (format->depth * 8),
 	0
   );
 

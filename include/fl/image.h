@@ -340,11 +340,11 @@ namespace fl
 	void          setAlpha (int x, int y, unsigned char alpha);
 
 	// Data
-	PointerPoly<PixelBuffer> buffer;
-	const PixelFormat *      format;
-	int                      width;  ///< This should be viewed as cached information from the PixelBuffer.  Only make changes via resize().
-	int                      height;  ///< This should be viewed as cached information from the PixelBuffer.  Only make changes via resize().
-	double                   timestamp;  ///< Time when image was captured.  If part of a video, then time when image should be displayed.
+	PointerPoly<PixelBuffer>       buffer;
+	PointerPoly<const PixelFormat> format;
+	int                            width;  ///< This should be viewed as cached information from the PixelBuffer.  Only make changes via resize().
+	int                            height;  ///< This should be viewed as cached information from the PixelBuffer.  Only make changes via resize().
+	double                         timestamp;  ///< Time when image was captured.  If part of a video, then time when image should be displayed.
   };
 
 
@@ -728,7 +728,7 @@ namespace fl
 	 \todo Add accessor for numbered color channels.  This will be most
 	 meaningful for hyperspectal data.
   **/
-  class PixelFormat : public Filter
+  class PixelFormat : public Filter, public ReferenceCounted
   {
   public:
 	virtual ~PixelFormat ();
@@ -777,6 +777,18 @@ namespace fl
 	static float *         lutChar2Float;  ///< Use unsigned char value directly as index into this table of float values.
 	static unsigned char * buildFloat2Char ();  ///< Construct lutFloat2Char during static initialization.
 	static float *         buildChar2Float ();  ///< Construct lutChar2Float during static initialization.
+  };
+
+  class PixelFormatPaletteChar : public PixelFormat
+  {
+  public:
+	PixelFormatPaletteChar (unsigned char * r, unsigned char * g, unsigned char * b, int stride);  ///< r, g, b and stride specify the structure of the source table, which we copy into our internal format.
+	PixelFormatPaletteChar (unsigned short * r, unsigned short * g, unsigned short * b, int stride);  ///< r, g, b and stride specify the structure of the source table, which we copy into our internal format.
+
+	virtual unsigned int  getRGBA  (void * pixel) const;
+	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
+
+	unsigned int palette[256];  ///< Colors stored as rgba values, that is, exactly the form returned by getRGBA().
   };
 
   /**
@@ -1400,6 +1412,15 @@ namespace fl
 	virtual float handles (const std::string & formatName) const;
   };
 
+  class ImageFileFormatPNG : public ImageFileFormat
+  {
+  public:
+	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
+	virtual float isIn (std::istream & stream) const;
+	virtual float handles (const std::string & formatName) const;
+  };
+
   class ImageFileFormatEPS : public ImageFileFormat
   {
   public:
@@ -1453,9 +1474,9 @@ namespace fl
   Image::operator == (const Image & that) const
   {
 	bool buffersAllocated = buffer.memory  &&  that.buffer.memory;
-	bool buffersEqual = buffersAllocated ? *buffer == *that.buffer : buffer.memory == that.buffer.memory;
+	bool buffersEqual = buffersAllocated ? *buffer == *that.buffer : buffer.memory == that.buffer.memory;  // The last term of the trinary operator is saying, implicitly, that both buffers must point to 0.
 	return    buffersEqual
-	       && format    == that.format
+	       && *format   == *that.format
 	       && width     == that.width
 	       && height    == that.height
 	       && timestamp == that.timestamp;

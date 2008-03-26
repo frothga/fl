@@ -194,6 +194,7 @@ Imported sources
 #include "fl/string.h"
 #include "fl/math.h"
 #include "fl/lapack.h"
+#include "fl/binary.h"
 
 #include <tiffio.h>
 #ifdef HAVE_GEOTIFF
@@ -257,8 +258,7 @@ public:
   GTIF * gtif;
 # endif
 
-  const PixelFormat * format;
-  bool ownFormat;
+  PointerPoly<const PixelFormat> format;
 };
 
 ImageFileDelegateTIFF::ImageFileDelegateTIFF (istream * in, ostream * out, bool ownStream)
@@ -290,15 +290,10 @@ ImageFileDelegateTIFF::ImageFileDelegateTIFF (istream * in, ostream * out, bool 
 # ifdef HAVE_GEOTIFF
   gtif = GTIFNew (tif);
 # endif
-
-  format = 0;
-  ownFormat = false;
 }
 
 ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
 {
-  if (ownFormat  &&  format) delete format;
-
   if (tif)
   {
 #   ifdef HAVE_GEOTIFF
@@ -317,6 +312,34 @@ ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
   if (out) delete out;
 }
 
+struct FormatMapping
+{
+  PixelFormat * format;   // Which pre-fab format to use.  A value of zero ends the format map.  If this casts to a low-valued integer, it selectes a special construction method.
+  uint16 exact;           // A 1 in a bit position indicates the associated field is necessary for matching the format, while a 0 indicates wild-card.  Bit position 6 refers to the first field below, and lower positions refer to subsequent fields in order.
+  uint16 samplesPerPixel;
+  uint16 bitsPerSample;
+  uint16 sampleFormat;
+  uint16 photometric;
+  uint16 planarConfig;
+  uint16 extraCount;
+  uint16 extraFormat;     // In general, should be an array, but we will only examine first element.
+};
+
+FormatMapping formatMap[] =
+{
+  {(PixelFormat *) 2, B8(0101000), 1,  8, 1, 3, 1, 0, 0},  // 8-bit palette
+  {&GrayChar,         B8(1110000), 1,  8, 1, 0, 1, 0, 0},  // No-care on photometric: we don't distinguish positive from negative images at this time.
+  {(PixelFormat *) 1, B8(1110000), 1, 16, 1, 0, 1, 0, 0},  // GrayShort, with consideration for SMaxSampleValue
+  {&GrayFloat,        B8(1110000), 1, 32, 3, 0, 1, 0, 0},
+  {&GrayDouble,       B8(1110000), 1, 64, 3, 0, 1, 0, 0},
+  {&RGBChar,          B8(1110100), 3,  8, 1, 2, 1, 0, 0},
+  {&RGBShort,         B8(1110100), 3, 16, 1, 2, 1, 0, 0},
+  {&RGBAChar,         B8(1110100), 4,  8, 1, 2, 1, 1, 2},  // No-care on alpha channel type.  We always treat it as unassociated.
+  {&RGBAShort,        B8(1110100), 4, 16, 1, 2, 1, 1, 2},
+  {&RGBAFloat,        B8(1110100), 4, 32, 3, 2, 1, 1, 2},
+  {0}
+};
+
 void
 ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 {
@@ -328,57 +351,38 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   uint32 imageHeight;
   ok &= TIFFGetField (tif, TIFFTAG_IMAGEWIDTH, &imageWidth);
   ok &= TIFFGetField (tif, TIFFTAG_IMAGELENGTH, &imageHeight);
+  if (! ok) throw "Unable to get needed tag values.";
 
-  uint16 samplesPerPixel;
-  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLESPERPIXEL, &samplesPerPixel);
-  uint16 bitsPerSample;
-  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_BITSPERSAMPLE, &bitsPerSample);
-  uint16 sampleFormat;
-  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
-  uint16 photometric;
-  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PHOTOMETRIC, &photometric);
-  uint16 planarConfig;
-  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PLANARCONFIG, &planarConfig);
-  uint16 extra;
-  uint16 * extraFormat;
-  ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_EXTRASAMPLES, &extra, &extraFormat);
+  if (format == 0)
+  {
+	uint16 samplesPerPixel;
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLESPERPIXEL, &samplesPerPixel);
+	uint16 bitsPerSample;
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_BITSPERSAMPLE, &bitsPerSample);
+	uint16 sampleFormat;
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
+	uint16 photometric;
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PHOTOMETRIC, &photometric);
+	uint16 planarConfig;
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PLANARCONFIG, &planarConfig);
+	uint16 extraCount;
+	uint16 * extraFormat;
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_EXTRASAMPLES, &extraCount, &extraFormat);
+	if (! ok) throw "Unable to get needed tag values.";
 
-  if (! ok)
-  {
-	throw "Unable to get needed tag values.";
-  }
-  if (photometric > 2)
-  {
-	throw "Can't handle color palettes, transparency masks, etc.";
-	// But we should handle the YCbCr and L*a*b* color spaces.
-  }
-  if (planarConfig != PLANARCONFIG_CONTIG  &&  samplesPerPixel > 1)
-  {
-	throw "Can't yet handle planar formats";
-  }
-  if (extra > 1)
-  {
-	throw "No PixelFormats currently support more than one channel beyond three colors.";
-  }
+	for (FormatMapping * m = formatMap; m->format; m++)
+	{
+	  // Filter on format tags
+	  if (m->exact & B8(1000000)  &&  m->samplesPerPixel != samplesPerPixel) continue;
+	  if (m->exact & B8(0100000)  &&  m->bitsPerSample   != bitsPerSample  ) continue;
+	  if (m->exact & B8(0010000)  &&  m->sampleFormat    != sampleFormat   ) continue;
+	  if (m->exact & B8(0001000)  &&  m->photometric     != photometric    ) continue;
+	  if (m->exact & B8(0000100)  &&  m->planarConfig    != planarConfig   ) continue;
+	  if (m->exact & B8(0000010)  &&  m->extraCount      != extraCount     ) continue;
+	  if (m->exact & B8(0000001)  &&  extraCount  &&  m->extraFormat != extraFormat[0]) continue;
 
-  format = 0;
-  switch (bitsPerSample)
-  {
-	case 8:
-	  switch (samplesPerPixel)
-	  {
-		case 1:
-		  format = &GrayChar;
-		  break;
-		case 3:
-		  format = &RGBChar;
-		  break;
-		case 4:
-		  format = &RGBAChar;
-	  }
-	  break;
-	case 16:
-	  switch (samplesPerPixel)
+	  // Assign the chosen format, or construct one as indicated.
+	  switch ((ptrdiff_t) m->format)
 	  {
 		case 1:
 		{
@@ -393,33 +397,26 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 			unsigned short mask = 0;
 			while (mask < maxValue  &&  mask < 0xFFFF) mask = (mask << 1) | 0x1;
 			format = new PixelFormatGrayShort (mask);
-			ownFormat = true;
 		  }
 		  break;
 		}
-		case 3:
-		  format = &RGBShort;
+		case 2:
+		{
+		  uint16 * reds;
+		  uint16 * greens;
+		  uint16 * blues;
+		  ok = TIFFGetFieldDefaulted (tif, TIFFTAG_COLORMAP, &reds, &greens, &blues);  // As far as I know, there is no default color map, but why not give it a try?
+		  if (! ok) throw "ColorMap tag is missing, but required for paletted images.";
+		  format = new PixelFormatPaletteChar (reds, greens, blues, sizeof (uint16));
 		  break;
-		case 4:
-		  format = &RGBAShort;
+		}
+		default:
+		  format = m->format;  // Rather risky, but as long as we keep formatMap consistent, we are OK.
 	  }
 	  break;
-	case 32:
-	  if (sampleFormat == SAMPLEFORMAT_IEEEFP)
-	  {
-		switch (samplesPerPixel)
-		{
-		  case 1:
-			format = &GrayFloat;
-			break;
-		  case 4:
-			format = &RGBAFloat;
-		}
-	  }
-  }
-  if (! format)
-  {
-	throw "No PixelFormat available that matches file contents";
+	}
+
+	if (format == 0) throw "No PixelFormat available that matches file contents";
   }
 
   PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
@@ -585,7 +582,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
   if (! tif) throw "ImageFileDelegateTIFF not open";
   if (x < 0  ||  y < 0) throw "Target coordinates must be non-negative";
 
-  if (! format)  // signals need for one-time setup, including other tags besides pixel format
+  if (format == 0)  // signals need for one-time setup, including other tags besides pixel format
   {
 	format = image.format;
 

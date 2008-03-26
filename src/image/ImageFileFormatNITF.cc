@@ -1167,8 +1167,6 @@ public:
   nitfImageSection (const string & version)
   {
 	BMRBND = 0;
-	format = 0;
-	ownFormat = false;
 
 	header = 0;
 	if (version == "NITF02.10"  ||  version == "NSIF01.00")
@@ -1189,7 +1187,6 @@ public:
   {
 	if (header) delete header;
 	if (BMRBND) free (BMRBND);
-	if (ownFormat  &&  format) delete format;
   }
 
   bool contains (const string & name)
@@ -1395,7 +1392,6 @@ public:
 				grayMask >>= (16 - ABPP);
 			  }
 			  format = new PixelFormatGrayShort (grayMask);
-			  ownFormat = true;
 			}
 			break;
 		}
@@ -1423,7 +1419,7 @@ public:
 	  }
 	}
 
-	if (! format) throw "Can't match format";
+	if (format == 0) throw "Can't match format";
 	//cerr << "format = " << typeid (*format).name () << endl;
 
 
@@ -1497,8 +1493,7 @@ public:
   unsigned short TPXCDLNTH;
   unsigned int * BMRBND;
 
-  PixelFormat * format;
-  bool ownFormat;  ///< If true, we should manage the lifespan of format.
+  PointerPoly<PixelFormat> format;
 
   nitfItemSet * header;
 };
