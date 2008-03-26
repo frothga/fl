@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.7, 1.8, 1.10 thru 1.12 Copyright 2005 Sandia Corporation.
-Revisions 1.14 and 1.15            Copyright 2007 Sandia Corporation.
+Revisions 1.14 and 1.15            Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -303,6 +303,16 @@ namespace fl
   }
 
   template<class T>
+  const char *
+  MatrixAbstract<T>::toString (std::string & buffer) const
+  {
+	std::ostringstream stream;
+	stream << *this;
+	buffer = stream.str ();
+	return buffer.c_str ();
+  }
+
+  template<class T>
   bool
   MatrixAbstract<T>::operator == (const MatrixAbstract<T> & B) const
   {
@@ -506,12 +516,8 @@ namespace fl
 
   template<class T>
   void
-  MatrixAbstract<T>::write (std::ostream & stream, bool withName) const
+  MatrixAbstract<T>::write (std::ostream & stream) const
   {
-	if (withName)
-	{
-	  stream << typeid (*this).name () << std::endl;
-	}
   }
 
   /**
@@ -716,6 +722,14 @@ namespace fl
   Matrix<T>::Matrix (std::istream & stream)
   {
 	read (stream);
+  }
+
+  template<class T>
+  Matrix<T>::Matrix (const std::string & source)
+  {
+	rows_ = 0;
+	columns_ = 0;
+	*this << source;
   }
 
   template<class T>
@@ -1149,12 +1163,8 @@ namespace fl
 
   template<class T>
   void
-  Matrix<T>::write (std::ostream & stream, bool withName) const
+  Matrix<T>::write (std::ostream & stream) const
   {
-	if (withName)
-	{
-	  stream << typeid (*this).name () << std::endl;
-	}
 	stream.write ((char *) &rows_, sizeof (rows_));
 	stream.write ((char *) &columns_, sizeof (columns_));
 	stream.write ((char *) data, rows_ * columns_ * sizeof (T));
@@ -1254,19 +1264,9 @@ namespace fl
   // class MatrixRegion -------------------------------------------------------
 
   template<class T>
-  MatrixRegion<T>::MatrixRegion (const MatrixRegion & that)
-  {
-	wrapped = that.wrapped->duplicate ();
-	firstRow = that.firstRow;
-	firstColumn = that.firstColumn;
-	rows_ = that.rows_;
-	columns_ = that.columns_;
-  }
-
-  template<class T>
   MatrixRegion<T>::MatrixRegion (const MatrixAbstract<T> & that, const int firstRow, const int firstColumn, int lastRow, int lastColumn)
   {
-	wrapped = that.duplicate ();
+	wrapped = &that;
 	this->firstRow = firstRow;
 	this->firstColumn = firstColumn;
 	if (lastRow < 0)
@@ -1279,12 +1279,6 @@ namespace fl
 	}
 	rows_ = lastRow - firstRow + 1;
 	columns_ = lastColumn - firstColumn + 1;
-  }
-
-  template<class T>
-  MatrixRegion<T>::~MatrixRegion ()
-  {
-	delete wrapped;  // We can assume that wrapped != NULL.
   }
 
   template<class T>

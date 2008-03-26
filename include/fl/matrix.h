@@ -190,6 +190,7 @@ namespace fl
 	virtual MatrixRegion<T> row (const int r) const;  ///< Returns a view row r.  The matrix is oriented "horizontal".
 	virtual MatrixRegion<T> column (const int c) const;  ///< Returns a view of column c.
 	virtual MatrixRegion<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const;  ///< Same as call to MatrixRegion<T> (*this, firstRow, firstColumn, lastRow, lastColumn)
+	const char * toString (std::string & buffer) const;  ///< Convenience funtion.  Same output as operator <<
 
 	// Basic operations
 
@@ -250,7 +251,7 @@ namespace fl
 
 	// Serialization
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false) const;
+	virtual void write (std::ostream & stream) const;
 
 	// Global Data
 	static int displayWidth;  ///< Number of character positions per cell to use when printing out matrix.
@@ -293,6 +294,8 @@ namespace fl
   /**
 	 Load human-readable matrix from string.  Follows same rules as
 	 operator >> (istream, Matrix).
+	 @todo This function may prove to be unecessay, given the existence of
+	 Matrix<T>::Matrix(const string &).
   **/
   template<class T>
   MatrixAbstract<T> &
@@ -324,6 +327,7 @@ namespace fl
 	  }
 	}
 	Matrix (std::istream & stream);
+	Matrix (const std::string & source);
 	Matrix (T * that, const int rows, const int columns = 1);  ///< Attach to memory block pointed to by that
 	Matrix (Pointer & that, const int rows = -1, const int columns = 1);  ///< Share memory block with that.  rows == -1 or columns == -1 means infer number from size of memory.  At least one of {rows, columns} must be positive.
 	virtual ~Matrix ();
@@ -368,7 +372,7 @@ namespace fl
 	virtual MatrixAbstract<T> & operator -= (const T scalar);
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false) const;
+	virtual void write (std::ostream & stream) const;
 
 	// Data
 	Pointer data;
@@ -447,7 +451,7 @@ namespace fl
 	virtual MatrixPacked operator ~ () const;
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false) const;
+	virtual void write (std::ostream & stream) const;
 
 	// Data
 	Pointer data;
@@ -485,7 +489,7 @@ namespace fl
 	virtual MatrixSparse operator - (const MatrixSparse & B) const;
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false) const;
+	virtual void write (std::ostream & stream) const;
 
 	int rows_;
 	fl::PointerStruct< std::vector< std::map<int, T> > > data;
@@ -541,19 +545,25 @@ namespace fl
 
   // Views --------------------------------------------------------------------
 
-  // These matrices wrap other matrices and provide a different interpretation
-  // of the row and column coordinates.  Views are always "dense" in the sense
-  // that every element maps to an element in the wrapped Matrix.  However,
-  // they have no storage of their own.
+  /*
+	These matrices wrap other matrices and provide a different interpretation
+	of the row and column coordinates.  Views are always "dense" in the sense
+	that every element maps to an element in the wrapped Matrix.  However,
+	they have no storage of their own.
 
-  // Views do two jobs:
-  // 1) Make it convenient to access a Matrix in manners other than dense.
-  //    E.g.: You could do strided access without having to write out the
-  //    index offsets and multipliers.
-  // 2) Act as a proxy for some rearrangement of the Matrix in the next
-  //    stage of calculation in order to avoid copying elements.
-  //    E.g.: A Transpose view allows one to multiply a transposed Matrix
-  //    without first moving all the elements to their tranposed positions.
+	Views do two jobs:
+	1) Make it convenient to access a Matrix in manners other than dense.
+	   E.g.: You could do strided access without having to write out the
+	   index offsets and multipliers.
+	2) Act as a proxy for some rearrangement of the Matrix in the next
+	   stage of calculation in order to avoid copying elements.
+	   E.g.: A Transpose view allows one to multiply a transposed Matrix
+	   without first moving all the elements to their tranposed positions.
+
+	Because it does not have its own storage, a view depends on the continued
+	existence of the wrapped matrix while the view exists.  For this
+	reason, one should not generally return a view from a function.
+  */
 
   /// this(i,j) maps to that(j,i)
   template<class T>
@@ -590,9 +600,9 @@ namespace fl
   class MatrixRegion : public MatrixAbstract<T>
   {
   public:
-	MatrixRegion (const MatrixRegion & that);
+	//MatrixRegion (const MatrixRegion & that);
 	MatrixRegion (const MatrixAbstract<T> & that, const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1);
-	virtual ~MatrixRegion ();
+	//virtual ~MatrixRegion ();
 
 	template<class T2>
 	MatrixRegion & operator = (const MatrixAbstract<T2> & that)
@@ -629,7 +639,7 @@ namespace fl
 	virtual Matrix<T> operator * (const MatrixAbstract<T> & B) const;
 	virtual Matrix<T> operator * (const T scalar) const;
 
-	MatrixAbstract<T> * wrapped;
+	const MatrixAbstract<T> * wrapped;
 	int firstRow;
 	int firstColumn;
 	int rows_;
@@ -686,7 +696,7 @@ namespace fl
 	virtual MatrixAbstract<T> &  operator *= (const T scalar);
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false) const;
+	virtual void write (std::ostream & stream) const;
 
 	// Data
 	T data[C][R];
