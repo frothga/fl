@@ -97,7 +97,7 @@ Imported sources
 // This include is needed to declare data members in VideoFileFFMPEG
 extern "C"
 {
-#include <ffmpeg/avformat.h>
+#include <libavformat/avformat.h>
 }
 
 
