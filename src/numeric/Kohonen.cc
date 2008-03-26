@@ -112,9 +112,9 @@ ClusterCosine::read (istream & stream)
 }
 
 void
-ClusterCosine::write (ostream & stream)
+ClusterCosine::write (ostream & stream) const
 {
-  center.write (stream, false);
+  center.write (stream);
 }
 
 
@@ -290,9 +290,9 @@ Kohonen::read (istream & stream)
 }
 
 void
-Kohonen::write (ostream & stream, bool withName)
+Kohonen::write (ostream & stream) const
 {
-  ClusterMethod::write (stream, withName);
+  ClusterMethod::write (stream);
 
   stream.write ((char *) &width,        sizeof (width));
   stream.write ((char *) &sigma,        sizeof (sigma));

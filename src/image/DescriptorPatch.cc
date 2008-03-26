@@ -131,9 +131,9 @@ DescriptorPatch::read (std::istream & stream)
 }
 
 void
-DescriptorPatch::write (std::ostream & stream, bool withName)
+DescriptorPatch::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   stream.write ((char *) &width, sizeof (width));
   stream.write ((char *) &supportRadial, sizeof (supportRadial));

@@ -151,9 +151,9 @@ DescriptorSchmid::read (std::istream & stream)
 }
 
 void
-DescriptorSchmid::write (std::ostream & stream, bool withName)
+DescriptorSchmid::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   int scaleCount = descriptors.size ();
   stream.write ((char *) &scaleCount, sizeof (scaleCount));

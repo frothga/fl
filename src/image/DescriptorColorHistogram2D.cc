@@ -350,9 +350,9 @@ DescriptorColorHistogram2D::read (std::istream & stream)
 }
 
 void
-DescriptorColorHistogram2D::write (std::ostream & stream, bool withName)
+DescriptorColorHistogram2D::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   stream.write ((char *) &width,         sizeof (width));
   stream.write ((char *) &supportRadial, sizeof (supportRadial));

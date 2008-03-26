@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.5 and 1.6 Copyright 2007 Sandia Corporation.
+Revisions 1.5 and 1.6 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -39,18 +39,67 @@ Create template for extracting polymorphic objects from a stream.
 */
 
 
-#ifndef fl_factory_h
-#define fl_factory_h
+#ifndef fl_serialize_h
+#define fl_serialize_h
 
 
+#include <stdio.h>
 #include <string>
 #include <map>
+//#include <ext/hash_map>  // hash_map has different include paths on different systems.  The simplest solution is probably just to add it to the include path in Config
+#include <typeinfo>
 
 
 namespace fl
 {
+  /*  Initial work on archive objects.
+  class ArchiveIn
+  {
+  public:
+	ArchiveIn (std::istream & stream) : stream (stream) {};
+
+	template<class T>
+	void raw (T & data)
+	{
+	  stream.read ((char *) &T, sizeof (T));
+	}
+
+	std::istream & stream;
+	std::vector<void *> pointers;
+  };
+
+  class ArchiveOut
+  {
+  public:
+	ArchiveOut (std::ostream & stream) : stream (stream) {};
+
+	template<class T>
+	void raw (T & data)
+	{
+	  stream.write ((char *) &T, sizeof (T));
+	}
+
+	std::ostream & stream;
+	std::hash_map<void *, int> pointers;
+  };
+  */
+
+  /**
+	 Defines the interface required of any class that expects to be stored
+	 on a stream.  It is optional whether a serializable class actually
+	 inherits from this class or not, because presently nothing in the
+	 serialization machinery explicitly asks for an object of this class.
+   **/
+  class Serializable
+  {
+	Serializable ();  ///< A default constructor is mandatory.
+	virtual void read  (std::istream stream) = 0;
+	virtual void write (std::ostream stream) const = 0;
+  };
+
   typedef void * productFunction (std::istream & stream);
   typedef std::map<std::string, productFunction *> productMap;
+  typedef std::map<std::string, std::string> productIndex;
 
   /**
 	 Manages the extraction of a polymorphic type from a stream.
@@ -70,25 +119,18 @@ namespace fl
 	 <li>Factory and its helper class Product were meant to act as a kind
 	 of "mix-in", so that factory behavior could be added to arbitrary
 	 class hierarchies while imposing minimal requirements on the classes
-	 themselves.  An alternative is to encode the requirements in a
-	 Product interface that the classes must implement.  The current
-	 requirement is only that the classes provide a stream constructor
-	 C::C (istream &).  A possible additional requirement is that each
-	 class provide its own ID code.  A better arrangement might be to
-	 retain the helper class Product and add an Serializable interface
-	 that clarifies the requirements on classes without adding
-	 implementation burden.
+	 themselves.
 	 <li>There are separate Factories for each class hierarchy rather than
 	 a single one shared by all classes.  This enables each hierarchy
 	 to have its own ID code namespace, which in turn enables a very terse
-	 set of IDs.  Unfortunately, the current setup doesn't use this
-	 ability, but instead writes a rather lengthy and globally unique
-	 string.
+	 set of IDs.
 	 </ul>
 
 	 <p>Should schema versioning be combined with Factory?  This would
 	 require a record of the current default schema version and a read()
 	 function on each class that takes the schema version as a parameter.
+	 Also, the mapping between classes and IDs would need to be a function
+	 of version.
    **/
   template<class B>
   class Factory
@@ -108,9 +150,19 @@ namespace fl
 	  return (B *) (*entry->second) (stream);
 	}
 
+	static void write (std::ostream & stream, const B & data)
+	{
+	  productIndex::iterator it = index.find (typeid (B).name ());
+	  if (it == index.end ()) throw "Class not found in Factory::index";
+	  stream << it->second << std::endl;
+	  data.write (stream);
+	}
+
 	static productMap products;
+	static productIndex index;
   };
-  template <class B> productMap Factory<B>::products;
+  template <class B> productMap   Factory<B>::products;
+  template <class B> productIndex Factory<B>::index;
 
   template<class B, class C>
   class Product
@@ -118,11 +170,34 @@ namespace fl
   public:
 	static void * read (std::istream & stream)
 	{
-	  return new C (stream);
+	  C * result = new C;  // default constructor
+	  result->read (stream);
+	  return result;
 	}
-	static void add ()
+
+	static void add (const std::string & name = "")
 	{
-	  Factory<B>::products.insert (make_pair (typeid (C).name (), &read));
+	  if (name.size ())
+	  {
+		Factory<B>::products.insert (make_pair (name, &read));
+		Factory<B>::index.insert (make_pair (typeid (B).name (), name));
+	  }
+	  else
+	  {
+		// Search for a unique name.  This implementation is exceedingly
+		// inefficient, but given that the number classes registered is
+		// generally much less than 100, and that this is a one-time
+		// process, the cost doesn't matter too much.
+		char uniqueName[32];
+		for (int i = 0; ; i++)
+		{
+		  sprintf (uniqueName, "%i", i);
+		  if (Factory<B>::products.find (uniqueName) == Factory<B>::products.end ()) break;
+		}
+
+		Factory<B>::products.insert (make_pair (uniqueName, &read));
+		Factory<B>::index.insert (make_pair (typeid (B).name (), name));
+	  }
 	}
   };
 }

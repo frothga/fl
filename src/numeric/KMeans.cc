@@ -193,11 +193,11 @@ ClusterGauss::read (istream & stream)
 }
 
 void
-ClusterGauss::write (ostream & stream)
+ClusterGauss::write (ostream & stream) const
 {
   stream.write ((char *) &alpha, sizeof (alpha));
-  center.write (stream, false);
-  covariance.write (stream, false);
+  center.write (stream);
+  covariance.write (stream);
 }
 
 
@@ -668,12 +668,12 @@ KMeans::read (istream & stream)
 }
 
 void
-KMeans::write (ostream & stream, bool withName)
+KMeans::write (ostream & stream) const
 {
   cerr << "top of write" << endl;
-  clusterFileTime = time (NULL);
+  (const_cast<KMeans *> (this))->clusterFileTime = time (NULL);
 
-  ClusterMethod::write (stream, withName);
+  ClusterMethod::write (stream);
 
   stream.write ((char *) &maxSize, sizeof (maxSize));
   stream.write ((char *) &minSize, sizeof (minSize));
@@ -700,6 +700,6 @@ KMeans::write (ostream & stream, bool withName)
 	stream.write ((char *) &velocities[i], sizeof (float));
   }
 
-  clusterFileSize = stream.tellp ();
+  (const_cast<KMeans *> (this))->clusterFileSize = stream.tellp ();
   cerr << "bottom of write" << endl;
 }

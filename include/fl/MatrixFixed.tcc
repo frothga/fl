@@ -196,12 +196,8 @@ namespace fl
 
   template<class T, int R, int C>
   void
-  MatrixFixed<T,R,C>::write (std::ostream & stream, bool withName) const
+  MatrixFixed<T,R,C>::write (std::ostream & stream) const
   {
-	if (withName)
-	{
-	  stream << typeid (*this).name () << std::endl;
-	}
 	stream.write ((char *) data, R * C * sizeof (T));
   }
 }

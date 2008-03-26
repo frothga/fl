@@ -6,6 +6,13 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
+Revisions Copyright 2008 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
 -------------------------------------------------------------------------------
 $Log$
 Revision 1.6  2007/02/18 14:50:37  Fred
@@ -201,12 +208,8 @@ namespace fl
 
   template<class T>
   void
-  MatrixPacked<T>::write (std::ostream & stream, bool withName) const
+  MatrixPacked<T>::write (std::ostream & stream) const
   {
-	if (withName)
-	{
-	  stream << typeid (*this).name () << std::endl;
-	}
 	stream.write ((char *) &rows_, sizeof (rows_));
 	stream.write ((char *) data, sizeof (T) * (rows_ + 1) * rows_ / 2);
   }

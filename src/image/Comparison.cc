@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.7, 1.9 and 1.10 Copyright 2005 Sandia Corporation.
-Revisions 1.12 thru 1.13    Copyright 2007 Sandia Corporation.
+Revisions 1.12 thru 1.13    Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -83,7 +83,7 @@ vectors.
 
 
 #include "fl/descriptor.h"
-#include "fl/factory.h"
+#include "fl/serialize.h"
 #include "fl/math.h"
 
 
@@ -110,12 +110,8 @@ Comparison::read (istream & stream)
 }
 
 void
-Comparison::write (ostream & stream, bool withName)
+Comparison::write (ostream & stream) const
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
 }
 
 /**
@@ -220,9 +216,9 @@ NormalizedCorrelation::read (istream & stream)
 }
 
 void
-NormalizedCorrelation::write (ostream & stream, bool withName)
+NormalizedCorrelation::write (ostream & stream) const
 {
-  Comparison::write (stream, withName);
+  Comparison::write (stream);
   stream.write ((char *) &subtractMean, sizeof (subtractMean));
 }
 
@@ -267,9 +263,9 @@ MetricEuclidean::read (istream & stream)
 }
 
 void
-MetricEuclidean::write (ostream & stream, bool withName)
+MetricEuclidean::write (ostream & stream) const
 {
-  Comparison::write (stream, withName);
+  Comparison::write (stream);
   stream.write ((char *) &upperBound, sizeof (upperBound));
 }
 

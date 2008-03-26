@@ -67,7 +67,7 @@ vector.
 
 
 #include "fl/descriptor.h"
-#include "fl/factory.h"
+#include "fl/serialize.h"
 
 
 using namespace std;
@@ -193,15 +193,15 @@ DescriptorCombo::read (istream & stream)
 }
 
 void
-DescriptorCombo::write (ostream & stream, bool withName)
+DescriptorCombo::write (ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   int count = descriptors.size ();
   stream.write ((char *) &count, sizeof (count));
   for (int i = 0; i < count; i++)
   {
-	descriptors[i]->write (stream, true);
+	Factory<Descriptor>::write (stream, *descriptors[i]);
   }
 }
 
@@ -330,9 +330,9 @@ ComparisonCombo::read (istream & stream)
 }
 
 void
-ComparisonCombo::write (ostream & stream, bool withName)
+ComparisonCombo::write (ostream & stream) const
 {
-  Comparison::write (stream, withName);
+  Comparison::write (stream);
 
   int count = comparisons.size ();
   stream.write ((char *) &count, sizeof (count));

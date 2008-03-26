@@ -168,9 +168,9 @@ DescriptorFilters::read (istream & stream)
 }
 
 void
-DescriptorFilters::write (ostream & stream, bool withName)
+DescriptorFilters::write (ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   int count = filters.size ();
   stream.write ((char *) &count, sizeof (count));

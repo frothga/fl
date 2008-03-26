@@ -4,7 +4,7 @@ Created 01/30/2006 to provide a general interface for measuring distances
 in R^n, and to help separate numeric and image libraries.
 
 
-Revisions 1.1 thru 1.2 Copyright 2007 Sandia Corporation.
+Revisions 1.1 thru 1.2 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -51,7 +51,7 @@ namespace fl
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const = 0;
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
   };
 }
 

@@ -27,7 +27,7 @@ of this numeric library on the image library.
 
 
 #include "fl/metric.h"
-#include "fl/factory.h"
+#include "fl/serialize.h"
 
 
 using namespace fl;
@@ -48,10 +48,6 @@ Metric::read (istream & stream)
 }
 
 void
-Metric::write (ostream & stream, bool withName)
+Metric::write (ostream & stream) const
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
 }

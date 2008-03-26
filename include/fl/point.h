@@ -124,7 +124,7 @@ namespace fl
 	virtual void resize (const int rows, const int columns = 1);  ///< We only have one size.  This will throw an exception if (rows * columns) != 2.
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false);  ///< withName is ignored, and no class id is ever written for Points
+	virtual void write (std::ostream & stream) const;
 
 	float distance (const Point & that) const;  ///< Euclidean distance between two points
 	float distance () const;  ///< Euclidean distance from origin.
@@ -144,7 +144,7 @@ namespace fl
 	virtual ~PointInterest ();
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false);
+	virtual void write (std::ostream & stream) const;
 
 	float weight;  ///< strength of response of interest operator
 	float scale;  ///< "characteristic scale" of image around interest point
@@ -177,7 +177,7 @@ namespace fl
 	Matrix<double> projection () const;  ///< Computes the 3x3 (affine) homography from the normalized form back into the image patch indicated by this point.
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false);
+	virtual void write (std::ostream & stream) const;
 
 	/**
 	   The matrix A is the 2x2 transformation from a rectified patch back to
@@ -199,7 +199,7 @@ namespace fl
 	PointMSER (std::istream & stream);
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false);
+	virtual void write (std::ostream & stream) const;
 
 	int index;  ///< of a pixel actually inside the region.  The (x,y) value inherited from PointAffine may not satisfy this property.  index translates to a pixel value as (index % width, index / width).
 	unsigned char threshold;  ///< gray-level value

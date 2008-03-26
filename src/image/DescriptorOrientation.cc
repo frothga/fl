@@ -165,9 +165,9 @@ DescriptorOrientation::read (std::istream & stream)
 }
 
 void
-DescriptorOrientation::write (std::ostream & stream, bool withName)
+DescriptorOrientation::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   stream.write ((char *) &supportRadial, sizeof (supportRadial));
   stream.write ((char *) &supportPixel,  sizeof (supportPixel));

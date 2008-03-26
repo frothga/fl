@@ -408,9 +408,9 @@ DescriptorColorHistogram3D::read (std::istream & stream)
 }
 
 void
-DescriptorColorHistogram3D::write (std::ostream & stream, bool withName)
+DescriptorColorHistogram3D::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   stream.write ((char *) &width,         sizeof (width));
   stream.write ((char *) &height,        sizeof (height));

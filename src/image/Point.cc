@@ -160,7 +160,7 @@ Point::read (std::istream & stream)
 }
 
 void
-Point::write (std::ostream & stream, bool withName)
+Point::write (std::ostream & stream) const
 {
   stream.write ((char *) &x, sizeof (x));
   stream.write ((char *) &y, sizeof (y));
@@ -232,7 +232,7 @@ PointInterest::read (std::istream & stream)
 }
 
 void
-PointInterest::write (std::ostream & stream, bool withName)
+PointInterest::write (std::ostream & stream) const
 {
   Point::write (stream);
   stream.write ((char *) &weight,   sizeof (weight));
@@ -331,10 +331,10 @@ PointAffine::read (std::istream & stream)
 }
 
 void
-PointAffine::write (std::ostream & stream, bool withName)
+PointAffine::write (std::ostream & stream) const
 {
   PointInterest::write (stream);
-  A.write (stream, false);
+  A.write (stream);
   stream.write ((char *) &angle, sizeof (angle));
 }
 
@@ -392,7 +392,7 @@ PointMSER::read (std::istream & stream)
 }
 
 void
-PointMSER::write (std::ostream & stream, bool withName)
+PointMSER::write (std::ostream & stream) const
 {
   PointAffine::write (stream);
   stream.write ((char *) &index,     sizeof (index));

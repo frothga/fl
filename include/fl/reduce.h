@@ -6,6 +6,13 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
+Revisions Copyright 2008 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+
+
 -------------------------------------------------------------------------------
 $Log$
 Revision 1.5  2007/02/18 14:50:37  Fred
@@ -51,7 +58,7 @@ namespace fl
 	virtual Vector<float> reduce (const Vector<float> & datum) = 0;
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false);
+	virtual void write (std::ostream & stream) const;
   };
 
   class PCA : public DimensionalityReduction
@@ -64,7 +71,7 @@ namespace fl
 	virtual Vector<float> reduce (const Vector<float> & datum);
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false);
+	virtual void write (std::ostream & stream) const;
 
 	int targetDimension;
 	Matrix<float> W;  ///< Basis matrix for reduced space.
@@ -80,7 +87,7 @@ namespace fl
 	virtual Vector<float> reduce (const Vector<float> & datum);
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false);
+	virtual void write (std::ostream & stream) const;
 
 	Matrix<float> W;  ///< Basis matrix for reduced space.
   };

@@ -319,9 +319,9 @@ DescriptorLBP::read (std::istream & stream)
 }
 
 void
-DescriptorLBP::write (std::ostream & stream, bool withName)
+DescriptorLBP::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   stream.write ((char *) &P,             sizeof (P));
   stream.write ((char *) &R,             sizeof (R));

@@ -128,9 +128,9 @@ DescriptorScale::read (std::istream & stream)
 }
 
 void
-DescriptorScale::write (std::ostream & stream, bool withName)
+DescriptorScale::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   float firstScale = laplacians.front ().sigma;
   float lastScale  = laplacians.back ().sigma;

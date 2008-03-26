@@ -247,9 +247,9 @@ DescriptorSchmidScale::read (std::istream & stream)
 }
 
 void
-DescriptorSchmidScale::write (std::ostream & stream, bool withName)
+DescriptorSchmidScale::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   stream.write ((char *) &sigma, sizeof (sigma));
 }

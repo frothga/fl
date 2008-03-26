@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.11, 1.12, 1.14, 1.15 Copyright 2005 Sandia Corporation.
-Revisions 1.17 thru 1.20         Copyright 2007 Sandia Corporation.
+Revisions 1.17 thru 1.20         Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -156,7 +156,7 @@ namespace fl
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const = 0;
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 	static void addProducts ();  ///< Registers with the Factory all basic Comparison classes other than ComparisonCombo.
 
 	bool needPreprocess;  ///< Indicates that any data passed to the value() function should be preprocessed.  Default (set by constructor) is true.  If you compare values multiple times, it is more efficient to preprocess them all once and then set this flag to false.
@@ -182,7 +182,7 @@ namespace fl
 	Vector<float> extract (int index, const Vector<float> & value) const;  ///< Returns one specific feature vector from the set.
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	std::vector<Comparison *> comparisons;
 	std::vector<int> dimensions;
@@ -209,7 +209,7 @@ namespace fl
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	bool subtractMean;  ///< Indicates that during normalization, subtract the mean of the elements in the vector.
   };
@@ -228,7 +228,7 @@ namespace fl
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	float upperBound;  ///< The largest possible distance, if known.  Infinity if not known.  Determines whether to use linear function or hyperbolic squashing function to map distance to resulting value.
   };
@@ -275,7 +275,7 @@ namespace fl
 	virtual Comparison * comparison ();  ///< Return an instance of the recommended Comparison for feature vectors from this type of Descriptor.  Caller is responsible to destroy instance.
 
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	bool monochrome;  ///< True if this descriptor works only on intensity values.  False if this descriptor uses color channels in some way.
 	int dimension;  ///< Number of elements in result of value().  0 if dimension can change from one call to the next.
@@ -300,7 +300,7 @@ namespace fl
 	Image patch (int index, const Vector<float> & value);  ///< Returns a visualization of one specific feature vector in the set.
 	virtual Comparison * comparison ();
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	std::vector<Descriptor *> descriptors;
 
@@ -322,7 +322,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	std::vector<Laplacian> laplacians;
   };
@@ -341,7 +341,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel + 1.
 	float kernelSize;  ///< Number of sigmas of the Gaussian kernel to cover the radius fo the patch.  Similar semantics to supportRadial, except applies to the derivation kernels.
@@ -364,7 +364,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);  ///< Returns one or more angle hypotheses, listed in order of descending strength.  That is, the strongest angle hypothesis will be in row 0.
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	int supportPixel;  ///< Pixel radius of patch, if needed.  Patch size = 2 * supportPixel.
 	float kernelSize;  ///< Similar to DescriptorOrientation::kernelSize, except that this class achieves the same effect by raising blur to the appropriate level.  Only applies to patches with shape change.
@@ -402,7 +402,7 @@ namespace fl
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel.
   };
@@ -419,7 +419,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	std::vector<ConvolutionDiscrete2D> filters;
 	Matrix<float> filterMatrix;
@@ -445,7 +445,7 @@ namespace fl
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	int width;
   };
@@ -461,7 +461,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	float sigma;
 	ConvolutionDiscrete2D G;
@@ -487,7 +487,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	DescriptorSchmidScale * findScale (float sigma);
 
@@ -505,7 +505,7 @@ namespace fl
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	int   binsRadial;
 	int   binsIntensity;
@@ -532,7 +532,7 @@ namespace fl
 	void patch (Canvas * canvas, const Vector<float> & value, int size);  ///< Subroutine used by other patch() methods.
 	virtual Comparison * comparison ();  ///< Return a MetricEuclidean, rather than the default (NormalizedCorrelation).
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	// Parameters
 	int width;  ///< Number of horizontal or vertical positions.
@@ -576,7 +576,7 @@ namespace fl
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	int width;  ///< Number of bins in the U and V dimensions.
 	Matrix<bool> valid;  ///< Stores true for every bin that translates to a valid RGB color.
@@ -607,7 +607,7 @@ namespace fl
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	int width;  ///< Number of bins in the U and V dimensions.
 	int height;  ///< Number of bins in the Y dimension.
@@ -633,7 +633,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	void * lastBuffer;  ///< For detecting change in cached image.
 	double lastTime;  ///< For detecting change in cached image.
@@ -677,7 +677,7 @@ namespace fl
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = true);
+	virtual void write (std::ostream & stream) const;
 
 	int P;  ///< Number of evenly spaced sample points around center.
 	float R;  ///< Radius of circle of sample points.

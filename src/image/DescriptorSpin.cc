@@ -268,9 +268,9 @@ DescriptorSpin::read (std::istream & stream)
 }
 
 void
-DescriptorSpin::write (std::ostream & stream, bool withName)
+DescriptorSpin::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   stream.write ((char *) &binsRadial,       sizeof (binsRadial));
   stream.write ((char *) &binsIntensity,    sizeof (binsIntensity));

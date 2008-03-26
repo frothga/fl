@@ -54,7 +54,7 @@ Imported sources
 
 
 #include "fl/cluster.h"
-#include "fl/factory.h"
+#include "fl/serialize.h"
 
 
 using namespace fl;
@@ -71,10 +71,6 @@ ClusterMethod::read (istream & stream)
 }
 
 void
-ClusterMethod::write (ostream & stream, bool withName)
+ClusterMethod::write (ostream & stream) const
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
 }

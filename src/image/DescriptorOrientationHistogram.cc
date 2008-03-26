@@ -308,9 +308,9 @@ DescriptorOrientationHistogram::read (std::istream & stream)
 }
 
 void
-DescriptorOrientationHistogram::write (std::ostream & stream, bool withName)
+DescriptorOrientationHistogram::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   stream.write ((char *) &supportRadial, sizeof (supportRadial));
   stream.write ((char *) &supportPixel,  sizeof (supportPixel));

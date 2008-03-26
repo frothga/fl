@@ -7,7 +7,7 @@ for details.
 
 
 Revision  1.8            Copyright 2005 Sandia Corporation.
-Revisions 1.10 thru 1.12 Copyright 2007 Sandia Corporation.
+Revisions 1.10 thru 1.12 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -96,7 +96,7 @@ namespace fl
 	// resume clustering with a call to run () or to answer cluster queries via
 	// classify () and representative ().
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false);
+	virtual void write (std::ostream & stream) const;
 
 	bool stop;  ///< If set true, signals run () to terminate at the next reasonable spot.  run () should clear this flag when it first starts, but only monitor it after that.
   };
@@ -115,7 +115,7 @@ namespace fl
 	void prepareInverse ();  ///< When covariance is changed, update cached information necessary to compute Mahalanobis distance.
 	float probability (const Vector<float> & point, float * scale = NULL, float * minScale = NULL);  ///< The probability of being in the cluster, which is simply the Gaussian of the distance from the center.  Result is multiplied by exp (scale) if minScale == NULL; otherwise scale and minScale are updated, and result is unscaled.
 	void read (std::istream & stream);
-	void write (std::ostream & stream);
+	void write (std::ostream & stream) const;
 
 	float alpha;
 	Vector<float> center;
@@ -138,7 +138,7 @@ namespace fl
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
 	virtual void          read (std::istream & stream);
-	virtual void          write (std::ostream & stream, bool withName = false);
+	virtual void          write (std::ostream & stream) const;
 
 	void initialize (const std::vector< Vector<float> > & data);
 	void estimate (const std::vector< Vector<float> > & data, Matrix<float> & member, int jbegin, int jend);
@@ -211,7 +211,7 @@ namespace fl
 	float update (const Vector<float> & point, float weight);
 
 	void read (std::istream & stream);
-	void write (std::ostream & stream);
+	void write (std::ostream & stream) const;
 
 	Vector<float> center;
   };
@@ -228,7 +228,7 @@ namespace fl
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
 	virtual void          read (std::istream & stream);
-	virtual void          write (std::ostream & stream, bool withName = false);
+	virtual void          write (std::ostream & stream) const;
 
 	std::vector<ClusterCosine> map;
 	int width;  ///< Number of discrete positions in one dimension.
@@ -248,7 +248,7 @@ namespace fl
 
 	void operator += (const ClusterAgglomerative & that);
 	void read (std::istream & stream);
-	void write (std::ostream & stream);
+	void write (std::ostream & stream) const;
 
 	Vector<float> center;
 	int count;  ///< Number of data represented by this cluster.
@@ -267,7 +267,7 @@ namespace fl
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
 	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream, bool withName = false);
+	virtual void write (std::ostream & stream) const;
 
 	Metric * metric;
 	float distanceLimit;  ///< The largest distance permissible between two clusters.

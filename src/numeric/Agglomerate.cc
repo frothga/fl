@@ -37,7 +37,7 @@ Add agglomerative clustering.
 
 
 #include "fl/cluster.h"
-#include "fl/factory.h"
+#include "fl/serialize.h"
 
 
 using namespace std;
@@ -72,9 +72,9 @@ ClusterAgglomerative::read (istream & stream)
 }
 
 void
-ClusterAgglomerative::write (ostream & stream)
+ClusterAgglomerative::write (ostream & stream) const
 {
-  center.write (stream, false);
+  center.write (stream);
   stream.write ((char *) &count, sizeof (count));
 }
 
@@ -225,6 +225,8 @@ Agglomerate::representative (int group)
 void
 Agglomerate::read (istream & stream)
 {
+  ClusterMethod::read (stream);
+
   metric = Factory<Metric>::read (stream);
 
   stream.read ((char *) &distanceLimit, sizeof (distanceLimit));
@@ -244,11 +246,11 @@ Agglomerate::read (istream & stream)
 }
 
 void
-Agglomerate::write (ostream & stream, bool withName)
+Agglomerate::write (ostream & stream) const
 {
-  ClusterMethod::write (stream, withName);
+  ClusterMethod::write (stream);
 
-  metric->write (stream, true);
+  Factory<Metric>::write (stream, *metric);
 
   stream.write ((char *) &distanceLimit, sizeof (distanceLimit));
   stream.write ((char *) &minClusters, sizeof (minClusters));

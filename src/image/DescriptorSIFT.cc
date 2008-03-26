@@ -447,9 +447,9 @@ DescriptorSIFT::read (std::istream & stream)
 }
 
 void
-DescriptorSIFT::write (std::ostream & stream, bool withName)
+DescriptorSIFT::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   stream.write ((char *) &width,         sizeof (width));
   stream.write ((char *) &angles,        sizeof (angles));

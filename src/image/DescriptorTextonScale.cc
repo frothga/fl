@@ -414,9 +414,9 @@ DescriptorTextonScale::read (std::istream & stream)
 }
 
 void
-DescriptorTextonScale::write (std::ostream & stream, bool withName)
+DescriptorTextonScale::write (std::ostream & stream) const
 {
-  Descriptor::write (stream, withName);
+  Descriptor::write (stream);
 
   stream.write ((char *) &angles,        sizeof (angles));
   stream.write ((char *) &firstScale,    sizeof (firstScale));

@@ -152,11 +152,13 @@ MDA::reduce (const Vector<float> & datum)
 void
 MDA::read (istream & stream)
 {
+  DimensionalityReduction::read (stream);
   W.read (stream);
 }
 
 void
-MDA::write (ostream & stream, bool withName)
+MDA::write (ostream & stream) const
 {
-  W.write (stream, false);
+  DimensionalityReduction::write (stream);
+  W.write (stream);
 }

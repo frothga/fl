@@ -47,7 +47,7 @@ Add class of algorithms for reducing dimensionality.  First instance is PCA.
 
 
 #include "fl/reduce.h"
-#include "fl/factory.h"
+#include "fl/serialize.h"
 
 
 using namespace std;
@@ -77,10 +77,6 @@ DimensionalityReduction::read (istream & stream)
 }
 
 void
-DimensionalityReduction::write (ostream & stream, bool withName)
+DimensionalityReduction::write (ostream & stream) const
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
 }

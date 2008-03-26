@@ -82,7 +82,7 @@ Imported sources
 
 
 #include "fl/descriptor.h"
-#include "fl/factory.h"
+#include "fl/serialize.h"
 
 
 using namespace std;
@@ -122,10 +122,6 @@ Descriptor::read (istream & stream)
 }
 
 void
-Descriptor::write (ostream & stream, bool withName)
+Descriptor::write (ostream & stream) const
 {
-  if (withName)
-  {
-	stream << typeid (*this).name () << endl;
-  }
 }

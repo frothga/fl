@@ -118,15 +118,17 @@ PCA::reduce (const Vector<float> & datum)
 void
 PCA::read (istream & stream)
 {
+  DimensionalityReduction::read (stream);
+
   stream.read ((char *) & targetDimension, sizeof (targetDimension));
   W.read (stream);
 }
 
 void
-PCA::write (ostream & stream, bool withName)
+PCA::write (ostream & stream) const
 {
-  DimensionalityReduction::write (stream, withName);
+  DimensionalityReduction::write (stream);
 
   stream.write ((char *) & targetDimension, sizeof (targetDimension));
-  W.write (stream, false);
+  W.write (stream);
 }

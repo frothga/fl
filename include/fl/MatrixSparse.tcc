@@ -7,7 +7,7 @@ for details.
 
 
 Revisions 1.5, 1.6, 1.8 Copyright 2005 Sandia Corporation.
-Revisions 1.10 and 1.11 Copyright 2007 Sandia Corporation.
+Revisions 1.10 and 1.11 Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -352,10 +352,8 @@ namespace fl
 
   template<class T>
   void
-  MatrixSparse<T>::write (std::ostream & stream, bool withName) const
+  MatrixSparse<T>::write (std::ostream & stream) const
   {
-	MatrixAbstract<T>::write (stream, withName);
-
 	const int n = data->size ();
 	stream.write ((char *) &n, sizeof (n));
 	for (int i = 0; i < n; i++)
