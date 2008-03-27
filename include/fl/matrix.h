@@ -276,7 +276,8 @@ namespace fl
 	 Load human-readable matrix from stream.  Format rules:
 	 <ul>
 	 <li>All matrices begin with "[" and end with "]".  Everything before the
-	 first "[" is ignored.
+	 first "[" is ignored.  However, if a "~" occurs anywhere before the
+	 first "[", then the matrix is transposed.
 	 <li>Rows end with a LF character or a ";" (or both).
 	 <li>The number of columns equals the longest row.
 	 <li>Rows containing less than the full number of columns will be filled

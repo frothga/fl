@@ -547,7 +547,7 @@ namespace fl
 	const int rows = A.rows ();
 	const int columns = A.columns ();
 
-	std::string line = "[";
+	std::string line = columns > 1 ? "[" : "~[";
 	int r = 0;
 	while (true)
 	{
@@ -587,12 +587,14 @@ namespace fl
   {
 	std::vector<std::vector<T> > temp;
 	int columns = 0;
+	bool transpose = false;
 
 	// Scan for opening "["
 	char token;
 	do
 	{
 	  stream.get (token);
+	  if (token == '~') transpose = true;
 	}
 	while (token != '['  &&  stream.good ());
 
@@ -603,7 +605,6 @@ namespace fl
 	while (stream.good ()  &&  ! done)
 	{
 	  stream.get (token);
-	  std::cerr << "got " << token << std::endl;
 
 	  bool processLine = false;
 	  switch (token)
@@ -631,7 +632,6 @@ namespace fl
 
 	  if (processLine)
 	  {
-		std::cerr << "processing line: " << line << std::endl;
 		std::vector<T> row;
 		std::string element;
 		trim (line);
@@ -656,14 +656,30 @@ namespace fl
 
 	// Assign elements to A.
 	const int rows = temp.size ();
-	A.resize (rows, columns);
-	A.clear ();
-	for (int r = 0; r < rows; r++)
+	if (transpose)
 	{
-	  std::vector<T> & row = temp[r];
-	  for (int c = 0; c < row.size (); c++)
+	  A.resize (columns, rows);
+	  A.clear ();
+	  for (int r = 0; r < rows; r++)
 	  {
-		A(r,c) = row[c];
+		std::vector<T> & row = temp[r];
+		for (int c = 0; c < row.size (); c++)
+		{
+		  A(c,r) = row[c];
+		}
+	  }
+	}
+	else
+	{
+	  A.resize (rows, columns);
+	  A.clear ();
+	  for (int r = 0; r < rows; r++)
+	  {
+		std::vector<T> & row = temp[r];
+		for (int c = 0; c < row.size (); c++)
+		{
+		  A(r,c) = row[c];
+		}
 	  }
 	}
 
@@ -1167,7 +1183,8 @@ namespace fl
   {
 	stream.write ((char *) &rows_, sizeof (rows_));
 	stream.write ((char *) &columns_, sizeof (columns_));
-	stream.write ((char *) data, rows_ * columns_ * sizeof (T));
+	int count = rows_ * columns_ * sizeof (T);
+	if (count > 0) stream.write ((char *) data, count);
   }
 
 
