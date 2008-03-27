@@ -98,8 +98,17 @@ namespace fl
   };
 
   typedef void * productFunction (std::istream & stream);
-  typedef std::map<std::string, productFunction *> productMap;
-  typedef std::map<std::string, std::string> productIndex;
+  typedef std::map<std::string, productFunction *> productMappingIn;
+  typedef std::map<std::string, std::string>       productMappingOut;
+  /**
+	 Bundling both mappings in a single object makes it easier to instantiate
+	 the registry in those case where it is necessary.
+  **/
+  struct productRegistry
+  {
+	productMappingIn  in;
+	productMappingOut out;
+  };
 
   /**
 	 Manages the extraction of a polymorphic type from a stream.
@@ -140,8 +149,8 @@ namespace fl
 	{
 	  std::string name;
 	  getline (stream, name);
-	  typename productMap::iterator entry = products.find (name);
-	  if (entry == products.end ())
+	  productMappingIn::iterator entry = registry.in.find (name);
+	  if (entry == registry.in.end ())
 	  {
 		std::string error = "Unknown class name in stream: ";
 		error += name;
@@ -152,17 +161,21 @@ namespace fl
 
 	static void write (std::ostream & stream, const B & data)
 	{
-	  productIndex::iterator it = index.find (typeid (B).name ());
-	  if (it == index.end ()) throw "Class not found in Factory::index";
-	  stream << it->second << std::endl;
+	  std::string name = typeid (data).name ();
+	  productMappingOut::iterator entry = registry.out.find (name);
+	  if (entry == registry.out.end ())
+	  {
+		std::string error = "Attempt to write unregistered class: ";
+		error += name;
+		throw error.c_str ();
+	  }
+	  stream << entry->second << std::endl;
 	  data.write (stream);
 	}
 
-	static productMap products;
-	static productIndex index;
+	static productRegistry registry;
   };
-  template <class B> productMap   Factory<B>::products;
-  template <class B> productIndex Factory<B>::index;
+  template <class B> productRegistry Factory<B>::registry;
 
   template<class B, class C>
   class Product
@@ -179,8 +192,8 @@ namespace fl
 	{
 	  if (name.size ())
 	  {
-		Factory<B>::products.insert (make_pair (name, &read));
-		Factory<B>::index.insert (make_pair (typeid (B).name (), name));
+		Factory<B>::registry.in.insert  (make_pair (name, &read));
+		Factory<B>::registry.out.insert (make_pair (typeid (C).name (), name));
 	  }
 	  else
 	  {
@@ -195,8 +208,8 @@ namespace fl
 		  if (Factory<B>::products.find (uniqueName) == Factory<B>::products.end ()) break;
 		}
 
-		Factory<B>::products.insert (make_pair (uniqueName, &read));
-		Factory<B>::index.insert (make_pair (typeid (B).name (), name));
+		Factory<B>::registry.in.insert  (make_pair (uniqueName, &read));
+		Factory<B>::registry.out.insert (make_pair (typeid (C).name (), uniqueName));
 	  }
 	}
   };
