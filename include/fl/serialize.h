@@ -205,7 +205,7 @@ namespace fl
 		for (int i = 0; ; i++)
 		{
 		  sprintf (uniqueName, "%i", i);
-		  if (Factory<B>::products.find (uniqueName) == Factory<B>::products.end ()) break;
+		  if (Factory<B>::registry.in.find (uniqueName) == Factory<B>::registry.in.end ()) break;
 		}
 
 		Factory<B>::registry.in.insert  (make_pair (uniqueName, &read));
