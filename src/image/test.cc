@@ -986,10 +986,10 @@ main (int argc, char * argv[])
 	// PixelFormat
 	{
 	  // Create some formats to more fully test RGBABits
-	  PixelFormatRGBABits R2G3B2A0 (1, 0x03, 0x1C, 0x60, 0);
-	  PixelFormatRGBABits R5G6B5A0 (2, 0xF800, 0x07E0, 0x001F, 0);
-	  PixelFormatRGBABits R8G8B8A0 (3, 0xFF0000, 0x00FF00, 0x0000FF, 0);
-	  PixelFormatRGBABits R9G9B9A5 (4, 0xFF800000, 0x007FC000, 0x00003FE0, 0x0000001F);
+	  PointerPoly<fl::PixelFormat> R2G3B2A0 = new PixelFormatRGBABits (1, 0x03, 0x1C, 0x60, 0);
+	  PointerPoly<fl::PixelFormat> R5G6B5A0 = new PixelFormatRGBABits (2, 0xF800, 0x07E0, 0x001F, 0);
+	  PointerPoly<fl::PixelFormat> R8G8B8A0 = new PixelFormatRGBABits (3, 0xFF0000, 0x00FF00, 0x0000FF, 0);
+	  PointerPoly<fl::PixelFormat> R9G9B9A5 = new PixelFormatRGBABits (4, 0xFF800000, 0x007FC000, 0x00003FE0, 0x0000001F);
 
 	  vector<fl::PixelFormat *> formats;
 	  formats.push_back (&GrayChar);
@@ -1010,10 +1010,10 @@ main (int argc, char * argv[])
 	  formats.push_back (&YUV411);
 	  formats.push_back (&HLSFloat);
 	  formats.push_back (&BGRChar);
-	  formats.push_back (&R2G3B2A0);
-	  formats.push_back (&R5G6B5A0);
-	  formats.push_back (&R8G8B8A0);
-	  formats.push_back (&R9G9B9A5);
+	  formats.push_back ( R2G3B2A0);
+	  formats.push_back ( R5G6B5A0);
+	  formats.push_back ( R8G8B8A0);
+	  formats.push_back ( R9G9B9A5);
 
 	  Image test ("test.jpg");
 
@@ -1238,7 +1238,7 @@ main (int argc, char * argv[])
 	  }
 
 	  ofstream ofs ("test.filters");
-	  desc.write (ofs, false);
+	  desc.write (ofs);
 	  ofs.close ();
 
 	  ifstream ifs ("test.filters");
