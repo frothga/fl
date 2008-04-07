@@ -327,7 +327,7 @@ struct FormatMapping
 
 FormatMapping formatMap[] =
 {
-  {(PixelFormat *) 2, B8(0101000), 1,  8, 1, 3, 1, 0, 0},  // 8-bit palette
+  {(PixelFormat *) 2, B8(0001000), 1,  0, 1, 3, 1, 0, 0},  // palette
   {&GrayChar,         B8(1110000), 1,  8, 1, 0, 1, 0, 0},  // No-care on photometric: we don't distinguish positive from negative images at this time.
   {(PixelFormat *) 1, B8(1110000), 1, 16, 1, 0, 1, 0, 0},  // GrayShort, with consideration for SMaxSampleValue
   {&GrayFloat,        B8(1110000), 1, 32, 3, 0, 1, 0, 0},
@@ -402,12 +402,23 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		}
 		case 2:
 		{
-		  uint16 * reds;
-		  uint16 * greens;
-		  uint16 * blues;
+		  unsigned char * reds;
+		  unsigned char * greens;
+		  unsigned char * blues;
 		  ok = TIFFGetFieldDefaulted (tif, TIFFTAG_COLORMAP, &reds, &greens, &blues);  // As far as I know, there is no default color map, but why not give it a try?
 		  if (! ok) throw "ColorMap tag is missing, but required for paletted images.";
-		  format = new PixelFormatPaletteChar (reds, greens, blues, sizeof (uint16));
+
+		  // libtiff always returns data in machine word order
+#         if BYTE_ORDER == LITTLE_ENDIAN
+		  reds++;
+		  greens++;
+		  blues++;
+#         elif BYTE_ORDER != BIG_ENDIAN
+#           error This endian is not currently handled.
+#         endif
+
+		  cerr << "palette " << bitsPerSample << endl;
+		  format = new PixelFormatPalette (reds, greens, blues, sizeof (uint16), bitsPerSample);
 		  break;
 		}
 		default:
@@ -419,9 +430,8 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	if (format == 0) throw "No PixelFormat available that matches file contents";
   }
 
-  PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
-  if (! buffer) image.buffer = buffer = new PixelBufferPacked;
   image.format = format;
+  if (image.buffer == 0  ||  image.buffer->planes != image.format->planes) image.buffer = image.format->buffer ();
 
   if (! width ) width  = imageWidth  - x;
   if (! height) height = imageHeight - y;
@@ -442,7 +452,19 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   image.resize (width, height);
   if (! width  ||  ! height) return;
 
-  unsigned char * imageMemory = (unsigned char *) buffer->memory;
+  unsigned char * imageMemory;
+  int stride;
+  if (PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer)
+  {
+	imageMemory = (unsigned char *) buffer->memory;
+	stride = buffer->stride;
+  }
+  else if (PixelBufferGroups * buffer = (PixelBufferGroups *) image.buffer)
+  {
+	imageMemory = (unsigned char *) buffer->memory;
+	stride = buffer->stride;
+  }
+  else throw "We don't handle this type of buffer.";
 
   // If the requested image is anything other than exactly the union of a
   // vertical set of blocks in the file, then must use temporary storage
@@ -457,7 +479,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	uint32 blockHeight;
 	TIFFGetField (tif, TIFFTAG_TILELENGTH, &blockHeight);
 
-	tsize_t blockSize = blockWidth * blockHeight * (int) image.format->depth;
+	tsize_t blockSize = (int) rint (blockWidth * blockHeight * image.format->depth);
 
 	for (int oy = 0; oy < height;)  // output y: position in output image
 	{
@@ -474,14 +496,22 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		ttile_t tile = TIFFComputeTile (tif, rx, ry, 0, 0);
 		if (w == width  &&  w == blockWidth  &&  h == blockHeight)
 		{
-		  TIFFReadEncodedTile (tif, tile, imageMemory + oy * buffer->stride, blockSize);
+		  TIFFReadEncodedTile (tif, tile, imageMemory + oy * stride, blockSize);
 		}
 		else
 		{
 		  if (! blockBuffer)
 		  {
 			block.resize (blockWidth, blockHeight);
-			blockBuffer = (tdata_t) ((PixelBufferPacked *) block.buffer)->memory;
+			if (PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer)
+			{
+			  blockBuffer = (tdata_t) buffer->memory;
+			}
+			else if (PixelBufferGroups * buffer = (PixelBufferGroups *) image.buffer)
+			{
+			  blockBuffer = (tdata_t) buffer->memory;
+			}
+			assert (blockBuffer);
 		  }
 		  TIFFReadEncodedTile (tif, tile, blockBuffer, blockSize);
 		  image.bitblt (block, ox, oy, ix, iy, w, h);
@@ -498,7 +528,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	uint32 rowsPerStrip;
 	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
 
-	tsize_t blockSize = imageWidth * rowsPerStrip * (int) image.format->depth;
+	tsize_t blockSize = (int) rint (imageWidth * rowsPerStrip * image.format->depth);
 
 	for (int oy = 0; oy < height;)
 	{
@@ -509,14 +539,22 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 
 	  if (width == imageWidth  &&  iy == 0)
 	  {
-		TIFFReadEncodedStrip (tif, strip, imageMemory + oy * buffer->stride, h * buffer->stride);
+		TIFFReadEncodedStrip (tif, strip, imageMemory + oy * stride, h * stride);
 	  }
 	  else
 	  {
 		if (! blockBuffer)
 		{
 		  block.resize (imageWidth, rowsPerStrip);
-		  blockBuffer = (tdata_t) ((PixelBufferPacked *) block.buffer)->memory;
+		  if (PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer)
+		  {
+			blockBuffer = (tdata_t) buffer->memory;
+		  }
+		  else if (PixelBufferGroups * buffer = (PixelBufferGroups *) image.buffer)
+		  {
+			blockBuffer = (tdata_t) buffer->memory;
+		  }
+		  assert (blockBuffer);
 		}
 		TIFFReadEncodedStrip (tif, strip, blockBuffer, blockSize);
 		image.bitblt (block, 0, oy, x, iy, width, h);

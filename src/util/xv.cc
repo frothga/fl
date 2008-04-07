@@ -48,6 +48,7 @@ main (int argc, char * argv[])
 
 
 	new ImageFileFormatPGM;
+	new ImageFileFormatPNG;
 	new ImageFileFormatJPEG;
 	new ImageFileFormatTIFF;
 	new ImageFileFormatMatlab;

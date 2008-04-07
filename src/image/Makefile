@@ -128,7 +128,8 @@ IMAGE_FILE_FORMAT_O = \
 	ImageFileFormatJPEG.o \
 	ImageFileFormatTIFF.o \
 	ImageFileFormatMatlab.o \
-	ImageFileFormatNITF.o
+	ImageFileFormatNITF.o \
+	ImageFileFormatPNG.o
 
 CANVAS_O = \
 	Canvas.o \

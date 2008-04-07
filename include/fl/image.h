@@ -779,16 +779,32 @@ namespace fl
 	static float *         buildChar2Float ();  ///< Construct lutChar2Float during static initialization.
   };
 
-  class PixelFormatPaletteChar : public PixelFormat
+  /**
+	 Specifies the interface required by PixelBufferGroups.
+   **/
+  class Macropixel
   {
   public:
-	PixelFormatPaletteChar (unsigned char * r, unsigned char * g, unsigned char * b, int stride);  ///< r, g, b and stride specify the structure of the source table, which we copy into our internal format.
-	PixelFormatPaletteChar (unsigned short * r, unsigned short * g, unsigned short * b, int stride);  ///< r, g, b and stride specify the structure of the source table, which we copy into our internal format.
+	int pixels;  ///< Pixels per group.
+	int bytes;  ///< Bytes per group.
+  };
+
+  class PixelFormatPalette : public PixelFormat, public Macropixel
+  {
+  public:
+	PixelFormatPalette (unsigned char * r, unsigned char * g, unsigned char * b, int stride = 1, int bits = 8, bool bigendian = true);  ///< r, g, b and stride specify the structure of the source table, which we copy into our internal format.
+
+	virtual PixelBuffer * attach (void * block, int width, int height, bool copy = false) const;
+
+	virtual bool operator == (const PixelFormat & that) const;
 
 	virtual unsigned int  getRGBA  (void * pixel) const;
 	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
 
-	unsigned int palette[256];  ///< Colors stored as rgba values, that is, exactly the form returned by getRGBA().
+	int           bits;  ///< Number of bits in one pixel.
+	unsigned char masks[8];  ///< An array of bit masks for each pixel packed in one byte.  x % bits gives an offset into this array.  There may be some wasted entries, but this is a trivial loss in exchange for the simplicity of a fixed-size array.
+	int           shifts[8];  ///< How far to downshift the indexed pixel to put it in the least significant position.
+	unsigned int  palette[256];  ///< Colors stored as rgba values, that is, exactly the form returned by getRGBA().
   };
 
   /**
@@ -800,7 +816,7 @@ namespace fl
 	 other than the full word, but it is a somewhat different layout, since
 	 only one pixel occurs in any one word.
    **/
-  class PixelFormatGrayBits : public PixelFormat
+  class PixelFormatGrayBits : public PixelFormat, public Macropixel
   {
   public:
 	/**
@@ -814,11 +830,12 @@ namespace fl
 
 	virtual PixelBuffer * attach (void * block, int width, int height, bool copy = false) const;
 
+	virtual bool operator == (const PixelFormat & that) const;
+
 	virtual unsigned int  getRGBA  (void * pixel) const;
 	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
 
 	int           bits;  ///< Number of bits in one pixel.
-	int           pixels;  ///< Number of pixels in one byte.  Same as 8/bits or 1/depth.
 	unsigned char masks[8];  ///< An array of bit masks for each pixel packed in one byte.  x % bits gives an offset into this array.  There may be some wasted entries, but this is a trivial loss in exchange for the simplicity of a fixed-size array.
 	int           shifts[8];  ///< How far to upshift the indexed pixel to put it in the most significant position.
   };
@@ -1048,7 +1065,7 @@ namespace fl
 	int ratioV;  ///< How many vertical luma samples per chroma sample.
   };
 
-  class PixelFormatPackedYUV : public PixelFormatYUV
+  class PixelFormatPackedYUV : public PixelFormatYUV, public Macropixel
   {
   public:
 	struct YUVindex
@@ -1075,8 +1092,6 @@ namespace fl
 	virtual void          setYUV  (void * pixel, unsigned int yuv) const;
 
 	YUVindex * table;
-	int pixels;
-	int bytes;
   };
 
   class PixelFormatPlanarYUV : public PixelFormatYUV

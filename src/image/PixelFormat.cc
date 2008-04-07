@@ -714,13 +714,15 @@ PixelFormat::buffer () const
   {
 	return new PixelBufferPacked;
   }
-  else if (planes > 1)
+  else if (planes == 3)
   {
 	return new PixelBufferPlanar;
   }
   else if (planes == -1)
   {
-	return new PixelBufferGroups (1, 1);
+	const Macropixel * m = dynamic_cast<const Macropixel *> (this);
+	if (!m) throw "Specified a 'groups' style buffer, but not a Macropixel format.";
+	return new PixelBufferGroups (m->pixels, m->bytes);
   }
   else
   {
@@ -922,18 +924,38 @@ PixelFormat::buildChar2Float ()
 }
 
 
-// class PixelFormatPaletteChar -----------------------------------------------
+// class PixelFormatPalette ---------------------------------------------------
 
-PixelFormatPaletteChar::PixelFormatPaletteChar (unsigned char * r, unsigned char * g, unsigned char * b, int stride)
+PixelFormatPalette::PixelFormatPalette (unsigned char * r, unsigned char * g, unsigned char * b, int stride, int bits, bool bigendian)
 {
-  planes      = 1;
-  depth       = 1;
-  precedence  = 0;  // Below everything.
-  monochrome  = false;
-  hasAlpha    = false;
+  planes     = -1;
+  depth      = bits / 8.0f;
+  precedence = 0;  // Below everything.
+  monochrome = false;
+  hasAlpha   = false;
+  this->bits = bits;
+  bytes      = 1;
+  pixels     = 8 / bits;
 
+  // build masks
+  unsigned char mask = 0x1;
+  for (int i = 1; i < bits; i++) mask |= mask << 1;
+
+  int i = bigendian ? pixels - 1 : 0;
+  int step = bigendian ? -1 : 1;
+  int shift = 0;
+  while (mask)
+  {
+	masks[i] = mask;
+	shifts[i] = shift;
+	mask <<= bits;
+	shift += bits;
+	i += step;
+  }
+
+  // Build palette
   unsigned int * p   = palette;
-  unsigned int * end = p + 256;
+  unsigned int * end = p + (0x1 << bits);
   while (p < end)
   {
 	*p++ = (*r << 24) | (*g << 16) | (*b << 8) | 0xFF;
@@ -943,33 +965,41 @@ PixelFormatPaletteChar::PixelFormatPaletteChar (unsigned char * r, unsigned char
   }
 }
 
-PixelFormatPaletteChar::PixelFormatPaletteChar (unsigned short * r, unsigned short * g, unsigned short * b, int stride)
+PixelBuffer *
+PixelFormatPalette::attach (void * block, int width, int height, bool copy) const
 {
-  planes      = 1;
-  depth       = 1;
-  precedence  = 0;  // Below everything.
-  monochrome  = false;
-  hasAlpha    = false;
+  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil ((float) width / pixels), height, pixels, bytes);
+  if (copy) result->memory.copyFrom (result->memory);
+  return result;
+}
 
-  unsigned int * p   = palette;
-  unsigned int * end = p + 256;
+bool
+PixelFormatPalette::operator == (const PixelFormat & that) const
+{
+  const PixelFormatPalette * other = dynamic_cast<const PixelFormatPalette *> (&that);
+  if (! other) return false;
+  if (bits != other->bits) return false;
+
+  const unsigned int * o   = other->palette;
+  const unsigned int * p   = palette;
+  const unsigned int * end = p + (0x1 << bits);
   while (p < end)
   {
-	*p++ = ((*r & 0xFF00) << 16) | ((*g & 0xFF00) << 8) | (*b & 0xFF00) | 0xFF;
-	r = (unsigned short *) ((unsigned char *) r + stride);
-	g = (unsigned short *) ((unsigned char *) g + stride);
-	b = (unsigned short *) ((unsigned char *) b + stride);
+	if (*o++ != *p++) return false;
   }
+  return true;
 }
 
 unsigned int
-PixelFormatPaletteChar::getRGBA  (void * pixel) const
+PixelFormatPalette::getRGBA  (void * pixel) const
 {
-  return palette[* (unsigned char *) pixel];
+  PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
+  unsigned int index = (*data->address & masks[data->index]) >> shifts[data->index];
+  return palette[index];
 }
 
 void
-PixelFormatPaletteChar::setRGBA  (void * pixel, unsigned int rgba) const
+PixelFormatPalette::setRGBA  (void * pixel, unsigned int rgba) const
 {
   // Naive linear search for closest color
   int r =  rgba             >> 24;
@@ -997,8 +1027,12 @@ PixelFormatPaletteChar::setRGBA  (void * pixel, unsigned int rgba) const
 
 	p++;
   }
+  unsigned char index = bestEntry - palette;
 
-  * (unsigned char *) pixel = bestEntry - palette;
+  // Write the resulting palette index into the buffer
+  PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
+  unsigned char m = masks[data->index];
+  *data->address = (*data->address & ~m) | ((index << shifts[data->index]) & m);
 }
 
 
@@ -1012,6 +1046,7 @@ PixelFormatGrayBits::PixelFormatGrayBits (int bits, bool bigendian)
   monochrome = true;
   hasAlpha   = false;
   this->bits = bits;
+  bytes      = 1;
   pixels     = 8 / bits;
 
   // build masks
@@ -1026,7 +1061,7 @@ PixelFormatGrayBits::PixelFormatGrayBits (int bits, bool bigendian)
   {
 	masks[i] = mask;
 	shifts[i] = shift;
-	mask << bits;
+	mask <<= bits;
 	shift -= bits;
 	i += step;
   }
@@ -1038,6 +1073,23 @@ PixelFormatGrayBits::attach (void * block, int width, int height, bool copy) con
   PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil ((float) width / pixels), height, pixels, 1);
   if (copy) result->memory.copyFrom (result->memory);
   return result;
+}
+
+bool
+PixelFormatGrayBits::operator == (const PixelFormat & that) const
+{
+  const PixelFormatGrayBits * other = dynamic_cast<const PixelFormatGrayBits *> (&that);
+  if (! other) return false;
+  if (bits != other->bits) return false;
+
+  const unsigned char * o   = other->masks;
+  const unsigned char * m   = masks;
+  const unsigned char * end = m + pixels;
+  while (m < end)
+  {
+	if (*o++ != *m++) return false;
+  }
+  return true;
 }
 
 unsigned int

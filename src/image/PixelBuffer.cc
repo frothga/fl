@@ -416,28 +416,14 @@ PixelBufferGroups::resize (int width, int height, const PixelFormat & format, bo
 	return;
   }
 
-  int newBytes;
-  int newPixels;
-  if (const PixelFormatPackedYUV * f = dynamic_cast<const PixelFormatPackedYUV *> (&format))
-  {
-	newBytes  = f->bytes;
-	newPixels = f->pixels;
-  }
-  else if (const PixelFormatGrayBits * f = dynamic_cast<const PixelFormatGrayBits *> (&format))
-  {
-	newBytes  = 1;
-	newPixels = f->pixels;
-  }
-  else
-  {
-	throw "Need PixelFormat that specifies macropixel parameters.";
-  }
-  int newStride = (int) ceil ((float) width / newPixels) * newBytes;  // Always allocate a stride that can contain a whole number of groups and also the full width.  It is permissable to use part of a group for the last few pixels of the line, provided there is storage for the full group.
+  const Macropixel * f = dynamic_cast<const Macropixel *> (&format);
+  if (!f) throw "Need PixelFormat that specifies macropixel parameters.";
+  int newStride = (int) ceil ((float) width / f->pixels) * f->bytes;  // Always allocate a stride that can contain a whole number of groups and also the full width.  It is permissable to use part of a group for the last few pixels of the line, provided there is storage for the full group.
 
-  if (! preserve  ||  newPixels != pixels  ||  newBytes != bytes)
+  if (! preserve  ||  f->pixels != pixels  ||  f->bytes != bytes)
   {
-	pixels = newPixels;
-	bytes  = newBytes;
+	pixels = f->pixels;
+	bytes  = f->bytes;
 	stride = newStride;
 	memory.grow (newStride * height);
 	return;
