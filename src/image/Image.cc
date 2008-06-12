@@ -228,7 +228,9 @@ Image::operator <<= (const Image & that)
 void
 Image::copyFrom (const Image & that)
 {
-  buffer    = that.buffer->duplicate ();
+  if (that.buffer == 0) buffer = 0;
+  else buffer = that.buffer->duplicate ();
+
   format    = that.format;
   width     = that.width;
   height    = that.height;
