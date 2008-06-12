@@ -124,6 +124,9 @@ namespace fl
 	   will be appended to the end.
 	 **/
 	virtual void run (const Image & image, InterestPointSet & result) = 0;
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream) const;
   };
 
 
@@ -136,6 +139,9 @@ namespace fl
 
 	virtual void run (const Image & image, InterestPointSet & result);
 
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream) const;
+
 	NonMaxSuppress nms;
 	FilterHarris filter;
 	int maxPoints;  ///< Max number of interest points allowable
@@ -146,8 +152,12 @@ namespace fl
   {
   public:
 	InterestHarrisLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);
+	void init ();
 
 	virtual void run (const Image & image, InterestPointSet & result);
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream) const;
 
 	std::vector<FilterHarris> filters;  ///< FilterHarris clearly outperforms FilterHarrisEigen in tests.
 	std::vector<Laplacian> laplacians;
@@ -155,6 +165,7 @@ namespace fl
 	float thresholdFactor;
 	float neighborhood;
 	int firstStep;
+	int lastStep;
 	int extraSteps;
 	float stepSize;
   };
@@ -165,6 +176,9 @@ namespace fl
 	InterestLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);  ///< neighborhood >= 0 means fixed size (min = 1 pixel); neighborhood < 0 means multiple of scale.
 
 	virtual void run (const Image & image, InterestPointSet & result);
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream) const;
 
 	std::vector<Laplacian> laplacians;
 	int maxPoints;
@@ -185,6 +199,9 @@ namespace fl
 	InterestHessian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);  ///< neighborhood >= 0 means fixed size (min = 1 pixel); neighborhood < 0 means multiple of scale.
 
 	virtual void run (const Image & image, InterestPointSet & result);
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream) const;
 
 	std::vector<FilterHessian> filters;
 	std::vector<Laplacian> laplacians;
@@ -208,6 +225,9 @@ namespace fl
 
 	virtual void run (const Image & image, InterestPointSet & result);
 
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream) const;
+
 	bool isLocalMax (float value, ImageOf<float> & dog, int x, int y);
 	bool notOnEdge (ImageOf<float> & dog, int x, int y);
 	float fitQuadratic (std::vector< ImageOf<float> > & dogs, int s, int x, int y, Vector<float> & result);
@@ -227,6 +247,9 @@ namespace fl
 	InterestMSER (int delta = 5, float sizeRatio = 0.9f);
 
 	virtual void run (const Image & image, InterestPointSet & result);
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream) const;
 
 	// Parameters
 	int delta;  ///< Amount of gray-level distance above and below current gray-level to check when computing rate of change in region size.

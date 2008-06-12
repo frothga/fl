@@ -237,3 +237,13 @@ cerr << " " << added << " " << timer << endl;
 
   result.add (sorted);
 }
+
+void
+InterestHessian::read (istream & stream)
+{
+}
+
+void
+InterestHessian::write (ostream & stream) const
+{
+}

@@ -583,3 +583,13 @@ InterestMSER::run (const Image & image, InterestPointSet & result)
   // Store final result
   result.insert (result.end (), regions.begin (), regions.end ());
 }
+
+void
+InterestMSER::read (istream & stream)
+{
+}
+
+void
+InterestMSER::write (ostream & stream) const
+{
+}

@@ -97,3 +97,22 @@ InterestHarris::run (const Image & image, InterestPointSet & result)
 
   result.add (sorted);
 }
+
+void
+InterestHarris::read (istream & stream)
+{
+  stream.read ((char *) &maxPoints,       sizeof (maxPoints));
+  stream.read ((char *) &thresholdFactor, sizeof (thresholdFactor));
+  int neighborhood = 1;
+  stream.read ((char *) &neighborhood,    sizeof (neighborhood));
+  nms.half = neighborhood;
+}
+
+void
+InterestHarris::write (ostream & stream) const
+{
+  stream.write ((char *) &maxPoints,       sizeof (maxPoints));
+  stream.write ((char *) &thresholdFactor, sizeof (thresholdFactor));
+  int neighborhood = nms.half;
+  stream.write ((char *) &neighborhood,    sizeof (neighborhood));
+}

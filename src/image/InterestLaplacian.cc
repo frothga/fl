@@ -191,3 +191,13 @@ cerr << " " << timer << endl;
 
   result.add (sorted);
 }
+
+void
+InterestLaplacian::read (istream & stream)
+{
+}
+
+void
+InterestLaplacian::write (ostream & stream) const
+{
+}

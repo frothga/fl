@@ -94,7 +94,16 @@ InterestHarrisLaplacian::InterestHarrisLaplacian (int maxPoints, float threshold
   this->stepSize = stepSize;
 
   firstStep = max (0, (int) rint (logf (firstScale) / logf (stepSize)) - extraSteps);
-  int lastStep = (int) ceil ((logf (lastScale) / logf (stepSize) - firstStep) / extraSteps) * extraSteps + firstStep;
+  lastStep = (int) ceil ((logf (lastScale) / logf (stepSize) - firstStep) / extraSteps) * extraSteps + firstStep;
+
+  init ();
+}
+
+void
+InterestHarrisLaplacian::init ()
+{
+  filters.clear ();
+  laplacians.clear ();
 
   // Generate Laplacian filters
   for (int s = firstStep; s <= lastStep; s++)
@@ -193,4 +202,30 @@ cerr << " " << timer << endl;
   }
 
   result.add (sorted);
+}
+
+void
+InterestHarrisLaplacian::read (istream & stream)
+{
+  stream.read ((char *) &maxPoints,       sizeof (maxPoints));
+  stream.read ((char *) &thresholdFactor, sizeof (thresholdFactor));
+  stream.read ((char *) &neighborhood,    sizeof (neighborhood));
+  stream.read ((char *) &firstStep,       sizeof (firstStep));
+  stream.read ((char *) &lastStep,        sizeof (lastStep));
+  stream.read ((char *) &extraSteps,      sizeof (extraSteps));
+  stream.read ((char *) &stepSize,        sizeof (stepSize));
+
+  init ();
+}
+
+void
+InterestHarrisLaplacian::write (ostream & stream) const
+{
+  stream.write ((char *) &maxPoints,       sizeof (maxPoints));
+  stream.write ((char *) &thresholdFactor, sizeof (thresholdFactor));
+  stream.write ((char *) &neighborhood,    sizeof (neighborhood));
+  stream.write ((char *) &firstStep,       sizeof (firstStep));
+  stream.write ((char *) &lastStep,        sizeof (lastStep));
+  stream.write ((char *) &extraSteps,      sizeof (extraSteps));
+  stream.write ((char *) &stepSize,        sizeof (stepSize));
 }

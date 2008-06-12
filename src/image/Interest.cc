@@ -96,3 +96,15 @@ InterestPointSet::add (const multiset<PointInterest> & points)
   ownPoints = true;  // WARNING: Don't mix owned and non-owned points!
 }
 
+
+// class InterestOperator -----------------------------------------------------
+
+void
+InterestOperator::read (istream & stream)
+{
+}
+
+void
+InterestOperator::write (ostream & stream) const
+{
+}
