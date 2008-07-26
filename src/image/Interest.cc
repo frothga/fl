@@ -99,6 +99,10 @@ InterestPointSet::add (const multiset<PointInterest> & points)
 
 // class InterestOperator -----------------------------------------------------
 
+InterestOperator::~InterestOperator ()
+{
+}
+
 void
 InterestOperator::read (istream & stream)
 {

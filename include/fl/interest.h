@@ -116,6 +116,8 @@ namespace fl
   class InterestOperator
   {
   public:
+	virtual ~InterestOperator ();
+
 	/**
 	   Returns a collection of interest points.
 	   \param result If this class sorts points internally,
