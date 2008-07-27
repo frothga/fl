@@ -6,56 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.2, 1.3, 1.5 Copyright 2005 Sandia Corporation.
-Revisions 1.7 thru 1.10 Copyright 2008 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.10  2008/02/24 13:53:35  Fred
-More carefully constrain when pow(int,int) is added.
-
-Revision 1.9  2007/03/25 13:31:09  Fred
-Fix MSVC 2005 compile errors.  It doesn't define pow(int,int).
-
-Revision 1.8  2007/03/23 11:38:05  Fred
-Correct which revisions are under Sandia copyright.
-
-Revision 1.7  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.6  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.5  2005/10/08 19:42:13  Fred
-Update revision history and add Sandia copyright notice.
-
-Move isinf() and isnan() into std namespace.
-
-Undefine min and max macros created by some subsidiary of windows.h
-
-Revision 1.4  2005/04/23 19:35:05  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.3  2005/01/22 20:44:27  Fred
-MSVC compilability fix
-
-Revision 1.2  2005/01/12 04:57:58  rothgang
-Add functions (sqrt, pow) to the std namespace to ensure that all common
-numeric types are covered.
-
-Adapt to environments (such as cygwin) that lack a definition of INFINITY, NAN,
-and fpclassify.
-
-Revision 1.1  2004/05/06 16:25:11  rothgang
-Add functions to force use of "f" forms of math functions for floats rather
-than converting up to double.
--------------------------------------------------------------------------------
 */
 
 

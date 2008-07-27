@@ -6,57 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.1, 1.2 and 1.4 Copyright 2005 Sandia Corporation.
-Revisions 1.5 thru 1.9     Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.9  2007/03/25 14:34:42  Fred
-This code was assuming that it always received dense matrices, and so was
-copying it using a direct pointer to memory.  Fixed this latent bug by using
-the element accessor when the matrix is not dense.
-
-Revision 1.8  2007/03/23 10:57:27  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.7  2006/02/16 04:45:26  Fred
-Change all "copy" options into "destroy".  These functions now have about the
-same semantics as before the copy option was added, except now the programmer
-can explicitly indicate that a parameter can be overwritten safely.
-
-Revision 1.6  2006/02/05 22:52:00  Fred
-Add a flag to control copying the "b" parameter, since there are cases where
-the client program may want to reuse it.
-
-Use pointer pushing to make copying more efficient.  We could cut down on the
-amount of copying if we stored a leading dimension (ala LAPACK) in the Matrix
-classes.
-
-Revision 1.5  2006/01/29 03:25:29  Fred
-Add copy option.
-
-Revision 1.4  2005/10/15 22:23:15  Fred
-Include assert.h.  It as only a fluke that this worked before.
-
-Revision 1.3  2005/10/13 04:14:25  Fred
-Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.2  2005/10/13 03:57:16  Fred
-Allow overwriting of input matrix.  Fix bug introduced by compilability fixes
-for MSVC.  Optionally compute residual.  Changed interface to get rid of SVD
-related return values.
-
-Add Sandia copyright notice.
-
-Revision 1.1  2005/09/10 17:40:49  Fred
-Create templates for LAPACK bridge, rather than using type specific inlines. 
-Break lapackd.h and lapacks.h into implementation files.
--------------------------------------------------------------------------------
 */
 
 

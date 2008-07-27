@@ -4,31 +4,6 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.7  2007/03/23 02:32:04  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.6  2005/10/13 03:22:02  Fred
-Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.5  2005/04/23 19:39:05  Fred
-Add UIUC copyright notice.
-
-Revision 1.4  2004/05/03 20:16:15  rothgang
-Rearrange parameters for Gaussians so border mode comes before format.
-
-Revision 1.3  2003/09/07 22:05:56  rothgang
-Fixed bug in selection of image format for double.
-
-Revision 1.2  2003/07/30 14:06:45  rothgang
-Finish rewriting FilterHarris into FilterHessian.
-
-Revision 1.1  2003/07/24 21:08:06  rothgang
-Created new Hessian filter.
--------------------------------------------------------------------------------
 */
 
 

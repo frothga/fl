@@ -6,39 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.3 and 1.4 Copyright 2005 Sandia Corporation.
-Revisions 1.6 and 1.7 Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.7  2007/03/23 10:57:28  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.6  2006/02/16 04:46:25  Fred
-Use destroy option in sygv().
-
-Revision 1.5  2005/10/13 04:14:25  Fred
-Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.4  2005/10/13 03:34:23  Fred
-Add Sandia distribution terms.
-
-Revision 1.3  2005/09/12 03:45:18  Fred
-Change lapacks.h to lapack.h
-
-Add Sandia copyright notice.  Need to add license info before release.
-
-Revision 1.2  2005/04/23 19:40:05  Fred
-Add UIUC copyright notice.
-
-Revision 1.1  2004/04/19 17:28:22  rothgang
-Add Multiple Discriminant Analysis dimensionality reduction method.
--------------------------------------------------------------------------------
 */
 
 

@@ -4,49 +4,11 @@ Created 10/4/2005 to take advantage of a faster implementation of gels in
 LAPACK.
 
 
-Revisions 1.1 and 1.2  Copyright 2005 Sandia Corporation.
-Revisions 1.3 thru 1.7 Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.7  2007/03/25 14:34:42  Fred
-This code was assuming that it always received dense matrices, and so was
-copying it using a direct pointer to memory.  Fixed this latent bug by using
-the element accessor when the matrix is not dense.
-
-Revision 1.6  2007/03/23 10:57:27  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.5  2006/02/16 04:45:26  Fred
-Change all "copy" options into "destroy".  These functions now have about the
-same semantics as before the copy option was added, except now the programmer
-can explicitly indicate that a parameter can be overwritten safely.
-
-Revision 1.4  2006/02/05 22:52:00  Fred
-Add a flag to control copying the "b" parameter, since there are cases where
-the client program may want to reuse it.
-
-Use pointer pushing to make copying more efficient.  We could cut down on the
-amount of copying if we stored a leading dimension (ala LAPACK) in the Matrix
-classes.
-
-Revision 1.3  2006/01/29 03:25:29  Fred
-Add copy option.
-
-Revision 1.2  2005/10/15 22:24:24  Fred
-Include assert.h.  It as only a fluke that this worked before.
-
-Force type in log() expressin to be double.
-
-Revision 1.1  2005/10/13 03:50:48  Fred
-Create bridge for gelsd, which LAPACK documentation claims is faster than
-gelss.
--------------------------------------------------------------------------------
 */
 
 

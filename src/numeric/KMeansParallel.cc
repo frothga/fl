@@ -6,69 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.8  thru 1.10 Copyright 2005 Sandia Corporation.
-Revisions 1.12 thru 1.14 Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.14  2007/03/23 10:57:28  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.13  2006/02/18 00:38:23  Fred
-Update revision history.
-
-Revision 1.12  2006/02/18 00:34:07  Fred
-Make KMP a Listener, and use client connection code in SocketStream, rather
-than handling these TCP rituals directly.
-
-Revision 1.11  2005/10/13 04:14:25  Fred
-Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.10  2005/10/13 03:32:11  Fred
-Add Sandia distribution terms.
-
-Revision 1.9  2005/09/12 03:43:23  Fred
-Change lapacks.h to lapack.h
-
-Add Sandia copyright notice.  Need to add license info before release.
-
-Revision 1.8  2005/08/06 16:06:01  Fred
-MSVC compatibility fix: use binary mode for files.
-
-Revision 1.7  2005/04/23 19:40:05  Fred
-Add UIUC copyright notice.
-
-Revision 1.6  2004/04/19 17:22:21  rothgang
-Move substantial pieces of code from KMeansParallel::run() into separate
-functions to allow implementation of non-parallel KMeans::run() with minimal
-redundancy.  Change interface of read() and write() to match other parts of
-library.
-
-Revision 1.5  2004/04/06 21:09:39  rothgang
-Guard against merging cluster membership info when removing a newly created
-cluster center.
-
-Revision 1.4  2003/12/31 16:36:15  rothgang
-Convert to fl namespace and add to library.
-
-Revision 1.3  2003/12/24 15:21:35  rothgang
-Use frob() rather than norm().
-
-Revision 1.2  2003/12/23 19:12:02  rothgang
-Convert to use fl library.
-
-Revision 1.1  2003/12/23 18:57:25  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/12/23 18:57:25  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

@@ -6,76 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.3, 1.5 thru 1.10 Copyright 2005 Sandia Corporation.
-Revisions 1.12 thru 1.14     Copyright 2008 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.14  2007/03/23 02:32:02  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.13  2006/02/26 14:03:05  Fred
-rintf() is not available under MSVC.
-
-Revision 1.12  2006/02/25 22:38:31  Fred
-Change image structure by encapsulating storage format in a new PixelBuffer
-class.  Must now unpack the PixelBuffer before accessing memory directly. 
-ImageOf<> now intercepts any method that may modify the buffer location and
-captures the new address.
-
-Revision 1.11  2005/10/13 03:22:02  Fred
-Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.10  2005/10/09 04:39:50  Fred
-Add Sandia distribution terms.
-
-Rename lapack?.h to lapack.h
-
-Revision 1.9  2005/09/10 17:04:07  Fred
-Break dependency of canvas.h on freetype2 include files.
-
-Revision 1.8  2005/09/06 03:27:15  Fred
-Move comment on drawMSER() ahead of Sandia copyrght notice to imply that it is
-part of the current release.
-
-Revision 1.7  2005/09/04 00:04:12  Fred
-Add drawMSER.
-
-Revision 1.6  2005/09/02 22:22:56  Fred
-Make revision history more explicit, and add Sandia copyright notice.  Probably
-needs more work to get notice correct.
-
-Undefine min and max, since windows.h imports a definition of them for some
-bizarre reason.
-
-Revision 1.5  2005/05/29 21:06:15  Fred
-Implement drawText(), along with necessary font management to work with
-freetype2.
-
-Make pen() set alpha value of working Pixel in a more direct manner.
-
-Revision 1.4  2005/04/23 19:36:46  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.3  2005/01/22 21:04:44  Fred
-MSVC compilability fix:  Cast to clarify use of float.
-
-Revision 1.2  2003/12/29 23:30:16  rothgang
-Add function to fill rectangular region with a color.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

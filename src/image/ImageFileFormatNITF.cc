@@ -3,69 +3,11 @@ Author: Fred Rothganger
 Created 2/26/2006
 
 
-Revisions 1.1 thru 1.12 Copyright 2008 Sandia Corporation.
+Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.12  2008/02/24 14:11:25  Fred
-Use rint() rather than round().
-
-Revision 1.11  2007/08/13 00:20:46  Fred
-blockSize must be exact.  Use round() rather than ceil() to cope with
-possible numeric error.
-
-Revision 1.10  2007/08/13 00:12:59  Fred
-Use stride directly for byte size of rows.  Handle depth as a float value.
-
-Revision 1.9  2007/03/23 02:32:06  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.8  2006/03/16 04:12:59  Fred
-Add setters, and rearrange getters to run most work thru the matrix form.
-
-Revision 1.7  2006/03/16 03:28:57  Fred
-Merge nitfFileHeader into ImageFileDelegateNITF.  Add accessors, and
-particularly something to fetch GeoTransformMatrix.  Reconcile distribution of
-responsibility for accessors between header and nitfImageSection.  Add concept
-of a current active index for images.
-
-Revision 1.6  2006/03/13 02:39:12  Fred
-Suppress tracers, except on untested parts of code (mainly block mask reader).
-
-Create PixelFormatGrayShort with appropriate mask when NBPP != ABPP.
-
-Revision 1.5  2006/03/12 21:58:18  Fred
-Add ability to read NSIF 1.0 and NITF 2.0 files.
-
-Move block reader into separate function, in preparation for handling planar
-formats.
-
-Revision 1.4  2006/03/12 03:22:02  Fred
-Move endian code to endian.h.  Don't use double underscores in front of
-endian-related macros.
-
-Revision 1.3  2006/03/10 07:11:03  Fred
-Handle endian issues (all NITF raw data is big-endian).
-
-Add parsing for block mask table.
-
-Adapt TIFF block reading code to NITF.  This version can now read multi-block
-monochrome images.
-
-Revision 1.2  2006/03/09 06:05:09  Fred
-Table-driven parsing of header information.  The bug in retrieving NBPP is now
-fixed.
-
-Revision 1.1  2006/03/07 01:20:57  Fred
-Initial implementation of NITF.  This version is able to read one sample file,
-but contains bugs in the header parser which cause it to retrieve the wrong
-value for NBPP.
--------------------------------------------------------------------------------
 */
 
 

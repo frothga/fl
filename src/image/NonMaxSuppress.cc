@@ -4,42 +4,6 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.9  2007/03/23 02:32:03  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.8  2005/10/13 03:22:02  Fred
-Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.7  2005/04/23 19:39:05  Fred
-Add UIUC copyright notice.
-
-Revision 1.6  2003/08/06 22:18:44  rothgang
-Determine minimum as well as max and average.
-
-Revision 1.5  2003/07/30 16:07:31  rothgang
-Finish implementing border modes.  Keep count along with other statistics.
-
-Revision 1.4  2003/07/30 15:34:30  rothgang
-Reorder loops for better locality.  Begin adding border modes.
-
-Revision 1.3  2003/07/30 14:50:20  rothgang
-Clarify range limiting code.
-
-Revision 1.2  2003/07/17 14:49:22  rothgang
-Only update statistic "maximum" when a pixel passes the suppression test.  This
-makes it consistent with the method for computing average.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

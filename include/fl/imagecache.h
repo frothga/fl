@@ -3,24 +3,11 @@ Author: Fred Rothganger
 Created 02/06/2005
 
 
-Revisions 1.1 thru 1.2 Copyright 2005 Sandia Corporation.
+Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.3  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.2  2005/10/09 03:43:41  Fred
-Add  Sandia distribution terms.
-
-Revision 1.1  2005/08/29 03:15:08  Fred
-Mechanism for sharing/caching results of image processing functions.
--------------------------------------------------------------------------------
 */
 
 

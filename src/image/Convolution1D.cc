@@ -6,77 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.4 and 1.6   Copyright 2005 Sandia Corporation.
-Revisions 1.8 thru 1.13 Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.13  2007/08/12 14:28:22  Fred
-Handle cases where image is narrower than kernel.
-
-Revision 1.12  2007/04/20 13:34:12  Fred
-First working version of assembly optimizations!  This is for horizontal case
-only, but will add vertical later.  Also, it is only for GCC/x86.  This code
-only improves GCC's output in -03 by about 5% to 10%.  To be worth it, this
-should be written for SSE rather than x87.  Also, might be worth abondoning
-the "reverse" kernel, since incrementing pointers is almost zero cost when
-interleaved with x87 instructions.
-
-Changed stride to be in bytes rather than pixels.
-
-Fixed response() to handle new border modes.
-
-Revision 1.11  2007/03/23 02:32:04  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.10  2006/04/15 18:56:59  Fred
-Rewrite filter() to compute the well-defined portion of the result separately
-from the borders.  This allows fewer tests in the inner loop, making the common
-case more efficient.
-
-Revision 1.9  2006/03/20 05:32:55  Fred
-Image now has null PixelBuffer if it is empty, so trap this case.
-
-Revision 1.8  2006/02/25 22:38:31  Fred
-Change image structure by encapsulating storage format in a new PixelBuffer
-class.  Must now unpack the PixelBuffer before accessing memory directly. 
-ImageOf<> now intercepts any method that may modify the buffer location and
-captures the new address.
-
-Revision 1.7  2005/10/13 03:22:02  Fred
-Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.6  2005/10/09 04:08:20  Fred
-Add detail to revision history.
-
-Revision 1.5  2005/04/23 19:36:46  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.4  2005/01/12 05:10:12  rothgang
-Use math.h to adapt to environments (such as cygwin) that lack a definition of
-fpclassify().
-
-Revision 1.3  2004/05/03 20:14:12  rothgang
-Rearrange parameters so border mode comes before format.  Add function to zero
-out subnormal floats in kernel (improves speed).
-
-Revision 1.2  2003/09/07 22:00:10  rothgang
-Rename convolution base classes to allow for other methods of computation
-besides discrete kernel.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

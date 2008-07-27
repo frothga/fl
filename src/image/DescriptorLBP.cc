@@ -6,73 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.7, 1.9 thru 1.11 Copyright 2005 Sandia Corporation.
-Revisions 1.13 thru 1.14     Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.14  2007/03/23 02:32:03  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.13  2006/02/25 22:38:31  Fred
-Change image structure by encapsulating storage format in a new PixelBuffer
-class.  Must now unpack the PixelBuffer before accessing memory directly. 
-ImageOf<> now intercepts any method that may modify the buffer location and
-captures the new address.
-
-Revision 1.12  2005/10/13 03:22:02  Fred
-Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.11  2005/10/09 05:06:54  Fred
-Remove lapack.h, as it is no longer necessary to obtain matrix inversion
-operator.
-
-Revision 1.10  2005/10/09 04:45:52  Fred
-Rename lapack?.h to lapack.h.  Add Sandia copyright notice.
-
-Revision 1.9  2005/09/10 16:39:52  Fred
-Clarify revision history.
-
-Revision 1.8  2005/04/23 19:36:46  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.7  2005/01/22 21:07:49  Fred
-MSVC compilability fix:  Replace GNU operator with min() and max().
-
-Revision 1.6  2004/08/30 01:26:06  rothgang
-Include timestamp in change detection for cacheing input image.
-
-Revision 1.5  2004/08/29 16:21:12  rothgang
-Change certain attributes of Descriptor from functions to member variables:
-supportRadial, monochrome, dimension.  Elevated supportRadial to a member of
-the base classs.  It is very common, but not 100% common, so there is a little
-wasted storage in a couple of cases.  On the other hand, this allows for client
-code to determine what support was used for a descriptor on an affine patch.
-
-Modified read() and write() functions to call base class first, and moved task
-of writing name into the base class.  May move task of writing supportRadial
-into base class as well, but leaving it as is for now.
-
-Revision 1.4  2004/05/03 18:59:47  rothgang
-More discriminating image change detector.  Cache LBP category for all pixels
-in image.  Makes histogramming much faster if there are overlapping calls.
-
-Revision 1.3  2004/04/18 04:37:41  rothgang
-Add constructor from stream and fix bug in allocating feature vector.
-
-Revision 1.2  2004/03/22 20:32:28  rothgang
-Create preprocessing step and stage more constants rather than continually
-computing them.
-
-Revision 1.1  2004/02/22 00:12:50  rothgang
-Add Local Binary Pattern descriptor.
--------------------------------------------------------------------------------
 */
 
 

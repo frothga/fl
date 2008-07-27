@@ -6,35 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.1 thru 1.3 Copyright 2005 Sandia Corporation.
-Revisions Copyright 2008 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.5  2007/03/23 10:57:29  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.4  2005/10/13 04:14:25  Fred
-Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.3  2005/10/13 04:03:10  Fred
-Change interface to det() to take a MatrixAbstract.
-
-Add Sandia copyright notice.
-
-Revision 1.2  2005/09/11 23:01:53  Fred
-Make operator ! a member of Matrix and add the operator to MatrixAbstract and
-Matrix3x3 as well.
-
-Revision 1.1  2005/09/10 17:40:49  Fred
-Create templates for LAPACK bridge, rather than using type specific inlines. 
-Break lapackd.h and lapacks.h into implementation files.
--------------------------------------------------------------------------------
 */
 
 

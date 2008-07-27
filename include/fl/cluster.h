@@ -6,64 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revision  1.8            Copyright 2005 Sandia Corporation.
-Revisions 1.10 thru 1.12 Copyright 2008 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.12  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.11  2006/02/18 00:24:03  Fred
-Use new socket facilities in KMeansParallel.  Specifically, make KMP a
-Listener, and get rid of obsolete machinery.
-
-Revision 1.10  2006/02/05 22:16:25  Fred
-Break dependency on image by using Metric rather than Comparison.  Metric is a
-new class in the numeric library, while Comparison is in the image library. 
-Comparison now derives from Metric, so Comparisons can still be passed into
-Agglomerate.
-
-Revision 1.9  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.8  2005/10/08 18:21:21  Fred
-Preliminary compilability work.  This does not yet work under MSVC.
-
-Revision 1.7  2005/04/23 19:38:11  Fred
-Add UIUC copyright notice.
-
-Revision 1.6  2004/04/19 16:47:11  rothgang
-Add agglomerative clustering.  Remove factory method (now handled by Factory
-template).  Change read and write interfaces to be consistent with namesake
-methods elsewhere in library.  Pull code out of KMeansParallel::run() into
-separate functions in KMeans to allow implementation of KMeans::run() without
-redundant code.
-
-Revision 1.5  2004/01/13 19:45:46  rothgang
-Add distribution() method.  Clean up namespace specifiers.
-
-Revision 1.4  2003/12/31 16:34:49  rothgang
-Convert to fl namespace and add to library.
-
-Revision 1.3  2003/12/24 15:18:17  rothgang
-Add classCount method.  Change comments to doxygen format.
-
-Revision 1.2  2003/12/23 19:10:51  rothgang
-Convert to use fl library.
-
-Revision 1.1  2003/12/23 18:57:25  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/12/23 18:57:25  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

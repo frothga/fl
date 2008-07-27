@@ -6,23 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revision 1.1 thru 1.2 Copyright 2007 Sandia Corporation.
+Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.2  2007/03/23 02:32:04  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.1  2006/01/06 18:04:23  Fred
-Move PixelFormat classes into separate file.  Actually, PixelFormat is much
-more important than Pixel.  The main reason for the move is symmetry with a
-soon-to-be-added set of classes called PixelBuffer.
--------------------------------------------------------------------------------
 */
 
 

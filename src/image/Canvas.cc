@@ -6,58 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.4, 1.6 thru 1.10 Copyright 2005 Sandia Corporation.
-Revisions Copyright 2008 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.12  2007/03/23 02:32:03  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.11  2005/10/13 03:22:02  Fred
-Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.10  2005/10/09 04:17:48  Fred
-Add Sandia distribution terms.
-
-Revision 1.9  2005/09/06 03:26:42  Fred
-Add comment on drawMSER() to revision history.
-
-Revision 1.8  2005/09/06 03:23:17  Fred
-Add empty implementation of drawMSER().
-
-Revision 1.7  2005/09/02 22:21:02  Fred
-Make revision history more explicit, and add Sandia copyright notice.  Probably
-needs more work to get notice correct.
-
-Revision 1.6  2005/05/29 15:58:51  Fred
-Change interface to drawText().  Add setFont().
-
-Revision 1.5  2005/04/23 19:36:45  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.4  2005/01/12 05:08:44  rothgang
-Add drawEllipse() that directly takes an S matrix.
-
-Revision 1.3  2003/12/29 23:30:16  rothgang
-Add function to fill rectangular region with a color.
-
-Revision 1.2  2003/09/07 21:55:31  rothgang
-Add drawParallelogram().
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

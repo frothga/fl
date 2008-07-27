@@ -4,29 +4,6 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.5  2007/02/25 14:46:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.4  2005/10/09 04:04:47  Fred
-Put UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.3  2005/04/23 19:38:35  Fred
-Add UIUC copyright notice.
-
-Revision 1.2  2004/07/22 15:18:12  rothgang
-Probe for double-buffering first.  Workaround (?) for newer XFree86 servers.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

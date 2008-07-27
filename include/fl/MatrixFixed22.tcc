@@ -6,44 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.3 and 1.4 Copyright 2005 Sandia Corporation.
-Revisions 1.6 and 1.7 Copyright 2008 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.7  2007/03/23 11:38:06  Fred
-Correct which revisions are under Sandia copyright.
-
-Revision 1.6  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.5  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.4  2005/10/09 03:41:12  Fred
-Move the file name LICENSE up to previous line, for better symmetry with UIUC
-notice.
-
-Revision 1.3  2005/10/08 18:38:06  Fred
-Move geev() from matrix.h.
-
-Update revision history and add Sandia copyright notice.
-
-Revision 1.2  2005/04/23 19:38:11  Fred
-Add UIUC copyright notice.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

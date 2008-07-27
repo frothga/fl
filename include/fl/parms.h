@@ -4,37 +4,6 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.7  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.6  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.5  2005/04/23 19:38:11  Fred
-Add UIUC copyright notice.
-
-Revision 1.4  2004/07/22 15:06:02  rothgang
-Change "list" type functions to take a string as default rather than a vector
-of strings.  Makes specifying the default easier in the client program.
-
-Revision 1.3  2004/01/13 19:40:48  rothgang
-Add getIntList().
-
-Revision 1.2  2003/12/30 16:24:51  rothgang
-Add function to output parms in human readable form.  Convert comments to
-doxygen format.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

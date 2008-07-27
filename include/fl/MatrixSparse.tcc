@@ -6,59 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.5, 1.6, 1.8 Copyright 2005 Sandia Corporation.
-Revisions 1.10 and 1.11 Copyright 2008 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.11  2007/03/23 11:38:05  Fred
-Correct which revisions are under Sandia copyright.
-
-Revision 1.10  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.9  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.8  2005/09/26 04:21:59  Fred
-Add detail to revision history.
-
-Revision 1.7  2005/04/23 19:35:05  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.6  2005/01/22 20:39:16  Fred
-MSVC compilability fix: Change interface to frob() to use float rather than
-templated type.
-
-Revision 1.5  2005/01/12 04:59:59  rothgang
-Use std versions of pow, sqrt, and fabs so that choice of type specific version
-will be automatic when template is instantiated.  IE: std contains type
-overloaded versions of the functions rather than separately named functions.
-
-Revision 1.4  2003/12/30 16:49:37  rothgang
-Add frob().
-
-Revision 1.3  2003/08/11 14:17:12  rothgang
-Changed interface for clear() so that it can take an arbitrary scalar rather
-than just setting everything to zero.
-
-Revision 1.2  2003/07/09 14:59:17  rothgang
-Use SmartPointer rather than SparseBlock.  SmartPointer is essentially a
-generalization of the idea behind SparseBlock (a structured Pointer).
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

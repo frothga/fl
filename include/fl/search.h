@@ -4,41 +4,6 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.8  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.7  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.6  2005/04/23 19:38:11  Fred
-Add UIUC copyright notice.
-
-Revision 1.5  2004/04/19 21:23:37  rothgang
-Create template versions of Search classes.
-
-Revision 1.4  2004/04/19 17:01:43  rothgang
-Remove unused variants of LM.  This is in preparation for converting the entire
-Search architecture into a set of templates so the programmer can choose
-between single and double precision.
-
-Revision 1.3  2004/02/15 17:57:41  rothgang
-Remove SearchableNumeric::value(), since it was already an abstract function in
-the superclass.
-
-Revision 1.2  2003/12/30 16:22:28  rothgang
-Convert comments to doxygen format.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

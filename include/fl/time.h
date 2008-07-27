@@ -6,72 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.3, 1.5 and 1.6 Copyright 2005 Sandia Corporation.
-Revisions 1.8 thru 1.13    Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.13  2007/08/03 04:52:58  Fred
-Update Sandia copyright notice.
-
-Revision 1.12  2007/08/03 04:51:06  Fred
-Enable hires counter under Cygwin.
-
-Revision 1.11  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.10  2006/02/14 06:08:36  Fred
-Add low-resolution sleep function to mimic the posix version.
-
-Revision 1.9  2006/01/22 05:22:38  Fred
-Add comment to revision history.
-
-Revision 1.8  2006/01/22 05:21:34  Fred
-Change semantics of reset() slightly, so that it will only start the watch if
-it was alreay running.
-
-Revision 1.7  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.6  2005/10/09 03:34:25  Fred
-Update revision history and add Sandia copyright notice.
-
-Suppress min and max macros dragged in from somewhere by windows.h
-
-Rearrange calls in Windows version of getTimestamp() so it reads the current
-counter before the frequency.  This is in keeping with the policy that we read
-the current time as close as possible to the start of the function.
-
-Revision 1.5  2005/05/29 21:49:39  Fred
-Use hi-res timers for Windows implementation of getTimestamp().
-
-Fix comments on Stopwatch to correctly describe current behavior.
-
-Revision 1.4  2005/04/23 19:35:05  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.3  2005/01/22 20:57:18  Fred
-MSVC compilability fix:  Use available time function for getting (not quite so)
-fine grained time under Win32.  Look into using QueryPerformanceCounter() and
-QueryPerformanceFrequency() to get finer timing.
-
-Revision 1.2  2004/06/22 21:25:21  rothgang
-Change interface slightly so that one doesn't have to stop the timer to read
-total time to present.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

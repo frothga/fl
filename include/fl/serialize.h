@@ -6,36 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.5 and 1.6 Copyright 2008 Sandia Corporation.
+Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.6  2007/03/25 14:57:58  Fred
-Fix template instantiation issues:  Add a template for the static member
-Factory::products.  Make productFunction and productMap types non-templated
-(by returning a void * rather than a specific type) in order to simplify
-template structure the some compilers were choking on.
-
-Revision 1.5  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.4  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.3  2005/04/23 19:38:11  Fred
-Add UIUC copyright notice.
-
-Revision 1.2  2004/08/30 00:06:08  rothgang
-Include class name in exception message.
-
-Revision 1.1  2004/04/19 17:03:08  rothgang
-Create template for extracting polymorphic objects from a stream.
--------------------------------------------------------------------------------
 */
 
 

@@ -6,58 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.7 and 1.8 Copyright 2005 Sandia Corporation.
+Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.10  2007/03/23 02:32:02  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.9  2005/10/13 03:22:02  Fred
-Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.8  2005/10/09 05:30:22  Fred
-Update revision history and add Sandia copyright notice.
-
-Revision 1.7  2005/06/07 03:56:50  Fred
-Change interface to run() to accomodate polymorphism in returned interest
-points.
-
-Revision 1.6  2005/04/23 19:39:05  Fred
-Add UIUC copyright notice.
-
-Revision 1.5  2003/09/07 22:15:31  rothgang
-Remove findScale().
-
-Revision 1.4  2003/07/24 19:20:16  rothgang
-Make InterestHarrisLaplacian and InterestLaplacian work in very similar manner.
-Find local maximum rather than global maximum when determining scale.  Develop
-appropriate statistic for determining threshold.  Deprecate findScale().  Need
-to look more at the statistics.  May switch back to avg + std rather than just
-std from zero.
-
-Revision 1.3  2003/07/18 13:09:28  rothgang
-Change method for generating scales.  Add "bookending", where the set of scales
-is one quantum larger at each end than the requested range of filters.  Add
-code to properly detect whether the point is a local maximum in scale space.
-
-Revision 1.2  2003/07/17 02:07:07  rothgang
-Add dynamicly sized nms neighborhood.  Limit points to local maxima in scale
-space.  Add one quantum of padding at each end of scale range to accurately
-find local scale maxima.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

@@ -3,89 +3,11 @@ Author: Fred Rothganger
 Created 2/24/2006 to perform regression testing on the image library.
 
 
-Revisions 1.1 thru 1.13 Copyright 2008 Sandia Corporation.
+Copyright 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.13  2008/02/24 14:20:35  Fred
-Fix MSVC 2005 compilation issue.
-
-Revision 1.12  2007/08/26 12:10:29  Fred
-Update SNL copyright notice.
-
-Revision 1.11  2007/08/26 12:09:08  Fred
-Fine-tune thresholds to work with dublicate().  Use finer granularity in float
-thresholds when testing accessors.  Better calculation of bit-loss.
-
-Time the entire pixel format test in order to compare speed cost for
-implementing dublicate().  It seems to only cost about 2.5% on whole image
-conversions (didn't test accessors because they take too long to run).
-
-Revision 1.10  2007/08/13 04:23:00  Fred
-Add test for Convolution1D.
-
-Move threshold constants outside of testFormat() so they can be used by other
-parts of program.  Make additional stride 13 so that no naturally occuring
-format fits in it by coincidence.  When source and dest formats are both YUV,
-average the UV values for a macro pixel directly, rather than converting to
-RGB, averaging, and converting back to UV.
-
-Add UYVYUYVYYYYY to format tests.
-
-Force generation of timestamp in video file.  Change assert() about image size
-to an explicit test.  Use thresholdLumaAccessor rather than a magic number
-for luma consistency check when reading video.
-
-Revision 1.9  2007/03/23 02:32:07  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.8  2006/04/08 15:16:47  Fred
-Strip "Char" from all YUV-type formats.  It is ugly, and doesn't add any
-information in this case.
-
-Revision 1.7  2006/04/08 14:46:52  Fred
-Add PixelFormatUYYVYY.
-
-Revision 1.6  2006/04/07 04:32:49  Fred
-Finish color version of PixelFormat accessor tests.
-
-Revision 1.5  2006/04/06 03:46:06  Fred
-Create some weird RGBABits formats to ensure that all Bits converters are
-tested.  Added a case to the converter test to soften thresholds when bits are
-lost.
-
-Minor fixes to be consistent with the idea that all verification of conversions
-is relative to the "fromImage", not the original test image.  Specifically, no
-need to check if fromImage is monochrome, as it doesn't represent any loss of
-information.
-
-Revision 1.4  2006/04/05 02:37:13  Fred
-Add BGRChar to list of formats to test.
-
-Modify fromImage so it has a stride different from width.  Requires converters
-to be more general.
-
-Add test for accessors to monochrome formats.  Still need to add accessors to
-color formats.
-
-Revision 1.3  2006/04/02 02:36:04  Fred
-Add test for PixelFormats.  Currently it just tests conversions, but plan to
-test accessors as well.
-
-Revision 1.2  2006/03/20 05:42:39  Fred
-Output results and errors to cout rather than cerr.  This allows one to use
-pipes to select just the results of the test and avoid seeing the more detailed
-traces of activities.
-
-Revision 1.1  2006/02/25 22:50:55  Fred
-Replace junk test.cc by a real regression test, complete with
-self-verification.  The old test.cc is now called junk.cc
--------------------------------------------------------------------------------
 */
 
 

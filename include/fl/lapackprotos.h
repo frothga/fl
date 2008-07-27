@@ -6,42 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revision 1.5 Copyright 2005 Sandia Corporation.
+Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.7  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.6  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.5  2005/10/08 19:40:02  Fred
-Update revision history and add Sandia copyright notice.
-
-Add sgelsd_
-
-Revision 1.4  2005/04/23 19:38:11  Fred
-Add UIUC copyright notice.
-
-Revision 1.3  2004/04/19 16:37:17  rothgang
-Add symmetric generalized eigenvalue problems.
-
-Revision 1.2  2003/08/09 21:54:10  rothgang
-Bring up to date with lapackprotod.h
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

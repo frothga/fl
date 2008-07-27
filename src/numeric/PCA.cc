@@ -6,43 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.4 and 1.5 Copyright 2005 Sandia Corporation.
-Revisions 1.7 and 1.8 Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.8  2007/03/23 10:57:30  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.7  2006/02/16 04:46:45  Fred
-Use destroy option in syev().
-
-Revision 1.6  2005/10/13 04:14:26  Fred
-Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.5  2005/10/13 03:43:54  Fred
-Add Sandia distribution terms.
-
-Revision 1.4  2005/09/12 03:48:25  Fred
-Change lapacks.h to lapack.h
-
-Add Sandia copyright notice.  Must add license info before release.
-
-Revision 1.3  2005/04/23 19:40:05  Fred
-Add UIUC copyright notice.
-
-Revision 1.2  2004/04/19 17:25:42  rothgang
-Change name to PCA.  Fix bug of not clearing mean and covariance matrix before
-adding.
-
-Revision 1.1  2004/04/06 21:07:04  rothgang
-Add class of algorithms for reducing dimensionality.  First instance is PCA.
--------------------------------------------------------------------------------
 */
 
 

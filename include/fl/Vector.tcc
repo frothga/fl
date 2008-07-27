@@ -6,50 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.2, 1.4 thru 1.6 Copyright 2005 Sandia Corporation.
-Revisions 1.8 and 1.9       Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.9  2007/03/23 11:38:06  Fred
-Correct which revisions are under Sandia copyright.
-
-Revision 1.8  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.7  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.6  2005/10/09 03:41:12  Fred
-Move the file name LICENSE up to previous line, for better symmetry with UIUC
-notice.
-
-Revision 1.5  2005/10/08 18:42:33  Fred
-Update revision history and add Sandia copyright notice.
-
-Revision 1.4  2005/08/07 03:10:08  Fred
-GCC 3.4 compilability fix: explicitly specify "this" for inherited member
-variables in a template.
-
-Revision 1.3  2005/04/23 19:35:05  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.2  2005/01/22 20:41:35  Fred
-MSVC compilability fix: Add a missing return value.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

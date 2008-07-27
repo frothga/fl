@@ -6,69 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.3 and 1.5   Copyright 2005 Sandia Corporation.
-Revisions 1.7 thru 1.11 Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.11  2007/08/13 04:25:46  Fred
-Guard against detached image (one with no PixelBuffer).
-
-Treat depth as a float value.
-
-Eliminate GNU extensions <? and >? (which is sad, because these were cool
-operators).
-
-Revision 1.10  2007/03/23 11:09:26  Fred
-Correct which revisions are under Sandia copyright.
-
-Revision 1.9  2007/02/25 14:46:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.8  2006/11/12 15:09:21  Fred
-Handle PixelBuffer.
-
-Revision 1.7  2006/01/29 23:54:19  Fred
-Add EventPredicate to allow more complex filtering of events.  The original
-motivation was to use XCheckIfEvent() to detect the existence of events without
-blocking or removing them from the queue.  However, these are not the semantics
-of XCheckIfEvent() or any other Xlib function I have found so far.  In any
-case, the facility may still turn out useful sometime.
-
-Revision 1.6  2005/10/09 04:04:47  Fred
-Put UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.5  2005/09/12 03:48:54  Fred
-Add detail to revision history.
-
-Revision 1.4  2005/04/23 19:35:32  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.3  2005/01/12 05:05:22  rothgang
-cygwin compilation fix: remove "_NP" from the end of PTHREAD_MUTEX_RECURSIVE. 
-Doesn't change the semantics I desire, but does make it more portable.
-
-Revision 1.2  2004/07/22 15:16:19  rothgang
-Don't display tracers during X startup.  Register error handlers.
-
-Add function to grab pixels from X drawable.  Useful for making animations with
-glx.
-
-Add function to resize window.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

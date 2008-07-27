@@ -6,77 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.7  thru 1.11 Copyright 2005 Sandia Corporation.
-Revisions 1.13 thru 1.17 Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.17  2007/03/23 10:57:30  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.16  2006/02/18 00:38:23  Fred
-Update revision history.
-
-Revision 1.15  2006/02/18 00:30:33  Fred
-Include time.h.
-
-Revision 1.14  2006/02/16 04:46:08  Fred
-Use destroy option in syev().
-
-Revision 1.13  2006/02/05 22:48:13  Fred
-Include fstream, since it is no longer brought in by cluster.h.  This is due to
-work to break the dependency between this numeric library and the image
-library.
-
-Revision 1.12  2005/10/13 04:14:26  Fred
-Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.11  2005/10/13 03:31:48  Fred
-Add Sandia distribution terms.
-
-Revision 1.10  2005/09/12 03:41:47  Fred
-Change lapackd.h to lapack.h
-
-Revision 1.9  2005/09/10 16:27:06  Fred
-Clarify revision history.  Add Sandia copyright.  This will probably need to be
-changed again before final release to add license information.
-
-Revision 1.8  2005/08/06 16:06:54  Fred
-Add header comment regarding previous MSVC fix.
-
-Revision 1.7  2005/08/06 16:04:37  Fred
-MSVC compatibility fix: use binary mode for files.
-
-Revision 1.6  2005/04/23 19:40:06  Fred
-Add UIUC copyright notice.
-
-Revision 1.5  2004/04/19 17:12:50  rothgang
-Move substantial pieces of code from KMeansParallel::run() into separate
-functions to allow implementation of non-parallel KMeans::run() with minimal
-redundancy.  Add distribution() function.  Change interface of read() and
-write() to match other parts of library.
-
-Revision 1.4  2003/12/31 16:35:44  rothgang
-Convert to fl namespace and add to library.  Remove dead code.
-
-Revision 1.3  2003/12/24 15:21:15  rothgang
-Add classCount method.  Use frob() rather than norm().
-
-Revision 1.2  2003/12/23 19:12:02  rothgang
-Convert to use fl library.
-
-Revision 1.1  2003/12/23 18:57:25  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/12/23 18:57:25  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

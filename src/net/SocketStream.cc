@@ -6,60 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.4 and 1.6  Copyright 2005 Sandia Corporation.
-Revisions 1.7 thru 1.9 Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.9  2007/03/23 02:41:14  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.8  2006/02/15 06:38:36  Fred
-Use select() as the primary method for handling timeouts on read and write. 
-Gets rid of both Windows and posix special cases.
-
-Determined that checking if connection is down in showmanyc() is not critical,
-so cut out the Windows portion of it.
-
-Revision 1.7  2006/02/14 06:00:53  Fred
-Finish adapting to work under Windows:  Make socket timeout code conditional on
-WIN32.  Handle most of the differences between Berkeley sockets and Winsock in
-the socket.h header file.  Add a singleton class to initialize Winsock when
-library loads.
-
-Enhance SocketStream class to optionally manage the lifespan of the socket. 
-Added a method to simplify starting up the client side of a connection.  Moved
-most of the code out of socket.h and into this file.
-
-Revision 1.6  2005/10/22 15:58:10  Fred
-Change functions in SocketStreambuf to use the same generic int types as in the
-parent class streambuf.  This makes the code more portable, and in particular
-in compiles correctly on x64.  Not tested yet, however.
-
-Revision 1.5  2005/10/13 03:28:02  Fred
-Put UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.4  2005/10/13 03:26:07  Fred
-Preliminary work on making this code compile unser MSVC.  It does not work yet.
-
-Revision 1.3  2005/04/23 19:39:45  Fred
-Add UIUC copyright notice.
-
-Revision 1.2  2004/07/22 15:41:01  rothgang
-Finish throwing out SocketStream.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

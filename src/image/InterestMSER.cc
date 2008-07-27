@@ -3,70 +3,11 @@ Author: Fred Rothganger
 Created 5/31/2005
 
 
-Revisions 1.1 thru 1.7 Copyright 2005 Sandia Corporation.
-Revisions 1.8 thru 1.9 Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.9  2007/03/23 02:32:02  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.8  2006/02/25 22:38:31  Fred
-Change image structure by encapsulating storage format in a new PixelBuffer
-class.  Must now unpack the PixelBuffer before accessing memory directly. 
-ImageOf<> now intercepts any method that may modify the buffer location and
-captures the new address.
-
-Revision 1.7  2005/10/09 05:15:24  Fred
-Add Sandia distribution terms.
-
-Add more constraints to filter out regions.
-
-Revision 1.6  2005/09/04 00:05:16  Fred
-Fix weight and level recorded with PointMSER.
-
-Revision 1.5  2005/09/03 23:55:20  Fred
-Add Sandia copyright notice.  This probably needs more work before it is ready
-for release.
-
-Revision 1.4  2005/06/14 02:31:41  Fred
-Move supporting subroutines into InterestMSER class.  Clean up debugging code. 
-Deal with known memory leak in merge() by creating a string of Roots that have
-been subsumed.  Also created a string of Roots that have been discarded.  By
-re-using these, we can reduce calls to the memory allocator.
-
-Revision 1.3  2005/06/12 20:23:41  Fred
-Add neighbors parameter to control finding local minima.
-
-Use Gaussian information stored in Root objects associated with subsumed
-regions to avoid counting pixels more than once.  This implementation has a
-known memory leak.  Need to keep a list of detached Roots waiting for clean up.
-Therefore, this is an "intermediate" checkin to preserve a milestone.  The next
-step is to rewrite all the supporting routines to share a data structure
-containing all important variables.  This could be the InterestMSER class
-itself, but then it wouldn't be thread safe, so will use a private structure in
-the implementation file.
-
-Revision 1.2  2005/06/10 15:04:09  Fred
-Save/reuse previous center and covariance of a region with a single Root
-structure.  However, to really become efficient, must transfer such information
-when regions merge.
-
-Used an integrity check function to verify that the "heads" and Node::next
-structure was working right.  It is, and now the integrity checker is commented
-out, in case it is needed at some future point.
-
-Revision 1.1  2005/06/07 03:53:27  Fred
-Implement Jiri Matas' famous region detector.  This version is working, but
-needs a little refinement before it is ready for deployment.  Mainly, try to be
-more efficient about estimating covariane matrices (by reusing earlier
-results).
--------------------------------------------------------------------------------
 */
 
 

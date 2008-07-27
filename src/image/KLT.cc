@@ -6,82 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.11, 1.13 and 1.14 Copyright 2005 Sandia Corporation.
-Revisions 1.16 thru 1.17      Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.17  2007/03/23 02:32:05  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.16  2006/01/16 05:28:28  Fred
-Make sure exception 4 (out of bounds) takes precedence over iteration limit. 
-Otherwise, the client program will think that the iteration stopped for benign
-reasons and attempt to use the point.
-
-Revision 1.15  2005/10/13 03:22:02  Fred
-Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.14  2005/10/09 05:30:35  Fred
-Update revision history and add Sandia copyright notice.
-
-Revision 1.13  2005/08/06 15:34:39  Fred
-Limit descent in scale pyramid based on scale of point.
-
-Revision 1.12  2005/04/23 19:36:46  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.11  2005/01/22 21:15:46  Fred
-MSVC compilability fix:  Be explicit about float constant.
-
-Revision 1.10  2004/07/22 15:32:28  rothgang
-Use an adaptive window that allows current location to reach edge of image.
-
-Revision 1.9  2004/05/10 21:40:08  rothgang
-Non-quantized pyramidRatio, and more careful alignment of window for
-downsampling.
-
-Revision 1.8  2004/05/09 17:31:39  rothgang
-Add deeper error reporting, along with more ability to compensate for non-fatal
-errors.
-
-Revision 1.7  2004/05/07 21:23:51  rothgang
-Use TransformGauss class to calculate the pyramid.  This is more efficient when
-the pyramidRatio is large (4 or 8).
-
-Revision 1.6  2004/05/07 20:48:42  rothgang
-Use bilinear method to compute derivatives.  Eliminate derivative images from
-pyramid, and simplify variables in track() method.
-
-Revision 1.5  2004/05/06 12:58:20  rothgang
-Factored out values for image0, since they are constant in inner loop.
-
-Revision 1.4  2004/05/05 22:57:05  rothgang
-Found and fixed bug in my original approach, which now works correctly.  Need
-to move calculation of interpolated image0, dx0, and dy0 out of inner loop,
-since they don't change.  Also plan to experiment with bilinear derivatives.
-
-Revision 1.3  2004/05/05 22:24:36  rothgang
-Intermediate version.  Mostly evolved to my own code, but inner loop still
-needs to be expanded into 24 parallel pointers.  This code works correctly.
-
-Revision 1.2  2004/05/05 20:51:22  rothgang
-Intermediate version.  This is a fairly close paraphrase of the Birchfield
-code.  It produces correct results.  The next step is to evolve this towards my
-version.
-
-Revision 1.1  2004/05/05 17:43:49  rothgang
-Implementation of the Kanade-Lucas-Tomasi tracking method, with reference to
-the Birchfield code.  This is an intermediate checkin.  The code compiles and
-runs, but produces bogus results.  Plan to simplify track() function a little
-to establish proper function before optimizing.
--------------------------------------------------------------------------------
 */
 
 

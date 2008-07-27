@@ -6,66 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.4 and 1.6   Copyright 2005 Sandia Corporation.
-Revisions 1.7 thru 1.10 Copyright 2007 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.11  2007/03/25 13:32:01  Fred
-Fix MSVC 2005 compile errors: more missing error defs.
-
-Revision 1.10  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.9  2006/02/18 00:25:04  Fred
-Don't use PTHREAD_PARAMETER, since the type is the same on both posix and
-Windows.
-
-Revision 1.8  2006/02/15 14:02:09  Fred
-Add a couple more error constants.
-
-Remove some platform specific timeout code, and remove setTimeout(), since it
-is no longer needed.
-
-Revision 1.7  2006/02/14 06:12:12  Fred
-Finish adapting for Windows:  Handle the difference between Berkeley sockets
-and Winsock.  Condition the socket timeout functions on WIN32.  Add a singleton
-class to statically intialize Winsock on library load.
-
-Enhance SocketStream to optionally manage the lifespan of the socket.  Add a
-function to simplify creating the client side of a connection.
-
-Add Listener, a simple TCP server.
-
-Revision 1.6  2005/10/22 15:57:25  Fred
-Change functions in SocketStreambuf to use the same generic int types as in the
-parent class Streambuf.  This makes the code more portable, and in particular
-in compiles correctly on x64.  Not tested yet, however.
-
-Revision 1.5  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.4  2005/10/09 03:48:34  Fred
-Incomplete compilability fix.  This does not yet work correctly under MSVC.
-
-Revision 1.3  2005/04/23 19:38:11  Fred
-Add UIUC copyright notice.
-
-Revision 1.2  2004/05/03 19:23:07  rothgang
-Remove dead code for counting number of bytes read.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

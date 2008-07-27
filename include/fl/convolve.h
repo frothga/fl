@@ -6,89 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.8, 1.10 thru 1.13 Copyright 2005 Sandia Corporation.
-Revisions 1.15 thru 1.17      Copyright 2008 Sandia Corporation.
+Copyright 2005, 2008 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.17  2007/03/23 11:38:05  Fred
-Correct which revisions are under Sandia copyright.
-
-Revision 1.16  2007/02/18 14:50:37  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.15  2006/11/12 14:49:48  Fred
-Add border modes "Copy" and "Undefined", and modify the comments decribing the
-various modes.  This is part of improving the efficiency of the convolution
-code.
-
-Revision 1.14  2005/10/09 03:57:53  Fred
-Place UIUC license in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.13  2005/10/09 03:41:49  Fred
-Move the file name LICENSE up to previous line, for better symmetry with UIUC
-notice.
-
-Revision 1.12  2005/10/08 19:23:19  Fred
-Update revision history and add Sandia copyright notice.
-
-Revision 1.11  2005/04/23 21:00:46  Fred
-Update Transform::prepareResult() to clip projection before running main loop.
-
-Revision 1.10  2005/04/23 19:55:41  Fred
-Finish converting Transform to use full homographies.  Changed interface for
-Trasnform(S,scale) to clarify that S is an inverse transformation.  Use NAN
-rather than -1 to indicate that centerX/Y should be calculated for peg
-position.  This allows negative peg positions, which are perfectly legal,
-though unlikely.
-
-Revision 1.9  2005/04/23 19:35:05  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.8  2005/01/22 20:42:30  Fred
-MSVC compilability fix: Remove incorrect const qualifiers.
-
-Revision 1.7  2004/05/03 20:15:22  rothgang
-Rearrange parameters so border mode comes before format.  Add function to zero
-out subnormal floats in kernel (improves speed).
-
-Revision 1.6  2004/04/06 20:14:52  rothgang
-Move doxygen comment to beginning of Convolution class.  Before, it was in
-front of namespace, making the comment show up in an awkward place in the
-generated documentation.
-
-Revision 1.5  2004/01/13 19:43:46  rothgang
-Add FiniteDifferenceX, FiniteDifferenceY, and Zoom.
-
-Revision 1.4  2003/12/30 16:48:37  rothgang
-Convert comments to doxygen format.  Refine class hierarchy to allow different
-types of underlying convolution method, such as continuous function, discrete
-raster, or recursive.  Add recursive convolutions (but not done coding
-implementation).  Add FilterHarris::gradientSquared().  Change Rescale so
-default action is to use full range of [0,1].
-
-Revision 1.3  2003/08/11 14:02:57  rothgang
-Add more statistical analysis filters.  Start changing comments to doxygen
-format.
-
-Revision 1.2  2003/07/24 21:11:31  rothgang
-Added Hessian filter and supporting Gaussian second derivative.  Added
-Rotate90, IntensityDeviation, and IntensityAverage.  Added convenience
-constructor to Transform* to specify a scale factor for a patch.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 

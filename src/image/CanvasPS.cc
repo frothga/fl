@@ -6,51 +6,11 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Revisions 1.3, 1.5 thru 1.7 Copyright 2005 Sandia Corporation.
+Copyright 2005 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
 for details.
-
-
--------------------------------------------------------------------------------
-$Log$
-Revision 1.9  2007/03/23 02:32:02  Fred
-Use CVS Log to generate revision history.
-
-Revision 1.8  2005/10/13 03:22:02  Fred
-Place UIUC license info in the file LICENSE rather than LICENSE-UIUC.
-
-Revision 1.7  2005/10/09 04:40:19  Fred
-Add Sandia distribution terms.
-
-Rename lapack?.h to lapack.h
-
-Revision 1.6  2005/09/10 17:07:21  Fred
-Add detail to revision history.  Add Sandia copyright.  This will need to be
-updated with license info before release.
-
-Revision 1.5  2005/05/29 15:59:29  Fred
-Adjust to new format for rgba constants.
-
-Revision 1.4  2005/04/23 19:36:46  Fred
-Add UIUC copyright notice.  Note files that I revised after leaving UIUC on
-11/21.
-
-Revision 1.3  2005/01/22 21:05:32  Fred
-MSVC compilability fix:  Cast to clarify use of float.  Replace GNU operator
-with max().
-
-Revision 1.2  2004/05/03 18:53:33  rothgang
-Make interface more similar to CanvasImage.
-
-Revision 1.1  2003/07/08 23:19:47  rothgang
-branches:  1.1.1;
-Initial revision
-
-Revision 1.1.1.1  2003/07/08 23:19:47  rothgang
-Imported sources
--------------------------------------------------------------------------------
 */
 
 
