@@ -1,20 +1,13 @@
-FL Version 1.2
-Copyright 2005 Sandia Corporation.
-Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-the U.S. Government retains certain rights in this software.
+This file contains the licenses under which FL has been released to the public.
 
-Distributed under the GNU Lesser General Public License (LGPL) version 2.1.
-The file LICENSE-LGPL contains a copy of this license, and is included
-here by reference.
+The exact revision history is stored in a Mercurial (distributed version
+control system) repository included in this directory.  You may view the
+contents of this repository using the hg command or (under MS Windows) the
+TortoiseHG utility.
 
 
 ===============================================================================
-FL Version 1.1
-Not formally released.
-
-
-===============================================================================
-FL Version 1.0
+FL Version 1.0  (revisions 0 thru 291)
 Copyright (c) 2004 Dept. of Computer Science and Beckman Institute,
                    Univ. of Illinois.  All rights reserved.
 Developed by:   Ponce research group
@@ -52,3 +45,31 @@ THE CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES
 OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS WITH THE SOFTWARE.
+
+
+===============================================================================
+FL Version 1.1  (revisions 292 thru 351)
+Not formally released.
+
+
+===============================================================================
+FL Version 1.2    (revisions 352 thru 559)
+FL Version 1.2.1  (revisions 560 and 561)
+Copyright 2005 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+
+Distributed under the GNU Lesser General Public License (LGPL) version 2.1.
+The file LICENSE-LGPL contains a copy of this license, and is included
+here by reference.
+
+
+===============================================================================
+FL Version 1.3    (revisions 562 thru ???)
+Copyright 2008 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+
+Distributed under the GNU Lesser General Public License (LGPL) version 2.1.
+The file LICENSE-LGPL contains a copy of this license, and is included
+here by reference.

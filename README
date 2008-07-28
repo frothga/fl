@@ -40,22 +40,32 @@ src
 	net
 		Stream interface to TCP sockets, plus some basic server infrastructure.
 
+mswin
+	External dependencies that are normally distributed with a GNU-style system
+	but not a Miscrosoft Windows system.  These are pre-built libraries that
+	you will need to link with your application under Windows.  This directory
+	is included as a convenience for Windows users.
+
+	These libraries are built from unmodified source code, a feat which the
+	user may replicate using either MinGW or Cygwin with the -mno-cygwin flag.
+	The source code for the libraries is not included as it can be obtained
+	directly from their respective authors.
+
 
 Building under GNU systems
 --------------------------
 
 Unlike the typical library distribution, this one has no configure script.
 Instead, you must edit the file Config to point to all the external
-dependencies.  Typically, it is sufficient to set the value for
-LIBRARYNAME_DIR, as the other values will be derived from it.  After you
-have edited Config to your satisfaction, run "make" or "make install" at
-the command line.
+dependencies.  Typically, it is sufficient to set the value for INSTALL_DIR.
+After you have edited Config to your satisfaction, run "make" or
+"make install" at the command line.
 
 
 Building under Microsoft Visual Studio
 --------------------------------------
 
-Open the "fl.sln" solution file, and then build it.  :)  The external
-dependencies that normally come with a GNU style distribution are prebuilt
-and stored in the directory "mswin".  You will need to include this
-directory in your link path when building an application.
+Open the "fl.sln" solution file, and then build it.  :)  When building your
+application, you will need to add fl/include, mswin/include, fl/lib, and
+mswin/lib to the appropriate paths.  You will also need to explicitly
+reference the fl and mswin static libs.

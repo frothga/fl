@@ -1,5 +1,45 @@
 Revision History:
 
+Version 1.3
+	* Option to control preservation vs. destruction of parameters in LAPACK bridge.
+	* Add Metric class to fix dependency problems between numeric and image libraries
+	* Replace fixed size matrix classes with single template with size parameters.
+	* Idempotent read and write of matrices in human readable form.
+	* Add Listener to net
+	* More efficient handling of Expose events in SlideShow.  Added EventPredicate handler in X.
+	* Add Copy and Undefined border modes to convolution
+	* Improve efficiency of Convolution1D
+	* Add PixelBuffer class to allow different storage schemes in Image.  Add PixelBufferPacked, PixelBufferPlanar, and PixelBufferGroups.
+	* Add planar PixelFormats, and in particular PixelFormatPlanarYUV and PixelFormatPlanarYCbCr, with PixelFormatYUV as a parent class.
+	* Add PixelFormatUYYVYY, PixelFormatUYVYUYVYYYYY, PixelFormatGrayShort, and PixelFormatGrayBits.
+	* Remove "Char" suffix from instances of YUV formats.
+	* Avoid buffer overrun in format conversions.
+	* Expand truncated bit channels.
+	* Use planar PixelFormats in video, which avoids a conversion.
+	* Remove hint from video interface.  Instead, always return native format of FFMPEG.
+	* Finer gradation when selecting image file format.
+	* Add ImageFile and ImageFileDelegate.  Gives the ability to explicitly get/set metadata and read/write subregions.
+	* Access metadata in TIFF files, particularly GeoTIFF tags.
+	* Access metadata in JPEG files.
+	* Add ImageFileFormatNITF.
+	* Add a "fast" mode to InterestDOG which avoids building redundant parts of the scale pyramid at two different sizes.
+	* Rename SmartPointer<> to PointerStruct<> and create PointerPoly<>.
+	* Add a pthread compatibility header.  (However, intend to switch to pthread-w32 library to supply full Windows pthread compatiblity under cl compiler.)
+	* Imitate posix sleep() under Windows.
+	* Use encoded PTS as timestamp on images retrieved from video.
+	* Remove fixed frame rate assumption from timestamp based seeking in video.
+	* Improved seeking behavior in vread.
+	* Add flag to enable DescriptorSIFT to ignore sign of gradient.
+	* Fix memory leak in ImageCache.
+	* Fix crash in InterestPointSet when adding empty set to empty set.
+	* Increase precedence of out-of-bounds exception thrown by KLT.
+	* Fix clipping bug in Transform.
+	* In TransformGauss, clear pixels that fall outside of boundary rather than leaving them undefined.
+	* Add ability to select named video codecs.
+	* Add generic TCP server.  Use in KMeansParallel.
+	* Update SocketStream to compile and work under MSVC and Cygwin.
+	* Add support for shared libraries.
+
 Version 1.2
 	* Limits DescriptorSIFT to only work with rectified patches drawn from the base image.  Testing shows that this is both faster and more repeatable than Lowe's method of working with an untransformed region of some level of the scale pyramid.
 	* Completes support for 8-DOF homography in Transform, and adds some manual loop optimizations.
