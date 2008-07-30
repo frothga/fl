@@ -14,6 +14,7 @@ for details.
 */
 
 
+#include "fl/cluster.h"
 #include "fl/zroots.h"
 #include "fl/matrix.h"
 #include "fl/random.h"
@@ -22,9 +23,8 @@ for details.
 #include "fl/time.h"
 #include "fl/pi.h"
 #include "fl/neural.h"
-#include "fl/factory.h"
+#include "fl/serialize.h"
 #include "fl/reduce.h"
-#include "fl/cluster.h"
 
 #include <iostream>
 #include <fstream>

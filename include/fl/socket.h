@@ -21,8 +21,8 @@ for details.
 #ifdef WIN32
 
 // winsock2.h must be included before anything else that includes
-// windows.h (namely fl/thread.h), otherwise windows.h will bring
-// in winsock.h, which will conflict with winsock2.
+// windows.h.  Otherwise windows.h will bring in winsock.h, which
+// will conflict with winsock2.
 #  include <winsock2.h>
 #  include <ws2tcpip.h>
 
@@ -74,8 +74,7 @@ for details.
 #endif
 
 
-#include "fl/thread.h"
-
+#include <pthread.h>
 #include <istream>
 
 
@@ -133,7 +132,7 @@ namespace fl
 	bool stop;  ///< Indicates that listen() should terminate as soon as feasible.
 
 	// Machinery for spawning threads
-	static PTHREAD_RESULT processConnectionThread (void * param);
+	static void * processConnectionThread (void * param);
 	struct ThreadDataHolder
 	{
 	  Listener * me;

@@ -116,7 +116,7 @@ namespace fl
 	virtual void run (const std::vector< Vector<float> > & data);
 	virtual void processConnection (fl::SocketStream & ss, struct sockaddr_in & clientAddress);
 
-	static PTHREAD_RESULT listenThread (void * arg);
+	static void * listenThread (void * arg);
 	void client (std::string serverName);
 
 	// Shared state for parallel processing

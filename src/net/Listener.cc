@@ -13,7 +13,6 @@ for details.
 
 
 #include "fl/socket.h"
-#include "fl/thread.h"
 
 
 using namespace fl;
@@ -135,7 +134,7 @@ Listener::listen (int port, int lastPort)
   }
 }
 
-PTHREAD_RESULT
+void *
 Listener::processConnectionThread (void * param)
 {
   ThreadDataHolder * holder = (ThreadDataHolder *) param;

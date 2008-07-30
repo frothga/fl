@@ -146,7 +146,7 @@ KMeansParallel::run (const std::vector<Vector<float> > & data)
   }
 }
 
-PTHREAD_RESULT
+void *
 KMeansParallel::listenThread (void * arg)
 {
 cerr << "starting listenThread" << endl;
