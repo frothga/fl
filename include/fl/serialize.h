@@ -152,23 +152,25 @@ namespace fl
   };
   template <class B> productRegistry Factory<B>::registry;
 
-  template<class B, class C>
+  template<class B, class D>  // "B" for base class, and "D" for derived class
   class Product
   {
   public:
 	static void * read (std::istream & stream)
 	{
-	  C * result = new C;  // default constructor
+	  D * result = new D;  // default constructor
 	  result->read (stream);
 	  return result;
 	}
 
 	static void add (const std::string & name = "")
 	{
+	  std::string typeidName = typeid (D).name ();
+
 	  if (name.size ())
 	  {
 		Factory<B>::registry.in.insert  (make_pair (name, &read));
-		Factory<B>::registry.out.insert (make_pair (typeid (C).name (), name));
+		Factory<B>::registry.out.insert (make_pair (typeidName, name));
 	  }
 	  else
 	  {
@@ -184,7 +186,7 @@ namespace fl
 		}
 
 		Factory<B>::registry.in.insert  (make_pair (uniqueName, &read));
-		Factory<B>::registry.out.insert (make_pair (typeid (C).name (), uniqueName));
+		Factory<B>::registry.out.insert (make_pair (typeidName, uniqueName));
 	  }
 	}
   };

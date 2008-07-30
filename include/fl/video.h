@@ -18,6 +18,12 @@ for details.
 #define fl_video_h
 
 
+// Force stdint.h under Fedora Core (and maybe others) to define the INT64_C
+// macro for use with FFMPEG constants (namely AV_NOPTS_VALUE).  This
+// definition must occur before stdint.h is otherwise included.
+#define __STDC_CONSTANT_MACROS
+
+
 #include "fl/image.h"
 
 // This include is needed to declare data members in VideoFileFFMPEG
