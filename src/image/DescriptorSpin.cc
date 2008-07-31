@@ -170,7 +170,7 @@ DescriptorSpin::value (const Image & image, const PointAffine & point)
   // Convert to probabilities
   for (int r = 0; r < binsRadial; r++)
   {
-	float sum = result.column (r).frob (1);
+	float sum = result.column (r).norm (1);
 	result.column (r) /= sum;
   }
 

@@ -77,21 +77,33 @@ namespace fl
 
   template<class T>
   T
-  MatrixAbstract<T>::frob (float n) const
+  MatrixAbstract<T>::norm (float n) const
   {
 	int h = rows ();
 	int w = columns ();
 	if (n == INFINITY)
 	{
-	  T result = (*this) (0, 0);
+	  T result = std::abs ((*this)(0,0));
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  result = std::max ((*this)(r, c), result);
+		  result = std::max (std::abs ((*this)(r,c)), result);
 		}
 	  }
 	  return result;
+	}
+	else if (n == 0.0f)
+	{
+	  unsigned int result = 0;
+	  for (int c = 0; c < w; c++)
+	  {
+		for (int r = 0; r < h; r++)
+		{
+		  if ((*this)(r,c)) result++;
+		}
+	  }
+	  return (T) result;
 	}
 	else if (n == 1.0f)
 	{
@@ -154,7 +166,7 @@ namespace fl
   void
   MatrixAbstract<T>::normalize (const T scalar)
   {
-	T length = frob (2);
+	T length = norm (2);
 	if (length != (T) 0)
 	{
 	  (*this) /= length;
@@ -812,23 +824,32 @@ namespace fl
 	return result;
   }
 
-  // This version of frob() is suitable for float and double.  Other
+  // This version of norm() is suitable for float and double.  Other
   // numeric types may need more specialization.
   template<class T>
   T
-  Matrix<T>::frob (float n) const
+  Matrix<T>::norm (float n) const
   {
 	// Some of this code may have to be modified for complex numbers.
 	T * i = (T *) data;
 	T * end = i + rows_ * columns_;
 	if (n == INFINITY)
 	{
-	  T result = *i++;  // result is undefined for empty Matrix
+	  T result = std::abs (*i++);  // result is undefined for empty Matrix
 	  while (i < end)
 	  {
-		result = std::max (*i++, result);
+		result = std::max (std::abs (*i++), result);
 	  }
 	  return result;
+	}
+	else if (n == 0.0f)
+	{
+	  unsigned int result = 0;
+	  while (i < end)
+	  {
+		if (*i++) result++;
+	  }
+	  return (T) result;
 	}
 	else if (n == 1.0f)
 	{

@@ -65,7 +65,7 @@ namespace fl
 	Matrix<T> fjac (m, n);
 	Vector<T> diag (n);  // scales
 	T par = 0;  // levenberg-marquardt parameter
-	T fnorm = fvec.frob (2);
+	T fnorm = fvec.norm (2);
 	T xnorm;
 	T delta;
 
@@ -197,7 +197,7 @@ namespace fl
 
 		// evaluate the function at x + p and calculate its norm
 		searchable.value (xp, tempFvec);
-		T fnorm1 = tempFvec.frob (2);
+		T fnorm1 = tempFvec.norm (2);
 
 		// compute the scaled actual reduction
 		T actred = -1;
@@ -218,7 +218,7 @@ namespace fl
 			fjacp[i] += fjac(i,j) * pj;  // equivalent to fjac * p using the original fjac, since all scale informtion is in the R part of the QR factorizatoion
 		  }
 		}
-		T temp1 = fjacp.frob (2) / fnorm;
+		T temp1 = fjacp.norm (2) / fnorm;
 		T temp2 = std::sqrt (par) * pnorm / fnorm;
 		T prered = temp1 * temp1 + 2 * temp2 * temp2;
 		T dirder = -(temp1 * temp1 + temp2 * temp2);
@@ -324,7 +324,7 @@ namespace fl
 	// Compute the initial column norms and initialize several arrays.
 	for(int j = 0; j < n; j++)
 	{
-	  wa[j] = rdiag[j] = acnorm[j] = a.column (j).frob (2);
+	  wa[j] = rdiag[j] = acnorm[j] = a.column (j).norm (2);
 	  ipvt[j] = j;
 	}
 
@@ -357,7 +357,7 @@ namespace fl
 	  // Compute the householder transformation to reduce the
 	  // j-th column of a to a multiple of the j-th unit vector.
 	  MatrixRegion<T> jthColumn (a, j, j, m-1, j);  // Actually, lower portion of column
-	  T ajnorm = jthColumn.frob (2);
+	  T ajnorm = jthColumn.norm (2);
 	  if (ajnorm != 0)
 	  {
 		if (a(j,j) < 0)
@@ -382,7 +382,7 @@ namespace fl
 			temp = rdiag[k] / wa[k];
 			if (0.05 * temp * temp <= epsilon)
 			{
-			  rdiag[k] = MatrixRegion<T> (a, j+1, k, m-1, k).frob (2);
+			  rdiag[k] = MatrixRegion<T> (a, j+1, k, m-1, k).norm (2);
 			  wa[k] = rdiag[k];
 			}
 		  }
@@ -587,7 +587,7 @@ namespace fl
 	{
 	  dx[j] = diag[j] * x[j];
 	}
-	T dxnorm = dx.frob (2);
+	T dxnorm = dx.norm (2);
 	T fp = dxnorm - delta;
 	if (fp <= 0.1 * delta)
 	{
@@ -619,7 +619,7 @@ namespace fl
 		wa1[j] = (wa1[j] - sum) / r(j,j);
 	  }
 
-	  T temp = wa1.frob (2);
+	  T temp = wa1.norm (2);
 	  parl = ((fp / delta) / temp) / temp;
 	}
 
@@ -634,7 +634,7 @@ namespace fl
 	  wa1[j] = sum / diag[ipvt[j]];
 	}
 
-	T gnorm = wa1.frob (2);
+	T gnorm = wa1.norm (2);
 	T paru = gnorm / delta;
 	if (paru == 0)
 	{
@@ -673,7 +673,7 @@ namespace fl
 		dx[j] = diag[j] * x[j];
 	  }
 
-	  dxnorm = dx.frob (2);
+	  dxnorm = dx.norm (2);
 	  temp = fp;
 	  fp = dxnorm - delta;
 
@@ -702,7 +702,7 @@ namespace fl
 		}
 	  }
 
-	  temp = wa1.frob (2);
+	  temp = wa1.norm (2);
 	  T parc = ((fp / delta) / temp) / temp;
 
 	  // Depending on the sign of the function, update parl or paru.

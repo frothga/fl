@@ -88,7 +88,7 @@ DescriptorFilters::patch (const Vector<float> & value)
   {
 	prepareFilterMatrix ();
   }
-  Vector<float> b = value / value.frob (2);
+  Vector<float> b = value / value.norm (2);
   Vector<float> x;
   gelss (filterMatrix, x, b, (float *) 0, false, true);
   Image result;

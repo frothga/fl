@@ -22,7 +22,7 @@ namespace fl
 {
   template<>
   bool
-  MatrixSparse<bool>::frob (float n) const
+  MatrixSparse<bool>::norm (float n) const
   {
 	int w = data->size ();
 

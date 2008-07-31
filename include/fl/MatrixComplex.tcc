@@ -25,28 +25,28 @@ namespace fl
 {
   template<>
   std::complex<double>
-  MatrixAbstract<std::complex<double> >::frob (float n) const
+  MatrixAbstract<std::complex<double> >::norm (float n) const
   {
 	throw "complex frobenius norm unimplemented";
   }
 
   template<>
   std::complex<double>
-  Matrix<std::complex<double> >::frob (float n) const
+  Matrix<std::complex<double> >::norm (float n) const
   {
 	throw "complex frobenius norm unimplemented";
   }
 
   template<>
   std::complex<float>
-  MatrixAbstract<std::complex<float> >::frob (float n) const
+  MatrixAbstract<std::complex<float> >::norm (float n) const
   {
 	throw "complex frobenius norm unimplemented";
   }
 
   template<>
   std::complex<float>
-  Matrix<std::complex<float> >::frob (float n) const
+  Matrix<std::complex<float> >::norm (float n) const
   {
 	throw "complex frobenius norm unimplemented";
   }

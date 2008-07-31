@@ -60,7 +60,7 @@ ClusterCosine::update (const Vector<float> & point, float weight)
   oldCenter.copyFrom (center);
   center += point * weight;
   center.normalize ();
-  return (center - oldCenter).frob (2);
+  return (center - oldCenter).norm (2);
 }
 
 void
@@ -215,7 +215,7 @@ Kohonen::distribution (const Vector<float> & point)
   {
 	result[i] = map[i].distance (point);
   }
-  result /= result.frob (1);
+  result /= result.norm (1);
   return result;
 }
 

@@ -204,7 +204,7 @@ DescriptorColorHistogram3D::finish ()
 	  }
 	}
   }
-  result /= result.frob (1);  // normalize to a probability distribution
+  result /= result.norm (1);  // normalize to a probability distribution
 
   return result;
 }
@@ -304,7 +304,7 @@ DescriptorColorHistogram3D::patch (const Vector<float> & value)
   Image result (width, height * width, RGBAChar);
   result.clear ();
 
-  float maximum = value.frob (INFINITY);
+  float maximum = value.norm (INFINITY);
 
   YUV yuv;
   yuv.all = 0;

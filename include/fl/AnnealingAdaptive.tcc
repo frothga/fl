@@ -53,7 +53,7 @@ namespace fl
 
 	Vector<T> value;
 	searchable.value (point, value);
-	T lastDistance = value.frob (2);
+	T lastDistance = value.norm (2);
 	int gotBetter = 0;
 	int gotWorse = 0;
 	int level = 0;
@@ -71,7 +71,7 @@ namespace fl
 
 	  // Evaluate distance from guess to value
 	  searchable.value (guess, value);
-	  T distance = value.frob (2);
+	  T distance = value.norm (2);
 	  bool improved;
 	  if (minimize)
 	  {

@@ -167,7 +167,7 @@ DescriptorSchmidScale::patch (const Vector<float> & value)
 	// Evaluate distance from guess to value
 	Vector<float> guessValue = this->value (guess, center);
 	guessValue = guessValue - value;
-	float distance = guessValue.frob (1);  // should this be norm (2) instead?
+	float distance = guessValue.norm (1);  // should this be norm (2) instead?
 
 	// If improved, keep guess
 	if (distance <= lastDistance)

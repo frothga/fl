@@ -155,7 +155,7 @@ DescriptorColorHistogram2D::finish ()
 	  }
 	}
   }
-  result /= result.frob (1);  // normalize to a probability distribution
+  result /= result.norm (1);  // normalize to a probability distribution
 
   return result;
 }
@@ -243,7 +243,7 @@ DescriptorColorHistogram2D::patch (const Vector<float> & value)
   Image result (width, width, RGBAChar);
   result.clear ();
 
-  float maximum = value.frob (INFINITY);
+  float maximum = value.norm (INFINITY);
 
   YUV yuv;
   yuv.all = 0;

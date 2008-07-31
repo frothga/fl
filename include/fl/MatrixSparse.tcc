@@ -158,7 +158,7 @@ namespace fl
 
   template<class T>
   T
-  MatrixSparse<T>::frob (float n) const
+  MatrixSparse<T>::norm (float n) const
   {
 	int w = data->size ();
 
@@ -171,11 +171,29 @@ namespace fl
 		typename std::map<int,T>::iterator i = C.begin ();
 		while (i != C.end ())
 		{
-		  result = std::max (i->second, result);
+		  result = std::max (std::abs (i->second), result);
 		  i++;
 		}
 	  }
 	  return result;
+	}
+	else if (n == 0.0f)
+	{
+	  unsigned int result = 0;
+	  for (int c = 0; c < w; c++)
+	  {
+		std::map<int,T> & C = (*data)[c];
+		// Theoretically, we don't need to scan elements, since only
+		// nonzero values are stored.  However, this isn't an absolute
+		// guarantee.
+		typename std::map<int,T>::iterator i = C.begin ();
+		while (i != C.end ())
+		{
+		  if (i->second) result++;
+		  i++;
+		}
+	  }
+	  return (T) result;
 	}
 	else if (n == 1.0f)
 	{

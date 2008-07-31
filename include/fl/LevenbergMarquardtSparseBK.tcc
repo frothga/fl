@@ -491,7 +491,7 @@ namespace fl
 	  }
 	}
 
-	T frob2 (const int column)
+	T norm2 (const int column)
 	{
 	  T result = (T) 0;
 	  std::map<int,T> & C = (*this->data)[column];
@@ -558,7 +558,7 @@ namespace fl
 	  }
 	}
 	//cerr << (B - U * D * ~U) << endl << endl;
-	cerr << (B - U * D * ~U).frob (2) << endl;
+	cerr << (B - U * D * ~U).norm (2) << endl;
   }
   */
 
@@ -935,7 +935,7 @@ std::cerr << "fp=" << fp << " " << dxnorm << " " << delta << std::endl;
 	{
 	  wa1[j] = Jf[j] / diag[j];
 	}
-	T gnorm = wa1.frob (2);
+	T gnorm = wa1.norm (2);
 	T paru = gnorm / delta;
 	if (paru == (T) 0)
 	{
@@ -970,7 +970,7 @@ std::cerr << "fp=" << fp << " " << dxnorm << " " << delta << std::endl;
 	  {
 		dx[j] = diag[j] * x[j];
 	  }
-	  dxnorm = dx.frob (2);
+	  dxnorm = dx.norm (2);
 	  T oldFp = fp;
 	  fp = dxnorm - delta;
 
@@ -1048,7 +1048,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 	SparseBK<T> fjac (m, n);
 	Vector<T> diag (n);  // scales
 	T par = (T) 0;  // levenberg-marquardt parameter
-	T fnorm = fvec.frob (2);
+	T fnorm = fvec.norm (2);
 	T xnorm;
 	T delta;
 
@@ -1065,7 +1065,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 	  Vector<T> jacobianNorms (n);
 	  for (int j = 0; j < n; j++)
 	  {
-		jacobianNorms[j] = fjac.frob2 (j);
+		jacobianNorms[j] = fjac.norm2 (j);
 	  }
 
 	  // On the first iteration ...
@@ -1152,7 +1152,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 		// evaluate the function at x + p and calculate its norm
 		Vector<T> tempFvec;
 		searchable.value (xp, tempFvec);
-		T fnorm1 = tempFvec.frob (2);
+		T fnorm1 = tempFvec.norm (2);
 
 		// compute the scaled actual reduction
 		T actred = (T) -1;
@@ -1164,7 +1164,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 std::cerr << "actred=" << actred << " " << fnorm1 << " " << fnorm << std::endl;
 
 		// compute the scaled predicted reduction and the scaled directional derivative
-		T temp1 = (fjac * p).frob (2) / fnorm;
+		T temp1 = (fjac * p).norm (2) / fnorm;
 		T temp2 = std::sqrt (par) * pnorm / fnorm;
 		T prered = temp1 * temp1 + (T) 2 * temp2 * temp2;
 		T dirder = -(temp1 * temp1 + temp2 * temp2);

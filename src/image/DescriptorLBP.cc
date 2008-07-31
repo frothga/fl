@@ -199,7 +199,7 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
 	  result[categoryImage(x,y)]++;
 	}
   }
-  result /= result.frob (1);
+  result /= result.norm (1);
   return result;
 }
 
@@ -224,8 +224,8 @@ DescriptorLBP::value (const Image & image)
 	  }
 	}
   }
-  cerr << "before normalization = " << result << " = " << result.frob (1) << endl;
-  result /= result.frob (1);
+  cerr << "before normalization = " << result << " = " << result.norm (1) << endl;
+  result /= result.norm (1);
   cerr << "time = " << getTimestamp () - start << endl;
   return result;
 }

@@ -22,7 +22,7 @@ namespace fl
 {
   template<>
   bool
-  MatrixAbstract<bool>::frob (float n) const
+  MatrixAbstract<bool>::norm (float n) const
   {
 	int h = rows ();
 	int w = columns ();
@@ -39,7 +39,7 @@ namespace fl
 
   template<>
   bool
-  Matrix<bool>::frob (float n) const
+  Matrix<bool>::norm (float n) const
   {
 	bool * i = (bool *) data;
 	bool * end = i + rows_ * columns_;

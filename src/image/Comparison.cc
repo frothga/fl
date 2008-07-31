@@ -83,7 +83,7 @@ NormalizedCorrelation::preprocess (const Vector<float> & value) const
 	const int n = value.rows ();
 	Vector<float> result (n);
 	float norm = 0;
-	float mean = value.frob (1) / n;
+	float mean = value.norm (1) / n;
 	for (int r = 0; r < n; r++)
 	{
 	  float t = value[r] - mean;
@@ -95,7 +95,7 @@ NormalizedCorrelation::preprocess (const Vector<float> & value) const
   }
   else
   {
-	return value / value.frob (2);
+	return value / value.norm (2);
   }
 }
 
@@ -114,8 +114,8 @@ NormalizedCorrelation::value (const Vector<float> & value1, const Vector<float> 
 	Vector<float> v1 (n);
 	Vector<float> v2 (n);
 
-	float mean1 = value1.frob (1) / n;
-	float mean2 = value2.frob (1) / n;
+	float mean1 = value1.norm (1) / n;
+	float mean2 = value2.norm (1) / n;
 
 	float norm1 = 0;
 	float norm2 = 0;
@@ -134,7 +134,7 @@ NormalizedCorrelation::value (const Vector<float> & value1, const Vector<float> 
   }
   else
   {
-	result = value1.dot (value2) / (value1.frob (2) * value2.frob (2));
+	result = value1.dot (value2) / (value1.norm (2) * value2.norm (2));
   }
 
   return 1.0f - max (0.0f, result);  // Using max() because default mode is to consider negative correlation as zero.
@@ -179,11 +179,11 @@ MetricEuclidean::value (const Vector<float> & value1, const Vector<float> & valu
 {
   if (isinf (upperBound))
   {
-	return 1.0f - 1.0f / coshf ((value1 - value2).frob (2));
+	return 1.0f - 1.0f / coshf ((value1 - value2).norm (2));
   }
   else
   {
-	return (value1 - value2).frob (2) / upperBound;
+	return (value1 - value2).norm (2) / upperBound;
   }
 }
 
@@ -247,7 +247,7 @@ ChiSquared::ChiSquared (istream & stream)
 Vector<float>
 ChiSquared::preprocess (const Vector<float> & value) const
 {
-  return value / value.frob (1);  // probability distribution over bins
+  return value / value.norm (1);  // probability distribution over bins
 }
 
 float
@@ -269,8 +269,8 @@ ChiSquared::value (const Vector<float> & value1, const Vector<float> & value2) c
   }
   else
   {
-	float s1 = value1.frob (1);
-	float s2 = value2.frob (1);
+	float s1 = value1.norm (1);
+	float s2 = value2.norm (1);
 	for (int i = 0; i < m; i++)
 	{
 	  float a = value1[i] / s1;
