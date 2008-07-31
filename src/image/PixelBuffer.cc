@@ -221,8 +221,8 @@ PixelBufferPlanar::PixelBufferPlanar (void * buffer0, void * buffer1, void * buf
   this->ratioV   = ratioV;
 
   plane0.attach (buffer0, stride0  * height);
-  plane1.attach (buffer1, stride12 * height);
-  plane2.attach (buffer2, stride12 * height);
+  plane1.attach (buffer1, stride12 * height / ratioV);
+  plane2.attach (buffer2, stride12 * height / ratioV);
 }
 
 PixelBufferPlanar::~PixelBufferPlanar ()
