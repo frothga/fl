@@ -181,27 +181,9 @@ Image::resize (int width, int height, bool preserve)
   this->height = height;
 }
 
-struct triad
-{
-  unsigned char channel[3];
-};
-
-/**
-   /todo Use line transfers rather than pixel oriented loops.
-   /todo Handle reading or writing non-packed buffers.
- **/
 void
 Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int width, int height)
 {
-  // Temporary guard against non-packed buffers.
-  PixelBufferPacked * toBuffer = (PixelBufferPacked *) this->buffer;
-  if (! toBuffer)
-  {
-	buffer = toBuffer = new PixelBufferPacked;
-	this->width  = 0;
-	this->height = 0;
-  }
-
   // Adjust parameters
   if (fromX >= that.width  ||  fromY >= that.height)
   {
@@ -246,11 +228,6 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
 	return;
   }
 
-  // Get source image in same format we are.
-  Image source = that * (*(this->format));  // should also force conversion to packed format
-  PixelBufferPacked * fromBuffer = (PixelBufferPacked *) source.buffer;
-  if (! fromBuffer) throw "Non-packed buffers not yet implemented in bitblt.";
-
   // Adjust size of target Image (ie: this)
   int needWidth = toX + width;
   int needHeight = toY + height;
@@ -258,80 +235,132 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
   {
 	this->width  = max (this->width,  needWidth);
 	this->height = max (this->height, needHeight);
-	resize (this->width, this->height, true);
+	resize (this->width, this->height, true);  // also brings buffer into existence if it is null
   }
+
+  // Get buffers
+  Image source = that * (*(this->format));  // should also force conversion to packed format
+  PixelBufferPacked * fromBuffer = (PixelBufferPacked *) source.buffer;
+  PixelBufferPacked * toBuffer   = (PixelBufferPacked *) this->buffer;
 
   // Transfer the block
   int offsetX = fromX - toX;
   int offsetY = fromY - toY;
-
-  #define transfer(size) \
-  { \
-    if (offsetX < 0) \
-    { \
-      if (offsetY < 0) \
-	  { \
-        for (int x = needWidth - 1; x >= toX; x--) \
-        { \
-	      for (int y = needHeight - 1; y >= toY; y--) \
-	      { \
-            ((size *) toBuffer->memory)[y * this->width + x] = ((size *) fromBuffer->memory)[(y + offsetY) * that.width + (x + offsetX)]; \
-	      } \
-	    } \
-      } \
-      else \
-      { \
-        for (int x = needWidth - 1; x >= toX; x--) \
-        { \
-	      for (int y = toY; y < needHeight; y++) \
-	      { \
-            ((size *) toBuffer->memory)[y * this->width + x] = ((size *) fromBuffer->memory)[(y + offsetY) * that.width + (x + offsetX)]; \
-	      } \
-	    } \
-      } \
-	} \
-    else \
-    { \
-	  if (offsetY < 0) \
-	  { \
-        for (int x = toX; x < needWidth; x++) \
-        { \
-	      for (int y = needHeight - 1; y >= toY; y--) \
-	      { \
-            ((size *) toBuffer->memory)[y * this->width + x] = ((size *) fromBuffer->memory)[(y + offsetY) * that.width + (x + offsetX)]; \
-	      } \
-	    } \
-	  } \
-      else \
-      { \
-        for (int x = toX; x < needWidth; x++) \
-        { \
-	      for (int y = toY; y < needHeight; y++) \
-	      { \
-            ((size *) toBuffer->memory)[y * this->width + x] = ((size *) fromBuffer->memory)[(y + offsetY) * that.width + (x + offsetX)]; \
-	      } \
-	    } \
-      } \
-    } \
-  }
-
-  switch ((int) format->depth)
+  if (fromBuffer  &&  toBuffer)  // Both buffers are packed, so we can use direct memory copy.
   {
-    case 2:
-	  transfer (unsigned short);
-	  break;
-    case 3:
-	  transfer (triad);
-	  break;
-    case 4:
-	  transfer (unsigned int);
-	  break;
-    case 8:
-	  transfer (double);
-	  break;
-    case 1:
-    default:
-	  transfer (unsigned char);
+	char * toByte;
+	char * fromByte;
+	char * rowEnd;
+	char * end;
+	int toStep     = toBuffer  ->stride - width * toBuffer  ->depth;
+	int fromStep   = fromBuffer->stride - width * fromBuffer->depth;
+	int fromStride = fromBuffer->stride;
+	int Xstep;
+
+    if (offsetX < 0)
+    {
+      if (offsetY < 0)  // backward x and y
+	  {
+		toByte   = (char *) toBuffer  ->memory + (toY   + height - 1) * toBuffer  ->stride + (toX   + width) * toBuffer  ->depth - 1;
+		fromByte = (char *) fromBuffer->memory + (fromY + height - 1) * fromBuffer->stride + (fromX + width) * fromBuffer->depth - 1;
+		end      = fromByte - height * fromBuffer->stride;
+		toStep     *= -1;
+		fromStep   *= -1;
+		fromStride *= -1;
+      }
+      else  // backward x forward y
+      {
+		toByte   = (char *) toBuffer  ->memory + toY   * toBuffer  ->stride + (toX   + width) * toBuffer  ->depth - 1;
+		fromByte = (char *) fromBuffer->memory + fromY * fromBuffer->stride + (fromX + width) * fromBuffer->depth - 1;
+		end      = fromByte + height * fromBuffer->stride;
+		toStep   = toBuffer->stride   + width * toBuffer  ->depth;
+		fromStep = fromBuffer->stride + width * fromBuffer->depth;
+      }
+	  rowEnd = fromByte - width  * fromBuffer->depth;
+	  Xstep = -1;
+	}
+    else
+    {
+	  if (offsetY < 0)  // forward x backward y
+	  {
+		toByte   = (char *) toBuffer  ->memory + (toY   + height - 1) * toBuffer  ->stride + toX   * toBuffer  ->depth;
+		fromByte = (char *) fromBuffer->memory + (fromY + height - 1) * fromBuffer->stride + fromX * fromBuffer->depth;
+		end      = fromByte - height * fromBuffer->stride;
+		toStep   -= 2 * toBuffer  ->stride;
+		fromStep -= 2 * fromBuffer->stride;
+		fromStride *= -1;
+	  }
+      else  // forward x forward y
+      {
+		toByte   = (char *) toBuffer  ->memory + toY   * toBuffer  ->stride + toX   * toBuffer  ->depth;
+		fromByte = (char *) fromBuffer->memory + fromY * fromBuffer->stride + fromX * fromBuffer->depth;
+		end      = fromByte + height * fromBuffer->stride;
+      }
+	  rowEnd = fromByte + width  * fromBuffer->depth;
+	  Xstep = 1;
+    }
+
+	while (fromByte != end)
+	{
+	  while (fromByte != rowEnd)
+	  {
+		*toByte = *fromByte;
+		toByte   += Xstep;
+		fromByte += Xstep;
+	  }
+	  toByte   += toStep;
+	  fromByte += fromStep;
+	  rowEnd   += fromStride;
+	}
+  }
+  else  // Must use indirect pixel read and write
+  {
+    if (offsetX < 0)
+    {
+      if (offsetY < 0)
+	  {
+		for (int y = needHeight - 1; y >= toY; y--)
+        {
+		  for (int x = needWidth - 1; x >= toX; x--)
+	      {
+			setRGBA (x, y, source.getRGBA (x + offsetX, y + offsetY));
+	      }
+	    }
+      }
+      else
+      {
+		for (int y = toY; y < needHeight; y++)
+        {
+		  for (int x = needWidth - 1; x >= toX; x--)
+	      {
+			setRGBA (x, y, source.getRGBA (x + offsetX, y + offsetY));
+	      }
+	    }
+      }
+	}
+    else
+    {
+	  if (offsetY < 0)
+	  {
+		for (int y = needHeight - 1; y >= toY; y--)
+        {
+		  for (int x = toX; x < needWidth; x++)
+	      {
+			setRGBA (x, y, source.getRGBA (x + offsetX, y + offsetY));
+	      }
+	    }
+	  }
+      else
+      {
+		for (int y = toY; y < needHeight; y++)
+        {
+		  for (int x = toX; x < needWidth; x++)
+	      {
+			setRGBA (x, y, source.getRGBA (x + offsetX, y + offsetY));
+	      }
+	    }
+      }
+    }
   }
 }
 

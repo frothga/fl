@@ -897,6 +897,618 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
   }
 }
 
+void
+testPixelFormat ()
+{
+  // Create some formats to more fully test RGBABits
+  PointerPoly<fl::PixelFormat> R2G3B2A0 = new PixelFormatRGBABits (1, 0x03, 0x1C, 0x60, 0);
+  PointerPoly<fl::PixelFormat> R5G6B5A0 = new PixelFormatRGBABits (2, 0xF800, 0x07E0, 0x001F, 0);
+  PointerPoly<fl::PixelFormat> R8G8B8A0 = new PixelFormatRGBABits (3, 0xFF0000, 0x00FF00, 0x0000FF, 0);
+  PointerPoly<fl::PixelFormat> R9G9B9A5 = new PixelFormatRGBABits (4, 0xFF800000, 0x007FC000, 0x00003FE0, 0x0000001F);
+
+  vector<fl::PixelFormat *> formats;
+  formats.push_back (&GrayChar);
+  formats.push_back (&GrayShort);
+  formats.push_back (&GrayFloat);
+  formats.push_back (&GrayDouble);
+  formats.push_back (&RGBAChar);
+  formats.push_back (&RGBAShort);
+  formats.push_back (&RGBAFloat);
+  formats.push_back (&RGBChar);
+  formats.push_back (&RGBShort);
+  formats.push_back (&UYV);
+  formats.push_back (&UYVY);
+  formats.push_back (&YUYV);
+  formats.push_back (&UYYVYY);
+  formats.push_back (&UYVYUYVYYYYY);
+  formats.push_back (&YUV420);
+  formats.push_back (&YUV411);
+  formats.push_back (&HLSFloat);
+  formats.push_back (&BGRChar);
+  formats.push_back ( R2G3B2A0);
+  formats.push_back ( R5G6B5A0);
+  formats.push_back ( R8G8B8A0);
+  formats.push_back ( R9G9B9A5);
+
+  Image test ("test.jpg");
+
+  Stopwatch timer;
+  for (int i = 0; i < formats.size (); i++)
+  {
+	testFormat (test, formats, formats[i]);
+  }
+  timer.stop ();
+
+  cout << "PixelFormat passes " << timer << endl;
+}
+
+// AbsoluteValue -- float and double
+void
+testAbsoluteValue ()
+{
+  Image image (640, 480, GrayFloat);
+  testAbsoluteValue (image);
+  image.format = &GrayDouble;
+  image.resize (640, 480);
+  testAbsoluteValue (image);
+  cout << "AbsoluteValue passes" << endl;
+}
+
+// CanvasImage::drawFilledRectangle
+void
+testCanvasImage ()
+{
+  CanvasImage ci (640, 480);
+  ci.clear ();
+  ci.drawFilledRectangle (Point (-10, -10), Point (10, 10));
+  assert (ci.getGray (10, 10)  &&  ! ci.getGray (11, 11)  &&  ! ci.getGray (10, 11)  &&  ! ci.getGray (11, 10));
+  ci.clear ();
+  ci.drawFilledRectangle (Point (650, 470), Point (630, 490));
+  assert (ci.getGray (630, 470)  &&  ! ci.getGray (629, 469)  &&  ! ci.getGray (629, 470)  &&  ! ci.getGray (630, 469));
+  ci.clear ();
+  ci.drawFilledRectangle (Point (-100, 0), Point (-90, 10));
+  for (int y = 0; y < ci.height; y++)
+  {
+	for (int x = 0; x < ci.width; x++)
+	{
+	  if (ci.getGray (x, y))
+	  {
+		cout << x << " " << y << " not zero!" << endl;
+		throw "CanvasImage::drawFilledRectangle fails";
+	  }
+	}
+  }
+  cout << "CanvasImage::drawFilledRectangle passes" << endl;
+}
+
+// ConvolutionDiscrete1D
+void
+testConvolutionDiscrete1D ()
+{
+  vector<ConvolutionDiscrete1D *> kernels;
+  Gaussian1D oddKernel (1, Crop, GrayDouble);
+  ConvolutionDiscrete1D evenKernel = oddKernel * Transform ((oddKernel.width + 1.0) / oddKernel.width, 1.0);
+  kernels.push_back (&oddKernel);
+  kernels.push_back (&evenKernel);
+
+  vector<Image *> images;
+  Image test ("test.jpg");
+  //Image test ("mars.jpg");
+  Image onebigger (*test.format);
+  Image same (*test.format);
+  Image onesmaller (*test.format);
+  Image twosmaller (*test.format);
+  Image one (1, 1, *test.format);
+  Image zero (0, 0, *test.format);
+  onebigger. bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width + 1, evenKernel.width + 1);
+  same.      bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width,     evenKernel.width    );
+  onesmaller.bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width - 1, evenKernel.width - 1);
+  twosmaller.bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width - 2, evenKernel.width - 2);
+  images.push_back (&test);
+  images.push_back (&onebigger);
+  images.push_back (&same);
+  images.push_back (&onesmaller);
+  images.push_back (&twosmaller);
+  images.push_back (&one);
+  images.push_back (&zero);
+
+  vector<BorderMode> modes;
+  modes.push_back (Crop);
+  modes.push_back (ZeroFill);
+  modes.push_back (Boost);
+  modes.push_back (UseZeros);
+  modes.push_back (Copy);
+  modes.push_back (Undefined);
+
+  vector<fl::PixelFormat *> formats;
+  formats.push_back (&GrayFloat);
+  formats.push_back (&GrayDouble);
+
+  for (int f = 0; f < formats.size (); f++)
+  {
+	fl::PixelFormat & format = *formats[f];
+
+	for (int i = 0; i < images.size (); i++)
+	{
+	  Image formattest = *images[i] * format;
+
+	  for (int k = 0; k < kernels.size (); k++)
+	  {
+		ConvolutionDiscrete1D kernel = *kernels[k] * format;
+
+		for (int m = 0; m < modes.size (); m++)
+		{
+		  kernel.mode = modes[m];
+
+		  kernel.direction = Vertical;
+		  testConvolutionDiscrete1D (formattest, kernel);
+		  kernel.direction = Horizontal;
+		  testConvolutionDiscrete1D (formattest, kernel);
+		}
+	  }
+	}
+  }
+
+  cout << "ConvlutionDiscrete1D passes" << endl;
+}
+
+// ConvolutionDiscrete1D::normalFloats -- float double
+void
+testConvolutionDiscrete1DnormalFloats ()
+{
+  ImageOf<float> imagef (1, 1, GrayFloat);
+  imagef(0,0) = FLT_MIN / 2.0f;
+  ConvolutionDiscrete1D cf (imagef);
+  cf.normalFloats ();
+  if (imagef(0,0))
+  {
+	cout << "pixel is " << imagef(0,0) << endl;
+	throw "Convolution1D::normalFloats(float) failed";
+  }
+
+  imagef(0,0) = FLT_MIN;
+  cf.normalFloats ();
+  if (! imagef(0,0))
+  {
+	cout << "pixel should have been nonzero" << endl;
+	throw "Convolution1D::normalFloats(float) failed";
+  }
+
+  ImageOf<double> imaged (1, 1, GrayDouble);
+  imaged(0,0) = DBL_MIN / 2.0;
+  ConvolutionDiscrete1D cd (imaged);
+  cd.normalFloats ();
+  if (imaged(0,0))
+  {
+	cout << "pixel is " << imaged(0,0) << endl;
+	throw "Convolution1D::normalFloats(double) failed";
+  }
+
+  cout << "ConvolutionDiscrete1D::normalFloats passes" << endl;
+}
+
+// ConvolutionDiscrete2D::normalFloats -- float double
+void
+testConvolutionDiscrete2DnormalFloats ()
+{
+  ImageOf<float> imagef (1, 1, GrayFloat);
+  imagef(0,0) = FLT_MIN / 2.0f;
+  ConvolutionDiscrete2D cf (imagef);
+  cf.normalFloats ();
+  if (imagef(0,0))
+  {
+	cout << "pixel is " << imagef(0,0) << endl;
+	throw "Convolution2D::normalFloats(float) failed";
+  }
+
+  imagef(0,0) = FLT_MIN;
+  cf.normalFloats ();
+  if (! imagef(0,0))
+  {
+	cout << "pixel should have been nonzero" << endl;
+	throw "Convolution2D::normalFloats(float) failed";
+  }
+
+  ImageOf<double> imaged (1, 1, GrayDouble);
+  imaged(0,0) = DBL_MIN / 2.0;
+  ConvolutionDiscrete2D cd (imaged);
+  cd.normalFloats ();
+  if (imaged(0,0))
+  {
+	cout << "pixel is " << imaged(0,0) << endl;
+	throw "Convolution2D::normalFloats(double) failed";
+  }
+
+  cout << "ConvolutionDiscrete2D::normalFloats passes" << endl;
+}
+
+// DescriptorFilters::prepareFilterMatrix
+// DescriptorFilters::read
+// DescriptorFilters::write
+// Rescale::Rescale
+// Rescale::filter
+// Rotate180
+void
+testDescriptorFilters ()
+{
+  DescriptorFilters desc;
+
+  CanvasImage circle (11, 11, GrayFloat);
+  circle.clear ();
+  circle.drawCircle (Point (5, 5), 5);
+  desc.filters.push_back (circle);
+
+  CanvasImage square (21, 21, GrayFloat);
+  square.clear ();
+  PointAffine pa;
+  pa.x = 10;
+  pa.y = 10;
+  pa.A(0,0) = 10;
+  pa.A(1,1) = 10;
+  square.drawParallelogram (pa);
+  desc.filters.push_back (square);
+
+  Point target (320, 240);
+  CanvasImage image (640, 480, GrayFloat);
+  image.drawCircle (target, 5);
+
+  Vector<float> value = desc.value (image, target);
+  if (! value[0]  ||  value[1])
+  {
+	cout << "value = " << value << endl;
+	throw "DescriptorFilters fails";
+  }
+
+  ofstream ofs ("test.filters");
+  desc.write (ofs);
+  ofs.close ();
+
+  ifstream ifs ("test.filters");
+  DescriptorFilters desc2 (ifs);
+  ifs.close ();
+
+  Vector<float> value2 = desc2.value (image, target);
+  if (value != value2)
+  {
+	cout << "values don't match" << endl;
+	throw "DescriptorFilters fails";
+  }
+
+  Image disp = desc2.patch (value2);
+  disp *= Rescale (disp);
+  for (int y = 0; y < circle.height; y++)
+  {
+	for (int x = 0; x < circle.width; x++)
+	{
+	  float a;
+	  float c;
+	  circle.getGray (x, y, c);
+	  disp.getGray (x + 5, y + 5, a);
+	  if (fabs (a - c) > 1e-6)
+	  {
+		cout << "computed patch is wrong " << a - c << endl;
+		throw "DescriptorFilters or Rescale or Rotate180 fails";
+	  }
+	}
+  }
+
+  cout << "DescriptorFilters, Rescale and Rotate180 pass" << endl;
+}
+
+// DescriptorLBP
+// DescriptorPatch
+// DescriptorTextonScale
+void
+testDescriptors ()
+{
+  CanvasImage image (360, 240, GrayFloat);
+  image.clear ();
+  image.drawFilledRectangle (Point (160, 120), Point (165, 125));
+
+  // a 10x10 patch at the center of the image
+  PointAffine pa;
+  pa.x = 160;
+  pa.y = 120;
+  pa.A(0,0) = 5;
+  pa.A(1,1) = 5;
+
+  DescriptorLBP lbp;
+  Vector<float> value = lbp.value (image, pa);
+
+  DescriptorPatch patch (10, 1);
+  value = patch.value (image, pa);
+  if (value.rows () != 100  ||  value[0] != 0  ||  value[78] < 0.9)
+  {
+	cout << "unexpected value: " << value << endl;
+	throw "DescriptorPatch fails";
+  } 
+
+  DescriptorTextonScale ts;
+  value = ts.value (image, pa);
+
+  cout << "DescriptorPatch passes" << endl;
+  cerr << "more work needed to verify results for DescriptorLBP and DescriptorTextonScale" << endl;
+}
+
+// IntensityAverage
+// IntensityDeviation
+// IntensityHistogram
+void
+testIntensityFilters ()
+{
+  // Fill an image with a random pattern with known statistics
+  Image image (640, 480, GrayFloat);
+  for (int y = 0; y < image.height; y++)
+  {
+	for (int x = 0; x < image.width; x++)
+	{
+	  float value = randGaussian ();  // avg = 0, std = 1
+	  image.setGray (x, y, value);
+	}
+  }
+
+  // Measure statistics and verify
+  IntensityAverage avg;
+  image * avg;
+  IntensityDeviation std (avg.average);
+  image * std;
+  IntensityHistogram hist (avg.minimum, avg.maximum, 20);
+  image * hist;
+
+  if (fabs (avg.average) > 0.01)
+  {
+	cout << "average too far from zero " << avg.average << endl;
+	throw "IntensityAverage fails";
+  }
+  if (fabs (std.deviation - 1.0f) > 0.01)
+  {
+	cout << "deviation too far from one " << std.deviation << endl;
+	throw "IntensityDeviation fails";
+  }
+  if (hist.counts[10] < 50000  ||  hist.counts[0] > 100)
+  {
+	cout << "histogram has unexpected distribution:" << endl;
+	hist.dump (cout);
+	throw "IntensityHistogram fails";
+  }
+
+  cout << "IntensityAverage, IntensityDeviation and IntensityHistogram pass" << endl;
+}
+
+// Gaussian1D
+// GaussianDerivative1D
+// GaussianDerivativeSecond1D
+// InterestDOG
+// InterestMSER
+// InterestHarrisLaplacian
+// InterestHessian
+void
+testInterest ()
+{
+  Image image ("test.jpg");
+  image *= GrayChar;
+
+  InterestMSER mser;
+  InterestHarrisLaplacian hl;
+  InterestDOG dog;
+  InterestHessian s;
+
+  InterestPointSet points;
+  mser.run (image, points);
+  hl  .run (image, points);
+  dog .run (image, points);
+  s   .run (image, points);
+
+  const int expected = 5808;
+  int count = points.size ();
+  if (abs (count - expected) > 50)
+  {
+	cout << "unexpected point count " << count << "   rather than " << expected << endl;
+	throw "failure in one or more of {InterestDOG, InterestMSER, InterestHarrisLaplacian, InterestHessian} or their dependencies";
+  }
+
+  cout << "InterestDOG, InterestMSER, InterestHarrisLaplacian and InterestHessian pass" << endl;
+}
+
+// Transform -- {8dof 6dof} X {float double}
+void
+testTransform ()
+{
+  Image image (640, 480, GrayFloat);
+  testTransform (image);
+  image.format = &GrayDouble;
+  image.resize (640, 480);
+  testTransform (image);
+  cout << "Transform passes" << endl;
+}
+
+// VideoFileFormatFFMPEG
+void
+testVideo ()
+{
+  new VideoFileFormatFFMPEG;
+
+  {
+	VideoOut vout ("test.mpg");
+	Image image (320, 240, RGBAChar);
+	image.timestamp = NAN;  // force auto-generation of PTS
+	for (unsigned int i = 128; i < 255; i++)
+	{
+	  if (! vout.good ())
+	  {
+		cout << "vout is bad" << endl;
+		throw "VideoFileFormatFFMPEG::write fails";
+	  }
+	  image.clear ((i << 24) | (i << 16) | (i << 8));
+	  vout << image;
+	}
+  }
+
+  VideoIn vin ("test.mpg");
+  int i;
+  for (i = 128; i < 255; i++)
+  {
+	Image image;
+	vin >> image;
+	if (! vin.good ()) break;
+	if (image.width != 320  ||  image.height != 240)
+	{
+	  cerr << "Unexpected image size: " << image.width << " x " << image.height << endl;
+	  throw "VideoFileFormatFFMPEG::read fails";
+	}
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		int g = image.getGray (x, y);
+		if (abs (g - i) > thresholdLumaAccessor)
+		{
+		  cout << x << " " << y << " expected " << i << " but got " << g << endl;
+		  throw "VideoFileFormatFFMPEG::read fails";
+		}
+	  }
+	}
+  }
+  if (i < 250)
+  {
+	cout << "didn't read enough frames " << i << endl;
+	throw "VideoFileFormatFFMPEG::read fails";
+  }
+
+  cout << "VideoFileFormatFFMPEG passes" << endl;
+}
+
+// Image::bitblt
+void
+testBitblt (Image & test, fl::PixelFormat & format)
+{
+  cerr << typeid (format).name () << endl;
+  Image source = test * format;
+
+  int quantum = 1;
+  if (const Macropixel     * f = dynamic_cast<const Macropixel     *> (&format)) quantum = f->pixels;
+  if (const PixelFormatYUV * f = dynamic_cast<const PixelFormatYUV *> (&format)) quantum = f->ratioH;  // If format is both Macropixel and YUV, then YUV takes precedence.
+  int offsetX = quantum * (int) ceil (5.0 / quantum);  // how much to shift small blocks from corners of test image in target
+  int offsetY = offsetX;
+  cerr << quantum << " " << offsetX << endl;
+  int padX    = 2 * offsetX;  // black perimeter around test image as it appears in target
+  int padY    = 2 * offsetY;
+  int centerX = quantum * (int) rint (source.width  / (2.0 * quantum));
+  int centerY = quantum * (int) rint (source.height / (2.0 * quantum));
+  cerr << centerX << " " << centerY << endl;
+  int sourceX = centerX - offsetX;
+  int sourceY = centerY - offsetY;
+  int fromX   = sourceX + padX;
+  int fromY   = sourceY + padY;
+  int width   = source.width  + 2 * padX;  // of target
+  int height  = source.height + 2 * padY;
+  int right   = source.width  + padX - offsetX;
+  int bottom  = source.height + padY - offsetY;
+
+  Image target (width, height, format);
+  target.clear ();
+  unsigned char black = target.getRGBA (0, 0);  // If there is an alpha channel, black = 0; if not, black = 0xFF.
+  target.bitblt (source, padX, padY);
+
+  target.bitblt (target, offsetX, offsetY, fromX, fromY, padX, padY);
+  target.bitblt (target, offsetX, bottom,  fromX, fromY, padX, padY);
+  target.bitblt (target, right,   offsetY, fromX, fromY, padX, padY);
+  target.bitblt (target, right,   bottom,  fromX, fromY, padX, padY);
+
+  //SlideShow window;
+  //window.show (target);
+  //window.waitForClick ();
+
+  // Verify image contents
+
+  //   black perimeter
+  int perimeterL = offsetX - 1;
+  int perimeterT = offsetY - 1;
+  int perimeterR = right  + padX;
+  int perimeterB = bottom + padY;
+  for (int x = perimeterL; x <= perimeterR; x++)
+  {
+	if (target.getRGBA (x, perimeterT) != black  ||  target.getRGBA (x, perimeterB) != black)
+	{
+	  cerr << x << " " << perimeterT << " " << target.getRGBA (x, perimeterT) << endl;
+	  cerr << x << " " << perimeterB << " " << target.getRGBA (x, perimeterB) << endl;
+	  throw "Unexpected non-black pixel in perimeter";
+	}
+  }
+  for (int y = perimeterT; y <= perimeterB; y++)
+  {
+	if (target.getRGBA (perimeterL, y) != black  ||  target.getRGBA (perimeterR, y) != black)
+	{
+	  cerr << perimeterL << " " << y << target.getRGBA (perimeterL, y) << endl;
+	  cerr << perimeterR << " " << y << target.getRGBA (perimeterR, y) << endl;
+	  throw "Unexpected non-black pixel in perimeter";
+	}
+  }
+
+  //   patch contents
+  for (int y = 0; y < padY; y++)
+  {
+	for (int x = 0; x < padX; x++)
+	{
+	  unsigned int s = source.getRGBA (sourceX + x, sourceY + y);
+	  if (   target.getRGBA (offsetX + x, offsetY + y) != s
+	      || target.getRGBA (offsetX + x, bottom  + y) != s
+	      || target.getRGBA (right   + x, offsetY + y) != s
+	      || target.getRGBA (right   + x, bottom  + y) != s)
+	  {
+		cerr << x << " " << y << endl;
+		cerr << hex << s << endl;
+		cerr << target.getRGBA (offsetX + x, offsetY + y) << endl;
+		cerr << target.getRGBA (offsetX + x, bottom  + y) << endl;
+		cerr << target.getRGBA (right   + x, offsetY + y) << endl;
+		cerr << target.getRGBA (right   + x, bottom  + y) << dec << endl;
+		throw "Pixel value not copied correctly";
+	  }
+	}
+  }
+}
+
+void
+testBitblt ()
+{
+  Image test ("test.jpg");
+
+  PointerPoly<fl::PixelFormat> GrayBits = new PixelFormatGrayBits (1);
+
+  testBitblt (test, *GrayBits);
+  testBitblt (test,  GrayChar);
+  testBitblt (test,  GrayDouble);
+  testBitblt (test,  RGBChar);
+  testBitblt (test,  RGBAChar);
+  testBitblt (test,  RGBAFloat);
+  testBitblt (test,  YUYV);
+  testBitblt (test,  UYYVYY);
+  testBitblt (test,  UYVYUYVYYYYY);
+  testBitblt (test,  YUV420);
+  testBitblt (test,  YUV411);
+  testBitblt (test,  HLSFloat);
+
+  cout << "Image::bitblt passes" << endl;
+}
+
+
+class testSearch : public SearchableNumeric<float>
+{
+public:
+  virtual int dimension ()
+  {
+	return 1;
+  }
+
+  virtual void value (const Vector<float> & point, Vector<float> & result)
+  {
+	result.resize (1);
+	float x = point[0];
+	result[0] = (x - 5) * (x - 5);
+	cerr << result[0] << " " << x << endl;
+  }
+};
+
 
 int
 main (int argc, char * argv[])
@@ -905,469 +1517,21 @@ main (int argc, char * argv[])
   {
 	new ImageFileFormatJPEG;
 
-	// PixelFormat
-	{
-	  // Create some formats to more fully test RGBABits
-	  PointerPoly<fl::PixelFormat> R2G3B2A0 = new PixelFormatRGBABits (1, 0x03, 0x1C, 0x60, 0);
-	  PointerPoly<fl::PixelFormat> R5G6B5A0 = new PixelFormatRGBABits (2, 0xF800, 0x07E0, 0x001F, 0);
-	  PointerPoly<fl::PixelFormat> R8G8B8A0 = new PixelFormatRGBABits (3, 0xFF0000, 0x00FF00, 0x0000FF, 0);
-	  PointerPoly<fl::PixelFormat> R9G9B9A5 = new PixelFormatRGBABits (4, 0xFF800000, 0x007FC000, 0x00003FE0, 0x0000001F);
-
-	  vector<fl::PixelFormat *> formats;
-	  formats.push_back (&GrayChar);
-	  formats.push_back (&GrayShort);
-	  formats.push_back (&GrayFloat);
-	  formats.push_back (&GrayDouble);
-	  formats.push_back (&RGBAChar);
-	  formats.push_back (&RGBAShort);
-	  formats.push_back (&RGBAFloat);
-	  formats.push_back (&RGBChar);
-	  formats.push_back (&RGBShort);
-	  formats.push_back (&UYV);
-	  formats.push_back (&UYVY);
-	  formats.push_back (&YUYV);
-	  formats.push_back (&UYYVYY);
-	  formats.push_back (&UYVYUYVYYYYY);
-	  formats.push_back (&YUV420);
-	  formats.push_back (&YUV411);
-	  formats.push_back (&HLSFloat);
-	  formats.push_back (&BGRChar);
-	  formats.push_back ( R2G3B2A0);
-	  formats.push_back ( R5G6B5A0);
-	  formats.push_back ( R8G8B8A0);
-	  formats.push_back ( R9G9B9A5);
-
-	  Image test ("test.jpg");
-
-	  Stopwatch timer;
-	  for (int i = 0; i < formats.size (); i++)
-	  {
-		testFormat (test, formats, formats[i]);
-	  }
-	  timer.stop ();
-
-	  cout << "PixelFormat passes " << timer << endl;
-	}
-
-	// AbsoluteValue -- float and double
-	{
-	  Image image (640, 480, GrayFloat);
-	  testAbsoluteValue (image);
-	  image.format = &GrayDouble;
-	  image.resize (640, 480);
-	  testAbsoluteValue (image);
-	  cout << "AbsoluteValue passes" << endl;
-	}
-
-	// CanvasImage::drawFilledRectangle
-	{
-	  CanvasImage ci (640, 480);
-	  ci.clear ();
-	  ci.drawFilledRectangle (Point (-10, -10), Point (10, 10));
-	  assert (ci.getGray (10, 10)  &&  ! ci.getGray (11, 11)  &&  ! ci.getGray (10, 11)  &&  ! ci.getGray (11, 10));
-	  ci.clear ();
-	  ci.drawFilledRectangle (Point (650, 470), Point (630, 490));
-	  assert (ci.getGray (630, 470)  &&  ! ci.getGray (629, 469)  &&  ! ci.getGray (629, 470)  &&  ! ci.getGray (630, 469));
-	  ci.clear ();
-	  ci.drawFilledRectangle (Point (-100, 0), Point (-90, 10));
-	  for (int y = 0; y < ci.height; y++)
-	  {
-		for (int x = 0; x < ci.width; x++)
-		{
-		  if (ci.getGray (x, y))
-		  {
-			cout << x << " " << y << " not zero!" << endl;
-			throw "CanvasImage::drawFilledRectangle fails";
-		  }
-		}
-	  }
-	  cout << "CanvasImage::drawFilledRectangle passes" << endl;
-	}
-
-	// ConvolutionDiscrete1D
-	{
-	  vector<ConvolutionDiscrete1D *> kernels;
-	  Gaussian1D oddKernel (1, Crop, GrayDouble);
-	  ConvolutionDiscrete1D evenKernel = oddKernel * Transform ((oddKernel.width + 1.0) / oddKernel.width, 1.0);
-	  kernels.push_back (&oddKernel);
-	  kernels.push_back (&evenKernel);
-
-	  vector<Image *> images;
-	  Image test ("test.jpg");
-	  //Image test ("mars.jpg");
-	  Image onebigger (*test.format);
-	  Image same (*test.format);
-	  Image onesmaller (*test.format);
-	  Image twosmaller (*test.format);
-	  Image one (1, 1, *test.format);
-	  Image zero (0, 0, *test.format);
-	  onebigger. bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width + 1, evenKernel.width + 1);
-	  same.      bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width,     evenKernel.width    );
-	  onesmaller.bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width - 1, evenKernel.width - 1);
-	  twosmaller.bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width - 2, evenKernel.width - 2);
-	  images.push_back (&test);
-	  images.push_back (&onebigger);
-	  images.push_back (&same);
-	  images.push_back (&onesmaller);
-	  images.push_back (&twosmaller);
-	  images.push_back (&one);
-	  images.push_back (&zero);
-
-	  vector<BorderMode> modes;
-	  modes.push_back (Crop);
-	  modes.push_back (ZeroFill);
-	  modes.push_back (Boost);
-	  modes.push_back (UseZeros);
-	  modes.push_back (Copy);
-	  modes.push_back (Undefined);
-
-	  vector<fl::PixelFormat *> formats;
-	  formats.push_back (&GrayFloat);
-	  formats.push_back (&GrayDouble);
-
-	  for (int f = 0; f < formats.size (); f++)
-	  {
-		fl::PixelFormat & format = *formats[f];
-
-		for (int i = 0; i < images.size (); i++)
-		{
-		  Image formattest = *images[i] * format;
-
-		  for (int k = 0; k < kernels.size (); k++)
-		  {
-			ConvolutionDiscrete1D kernel = *kernels[k] * format;
-
-			for (int m = 0; m < modes.size (); m++)
-			{
-			  kernel.mode = modes[m];
-
-			  kernel.direction = Vertical;
-			  testConvolutionDiscrete1D (formattest, kernel);
-			  kernel.direction = Horizontal;
-			  testConvolutionDiscrete1D (formattest, kernel);
-			}
-		  }
-		}
-	  }
-
-	  cout << "ConvlutionDiscrete1D passes" << endl;
-	}
-
-
+	testPixelFormat ();
+	testAbsoluteValue ();
+	testCanvasImage ();
+	testConvolutionDiscrete1D ();
+	testConvolutionDiscrete1DnormalFloats ();
 	// ConvolutionDiscrete2D::filter -- {zerofill, usezeros, boost, crop} X {float double}
 	// ConvolutionDiscrete2D::response -- {boost  etc} X {float double}
-
-
-	// ConvolutionDiscrete1D::normalFloats -- float double
-	{
-	  ImageOf<float> imagef (1, 1, GrayFloat);
-	  imagef(0,0) = FLT_MIN / 2.0f;
-	  ConvolutionDiscrete1D cf (imagef);
-	  cf.normalFloats ();
-	  if (imagef(0,0))
-	  {
-		cout << "pixel is " << imagef(0,0) << endl;
-		throw "Convolution1D::normalFloats(float) failed";
-	  }
-
-	  imagef(0,0) = FLT_MIN;
-	  cf.normalFloats ();
-	  if (! imagef(0,0))
-	  {
-		cout << "pixel should have been nonzero" << endl;
-		throw "Convolution1D::normalFloats(float) failed";
-	  }
-
-	  ImageOf<double> imaged (1, 1, GrayDouble);
-	  imaged(0,0) = DBL_MIN / 2.0;
-	  ConvolutionDiscrete1D cd (imaged);
-	  cd.normalFloats ();
-	  if (imaged(0,0))
-	  {
-		cout << "pixel is " << imaged(0,0) << endl;
-		throw "Convolution1D::normalFloats(double) failed";
-	  }
-
-	  cout << "ConvolutionDiscrete1D::normalFloats passes" << endl;
-	}
-
-	// ConvolutionDiscrete2D::normalFloats -- float double
-	{
-	  ImageOf<float> imagef (1, 1, GrayFloat);
-	  imagef(0,0) = FLT_MIN / 2.0f;
-	  ConvolutionDiscrete2D cf (imagef);
-	  cf.normalFloats ();
-	  if (imagef(0,0))
-	  {
-		cout << "pixel is " << imagef(0,0) << endl;
-		throw "Convolution2D::normalFloats(float) failed";
-	  }
-
-	  imagef(0,0) = FLT_MIN;
-	  cf.normalFloats ();
-	  if (! imagef(0,0))
-	  {
-		cout << "pixel should have been nonzero" << endl;
-		throw "Convolution2D::normalFloats(float) failed";
-	  }
-
-	  ImageOf<double> imaged (1, 1, GrayDouble);
-	  imaged(0,0) = DBL_MIN / 2.0;
-	  ConvolutionDiscrete2D cd (imaged);
-	  cd.normalFloats ();
-	  if (imaged(0,0))
-	  {
-		cout << "pixel is " << imaged(0,0) << endl;
-		throw "Convolution2D::normalFloats(double) failed";
-	  }
-
-	  cout << "ConvolutionDiscrete2D::normalFloats passes" << endl;
-	}
-
-	// DescriptorFilters::prepareFilterMatrix
-	// DescriptorFilters::read
-	// DescriptorFilters::write
-	// Rescale::Rescale
-	// Rescale::filter
-	// Rotate180
-	{
-	  DescriptorFilters desc;
-
-	  CanvasImage circle (11, 11, GrayFloat);
-	  circle.clear ();
-	  circle.drawCircle (Point (5, 5), 5);
-	  desc.filters.push_back (circle);
-
-	  CanvasImage square (21, 21, GrayFloat);
-	  square.clear ();
-	  PointAffine pa;
-	  pa.x = 10;
-	  pa.y = 10;
-	  pa.A(0,0) = 10;
-	  pa.A(1,1) = 10;
-	  square.drawParallelogram (pa);
-	  desc.filters.push_back (square);
-
-	  Point target (320, 240);
-	  CanvasImage image (640, 480, GrayFloat);
-	  image.drawCircle (target, 5);
-
-	  Vector<float> value = desc.value (image, target);
-	  if (! value[0]  ||  value[1])
-	  {
-		cout << "value = " << value << endl;
-		throw "DescriptorFilters fails";
-	  }
-
-	  ofstream ofs ("test.filters");
-	  desc.write (ofs);
-	  ofs.close ();
-
-	  ifstream ifs ("test.filters");
-	  DescriptorFilters desc2 (ifs);
-	  ifs.close ();
-
-	  Vector<float> value2 = desc2.value (image, target);
-	  if (value != value2)
-	  {
-		cout << "values don't match" << endl;
-		throw "DescriptorFilters fails";
-	  }
-
-	  Image disp = desc2.patch (value2);
-	  disp *= Rescale (disp);
-	  for (int y = 0; y < circle.height; y++)
-	  {
-		for (int x = 0; x < circle.width; x++)
-		{
-		  float a;
-		  float c;
-		  circle.getGray (x, y, c);
-		  disp.getGray (x + 5, y + 5, a);
-		  if (fabs (a - c) > 1e-6)
-		  {
-			cout << "computed patch is wrong " << a - c << endl;
-			throw "DescriptorFilters or Rescale or Rotate180 fails";
-		  }
-		}
-	  }
-
-	  cout << "DescriptorFilters, Rescale and Rotate180 pass" << endl;
-	}
-
-	// DescriptorLBP
-	// DescriptorPatch
-	// DescriptorTextonScale
-	{
-	  CanvasImage image (360, 240, GrayFloat);
-	  image.clear ();
-	  image.drawFilledRectangle (Point (160, 120), Point (165, 125));
-
-	  // a 10x10 patch at the center of the image
-	  PointAffine pa;
-	  pa.x = 160;
-	  pa.y = 120;
-	  pa.A(0,0) = 5;
-	  pa.A(1,1) = 5;
-
-	  DescriptorLBP lbp;
-	  Vector<float> value = lbp.value (image, pa);
-
-	  DescriptorPatch patch (10, 1);
-	  value = patch.value (image, pa);
-	  if (value.rows () != 100  ||  value[0] != 0  ||  value[78] < 0.9)
-	  {
-		cout << "unexpected value: " << value << endl;
-		throw "DescriptorPatch fails";
-	  } 
-
-	  DescriptorTextonScale ts;
-	  value = ts.value (image, pa);
-
-	  cout << "DescriptorPatch passes" << endl;
-	  cerr << "more work needed to verify results for DescriptorLBP and DescriptorTextonScale" << endl;
-	}
-
-	// IntensityAverage
-	// IntensityDeviation
-	// IntensityHistogram
-	{
-	  // Fill an image with a random pattern with known statistics
-	  Image image (640, 480, GrayFloat);
-	  for (int y = 0; y < image.height; y++)
-	  {
-		for (int x = 0; x < image.width; x++)
-		{
-		  float value = randGaussian ();  // avg = 0, std = 1
-		  image.setGray (x, y, value);
-		}
-	  }
-
-	  // Measure statistics and verify
-	  IntensityAverage avg;
-	  image * avg;
-	  IntensityDeviation std (avg.average);
-	  image * std;
-	  IntensityHistogram hist (avg.minimum, avg.maximum, 20);
-	  image * hist;
-
-	  if (fabs (avg.average) > 0.01)
-	  {
-		cout << "average too far from zero " << avg.average << endl;
-		throw "IntensityAverage fails";
-	  }
-	  if (fabs (std.deviation - 1.0f) > 0.01)
-	  {
-		cout << "deviation too far from one " << std.deviation << endl;
-		throw "IntensityDeviation fails";
-	  }
-	  if (hist.counts[10] < 50000  ||  hist.counts[0] > 100)
-	  {
-		cout << "histogram has unexpected distribution:" << endl;
-		hist.dump (cout);
-		throw "IntensityHistogram fails";
-	  }
-
-	  cout << "IntensityAverage, IntensityDeviation and IntensityHistogram pass" << endl;
-	}
-
-	// Gaussian1D
-	// GaussianDerivative1D
-	// GaussianDerivativeSecond1D
-	// InterestDOG
-	// InterestMSER
-	// InterestHarrisLaplacian
-	// InterestHessian
-	{
-	  Image image ("test.jpg");
-	  image *= GrayChar;
-
-	  InterestMSER mser;
-	  InterestHarrisLaplacian hl;
-	  InterestDOG dog;
-	  InterestHessian s;
-
-	  InterestPointSet points;
-	  mser.run (image, points);
-	  hl  .run (image, points);
-	  dog .run (image, points);
-	  s   .run (image, points);
-
-	  const int expected = 5808;
-	  int count = points.size ();
-	  if (abs (count - expected) > 50)
-	  {
-		cout << "unexpected point count " << count << "   rather than " << expected << endl;
-		throw "failure in one or more of {InterestDOG, InterestMSER, InterestHarrisLaplacian, InterestHessian} or their dependencies";
-	  }
-
-	  cout << "InterestDOG, InterestMSER, InterestHarrisLaplacian and InterestHessian pass" << endl;
-	}
-
-	// Transform -- {8dof 6dof} X {float double}
-	{
-	  Image image (640, 480, GrayFloat);
-	  testTransform (image);
-	  image.format = &GrayDouble;
-	  image.resize (640, 480);
-	  testTransform (image);
-	  cout << "Transform passes" << endl;
-	}
-
-	// VideoFileFormatFFMPEG
-	{
-	  new VideoFileFormatFFMPEG;
-
-	  {
-		VideoOut vout ("test.mpg");
-		Image image (320, 240, RGBAChar);
-		image.timestamp = NAN;  // force auto-generation of PTS
-		for (unsigned int i = 128; i < 255; i++)
-		{
-		  if (! vout.good ())
-		  {
-			cout << "vout is bad" << endl;
-			throw "VideoFileFormatFFMPEG::write fails";
-		  }
-		  image.clear ((i << 24) | (i << 16) | (i << 8));
-		  vout << image;
-		}
-	  }
-
-	  VideoIn vin ("test.mpg");
-	  int i;
-	  for (i = 128; i < 255; i++)
-	  {
-		Image image;
-		vin >> image;
-		if (! vin.good ()) break;
-		if (image.width != 320  ||  image.height != 240)
-		{
-		  cerr << "Unexpected image size: " << image.width << " x " << image.height << endl;
-		  throw "VideoFileFormatFFMPEG::read fails";
-		}
-		for (int y = 0; y < image.height; y++)
-		{
-		  for (int x = 0; x < image.width; x++)
-		  {
-			int g = image.getGray (x, y);
-			if (abs (g - i) > thresholdLumaAccessor)
-			{
-			  cout << x << " " << y << " expected " << i << " but got " << g << endl;
-			  throw "VideoFileFormatFFMPEG::read fails";
-			}
-		  }
-		}
-	  }
-	  if (i < 250)
-	  {
-		cout << "didn't read enough frames " << i << endl;
-		throw "VideoFileFormatFFMPEG::read fails";
-	  }
-
-	  cout << "VideoFileFormatFFMPEG passes" << endl;
-	}
-
+	testConvolutionDiscrete2DnormalFloats ();
+	testDescriptorFilters ();
+	testDescriptors ();
+	testIntensityFilters ();
+	testInterest ();
+	testTransform ();
+	testVideo ();
+	testBitblt ();
   }
   catch (const char * error)
   {
