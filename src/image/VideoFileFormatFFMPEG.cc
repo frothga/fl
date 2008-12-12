@@ -527,7 +527,7 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
   codec = 0;
   if (codecName.size ())
   {
-	for (AVCodec * i = first_avcodec; i; i = i->next)
+	for (AVCodec * i = av_codec_next (0); i; i = av_codec_next (i))
 	{
 	  if (i->encode  &&  i->type == CODEC_TYPE_VIDEO  &&  codecName == i->name)
 	  {
