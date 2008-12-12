@@ -69,13 +69,12 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	{
 	  attach (that);
 	}
-	Pointer (void * that, int size = 0)
+	Pointer (void * that, ptrdiff_t size = 0)
 	{
-	  // It's a real bad idea to pass size < 0 to this constructor!
 	  memory = that;
 	  metaData = size;
 	}
-	Pointer (int size)
+	Pointer (ptrdiff_t size)
 	{
 	  if (size > 0)
 	  {
@@ -106,7 +105,7 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	  attach (that);
 	  return *this;
 	}
-	void attach (void * that, int size = 0)
+	void attach (void * that, ptrdiff_t size = 0)
 	{
 	  detach ();
 	  memory = that;
@@ -121,7 +120,7 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 		{
 		  detach ();
 		}
-		int size = temp.size ();
+		ptrdiff_t size = temp.size ();
 		if (size < 0)
 		{
 		  throw "Don't know size of block to copy";
@@ -134,7 +133,7 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 		detach ();
 	  }
 	}
-	void copyFrom (const void * that, int size)
+	void copyFrom (const void * that, ptrdiff_t size)
 	{
 	  if (size > 0)
 	  {
@@ -151,11 +150,11 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	  }
 	}
 
-	void grow (int size)
+	void grow (ptrdiff_t size)
 	{
 	  if (metaData < 0)
 	  {
-		if (((int *) memory)[-2] >= size)
+		if (((ptrdiff_t *) memory)[-2] >= size)
 		{
 		  return;
 		}
@@ -174,7 +173,7 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	{
 	  if (metaData < 0)
 	  {
-		memset (memory, 0, ((int *) memory)[-2]);
+		memset (memory, 0, ((ptrdiff_t *) memory)[-2]);
 	  }
 	  else if (metaData > 0)
 	  {
@@ -186,19 +185,19 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	  }
 	}
 
-	int refcount () const
+	ptrdiff_t refcount () const
 	{
 	  if (metaData < 0)
 	  {
-		return ((int *) memory)[-1];
+		return ((ptrdiff_t *) memory)[-1];
 	  }
 	  return -1;
 	}
-	int size () const
+	ptrdiff_t size () const
 	{
 	  if (metaData < 0)
 	  {
-		return ((int *) memory)[-2];
+		return ((ptrdiff_t *) memory)[-2];
 	  }
 	  else if (metaData > 0)
 	  {
@@ -228,9 +227,9 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	{
 	  if (metaData < 0)
 	  {
-		if (--((int *) memory)[-1] == 0)
+		if (--((ptrdiff_t *) memory)[-1] == 0)
 		{
-		  free ((int *) memory - 2);
+		  free ((ptrdiff_t *) memory - 2);
 		}
 	  }
 	  memory = 0;
@@ -250,17 +249,17 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	  metaData = that.metaData;
 	  if (metaData < 0)
 	  {
-		((int *) memory)[-1]++;
+		((ptrdiff_t *) memory)[-1]++;
 	  }
 	}
-	void allocate (int size)
+	void allocate (ptrdiff_t size)
 	{
-	  memory = malloc (size + 2 * sizeof (int));
+	  memory = malloc (size + 2 * sizeof (ptrdiff_t));
 	  if (memory)
 	  {
-		memory = & ((int *) memory)[2];
-		((int *) memory)[-1] = 1;
-		((int *) memory)[-2] = size;
+		memory = & ((ptrdiff_t *) memory)[2];
+		((ptrdiff_t *) memory)[-1] = 1;
+		((ptrdiff_t *) memory)[-2] = size;
 		metaData = -1;
 	  }
 	  else
@@ -282,7 +281,7 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	   metaData > 0 indicates the actual size of the block, and that we don't
 	   own it.
 	**/
-	int metaData;
+	ptrdiff_t metaData;
   };
 
   inline std::ostream &
