@@ -313,7 +313,7 @@ CanvasImage::drawRay (const Point & p, float angle, unsigned int color)
 }
 
 void
-CanvasImage::drawPolygon (const std::vector<Point> & points, unsigned int color)
+CanvasImage::drawPolygon (const vector<Point> & points, unsigned int color)
 {
   for (int i = 0; i < points.size () - 1; i++)
   {
@@ -323,6 +323,212 @@ CanvasImage::drawPolygon (const std::vector<Point> & points, unsigned int color)
   {
 	drawSegment (points.front (), points.back (), color);
   }
+}
+
+struct Segment
+{
+  float x;
+  float slope;
+};
+
+struct Vertex
+{
+  Point p;
+  Vertex * pred;
+  Vertex * succ;
+  vector<Segment *> active;
+};
+
+static inline void
+advanceX (float deltaY, vector<Segment *> & active)
+{
+  // Increment X positions
+  for (int i = 0; i < active.size (); i++)
+  {
+	active[i]->x += active[i]->slope * deltaY;
+  }
+
+  // Bubble sort
+  bool changed = true;
+  while (changed)
+  {
+	changed = false;
+	for (int i = 1; i < active.size (); i++)
+	{
+	  if (active[i-1]->x > active[i]->x)
+	  {
+		swap (active[i-1], active[i]);
+		changed = true;
+	  }
+	}
+  }
+}
+
+static inline void
+insertSegment (Vertex * smallerY, Vertex * biggerY, vector<Segment *> & active)
+{
+  Segment * s = new Segment;
+  s->x = smallerY->p.x;
+  s->slope = (biggerY->p.x - smallerY->p.x) / (biggerY->p.y - smallerY->p.y);
+  biggerY->active.push_back (s);
+
+  // Insert into active in X order.
+  // This linear search is reasonably efficient when there are only 2 or 4 active segments.
+  // Should to use the more efficient binary search for more complex polygons
+  int i;
+  for (i = 0; i < active.size (); i++)
+  {
+	if (s->x <= active[i]->x)
+	{
+	  active.insert (active.begin () + i, s);
+	  break;
+	}
+  }
+  if (i >= active.size ()) active.push_back (s);
+}
+
+/**
+   The basic approach of this function is to implement a plane-sweep algorithm
+   combined with scanline rendering.  Sorts vertices into ascending Y order.
+   Each Y value is an event that changes the structure of the bounding
+   segments.  Between these events the set of segments remains constant,
+   though their order may change (segments may cross over other segments).
+ **/
+void
+CanvasImage::drawFilledPolygon (const vector<Point> & points, unsigned int color)
+{
+  if (points.size () < 3) throw "drawFilledPolygon requires at least 3 points";
+
+  // Convert input to vertex ring and sort by Y
+  multimap<float, Vertex *> sorted;
+  Vertex * root = new Vertex;
+  root->p = trans (points[0]);
+  root->pred = root;
+  root->succ = root;
+  sorted.insert (make_pair (root->p.y, root));
+  for (int i = 1; i < points.size (); i++)
+  {
+	Vertex * v = new Vertex;
+	v->p = trans (points[i]);
+	v->succ = root;
+	v->pred = root->pred;
+	root->pred->succ = v;
+	root->pred = v;
+	sorted.insert (make_pair (v->p.y, v));
+  }
+
+  // Scan through sorted vertex list, drawing scanlines
+  float Y = -INFINITY;
+  vector<Segment *> active;
+  float lastQueuedY = sorted.rbegin ()->first;
+  float alpha = (color & 0xFF) / 255.0f;
+  Pixel C (color);
+  while (sorted.size ())
+  {
+	// Advance Y to next queued vertex
+	float nextQueuedY = sorted.begin ()->first;
+	advanceX (nextQueuedY - Y, active);
+	Y = nextQueuedY;
+	if (Y > height - 1) break;
+
+	// Update active segment list
+	while (sorted.size ()  &&  sorted.begin ()->first == nextQueuedY)
+	{
+	  Vertex * v = sorted.begin ()->second;
+	  sorted.erase (sorted.begin ());
+
+	  // Remove any segments that terminate at v
+	  for (int i = 0; i < v->active.size (); i++)
+	  {
+		Segment * kill = v->active[i];
+		for (int j = 0; j < active.size (); j++)
+		{
+		  if (active[j] == kill)
+		  {
+			active.erase (active.begin () + j);
+			delete kill;
+			break;
+		  }
+		}
+	  }
+
+	  // Add segments associated with any neighbors of v with strictly larger y values (implies that we never add horizontal segments).
+	  if (v->pred->p.y > v->p.y) insertSegment (v, v->pred, active);
+	  if (v->succ->p.y > v->p.y) insertSegment (v, v->succ, active);
+	}
+	if (sorted.size ()) nextQueuedY = sorted.begin ()->first;
+	else                nextQueuedY = lastQueuedY;
+
+	// Determine next Y quantum (center of pixel row)
+	int Yquantum = (int) ceil (Y);
+	if (Yquantum < 0)
+	{
+	  int jumpY = min (0, (int) floor (nextQueuedY));
+	  Yquantum = max (Yquantum, jumpY);
+	}
+
+	// Draw scanlines
+	if (nextQueuedY > height) nextQueuedY = height;
+	while (Yquantum < nextQueuedY)
+	{
+	  advanceX (Yquantum - Y, active);
+	  Y = Yquantum;
+	  if (Yquantum >= 0)
+	  {
+		// Fill scanline
+		int i = 0;
+		while (i < active.size ())
+		{
+		  float l = active[i++]->x;
+		  float r = active[i++]->x;
+
+		  l = max (-0.499999f,        l);
+		  r = min (width - 0.500001f, r);
+		  if (r < l) continue;
+
+		  int intL = (int) rint (l);
+		  int intR = (int) rint (r);
+		  if (intL == intR)
+		  {
+			C.setAlpha ((int) (0xFF * (r - l) * alpha));
+			Pixel p = (*this) (intL, Yquantum);
+			p = p << C;
+		  }
+		  else
+		  {
+			// draw left pixel
+			C.setAlpha ((int) (0xFF * (intL + 0.5f - l) * alpha));
+			Pixel p0 = (*this) (intL, Yquantum);
+			p0 = p0 << C;
+
+			// draw middle pixels
+			C.setAlpha (color & 0xFF);
+			for (int x = intL + 1; x < intR; x++)
+			{
+			  Pixel p1 = (*this) (x, Yquantum);
+			  p1 = p1 << C;
+			}
+
+			// draw right pixel;
+			C.setAlpha ((int) (0xFF * (r - intR + 0.5f) * alpha));
+			Pixel p2 = (*this) (intR, Yquantum);
+			p2 = p2 << C;
+		  }
+		}
+	  }
+	  Yquantum++;
+	}
+  }
+
+  // Delete structures
+  Vertex * v = root;
+  do
+  {
+	Vertex * kill = v;
+	v = v->succ;
+	delete kill;
+  }
+  while (v != root);
 }
 
 void

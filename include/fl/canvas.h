@@ -49,6 +49,7 @@ namespace fl
 	virtual void drawLine (float a, float b, float c, unsigned int color = WHITE);  ///< Draws the set ax + by + c = 0
 	virtual void drawRay (const Point & p, float angle, unsigned int color = WHITE);
 	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
+	virtual void drawFilledPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
 	virtual void drawParallelogram (const Matrix<double> & S, float radius = 1.0f, unsigned int color = WHITE);  ///< S projects a unit square centered at the origin into the image.  radius scales up the unit square.
 	virtual void drawParallelogram (const PointAffine & p, float radius = 1.0f, unsigned int color = WHITE);  ///< Determines an S based on the shape and position of p, then calls drawParallelogram (S, ...).
 	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = WHITE);
@@ -84,6 +85,7 @@ namespace fl
 	virtual void drawLine (float a, float b, float c, unsigned int color = WHITE);
 	virtual void drawRay (const Point & p, float angle, unsigned int color = WHITE);
 	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
+	virtual void drawFilledPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
 	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = WHITE);
 	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
 	virtual void drawMSER (const PointMSER & p, const Image & image, unsigned int colorFill = GRAY50, unsigned int colorBorder = WHITE);

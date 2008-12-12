@@ -73,6 +73,12 @@ Canvas::drawPolygon (const std::vector<Point> & points, unsigned int color)
 }
 
 void
+Canvas::drawFilledPolygon (const std::vector<Point> & points, unsigned int color)
+{
+  throw "drawFilledPolygon not implemented for this type of Canvas";
+}
+
+void
 Canvas::drawParallelogram (const Matrix<double> & S, float radius, unsigned int color)
 {
   Point tl (-radius,  radius);
