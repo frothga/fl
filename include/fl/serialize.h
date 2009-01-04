@@ -72,9 +72,9 @@ namespace fl
 	virtual void write (std::ostream stream) const = 0;
   };
 
-  typedef void * productFunction (std::istream & stream);
-  typedef std::map<std::string, productFunction *> productMappingIn;
-  typedef std::map<std::string, std::string>       productMappingOut;
+  typedef void * productCreate ();
+  typedef std::map<std::string, productCreate *> productMappingIn;
+  typedef std::map<std::string, std::string>     productMappingOut;
   /**
 	 Bundling both mappings in a single object makes it easier to instantiate
 	 the registry in those case where it is necessary.
@@ -100,8 +100,8 @@ namespace fl
 	 by registering the desired classes.  The alternative is to pre-register
 	 everything or hard-code a factory function.  These would force the
 	 linkage of the entire class hierarchy.
-	 <li>Factory and its helper class Product were meant to act as a kind
-	 of "mix-in", so that factory behavior could be added to arbitrary
+	 <li>Factory and its helper class Product are meant to act as a kind
+	 of "mix-in", so that factory behavior can be added to arbitrary
 	 class hierarchies while imposing minimal requirements on the classes
 	 themselves.
 	 <li>There are separate Factories for each class hierarchy rather than
@@ -120,18 +120,33 @@ namespace fl
   class Factory
   {
   public:
+	/**
+	   Instantiates a named subclass.  This function serves two roles.
+	   One is to act as a subroutine of read().  The other is to allow
+	   users to instantiate named subclasses directly without necessarily
+	   having a stream in hand.  This function does not fill-in any data
+	   in the resulting object.  It is just the result of the default
+	   constructor.
+	 **/
+	static B * create (const std::string & name)
+	{
+	  productMappingIn::iterator entry = registry.in.find (name);
+	  if (entry == registry.in.end ())
+	  {
+		std::string error = "Unknown class name: ";
+		error += name;
+		throw error.c_str ();
+	  }
+	  return (B *) (*entry->second) ();
+	}
+
 	static B * read (std::istream & stream)
 	{
 	  std::string name;
 	  getline (stream, name);
-	  productMappingIn::iterator entry = registry.in.find (name);
-	  if (entry == registry.in.end ())
-	  {
-		std::string error = "Unknown class name in stream: ";
-		error += name;
-		throw error.c_str ();
-	  }
-	  return (B *) (*entry->second) (stream);
+	  B * result = (B *) create (name);
+	  result->read (stream);  // Since read() is virtual, this will call the appropriate stream extractor for the derived class.
+	  return result;
 	}
 
 	static void write (std::ostream & stream, const B & data)
@@ -145,7 +160,7 @@ namespace fl
 		throw error.c_str ();
 	  }
 	  stream << entry->second << std::endl;
-	  data.write (stream);
+	  data.write (stream);  // Since "data" is a reference, this should call write() on the derived class rather than the base class.
 	}
 
 	static productRegistry registry;
@@ -156,11 +171,9 @@ namespace fl
   class Product
   {
   public:
-	static void * read (std::istream & stream)
+	static void * create ()
 	{
-	  D * result = new D;  // default constructor
-	  result->read (stream);
-	  return result;
+	  return new D;  // default constructor
 	}
 
 	static void add (const std::string & name = "")
@@ -169,7 +182,7 @@ namespace fl
 
 	  if (name.size ())
 	  {
-		Factory<B>::registry.in.insert  (make_pair (name, &read));
+		Factory<B>::registry.in.insert  (make_pair (name,       &create));
 		Factory<B>::registry.out.insert (make_pair (typeidName, name));
 	  }
 	  else
@@ -185,7 +198,7 @@ namespace fl
 		  if (Factory<B>::registry.in.find (uniqueName) == Factory<B>::registry.in.end ()) break;
 		}
 
-		Factory<B>::registry.in.insert  (make_pair (uniqueName, &read));
+		Factory<B>::registry.in.insert  (make_pair (uniqueName, &create));
 		Factory<B>::registry.out.insert (make_pair (typeidName, uniqueName));
 	  }
 	}
