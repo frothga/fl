@@ -5,7 +5,6 @@ Version 1.3
 	* Add Metric class to fix dependency problems between numeric and image libraries
 	* Replace fixed size matrix classes with single template with size parameters.
 	* Idempotent read and write of matrices in human readable form.
-	* Add Listener to net
 	* More efficient handling of Expose events in SlideShow.  Added EventPredicate handler in X.
 	* Add Copy and Undefined border modes to convolution
 	* Improve efficiency of Convolution1D
@@ -36,7 +35,7 @@ Version 1.3
 	* Fix clipping bug in Transform.
 	* In TransformGauss, clear pixels that fall outside of boundary rather than leaving them undefined.
 	* Add ability to select named video codecs.
-	* Add generic TCP server.  Use in KMeansParallel.
+	* Add Listener (generic TCP server) to net.  Use in KMeansParallel.
 	* Update SocketStream to compile and work under MSVC and Cygwin.
 	* Add support for shared libraries.
 
