@@ -77,7 +77,7 @@ asmH (T * reverse, T * fromPixel, T * toPixel, T * end,
    Float specialization of horizontal main loop.
 **/
 template<>
-static inline void
+inline void
 asmH (float * reverse, float * fromPixel, float * toPixel, float * end,
 	  int rowWidth, int last, int fromStep, int toStep)
 {
@@ -136,7 +136,7 @@ asmH (float * reverse, float * fromPixel, float * toPixel, float * end,
    Double specialization of horizontal main loop.
 **/
 template<>
-static inline void
+inline void
 asmH (double * reverse, double * fromPixel, double * toPixel, double * end,
 	  int rowWidth, int last, int fromStep, int toStep)
 {

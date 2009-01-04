@@ -422,8 +422,8 @@ fl::Drawable::copyArea (const fl::GC & gc, const fl::Drawable & source, int toX,
   {
 	height = sourceHeight;
   }
-  width = width <? sourceWidth - fromX;
-  height = height <? sourceHeight - fromY;
+  width  = min (width,  sourceWidth  - fromX);
+  height = min (height, sourceHeight - fromY);
   XCopyArea
   (
     screen->display->display,

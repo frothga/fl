@@ -20,12 +20,13 @@ for details.
 
 #include <ctype.h>
 #include <string>
+#include <string.h>
 
 
 namespace fl
 {
   inline void
-  split (const std::string & source, char * delimiter, std::string & first, std::string & second)
+  split (const std::string & source, const char * delimiter, std::string & first, std::string & second)
   {
 	int index = source.find (delimiter);
 	if (index == std::string::npos)

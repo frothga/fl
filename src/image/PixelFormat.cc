@@ -21,6 +21,7 @@ for details.
 
 #include <algorithm>
 #include <set>
+#include <typeinfo>
 
 // Temporary hack for c99 int types in MSVC
 #ifdef _MSC_VER

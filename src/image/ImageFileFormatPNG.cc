@@ -16,6 +16,8 @@ for details.
 
 #include <png.h>
 
+#include <typeinfo>
+
 
 using namespace std;
 using namespace fl;

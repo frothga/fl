@@ -14,6 +14,8 @@ for details.
 
 #include "fl/socket.h"
 
+#include <string.h>
+
 
 using namespace fl;
 using namespace std;

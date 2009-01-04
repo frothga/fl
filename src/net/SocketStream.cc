@@ -16,6 +16,9 @@ for details.
 
 #include "fl/socket.h"
 
+#include <string.h>
+#include <stdlib.h>
+
 
 // For debugging
 #include <iostream>

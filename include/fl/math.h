@@ -19,6 +19,7 @@ for details.
 
 
 #include <cmath>
+#include <limits.h>
 
 #ifdef _MSC_VER
 #  include <float.h>
@@ -29,6 +30,8 @@ for details.
 
 namespace std
 {
+  using ::abs;
+
   inline int
   sqrt (int a)
   {

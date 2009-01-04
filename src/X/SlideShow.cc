@@ -151,12 +151,12 @@ SlideShow::processEvent (XEvent & event)
 	  lastX = event.xmotion.x;
 	  lastY = event.xmotion.y;
 
-	  deltaX = deltaX <? image.width - width - offsetX;
-	  deltaX = deltaX >? -offsetX;
+	  deltaX = min (deltaX, image.width - width - offsetX);
+	  deltaX = max (deltaX, -offsetX);
 	  offsetX += deltaX;
 
-	  deltaY = deltaY <? image.height - height - offsetY;
-	  deltaY = deltaY >? -offsetY;
+	  deltaY = min (deltaY, image.height - height - offsetY);
+	  deltaY = max (deltaY, -offsetY);
 	  offsetY += deltaY;
 
 	  if (deltaX  ||  deltaY)
@@ -260,12 +260,12 @@ SlideShow::show (const Image & image, int centerX, int centerY)
   if (centerX < offsetX  ||  centerX > offsetX + width  ||  centerY < offsetY   ||  centerY > offsetY + height)
   {
 	offsetX = centerX - width / 2;
-	offsetX = offsetX <? image.width - width;
-	offsetX = offsetX >? 0;
+	offsetX = min (offsetX, image.width - width);
+	offsetX = max (offsetX, 0);
 
 	offsetY = centerY - height / 2;
-	offsetY = offsetY <? image.height - height;
-	offsetY = offsetY >? 0;
+	offsetY = min (offsetY, image.height - height);
+	offsetY = max (offsetY, 0);
   }
 
   map ();  // In case we aren't already visible
@@ -279,8 +279,8 @@ SlideShow::paint ()
   pthread_mutex_lock (&mutexImage);
   if (ximage)
   {
-	int w = width <? image.width - offsetX;
-	int h = height <? image.height - offsetY;
+	int w = min (width,  image.width  - offsetX);
+	int h = min (height, image.height - offsetY);
 	putImage (*gc, ximage, 0, 0, offsetX, offsetY, w, h);
   }
   pthread_mutex_unlock (&mutexImage);

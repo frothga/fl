@@ -10,6 +10,7 @@ for details.
 #include "fl/neural.h"
 
 #include <math.h>
+#include <typeinfo>
 
 
 using namespace std;

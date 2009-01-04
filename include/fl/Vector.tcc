@@ -20,6 +20,8 @@ for details.
 
 #include "fl/matrix.h"
 
+#include <typeinfo>
+
 
 namespace fl
 {

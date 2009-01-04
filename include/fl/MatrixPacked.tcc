@@ -21,6 +21,7 @@ for details.
 #include "fl/matrix.h"
 
 #include <algorithm>
+#include <typeinfo>
 
 
 namespace fl

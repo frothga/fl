@@ -35,12 +35,12 @@ SOURCE_HTML = $(SOURCE_DIR)/html
 SOURCE_MAN = $(SOURCE_DIR)/man
 
 # X library
-X_DIR = /usr/X11R6
+X_DIR = /usr
 X_INC = -I$(X_DIR)/include
 X_LIB = -L$(X_DIR)/lib -lXext -lX11 -lGL -lGLU
 
 # LAPACK library and dependencies
-FORTRAN_LIB = -lg2c
+FORTRAN_LIB = -lgfortran
 LAPACK_DIR = /usr
 LAPACK_LIB = -L$(LAPACK_DIR)/lib -llapack -lblas $(FORTRAN_LIB)
 
@@ -95,6 +95,8 @@ LIBCOMMAND = ar rcsv $(SOURCE_LIB)/$@ $(OBJS)
 
 
 # General C++ options
+CC = gcc-4
+CXX = g++-4
 CPPFLAGS = -I$(SOURCE_INC)
 
 # CXXFLAGS is broken up to make it easier to switch on/off certain features.

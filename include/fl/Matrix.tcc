@@ -22,6 +22,7 @@ for details.
 #include "fl/string.h"
 
 #include <algorithm>
+#include <typeinfo>
 
 
 namespace fl

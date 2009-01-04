@@ -56,6 +56,7 @@ for details.
 #  include <errno.h>
 #  include <sys/select.h>
 #  include <arpa/inet.h>
+#  include <unistd.h>
 
 #  ifdef __CYGWIN__
 #    define NO_IPV6

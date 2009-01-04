@@ -12,6 +12,8 @@ for details.
 
 #include "fl/image.h"
 
+#include <typeinfo>
+
 
 using namespace fl;
 using namespace std;
