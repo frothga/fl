@@ -40,13 +40,12 @@ using namespace fl;
 void
 TransformGauss::prepareG ()
 {
-  const float sigma = 0.5;    // radius of support; 0.5 since we want half a pixel in all directions
-  const float sigma2 = sigma * sigma;
-  const float stepsPerZ = 6;  // Number of substeps per standard deviation
-  const float C = 1.0 / (2.0 * PI * sigma2);
+  const double sigma2 = sigma * sigma;
+  const double stepsPerZ = 6;  // Number of substeps per standard deviation
+  const double C = 1.0 / (2.0 * PI * sigma2);
 
   // Calculate size and shape of Gaussian
-  MatrixFixed<float,2,2> S = IA.region (0, 0, 1, 1) * ~IA.region (0, 0, 1, 1) * sigma2;
+  MatrixFixed<double,2,2> S = IA.region (0, 0, 1, 1) * ~IA.region (0, 0, 1, 1) * sigma2;
   sigmaX = sqrt (S(0,0));  // Distance of one standard deviation ("Z") from origin along x-axis in source image
   sigmaY = sqrt (S(1,1));  // ditto for y-axis
   Gshw = (int) ceil (sigmaX * 3);  // Desired size of kernel in source pixels
@@ -55,25 +54,28 @@ TransformGauss::prepareG ()
   GstepY = max ((int) ceil (stepsPerZ / sigmaY), 1);
   G.resize ((2 * Gshw + 1) * GstepX,
 			(2 * Gshh + 1) * GstepY);
-  S = !S;
-  float sigmaM = max (sigmaX, sigmaY);
-  if (sigmaM < sigma)  // try to match support of kernel in destination image when zooming up
+
+  // For continuity in the destination image, the kernel must cover at
+  // least 1 full pixel in the source image.
+  double sigmaM = max (sigmaX, sigmaY);
+  if (sigmaM < 0.5)
   {
-	float adjust = sigmaM / 0.5;
+	double adjust = 0.5 / sigmaM;
 	S *= adjust * adjust;
   }
 
   // Compute Gaussian kernel
+  S = !S;  // change from covariance matrix in source image to covariance matrix in destination image
   int hw = G.width / 2;
   int hh = G.height / 2;
   for (int y = 0; y < G.height; y++)
   {
 	for (int x = 0; x < G.width; x++)
 	{
-	  float dx = (float) (x - hw) / GstepX;
-	  float dy = (float) (y - hh) / GstepY;
-	  float tx = S(0,0) * dx + S(0,1) * dy;
-	  float ty = S(1,0) * dx + S(1,1) * dy;
+	  double dx = (double) (x - hw) / GstepX;
+	  double dy = (double) (y - hh) / GstepY;
+	  double tx = S(0,0) * dx + S(0,1) * dy;
+	  double ty = S(1,0) * dx + S(1,1) * dy;
 	  G (x, y) = C * expf (-0.5 * (dx * tx + dy * ty));
 	}
   }
@@ -104,9 +106,9 @@ TransformGauss::filter (const Image & image)
 	{
 	  for (int toX = 0; toX < result.width; toX++)
 	  {
-		float x = H(0,0) * toX + H(0,1) * toY + H(0,2);
-		float y = H(1,0) * toX + H(1,1) * toY + H(1,2);
-		float z = H(2,0) * toX + H(2,1) * toY + H(2,2);
+		double x = H(0,0) * toX + H(0,1) * toY + H(0,2);
+		double y = H(1,0) * toX + H(1,1) * toY + H(1,2);
+		double z = H(2,0) * toX + H(2,1) * toY + H(2,2);
 		x /= z;
 		y /= z;
 		if (x > -0.5 - sigmaX  &&  x < image.width - 0.5 + sigmaX  &&  y > -0.5 - sigmaY  &&  y < image.height - 0.5 + sigmaY)
@@ -225,9 +227,9 @@ TransformGauss::filter (const Image & image)
 	{
 	  for (int toX = 0; toX < result.width; toX++)
 	  {
-		float x = H(0,0) * toX + H(0,1) * toY + H(0,2);
-		float y = H(1,0) * toX + H(1,1) * toY + H(1,2);
-		float z = H(2,0) * toX + H(2,1) * toY + H(2,2);
+		double x = H(0,0) * toX + H(0,1) * toY + H(0,2);
+		double y = H(1,0) * toX + H(1,1) * toY + H(1,2);
+		double z = H(2,0) * toX + H(2,1) * toY + H(2,2);
 		x /= z;
 		y /= z;
 		if (x > -0.5 - sigmaX  &&  x < image.width - 0.5 + sigmaX  &&  y > -0.5 - sigmaY  &&  y < image.height - 0.5 + sigmaY)
