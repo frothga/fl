@@ -638,6 +638,10 @@ Transform::setPeg (float centerX, float centerY, int width, int height)
   this->height  = height;
 }
 
+/**
+   Set up viewport so its center hits a specified point in what would
+   otherwise be the resulting image.
+ **/
 void
 Transform::setWindow (float centerX, float centerY, int width, int height)
 {
@@ -648,6 +652,21 @@ Transform::setWindow (float centerX, float centerY, int width, int height)
   this->centerY = centerY;
   this->width   = width;
   this->height  = height;
+}
+
+/**
+   Set up viewport in destination image in terms of its edges.
+ **/
+void
+Transform::setWindowEdges (int left, int top, int right, int bottom)
+{
+  peg = false;
+  defaultViewport = false;
+
+  centerX = (left + right) / 2.0;
+  centerY = (top + bottom) / 2.0;
+  width  = right  - left + 1;
+  height = bottom - top  + 1;
 }
 
 Transform
