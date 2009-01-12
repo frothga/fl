@@ -90,6 +90,7 @@ TransformGauss::filter (const Image & image)
   {
 	prepareG ();
   }
+  float * g = (float *) ((PixelBufferPacked *) G.buffer)->memory;
 
   MatrixFixed<double,3,3> H;  // homography from destination image to source image
   int w;
@@ -98,193 +99,245 @@ TransformGauss::filter (const Image & image)
   int hi;
   prepareResult (image, w, h, H, lo, hi);
 
-  if (*image.format == GrayFloat)
+  const int    iLastX1 = image.width  - 1;
+  const int    iLastY1 = image.height - 1;
+  const double firstX5 = -0.5 - sigmaX;
+  const double firstY5 = -0.5 - sigmaY;
+  const double lastX5  = image.width  - 0.5 + sigmaX;
+  const double lastY5  = image.height - 0.5 + sigmaY;
+
+  const double H00 = H(0,0);
+  const double H10 = H(1,0);
+  const double H20 = H(2,0);
+  const double H01 = H(0,1);
+  const double H11 = H(1,1);
+  const double H21 = H(2,1);
+  const double H02 = H(0,2);
+  const double H12 = H(1,2);
+
+  // One row + one pixel before beginning of destination image
+  double tx = -H00 - H01 + H02;
+  double ty = -H10 - H11 + H12;
+  double tz = -H20 - H21 + 1.0;
+
+  if (tz != 1.0)  // full 8-DOF homography
   {
-	ImageOf<float> result (w, h, GrayFloat);
-	ImageOf<float> that (image);
-	for (int toY = 0; toY < result.height; toY++)
+	throw "TransformGauss does not yet handle 8-DOF homographies";
+  }
+  else  // tz == 1.0, meaning only 6-DOF homography, allowing slightly fewer computations for coordinates
+  {
+	if (*image.format == GrayFloat)
 	{
-	  for (int toX = 0; toX < result.width; toX++)
+	  PixelBufferPacked * fromBuffer = (PixelBufferPacked *) image.buffer;
+	  float * fromMemory = (float *) fromBuffer->memory;
+	  int fromStride = fromBuffer->stride;
+
+	  ImageOf<float> result (w, h, GrayFloat);  // result is guaranteed to be dense because we construct it ourselves, therefore don't need to worry about stride
+	  float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
+
+	  for (int toY = 0; toY < result.height; toY++)
 	  {
-		double x = H(0,0) * toX + H(0,1) * toY + H(0,2);
-		double y = H(1,0) * toX + H(1,1) * toY + H(1,2);
-		double z = H(2,0) * toX + H(2,1) * toY + H(2,2);
-		x /= z;
-		y /= z;
-		if (x > -0.5 - sigmaX  &&  x < image.width - 0.5 + sigmaX  &&  y > -0.5 - sigmaY  &&  y < image.height - 0.5 + sigmaY)
+		double x = tx += H01;
+		double y = ty += H11;
+
+		for (int toX = 0; toX < result.width; toX++)
 		{
-		  int rx = (int) rint (x);
-		  int ry = (int) rint (y);
-		  int beginX = rx - Gshw;
-		  int beginY = ry - Gshh;
-		  int endX   = rx + Gshw;
-		  int endY   = ry + Gshh;
-		  endX = min (endX, (image.width - 1));
-		  endY = min (endY, (image.height - 1));
-		  float weight = 0;
-		  float sum = 0;
-		  int Gx      = (int) ((0.499999 + rx - x) * GstepX);  // 0.499999 rather than 0.5 to ensure we get [0, GstepX) rather than [0, GstepX].
-		  int offsetY = (int) ((0.499999 + ry - y) * GstepY);
-		  if (beginX < 0)
+		  x += H00;
+		  y += H10;
+		  if (x > firstX5  &&  x < lastX5  &&  y > firstY5  &&  y < lastY5)
 		  {
-			Gx -= GstepX * beginX;
-			beginX = 0;
-		  }
-		  if (beginY < 0)
-		  {
-			offsetY -= GstepY * beginY;
-			beginY = 0;
-		  }
-		  for (int fromX = beginX; fromX <= endX; fromX++)
-		  {
-			int Gy = offsetY;
-			for (int fromY = beginY; fromY <= endY; fromY++)
+			int rx = (int) rint (x);
+			int ry = (int) rint (y);
+			int beginX = rx - Gshw;
+			int beginY = ry - Gshh;
+			int endX   = rx + Gshw;
+			int endY   = ry + Gshh;
+			endX = min (endX, iLastX1);
+			endY = min (endY, iLastY1);
+			int Gx = (int) ((0.499999 + rx - x) * GstepX);  // 0.499999 rather than 0.5 to ensure we get [0, GstepX) rather than [0, GstepX].
+			int Gy = (int) ((0.499999 + ry - y) * GstepY);
+			if (beginX < 0)
 			{
-			  float w = G (Gx, Gy);
-			  weight += w;
-			  sum += that (fromX, fromY) * w;
-			  Gy += GstepY;
+			  Gx -= GstepX * beginX;
+			  beginX = 0;
 			}
-			Gx += GstepX;
+			if (beginY < 0)
+			{
+			  Gy -= GstepY * beginY;
+			  beginY = 0;
+			}
+			int fromBlockWidth = endX - beginX + 1;
+			int fromStep       = fromStride - fromBlockWidth * sizeof (float);
+			int gStep          = G.width * GstepY - fromBlockWidth * GstepX;
+			float * f   = (float *) ((char *) fromMemory + (beginY    * fromStride + beginX * sizeof (float)));
+			float * end = (float *) ((char *) fromMemory + (endY + 1) * fromStride);
+			float * w   = g + (Gy * G.width + Gx);  // get beginning pixel in Gaussian kernel
+			float weight = 0;
+			float sum    = 0;
+			while (f < end)
+			{
+			  float * rowEnd = f + fromBlockWidth;
+			  while (f < rowEnd)
+			  {
+				weight += *w;
+				sum += *f++ * *w;
+				w += GstepX;
+			  }
+			  f = (float *) ((char *) f + fromStep);
+			  w += gStep;
+			}
+			*r++ = sum / weight;
 		  }
-		  result (toX, toY) = sum / weight;
-		}
-		else
-		{
-		  result (toX, toY) = 0.0f;
+		  else
+		  {
+			*r++ = 0.0f;
+		  }
 		}
 	  }
+	  return result;
 	}
-	return result;
-  }
-  else if (*image.format == GrayDouble)
-  {
-	ImageOf<double> result (w, h, GrayDouble);
-	ImageOf<double> that (image);
-	for (int toY = 0; toY < result.height; toY++)
+	else if (*image.format == GrayDouble)
 	{
-	  for (int toX = 0; toX < result.width; toX++)
+	  PixelBufferPacked * fromBuffer = (PixelBufferPacked *) image.buffer;
+	  double * fromMemory = (double *) fromBuffer->memory;
+	  int fromStride = fromBuffer->stride;
+
+	  ImageOf<double> result (w, h, GrayDouble);
+	  double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
+
+	  for (int toY = 0; toY < result.height; toY++)
 	  {
-		double x = H(0,0) * toX + H(0,1) * toY + H(0,2);
-		double y = H(1,0) * toX + H(1,1) * toY + H(1,2);
-		double z = H(2,0) * toX + H(2,1) * toY + H(2,2);
-		x /= z;
-		y /= z;
-		if (x > -0.5 - sigmaX  &&  x < image.width - 0.5 + sigmaX  &&  y > -0.5 - sigmaY  &&  y < image.height - 0.5 + sigmaY)
+		double x = tx += H01;
+		double y = ty += H11;
+
+		for (int toX = 0; toX < result.width; toX++)
 		{
-		  int rx = (int) rint (x);
-		  int ry = (int) rint (y);
-		  int beginX = rx - Gshw;
-		  int beginY = ry - Gshh;
-		  int endX   = rx + Gshw;
-		  int endY   = ry + Gshh;
-		  endX = min (endX, (image.width - 1));
-		  endY = min (endY, (image.height - 1));
-		  double weight = 0;
-		  double sum = 0;
-		  int Gx      = (int) ((0.499999 + rx - x) * GstepX);  // 0.499999 rather than 0.5 to ensure we get [0, GstepX) rather than [0, GstepX].
-		  int offsetY = (int) ((0.499999 + ry - y) * GstepY);
-		  if (beginX < 0)
+		  x += H00;
+		  y += H10;
+		  if (x > firstX5  &&  x < lastX5  &&  y > firstY5  &&  y < lastY5)
 		  {
-			Gx -= GstepX * beginX;
-			beginX = 0;
-		  }
-		  if (beginY < 0)
-		  {
-			offsetY -= GstepY * beginY;
-			beginY = 0;
-		  }
-		  for (int fromX = beginX; fromX <= endX; fromX++)
-		  {
-			int Gy = offsetY;
-			for (int fromY = beginY; fromY <= endY; fromY++)
+			int rx = (int) rint (x);
+			int ry = (int) rint (y);
+			int beginX = rx - Gshw;
+			int beginY = ry - Gshh;
+			int endX   = rx + Gshw;
+			int endY   = ry + Gshh;
+			endX = min (endX, iLastX1);
+			endY = min (endY, iLastY1);
+			int Gx = (int) ((0.499999 + rx - x) * GstepX);  // 0.499999 rather than 0.5 to ensure we get [0, GstepX) rather than [0, GstepX].
+			int Gy = (int) ((0.499999 + ry - y) * GstepY);
+			if (beginX < 0)
 			{
-			  double w = G (Gx, Gy);
-			  weight += w;
-			  sum += that (fromX, fromY) * w;
-			  Gy += GstepY;
+			  Gx -= GstepX * beginX;
+			  beginX = 0;
 			}
-			Gx += GstepX;
+			if (beginY < 0)
+			{
+			  Gy -= GstepY * beginY;
+			  beginY = 0;
+			}
+			int fromBlockWidth = endX - beginX + 1;
+			int fromStep       = fromStride - fromBlockWidth * sizeof (double);
+			int gStep          = G.width * GstepY - fromBlockWidth * GstepX;
+			double * f   = (double *) ((char *) fromMemory + (beginY    * fromStride + beginX * sizeof (double)));
+			double * end = (double *) ((char *) fromMemory + (endY + 1) * fromStride);
+			float *  w   = g + (Gy * G.width + Gx);
+			double weight = 0;
+			double sum    = 0;
+			while (f < end)
+			{
+			  double * rowEnd = f + fromBlockWidth;
+			  while (f < rowEnd)
+			  {
+				weight += *w;
+				sum += *f++ * *w;
+				w += GstepX;
+			  }
+			  f = (double *) ((char *) f + fromStep);
+			  w += gStep;
+			}
+
+			*r++ = sum / weight;
 		  }
-		  result (toX, toY) = sum / weight;
-		}
-		else
-		{
-		  result (toX, toY) = 0.0;
+		  else
+		  {
+			*r++ = 0.0;
+		  }
 		}
 	  }
+	  return result;
 	}
-	return result;
-  }
-  else if (*image.format == GrayChar)
-  {
-	return filter (image * GrayFloat);
-  }
-  else
-  {
-	Image result (w, h, *image.format);
-	for (int toY = 0; toY < result.height; toY++)
+	else if (*image.format == GrayChar)
 	{
-	  for (int toX = 0; toX < result.width; toX++)
+	  return filter (image * GrayFloat);
+	}
+	else
+	{
+	  Image result (w, h, *image.format);
+	  for (int toY = 0; toY < result.height; toY++)
 	  {
-		double x = H(0,0) * toX + H(0,1) * toY + H(0,2);
-		double y = H(1,0) * toX + H(1,1) * toY + H(1,2);
-		double z = H(2,0) * toX + H(2,1) * toY + H(2,2);
-		x /= z;
-		y /= z;
-		if (x > -0.5 - sigmaX  &&  x < image.width - 0.5 + sigmaX  &&  y > -0.5 - sigmaY  &&  y < image.height - 0.5 + sigmaY)
+		double x = tx += H01;
+		double y = ty += H11;
+
+		for (int toX = 0; toX < result.width; toX++)
 		{
-		  int rx = (int) rint (x);
-		  int ry = (int) rint (y);
-		  int beginX = rx - Gshw;
-		  int beginY = ry - Gshh;
-		  int endX   = rx + Gshw;
-		  int endY   = ry + Gshh;
-		  endX = min (endX, (image.width - 1));
-		  endY = min (endY, (image.height - 1));
-		  float weight = 0;
-		  float sum[] = {0, 0, 0, 0};
-		  int Gx      = (int) ((0.499999 + rx - x) * GstepX);  // 0.499999 rather than 0.5 to ensure we get [0, GstepX) rather than [0, GstepX].
-		  int offsetY = (int) ((0.499999 + ry - y) * GstepY);
-		  if (beginX < 0)
+		  x += H00;
+		  y += H10;
+		  if (x > firstX5  &&  x < lastX5  &&  y > firstY5  &&  y < lastY5)
 		  {
-			Gx -= GstepX * beginX;
-			beginX = 0;
-		  }
-		  if (beginY < 0)
-		  {
-			offsetY -= GstepY * beginY;
-			beginY = 0;
-		  }
-		  for (int fromX = beginX; fromX <= endX; fromX++)
-		  {
-			int Gy = offsetY;
+			int rx = (int) rint (x);
+			int ry = (int) rint (y);
+			int beginX = rx - Gshw;
+			int beginY = ry - Gshh;
+			int endX   = rx + Gshw;
+			int endY   = ry + Gshh;
+			endX = min (endX, (image.width - 1));
+			endY = min (endY, (image.height - 1));
+			float weight = 0;
+			float sum[] = {0, 0, 0, 0};
+			int Gx = (int) ((0.499999 + rx - x) * GstepX);  // 0.499999 rather than 0.5 to ensure we get [0, GstepX) rather than [0, GstepX].
+			int Gy = (int) ((0.499999 + ry - y) * GstepY);
+			if (beginX < 0)
+			{
+			  Gx -= GstepX * beginX;
+			  beginX = 0;
+			}
+			if (beginY < 0)
+			{
+			  Gy -= GstepY * beginY;
+			  beginY = 0;
+			}
+			int fromBlockWidth = endX - beginX + 1;
+			int gStep = G.width * GstepY - fromBlockWidth * GstepX;
+			float * w = g + (Gy * G.width + Gx);
 			for (int fromY = beginY; fromY <= endY; fromY++)
 			{
-			  float w = G (Gx, Gy);
-			  weight += w;
-			  float pixel[4];
-			  image.getRGBA (fromX, fromY, pixel);
-			  sum[0] += pixel[0] * w;
-			  sum[1] += pixel[1] * w;
-			  sum[2] += pixel[2] * w;
-			  sum[3] += pixel[3] * w;
-			  Gy += GstepY;
+			  for (int fromX = beginX; fromX <= endX; fromX++)
+			  {
+				weight += *w;
+				float pixel[4];
+				image.getRGBA (fromX, fromY, pixel);
+				sum[0] += pixel[0] * *w;
+				sum[1] += pixel[1] * *w;
+				sum[2] += pixel[2] * *w;
+				sum[3] += pixel[3] * *w;
+				w += GstepX;
+			  }
+			  w += gStep;
 			}
-			Gx += GstepX;
+			sum[0] /= weight;
+			sum[1] /= weight;
+			sum[2] /= weight;
+			sum[3] /= weight;
+			result.setRGBA (toX, toY, sum);
 		  }
-		  sum[0] /= weight;
-		  sum[1] /= weight;
-		  sum[2] /= weight;
-		  sum[3] /= weight;
-		  result.setRGBA (toX, toY, sum);
-		}
-		else
-		{
-		  result.setRGBA (toX, toY, BLACK);
+		  else
+		  {
+			result.setRGBA (toX, toY, BLACK);
+		  }
 		}
 	  }
+	  return result;
 	}
-	return result;
   }
 }
