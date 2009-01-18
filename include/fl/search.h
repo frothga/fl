@@ -105,11 +105,33 @@ namespace fl
   class Search
   {
   public:
-	virtual void search (Searchable<T> & searchable, Vector<T> & point) = 0;  ///< Finds the point that optimizes the search crierion.  "point" must be initialized to a reasonable starting point.
+	virtual void search (Searchable<T> & searchable, Vector<T> & point) = 0;  ///< Finds the point that optimizes the search crierion.  "point" must be initialized to a reasonable starting place.
   };
 
 
   // Specific Searches --------------------------------------------------------
+
+  /**
+	 Find local minimum of a one parameter function.
+	 The parameter of the function must be one-dimensional.  The output
+	 of the function can have any dimensionality.  This method will seek
+	 a solution that minimizes the Euclidean norm of the output vector
+	 (that is, a least square solution).
+   **/
+  template<class T>
+  class LineSearch : public Search<T>
+  {
+  public:
+	LineSearch (T lo = (T) -INFINITY, T hi = (T) INFINITY, T toleranceF = (T) -1, T toleranceX = (T) -1);  ///< Search is limited to the range [lo, hi].
+
+	virtual void search (Searchable<T> & searchable, Vector<T> & point);
+
+	T lo;  ///< Lower bound of search
+	T hi;  ///< Upper bound of search
+	T toleranceF;
+	T toleranceX;
+	int maxIterations;
+  };
 
   template<class T>
   class AnnealingAdaptive : public Search<T>
