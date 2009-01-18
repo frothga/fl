@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -48,7 +48,7 @@ using namespace std;
    may need to code an adaptive window size.  Furthermore, this may vary
    depending on the level in the pyramid.
  **/
-KLT::KLT (int windowRadius, int searchRadius)
+KLT::KLT (int windowRadius, int searchRadius, float scaleRatio)
 {
   this->windowRadius = windowRadius;
   windowWidth = 2 * windowRadius + 1;
@@ -67,21 +67,25 @@ KLT::KLT (int windowRadius, int searchRadius)
   // we use the the following heuristics:
   // * pyramidRatio in (1,8]
   // * Minimize the number of pyramid levels; levels in {1,2,3}
+  // These imply that searchRadius can never be greater than 73*windowRadius
+  // pixels (219 pixels for default windowRadius of 3).
   int levels;
-  float w = (float) searchRadius / windowRadius;
+  double w = (double) searchRadius / windowRadius;
   if (w <= 1)  // pyramidRatio^0 = 1
   {
 	levels = 1;
+	pyramidRatio = 1;
   }
   else if (w <= 9)  // pyramidRatio^0 + pyramidRatio^1 = 1 + 8 = 9, when pyramidRatio is at its max value of 8.
   {
 	levels = 2;
-	pyramidRatio = (w + sqrtf (w * w - 4.0f * (w - 1.0f))) / 2.0f;  // larger solution to quadratic equation: 0 = pyramidRatio^levels - w * pyramidRatio + w - 1
+	pyramidRatio = (int) ceil ((w + sqrt (w * w - 4 * (w - 1))) / 2);  // larger solution to quadratic equation: 0 = pyramidRatio^2 - w * pyramidRatio + w - 1
+	pyramidRatio = max (2, pyramidRatio);  // The solution above is wrong when w < 2, because it treats a second level at the same scale as the first as if it can actually extend the range.
   }
   else
   {
 	levels = 3;
-	// Solve the equation 0 = pyramidRatio^levels - w * pyramidRation + w - 1, where levels = 3.
+	// Solve the equation 0 = pyramidRatio^levels - w * pyramidRatio + w - 1
 	Vector<complex<double> > coeffs (4);
 	coeffs[0] = w - 1;
 	coeffs[1] = -w;
@@ -94,14 +98,35 @@ KLT::KLT (int windowRadius, int searchRadius)
 	{
 	  if (fabs (imag (result[i])) < DBL_EPSILON)  // Use only real roots
 	  {
-		pyramidRatio = max (pyramidRatio, (float) real (result[i]));
+		pyramidRatio = max (pyramidRatio, (int) ceil (real (result[i])));
 	  }
 	}
+	pyramidRatio = max (2, pyramidRatio);
   }
-  cerr << "KLT: levels=" << levels << " pyramidRatio=" << pyramidRatio << endl;
+  //cerr << "KLT: levels=" << levels << " pyramidRatio=" << pyramidRatio << endl;
 
-  // Create blurring kernel
-  preBlur = Gaussian1D (windowWidth * 0.1, Boost);
+
+  // Create blurring kernels
+  blurs.resize (levels);
+  double sR = searchRadius;  // in source image, but will be adjusted to target level at top of loop below
+  double currentBlur = 0.5;  // in source image
+  double pR = 1;  // the downsample ratio for generating the current level
+  for (int level = 0; level < levels; level++)
+  {
+	// The source image (image at previous level) will be blurred and
+	// downsampled to create the image at the current level.
+	sR /= pR;
+	double radius = min (sR, (double) windowRadius);  // sR (search radius) and windowRadius are in terms of target (downsampled) image
+	double targetBlur = sqrt (radius * pR) * scaleRatio;  // in terms of source image, before downsampling
+	targetBlur = max (0.5, targetBlur);
+	double applyBlur = sqrt (targetBlur * targetBlur - currentBlur * currentBlur);
+	applyBlur = max (0.5, applyBlur);
+	blurs[level] = Gaussian1D (applyBlur, Boost);
+	//cerr << "blurs " << level << ": radius=" << radius << " targetBlur=" << targetBlur << " applyBlur=" << applyBlur << " currentBlur=" << currentBlur << " pR=" << pR << " sR=" << sR << endl;
+	currentBlur = targetBlur / pR;  // at current level after downsampling; this becomes the source image for the next level
+	sR -= radius;
+	pR = pyramidRatio;  // for levels above 0
+  }
 
   // Create pyramids
   pyramid0.resize (levels, ImageOf<float> (GrayFloat));
@@ -111,43 +136,47 @@ KLT::KLT (int windowRadius, int searchRadius)
 void
 KLT::nextImage (const Image & image)
 {
-  pyramid0[0] = pyramid1[0];
-  pyramid1[0] = image * GrayFloat * preBlur;
+  // Pre-blur level 0
+  ImageOf<float> & p = pyramid1[0];
+  Gaussian1D & b = blurs[0];
+  pyramid0[0] = p;
+  p = image * GrayFloat;
+  b.direction = Horizontal;
+  p *= b;
+  b.direction = Vertical;
+  p *= b;
 
-  TransformGauss t (1.0 / pyramidRatio, 1.0 / pyramidRatio);
+  // Higher levels
+  const float start = pyramidRatio / 2;
   for (int i = 1; i < pyramid0.size (); i++)
   {
+	Gaussian1D & b = blurs[i];
 	ImageOf<float> & p = pyramid1[i];  // "picture"
 	ImageOf<float> & pp = pyramid1[i-1];  // "previous picture"
 	pyramid0[i] = p;
+	p.detach ();
 
-	// It is important to place the top left corner of pp *exactly* at the
-	// top left corner of p so that coordinate conversions are meaningful
-	// across scale levels.  This means putting any leftover part of one
-	// pixel at the bottom and right edges.
-	int w = (int) ceilf (pp.width / pyramidRatio);
-	int h = (int) ceilf (pp.height / pyramidRatio);
-	float x = (w - 1) * 0.5 + 0.5 - 0.5 / pyramidRatio;
-	float y = (h - 1) * 0.5 + 0.5 - 0.5 / pyramidRatio;
-	t.setWindow (x, y, w, h);
-	p = pp * t;
+	int hw = pp.width  / pyramidRatio;
+	int hh = pp.height / pyramidRatio;
+	p.resize (hw, hh);
+
+	b.direction = Horizontal;
+	Image temp = pp * b;
+
+	b.direction = Vertical;
+	Point t;
+	t.y = start;
+	for (int y = 0; y < hh; y++)
+	{
+	  t.x = start;
+	  for (int x = 0; x < hw; x++)
+	  {
+		p(x,y) = b.response (temp, t);
+		t.x += pyramidRatio;
+	  }
+	  t.y += pyramidRatio;
+	}
   }
-
-/*
-SlideShow window;
-Image disp (GrayFloat);
-for (int i = 0; i < pyramid0.size (); i++)
-{
-  int y = disp.height;
-  int x = 0;
-  disp.bitblt (pyramid0[i], x, y);
-  x += pyramid0[i].width;
-  disp.bitblt (pyramid1[i], x, y);
-}
-window.show (disp);
-window.waitForClick ();
-*/
-
 }
 
 /**
@@ -276,7 +305,7 @@ KLT::track (const Point & point0, const int level, Point & point1)
   y -= yl;
   float dx1 = 1.0f - dx;
   float dy1 = 1.0f - dy;
-  //   Iterate over images using 12 pointers, 4 for each of 3 images
+  //   Iterate over image using 4 pointers
   float * p00 = & image0(x,y);
   float * p10 = p00 + 1;
   float * p01 = p00 + image0.width;

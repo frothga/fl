@@ -19,11 +19,18 @@ for details.
 #include "fl/video.h"
 #include "fl/interest.h"
 #include "fl/time.h"
+#include "fl/track.h"
 
 #include <float.h>
+#include <typeinfo>
 
 // For debugging only
 #include "fl/slideshow.h"
+
+// For Birchfield comparison
+#include "klt.h"
+#include "fl/search.h"
+#include "fl/LineSearch.tcc"
 
 
 using namespace std;
@@ -1491,6 +1498,256 @@ testBitblt ()
   cout << "Image::bitblt passes" << endl;
 }
 
+/**
+   KLT
+   @param searchRadius Assuming a windowRadius of 3, the following is
+   a map from searchRadius values to pyramid configurations:
+   range    levels  ratio
+   1-3      1       1
+   4-9      2       2
+   10-15    2       4
+   16-27    2       8
+   28+      3+      8    (levels determined by formula, ratio fixed at 8)
+**/
+float
+testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 0.9)
+{
+  //cerr << "scaleRatio = " << scaleRatio << endl;
+  KLT klt (windowRadius, searchRadius, scaleRatio);
+  srand (1);
+
+  Image test ("test.jpg");
+  //Image test ("mars.jpg");  // necessary for searchRadius >= 28.  Note: for some weird reason, the position of the KLT constructor in this code makes a difference (including on performance).  Loading mars.jpg causes this program to crash under Cygwin unless the KLT constructore comes first.
+  test *= GrayFloat;
+
+  Image image0 (GrayFloat);
+  const int windowWidth  = test.width  - searchRadius * 2;
+  const int windowHeight = test.height - searchRadius * 2;
+  image0.bitblt (test, 0, 0, searchRadius, searchRadius, windowWidth, windowHeight);
+
+  // Find a few interest points
+  InterestHarris h (1, 250);
+  InterestPointSet points;
+  h.run (image0, points);
+
+  // Perturb image, and verify that KLT can find each point in new image
+  Stopwatch timer (false);
+  int succeeded = 0;
+  int total = 0;
+  for (int i = 0; i < 100; i++)
+  {
+	Matrix<double> A (2, 3);
+	A.identity ();
+	A(0,2) = randfb () * searchRadius;
+	A(1,2) = randfb () * searchRadius;
+
+	Transform t (A);
+	t.setWindow ((test.width - 1) / 2.0, (test.height - 1) / 2.0, windowWidth, windowHeight);  // force destination viewport to remain at center of original image, so we actually get a shift.
+	Image image1 = test * t;
+
+	timer.start ();
+	klt.nextImage (image0);
+	klt.nextImage (image1);
+	timer.stop ();
+
+	for (int j = 0; j < points.size (); j++)
+	{
+	  PointInterest original = *points[j];
+	  PointInterest p        = original;
+	  PointInterest expected = original;
+	  expected.x += A(0,2);
+	  expected.y += A(1,2);
+	  klt.original = original;
+	  klt.expected = expected;
+
+	  total++;
+	  int e = 0;
+	  try
+	  {
+		klt.track (p);
+	  }
+	  catch (int error)
+	  {
+		e = error;
+		//cerr << "klt exception " << error << endl;
+	  }
+	  double d = expected.distance (p);
+	  //cerr << p << " " << expected << " " << d << endl;
+	  if (d > 1)
+	  {
+		//cerr << "Warning: Excess distance between expected and actual position = " << d << endl;
+		//cerr << "  original " << original << endl;
+		//cerr << "  expected " << expected << endl;
+		//cerr << "  but got  " << p        << endl;
+	  }
+	  else succeeded++;
+
+	  // should also measure and report how reliably the exception codes predict failure
+	}
+  }
+
+  float ratio = (float) succeeded / total;
+  cerr << "time = " << timer << endl;
+  return ratio;
+  cerr << "ratio " << ratio << " = " << succeeded << " / " << total << endl;
+  if (ratio < 0.7)
+  {
+	cout << "Too few points succeeded: " << ratio << " = " << succeeded << " / " << total << endl;
+	throw "KLT fails";
+  }
+
+  cout << "KLT passes" << endl;
+}
+
+class SearchKLT : public SearchableNumeric<float>
+{
+public:
+  SearchKLT (int windowRadius, int searchRadius)
+  : SearchableNumeric<float> (0.01),
+	windowRadius (windowRadius),
+	searchRadius (searchRadius)
+  {
+  }
+
+  virtual int dimension ()
+  {
+	return 1;
+  }
+
+  virtual void value (const Vector<float> & point, Vector<float> & result)
+  {
+	float r = testKLT (windowRadius, searchRadius, point[0]);
+	result.resize (1);
+	result[0] = 1.0f - r;
+	cerr << point[0] << " \t" << result[0] << " \t" << r << endl;
+  }
+
+  int windowRadius;
+  int searchRadius;
+};
+
+void
+searchKLT ()
+{
+  for (int i = 28; i <= 50; i++)
+  {
+	SearchKLT s (3, i);
+	Vector<float> point (1);
+	//cerr << i << " " << testKLT (i, 0.9) << endl;
+	
+	point[0] = 2;
+	LineSearch<float> ls (0.1);
+	try
+	{
+	  ls.search (s, point);
+	}
+	catch (int error)
+	{
+	}
+	cout << i << " = " << point[0] << endl;
+	
+  }
+}
+
+void
+compareBirchfield ()
+{
+  const int searchRadius = 15;
+
+  Image test ("test.jpg");
+  test *= GrayFloat;
+
+  Image image0 (GrayFloat);
+  const int windowWidth  = test.width  - searchRadius * 2;
+  const int windowHeight = test.height - searchRadius * 2;
+  image0.bitblt (test, 0, 0, searchRadius, searchRadius, windowWidth, windowHeight);
+
+  // Find a few interest points
+  InterestHarris h (1, 30);  // 250
+  InterestPointSet points;
+  h.run (image0, points);
+
+  // Set up Birchfield
+  KLT_TrackingContext tc = KLTCreateTrackingContext ();
+  KLT_FeatureList fl = KLTCreateFeatureList (points.size ());
+  cerr << "birchfield pyramid levels,ratio = " << tc->nPyramidLevels << " " << tc->subsampling << endl;
+
+  // Perturb image, and verify that KLT can find each point in new image
+  int succeeded = 0;
+  int total = 0;
+  for (int i = 0; i < 1; i++)  // 10
+  {
+	Matrix<double> A (2, 3);
+	A.identity ();
+	A(0,2) = randfb () * searchRadius;
+	A(1,2) = randfb () * searchRadius;
+
+	Transform t (A);
+	t.setWindow ((test.width - 1) / 2.0, (test.height - 1) / 2.0, windowWidth, windowHeight);  // force destination viewport to remain at center of original image, so we actually get a shift.
+	Image image1 = test * t;
+
+	//for (int j = 0; j < points.size (); j++)
+	int j = 0;
+	{
+	  PointInterest * p = points[j];
+	  KLT_FeatureRec * f = fl->feature[j];
+	  f->x = p->x;
+	  f->y = p->y;
+	  f->val = 0;
+	}
+
+	Image char0 = image0 * GrayChar;
+	Image char1 = image1 * GrayChar;
+	unsigned char * img0 = (unsigned char *) ((PixelBufferPacked *) char0.buffer)->memory;
+	unsigned char * img1 = (unsigned char *) ((PixelBufferPacked *) char1.buffer)->memory;
+	KLTTrackFeatures (tc, img0, img1, windowWidth, windowHeight, fl);
+
+	//for (int j = 0; j < points.size (); j++)
+	j = 0;
+	{
+	  PointInterest original = *points[j];
+	  PointInterest expected = original;
+	  expected.x += A(0,2);
+	  expected.y += A(1,2);
+	  KLT_FeatureRec * f = fl->feature[j];
+
+	  total++;
+	  if (f->val == KLT_TRACKED)
+	  {
+		double dx = f->x - expected.x;
+		double dy = f->y - expected.y;
+		double d = sqrt (dx * dx + dy * dy);
+		cerr << "[" << f->x << " " << f->y << "] " << expected << " " << d << endl;
+		if (d > 1)
+		{
+		  cerr << "Warning: Excess distance between expected and actual position = " << d << endl;
+		  cerr << "  original " << original << endl;
+		  cerr << "  expected " << expected << endl;
+		  cerr << "  but got  [" << f->x << " " << f->y << "]" << endl;
+		}
+		else succeeded++;
+	  }
+	  else
+	  {
+		cerr << "birchfield failure code " << f->val << endl;
+		cerr << "  original " << original << endl;
+		cerr << "  expected " << expected << endl;
+		cerr << "  but got  [" << f->x << " " << f->y << "]" << endl;
+	  }
+	}
+  }
+
+  float ratio = (float) succeeded / total;
+  cerr << "ratio " << ratio << " = " << succeeded << " / " << total << endl;
+  if (ratio < 0.7)
+  {
+	cout << "Too few points succeeded: " << ratio << " = " << succeeded << " / " << total << endl;
+	throw "KLT fails";
+  }
+
+  cout << "KLT passes" << endl;
+}
+
 
 class testSearch : public SearchableNumeric<float>
 {
@@ -1517,6 +1774,7 @@ main (int argc, char * argv[])
   {
 	new ImageFileFormatJPEG;
 
+	/*
 	testPixelFormat ();
 	testAbsoluteValue ();
 	testCanvasImage ();
@@ -1532,6 +1790,20 @@ main (int argc, char * argv[])
 	testTransform ();
 	testVideo ();
 	testBitblt ();
+	*/
+
+
+	searchKLT ();
+	/*
+	for (int i = 26; i < 200; i++)
+	{
+	  cerr << i << endl;
+	  testKLT (3, i, 1);
+	  cerr << endl;
+	}
+	*/
+	//testKLT ();
+	//compareBirchfield ();
   }
   catch (const char * error)
   {

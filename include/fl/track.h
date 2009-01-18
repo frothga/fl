@@ -12,6 +12,7 @@ for details.
 
 
 #include "fl/convolve.h"
+#include "fl/slideshow.h"
 
 
 namespace fl
@@ -39,7 +40,7 @@ namespace fl
   class KLT : public PointTracker
   {
   public:
-	KLT (int windowRadius = 3, int searchRadius = 15);
+	KLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f);
 
 	virtual void nextImage (const Image & image);
 	virtual void track (Point & point);
@@ -47,8 +48,8 @@ namespace fl
 
 	std::vector< ImageOf<float> > pyramid0;  ///< "previous" image.  First entry is full sized image, and each subsequent entry is downsampled by 2.
 	std::vector< ImageOf<float> > pyramid1;  ///< "current" image.  Same structure as pyramid0
-	Gaussian1D preBlur;  ///< For blurring full image at base of pyramid.  Purpose is to ensure smooth texture within search window.
-	float pyramidRatio;  ///< Ratio between number of pixels in adjacent levels of pyramid.
+	std::vector<Gaussian1D> blurs;  ///< Blurring kernel for each level of the pyramid.  Brings some information from each pixel in one image to the position of the corresponding pixel in the other image.
+	int pyramidRatio;  ///< Ratio between number of pixels in adjacent levels of pyramid.
 	int windowRadius;  ///< Number of pixels from center to edge of search window.
 	int windowWidth;  ///< Diameter of search window.
 	float minDeterminant;  ///< Smallest allowable determinant of second moment matrix.

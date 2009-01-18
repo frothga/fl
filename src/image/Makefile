@@ -16,7 +16,7 @@ SOURCE_DIR := ../..
 -include $(SOURCE_DIR)/Config
 
 MODULE = Image
-CPPFLAGS += $(X_INC) $(MPEG_INC) $(FT_INC) $(GTIFF_INC)
+CPPFLAGS += $(X_INC) $(MPEG_INC) $(FT_INC) $(GTIFF_INC) -I../../../../i686-pc-cygwin/include
 VPATH = $(SOURCE_LIB)
 LOADLIBS = -L$(SOURCE_LIB) -l$(NS)Base -l$(NS)Numeric $(MPEG_LIB) $(JPEG_LIB) $(FT_LIB) $(GTIFF_LIB) $(TIFF_LIB)
 
@@ -115,10 +115,10 @@ $(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
 
 
 test: test.o $(LIBPREF)$(MODULE)$(LIBSUFF)
-	g++ -o $@ -L$(SOURCE_LIB) $^ -l$(NS)Base -l$(NS)Image -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB) $(GTIFF_LIB) $(TIFF_LIB)
+	$(CXX) -o $@ -L$(SOURCE_LIB) $^ -l$(NS)Base -l$(NS)Image -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB) $(GTIFF_LIB) $(TIFF_LIB) -L../../../../i686-pc-cygwin/lib -lklt
 
 junk: junk.o $(LIBPREF)$(MODULE)$(LIBSUFF)
-	g++ -o $@ -L$(SOURCE_LIB) $^ -l$(NS)Base -l$(NS)Image -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB) $(GTIFF_LIB) $(TIFF_LIB)
+	$(CXX) -o $@ -L$(SOURCE_LIB) $^ -l$(NS)Base -l$(NS)Image -l$(NS)Numeric -l$(NS)X $(X_LIB) -lpthread $(JPEG_LIB) $(LAPACK_LIB) $(MPEG_LIB) $(FT_LIB) $(GTIFF_LIB) $(TIFF_LIB)
 
 
 clean:
