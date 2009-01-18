@@ -489,7 +489,8 @@ namespace fl
 	virtual Image filter (const Image & image);
 
 	void setPeg (float centerX = NAN, float centerY = NAN, int width = -1, int height = -1);
-	void setWindow (float centerX, float centerY, int width = -1, int height = -1);  ///< Set up viewport so its center hits a specified point in what would otherwise be the resulting image.
+	void setWindow (float centerX, float centerY, int width = -1, int height = -1);
+	void setWindowEdges (int left, int top, int right, int bottom);
 	void twistCorner (const double inx, const double iny, double & l, double & r, double & t, double & b);  ///< Subroutine of prepare.
 	void clip (const double dx0, const double dy0, const double dx1, const double dy1,
 			   const double sx0, const double sy0, const double sx1, const double sy1,
@@ -513,22 +514,31 @@ namespace fl
   class TransformGauss : public Transform
   {
   public:
-	TransformGauss (const Matrix<double> & A, bool inverse = false) : Transform (A, inverse), G (GrayFloat) {needG = true;}
-	TransformGauss (const Matrix<double> & A, const double scale) : Transform (A, scale), G (GrayFloat) {needG = true;}
-	TransformGauss (double angle) : Transform (angle), G (GrayFloat) {needG = true;}
-	TransformGauss (double scaleX, double scaleY) : Transform (scaleX, scaleY), G (GrayFloat) {needG = true;}
-	TransformGauss (const Transform & that) : Transform (that), G (GrayFloat) {needG = true;}
+	TransformGauss (const Matrix<double> & A, bool inverse = false) : Transform (A, inverse),     G (GrayFloat) {needG = true; sigma = 0.5f;}
+	TransformGauss (const Matrix<double> & A, const double scale)   : Transform (A, scale),       G (GrayFloat) {needG = true; sigma = 0.5f;}
+	TransformGauss (double angle)                                   : Transform (angle),          G (GrayFloat) {needG = true; sigma = 0.5f;}
+	TransformGauss (double scaleX, double scaleY)                   : Transform (scaleX, scaleY), G (GrayFloat) {needG = true; sigma = 0.5f;}
+	TransformGauss (const Transform & that)                         : Transform (that),           G (GrayFloat) {needG = true; sigma = 0.5f;}
 	void prepareG ();
 
 	virtual Image filter (const Image & image);
+
+	/** Desired blur of resampling kernel in terms of destination image.
+		Default is 0.5.  It is impossible avoid adding blur to an image using
+		Gaussian resampling, because the kernel must have some extent.
+		Effective blur in the destination image is sqrt(oldBlur^2 + sigma^2),
+		where oldBlur is the blur level of the source image projected through
+		the transformation A.  In general, the effective blur is non-isotropic.
+	**/
+	double sigma;
 
 	ImageOf<float> G;  ///< Gaussian used to calculate pixel values
 	int Gshw;  ///< Width of half of Gaussian in source pixels
 	int Gshh;  ///< Ditto for height
 	int GstepX;  ///< Number of cells in Gaussian per one source pixel
 	int GstepY;
-	float sigmaX;  ///< Scale of Gaussian in source pixels
-	float sigmaY;
+	double sigmaX;  ///< Scale of Gaussian in source pixels
+	double sigmaY;
 	bool needG;  ///< Flag for lazy generation of G
   };
 
