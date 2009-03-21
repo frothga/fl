@@ -50,33 +50,23 @@ namespace fl
 	}
 	Point (std::istream & stream);
 
-	//operator Vector<double> () const;
-	Vector<float> homogenous (float third) const;
-	Vector<float> homogenous (float third, float fourth) const;
-
-	virtual float & operator () (const int row, const int column) const
-	{
-	  return const_cast<float *> (&x) [row];
-	}
-    virtual float & operator [] (const int row) const
-	{
-	  return const_cast<float *> (&x) [row];
-	}
+	virtual float & operator () (const int row, const int column) const;
+    virtual float & operator [] (const int row) const;
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract<float> * duplicate () const;
+	virtual MatrixAbstract<float> * duplicate (bool deep = false) const;
 	virtual void resize (const int rows, const int columns = 1);  ///< We only have one size.  This will throw an exception if (rows * columns) != 2.
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
 
 	float distance (const Point & that) const;  ///< Euclidean distance between two points
-	float distance () const;  ///< Euclidean distance from origin.
 	float angle (const Point & that) const;  ///< Determines angle of vector (that - this)
 	float angle () const;  ///< Determines angle of vector from origin to this point.
 
 	float x;
 	float y;
+	static float one;
   };
 
   class PointInterest : public Point
@@ -153,49 +143,43 @@ namespace fl
 
   // Inlines for class Point --------------------------------------------------
 
-  template <class T>
-  inline Point
+  template<class T>
+  inline MatrixResult<float>
   operator * (const MatrixAbstract<T> & M, const Point & p)
   {
-	Point result;
-	if (M.columns () == 2)
+	Point * result = new Point;
+	result->x = M(0,0) * p.x + M(0,1) * p.y;
+	result->y = M(1,0) * p.x + M(1,1) * p.y;
+	if (M.columns () >= 3)
 	{
-	  result.x = M(0,0) * p.x + M(0,1) * p.y;
-	  result.y = M(1,0) * p.x + M(1,1) * p.y;
-	}
-	else  // We assume columns > 2; ie: no true bounds checking.
-	{
-	  result.x = M(0,0) * p.x + M(0,1) * p.y + M(0,2);
-	  result.y = M(1,0) * p.x + M(1,1) * p.y + M(1,2);
+	  result->x += M(0,2);
+	  result->y += M(1,2);
 	}
 	return result;
   }
 
-  template <class T>
-  inline Point
+  template<class T>
+  inline MatrixResult<float>
   operator * (const Matrix<T> & M, const Point & p)
   {
-	Point result;
-	if (M.columns () == 2)
+	Point * result = new Point;
+	result->x = M(0,0) * p.x + M(0,1) * p.y;
+	result->y = M(1,0) * p.x + M(1,1) * p.y;
+	if (M.columns () >= 3)
 	{
-	  result.x = M(0,0) * p.x + M(0,1) * p.y;
-	  result.y = M(1,0) * p.x + M(1,1) * p.y;
-	}
-	else  // We assume columns > 2; ie: no true bounds checking.
-	{
-	  result.x = M(0,0) * p.x + M(0,1) * p.y + M(0,2);
-	  result.y = M(1,0) * p.x + M(1,1) * p.y + M(1,2);
+	  result->x += M(0,2);
+	  result->y += M(1,2);
 	}
 	return result;
   }
 
-  template <class T>
-  inline Point
+  template<class T>
+  inline MatrixResult<float>
   operator * (const MatrixFixed<T,2,2> & M, const Point & p)
   {
-	Point result;
-	result.x = M.data[0][0] * p.x + M.data[1][0] * p.y;
-	result.y = M.data[0][1] * p.x + M.data[1][1] * p.y;
+	Point * result = new Point;
+	result->x = M.data[0][0] * p.x + M.data[1][0] * p.y;
+	result->y = M.data[0][1] * p.x + M.data[1][1] * p.y;
 	return result;
   }
 }

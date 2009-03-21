@@ -44,9 +44,9 @@ namespace fl
   template<class T>
   MatrixPacked<T>::MatrixPacked (const MatrixAbstract<T> & that)
   {
-	if (typeid (that) == typeid (*this))
+	if (that.classID ()  &  MatrixPackedID)
 	{
-	  *this = (MatrixPacked<T> &) (that);
+	  *this = (const MatrixPacked &) that;
 	}
 	else
 	{
@@ -59,6 +59,13 @@ namespace fl
   MatrixPacked<T>::MatrixPacked (std::istream & stream)
   {
 	read (stream);
+  }
+
+  template<class T>
+  uint32_t
+  MatrixPacked<T>::classID () const
+  {
+	return MatrixAbstractID | MatrixPackedID;
   }
 
   template<class T>
@@ -98,8 +105,14 @@ namespace fl
 
   template<class T>
   MatrixAbstract<T> *
-  MatrixPacked<T>::duplicate () const
+  MatrixPacked<T>::duplicate (bool deep) const
   {
+	if (deep)
+	{
+	  MatrixPacked * result = new MatrixPacked;
+	  result->copyFrom (*this);
+	  return result;
+	}
 	return new MatrixPacked<T> (*this);
   }
 
@@ -138,32 +151,32 @@ namespace fl
   void
   MatrixPacked<T>::copyFrom (const MatrixAbstract<T> & that)
   {
-	// We only copy the upper triangle
-	resize (that.rows (), that.columns ());
-	T * i = (T *) data;
-	for (int c = 0; c < rows_; c++)
+	if (that.classID () & MatrixPackedID)
 	{
-	  for (int r = 0; r <= c; r++)
+	  const MatrixPacked & MP = (const MatrixPacked &) that;
+	  resize (MP.rows_);
+	  data.copyFrom (MP.data);
+	}
+	else
+	{
+	  // We only copy the upper triangle
+	  resize (that.rows (), that.columns ());
+	  T * i = (T *) data;
+	  for (int c = 0; c < rows_; c++)
 	  {
-		*i++ = that (r, c);
+		for (int r = 0; r <= c; r++)
+		{
+		  *i++ = that(r,c);
+		}
 	  }
 	}
   }
 
   template<class T>
-  void
-  MatrixPacked<T>::copyFrom (const MatrixPacked<T> & that)
-  {
-	resize (that.rows ());
-	//memcpy ((void *) data, (void *) that.data, sizeof (T) * (rows_ + 1) * rows_ / 2);
-	data.copyFrom (that.data);
-  }
-
-  template<class T>
-  MatrixPacked<T>
+  MatrixResult<T>
   MatrixPacked<T>::operator ~ () const
   {
-	return (MatrixPacked<T>) *this;
+	return new MatrixPacked<T> (*this);
   }
 
   template<class T>

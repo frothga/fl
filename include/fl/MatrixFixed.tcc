@@ -33,6 +33,13 @@ namespace fl
   }
 
   template<class T, int R, int C>
+  uint32_t
+  MatrixFixed<T,R,C>::classID () const
+  {
+	return MatrixAbstractID | MatrixFixedID;
+  }
+
+  template<class T, int R, int C>
   int
   MatrixFixed<T,R,C>::rows () const
   {
@@ -48,7 +55,7 @@ namespace fl
 
   template<class T, int R, int C>
   MatrixAbstract<T> *
-  MatrixFixed<T,R,C>::duplicate () const
+  MatrixFixed<T,R,C>::duplicate (bool deep) const
   {
 	return new MatrixFixed<T,R,C> (*this);
   }
@@ -61,28 +68,76 @@ namespace fl
   }
 
   template<class T, int R, int C>
-  MatrixFixed<T,C,R>
+  void
+  MatrixFixed<T,R,C>::copyFrom (const MatrixAbstract<T> & that)
+  {
+	int h = std::min (R, that.rows ());
+	int w = std::min (C, that.columns ());
+	for (int c = 0; c < w; c++)
+	{
+	  for (int r = 0; r < h; r++)
+	  {
+		data[c][r] = that(r,c);
+	  }
+	  for (int r = h; r < R; r++) data[c][r] = (T) 0;
+	}
+	for (int c = w; c < C; c++)
+	{
+	  for (int r = 0; r < R; r++)
+	  {
+		data[c][r] = (T) 0;
+	  }
+	}
+  }
+
+  template<class T, int R, int C>
+  MatrixResult<T>
   MatrixFixed<T,R,C>::operator ~ () const
   {
-	MatrixFixed<T,C,R> result;
+	MatrixFixed<T,C,R> * result = new MatrixFixed<T,C,R>;
 	for (int c = 0; c < C; c++)
 	{
 	  for (int r = 0; r < R; r++)
 	  {
-		result.data[r][c] = data[c][r];
+		result->data[r][c] = data[c][r];
 	  }
 	}
 	return result;
   }
 
   template<class T, int R, int C>
-  Matrix<T>
+  MatrixResult<T>
   MatrixFixed<T,R,C>::operator * (const MatrixAbstract<T> & B) const
   {
-	int w = std::min (C, B.rows ());
+	int bh = B.rows ();
 	int bw = B.columns ();
-	Matrix<T> result (R, bw);
-	T * ri = (T *) result.data;
+	int w = std::min (C, bh);
+	Matrix<T> * result = new Matrix<T> (R, bw);
+	T * ri = (T *) result->data;
+
+	if (B.classID () & (MatrixFixedID | MatrixID))
+	{
+	  const T * bd = &B(0,0);
+	  for (int c = 0; c < bw; c++)
+	  {
+		for (int r = 0; r < R; r++)
+		{
+		  const T * i   = &data[0][r];
+		  const T * bi  = bd;
+		  const T * end = bi + w;
+		  register T element = (T) 0;
+		  while (bi < end)
+		  {
+			element += (*i) * (*bi++);
+			i += R;
+		  }
+		  *ri++ = element;
+		}
+		bd += bh;
+	  }
+	  return result;
+	}
+
 	for (int c = 0; c < bw; c++)
 	{
 	  for (int r = 0; r < R; r++)
@@ -101,80 +156,27 @@ namespace fl
   }
 
   template<class T, int R, int C>
-  MatrixFixed<T,R,C>
-  MatrixFixed<T,R,C>::operator * (const MatrixFixed<T,R,C> & B) const
-  {
-	const int w = std::min (C, R);
-	Matrix<T> result (R, C);
-	T * ri = result.data;
-	for (int c = 0; c < C; c++)
-	{
-	  for (int r = 0; r < R; r++)
-	  {
-		const T * i   = &  data[0][r];
-		const T * bi  = &B.data[c][0];
-		const T * end = bi + w;
-		register T element = (T) 0;
-		while (bi < end)
-		{
-		  element += (*i) * (*bi++);
-		  i += R;
-		}
-		*ri++ = element;
-	  }
-	}
-	return result;
-  }
-
-  template<class T, int R, int C>
-  MatrixFixed<T,R,C>
+  MatrixResult<T>
   MatrixFixed<T,R,C>::operator * (const T scalar) const
   {
-	MatrixFixed<T,R,C> result;
+	MatrixFixed<T,R,C> * result = new MatrixFixed<T,R,C>;
 	const T * i = (T *) data;
-	T * o       = (T *) result.data;
+	T * o       = (T *) result->data;
 	T * end     = o + R * C;
 	while (o < end) *o++ = *i++ * scalar;
 	return result;
   }
 
   template<class T, int R, int C>
-  MatrixFixed<T,R,C>
+  MatrixResult<T>
   MatrixFixed<T,R,C>::operator / (const T scalar) const
   {
-	MatrixFixed<T,R,C> result;
+	MatrixFixed<T,R,C> * result = new MatrixFixed<T,R,C>;
 	const T * i = (T *) data;
-	T * o       = (T *) result.data;
+	T * o       = (T *) result->data;
 	T * end     = o + R * C;
 	while (o < end) *o++ = *i++ / scalar;
 	return result;
-  }
-
-  template<class T, int R, int C>
-  MatrixFixed<T,R,C> &
-  MatrixFixed<T,R,C>::operator *= (const MatrixFixed<T,R,C> & B)
-  {
-	const int w = std::min (C, R);
-	T temp[C][R];
-	T * ri = &temp[0][0];
-	for (int c = 0; c < C; c++)
-	{
-	  for (int r = 0; r < R; r++)
-	  {
-		T * i         = &  data[0][r];
-		const T * bi  = &B.data[c][0];
-		const T * end = bi + w;
-		register T element = (T) 0;
-		while (bi < end)
-		{
-		  element += (*i) * (*bi++);
-		  i += R;
-		}
-		*ri++ = element;
-	  }
-	}
-	memcpy (data, temp, R * C * sizeof (T));
-	return *this;
   }
 
   template<class T, int R, int C>
@@ -184,6 +186,16 @@ namespace fl
 	T * i = (T *) data;
 	T * end = i + R * C;
 	while (i < end) *i++ *= scalar;
+	return *this;
+  }
+
+  template<class T, int R, int C>
+  MatrixAbstract<T> &
+  MatrixFixed<T,R,C>::operator /= (const T scalar)
+  {
+	T * i = (T *) data;
+	T * end = i + R * C;
+	while (i < end) *i++ /= scalar;
 	return *this;
   }
 

@@ -45,10 +45,7 @@ namespace fl
   template<class T>
   Vector<T>::Vector (const MatrixAbstract<T> & that)
   {
-	// Same code as assignment from MatrixAbstract
-
-	if (   typeid (that) == typeid (*this)
-	    || typeid (that) == typeid (Matrix<T>))
+	if (that.classID () & MatrixID)
 	{
 	  *this = (const Matrix<T> &) that;
 	}
@@ -56,7 +53,7 @@ namespace fl
 	{
 	  int h = that.rows ();
 	  int w = that.columns ();
-	  resize (h, w);
+	  resize (h * w, 1);
 	  T * i = (T *) this->data;
 	  for (int c = 0; c < w; c++)
 	  {
@@ -82,6 +79,12 @@ namespace fl
   Vector<T>::Vector (std::istream & stream)
   {
 	this->read (stream);
+  }
+
+  template<class T>
+  Vector<T>::Vector (const std::string & source)
+  {
+	(*this) = Matrix<T> (source);
   }
 
   template<class T>
@@ -114,52 +117,6 @@ namespace fl
 	{
 	  this->rows_ = rows;
 	}
-  }
-
-  template<class T>
-  Vector<T> &
-  Vector<T>::operator = (const MatrixAbstract<T> & that)
-  {
-	// Same code as constructor taking MatrixAbstract
-
-	if (   typeid (that) == typeid (*this)
-	    || typeid (that) == typeid (Matrix<T>))
-	{
-	  *this = (Matrix<T> &) that;
-	}
-	else
-	{
-	  int h = that.rows ();
-	  int w = that.columns ();
-	  resize (h, w);
-	  T * i = (T *) this->data;
-	  for (int c = 0; c < w; c++)
-	  {
-		for (int r = 0; r < h; r++)
-		{
-		  *i++ = that(r,c);
-		}
-	  }
-	}
-
-	return *this;
-  }
-
-  template<class T>
-  Vector<T> &
-  Vector<T>::operator = (const Matrix<T> & that)
-  {
-	this->data = that.data;
-	this->rows_ = that.rows_ * that.columns_;
-	this->columns_ = 1;
-	return *this;
-  }
-
-  template<class T>
-  MatrixAbstract<T> *
-  Vector<T>::duplicate () const
-  {
-	return new Vector<T> (*this);
   }
 
   template<class T>

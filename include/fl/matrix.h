@@ -52,9 +52,20 @@ for details.
 namespace fl
 {
   // Forward declarations
+  template<class T> class MatrixResult;
   template<class T> class Matrix;
   template<class T> class MatrixTranspose;
   template<class T> class MatrixRegion;
+
+  // Matrix class ID constants
+  // This is a hack to avoid the cost of dynamic_cast.
+  #define MatrixAbstractID  0x01
+  #define MatrixID          0x02
+  #define MatrixPackedID    0x04
+  #define MatrixSparseID    0x08
+  #define MatrixIdentityID  0x10
+  #define MatrixDiagonalID  0x20
+  #define MatrixFixedID     0x40
 
 
   // Matrix general interface -------------------------------------------------
@@ -69,6 +80,7 @@ namespace fl
   {
   public:
 	virtual ~MatrixAbstract ();
+	virtual uint32_t classID () const;  ///< @return A bitvector indicating all the classes to which this object can be cast.  Hack to avoid the cost of dynamic_cast.
 
 	// Assignment should be shallow copy when possible, but may be deep copy
 	// if convenient to the class.  Tip: never rely on shallow copy semantics.
@@ -87,9 +99,10 @@ namespace fl
     virtual T & operator [] (const int row) const;  ///< Element access, treating us as a vector.
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract * duplicate () const = 0; ///< Make a new instance of self on the heap, with shallow copy semantics.  Used for views.  Since this is class sensitive, it must be overridden.
+	virtual MatrixAbstract * duplicate (bool deep = false) const = 0; ///< Make a new instance of self on the heap.  Used for views.  Since this is class sensitive, it must be overridden.  @param deep Indicates that all levels of associated data must be duplicated.  If false, then only the main object needs to be duplicated (shallow copy), but deep copy is still permitted.
 	virtual void clear (const T scalar = (T) 0);  ///< Set all elements to given value.
 	virtual void resize (const int rows, const int columns = 1) = 0;  ///< Change number of rows and columns.  Does not preserve data.
+	virtual void copyFrom (const MatrixAbstract<T> & that);
 
 	// Higher level functions
 	virtual T norm (float n) const;  ///< Generalized Frobenius norm: (sum_elements (element^n))^(1/n).  Effectively: INFINITY is max, 1 is sum, 2 is standard Frobenius norm.  n==0 is technically undefined, but we treat is as the count of non-zero elements.
@@ -105,33 +118,6 @@ namespace fl
 
 	// Basic operations
 
-	// The reason to have operators at this abstract level is to allow some
-	// manipulation of matrices even if we know nothing of their storage
-	// method.  The other possible motivation (laziness thru inheritance)
-	// doesn't really pan out, since C++ tries to resolve an overloaded
-	// function name in the current class rather than looking up the hierarchy.
-	// However, polymorphism is still a valid motivation.
-
-	// Ideally, if a subclass reimplements one of these operations, the return
-	// type should be as specific as possible.  Unfortunately, some C++
-	// compilers (namely MS VC++) won't allow a subclass to be declared as
-	// the return type of an overidden function.  Therefore, once we declare
-	// these operations, the return type becomes "nailed down" for all
-	// subclasses.  If a given return type is not universally useful, the
-	// function can't be declared (or used) at this abstract level.
-	// * Some operations that involve MatrixAbstract must return a dense
-	// matrix.  For these, we know the return type must be Matrix.
-	// * The notation "M<T>" in commented out interfaces means that it is
-	// better to return the actual type of the subclass.
-	// * We can be less picky about return type for *= /= += -= because they
-	// usually won't be in the middle of an expression.
-
-	// For basic arithmetic each class may have up to 24 operators:
-	// 3 overloads for each of 8 operators: * / + - *= /= += -=
-	// The overloads are for: 1) MatrixAbstract, 2) the current class,
-	// and 3) a scalar.  A class may have more overloads if it wishes to
-	// directly interract with other matrix classes.
-
 	virtual bool operator == (const MatrixAbstract & B) const;  ///< Two matrices are equal if they have the same shape and the same elements.
 	bool operator != (const MatrixAbstract & B) const
 	{
@@ -139,26 +125,28 @@ namespace fl
 	}
 
 	Matrix<T> operator ! () const;  ///< Invert matrix if square, otherwise create pseudo-inverse.  Can't be virtual, because this forces a link dependency on LAPACK for any matrix class that uses it to implement inversion.
-	//virtual M<T> operator ~ () const;  ///< Transpose matrix.  Not implemented here since small matrices could directly transpose their contents.
+	virtual MatrixResult<T> operator ~ () const;  ///< Transpose matrix.
 
-	virtual Matrix<T> operator * (const MatrixAbstract & B) const;  ///< Multiply matrices: this * B
-	//virtual M<T> operator * (const T scalar) const;  ///< Multiply each element by scalar
-	virtual Matrix<T> elementMultiply (const MatrixAbstract & B) const;  ///< Elementwise multiplication.  This isn't a C operator, but certainly a basic operation.
-	//virtual Matrix<T> operator / (const MatrixAbstract & B) const;  ///< Elementwise division.  Could mean this * !B, but such expressions are done other ways in linear algebra.
-	//virtual M<T> operator / (const T scalar) const;  ///< Divide each element by scalar
-	virtual Matrix<T> operator + (const MatrixAbstract & B) const;  ///< Elementwise sum.
-	//virtual M<T> operator + (const T scalar) const;  ///< Add scalar to each element
-	virtual Matrix<T> operator - (const MatrixAbstract & B) const;  ///< Elementwise difference.
-	//virtual M<T> operator - (const T scalar) const;  ///< Subtract scalar from each element
+	// The operator forms of these functions are implemented below, outside this class.
+	virtual MatrixResult<T> operator & (const MatrixAbstract & B) const;  ///< Elementwise multiplication.  The prettiest name for this operator would be ".*", but that is not overloadable.
+	virtual MatrixResult<T> operator * (const MatrixAbstract & B) const;  ///< Multiply matrices: this * B
+	virtual MatrixResult<T> operator * (const T scalar)           const;  ///< Multiply each element by scalar
+	virtual MatrixResult<T> operator / (const MatrixAbstract & B) const;  ///< Elementwise division.  Could mean this * !B, but such expressions are done other ways in linear algebra.
+	virtual MatrixResult<T> operator / (const T scalar)           const;  ///< Divide each element by scalar
+	virtual MatrixResult<T> operator + (const MatrixAbstract & B) const;  ///< Elementwise sum.
+	virtual MatrixResult<T> operator + (const T scalar)           const;  ///< Add scalar to each element
+	virtual MatrixResult<T> operator - (const MatrixAbstract & B) const;  ///< Elementwise difference.
+	virtual MatrixResult<T> operator - (const T scalar)           const;  ///< Subtract scalar from each element
 
-	virtual MatrixAbstract & operator *= (const MatrixAbstract & B);  ///< this = this * B
-	virtual MatrixAbstract & operator *= (const T scalar);  ///< this = this * scalar
-	//virtual MatrixAbstract & operator /= (const MatrixAbstract & B);  ///< Elementwise divide and store back to this
-	virtual MatrixAbstract & operator /= (const T scalar);  ///< this = this / scalar
+	virtual MatrixAbstract & operator &= (const MatrixAbstract & B);  ///< Elementwise multiply, stored back to this
+	virtual MatrixAbstract & operator *= (const MatrixAbstract & B);  ///< Standard matrix multiplication, stored back to this
+	virtual MatrixAbstract & operator *= (const T scalar);            ///< Multiply each element by scalar
+	virtual MatrixAbstract & operator /= (const MatrixAbstract & B);  ///< Elementwise divide and store back to this
+	virtual MatrixAbstract & operator /= (const T scalar);            ///< Divide each element by scalar
 	virtual MatrixAbstract & operator += (const MatrixAbstract & B);  ///< Elementwise sum, stored back to this
-	//virtual MatrixAbstract & operator += (const T scalar);  ///< Increase each element by scalar
+	virtual MatrixAbstract & operator += (const T scalar);            ///< Increase each element by scalar
 	virtual MatrixAbstract & operator -= (const MatrixAbstract & B);  ///< Elementwise difference, stored back to this
-	virtual MatrixAbstract & operator -= (const T scalar);  ///< Decrease each element by scalar
+	virtual MatrixAbstract & operator -= (const T scalar);            ///< Decrease each element by scalar
 
 	// Serialization
 	virtual void read (std::istream & stream);
@@ -168,6 +156,12 @@ namespace fl
 	static int displayWidth;  ///< Number of character positions per cell to use when printing out matrix.
 	static int displayPrecision;  ///< Number of significant digits to output.
   };
+
+  template<class T>
+  MatrixResult<T> operator * (const T scalar, const MatrixAbstract<T> & A)
+  {
+	return A * scalar;
+  }
 
   template<class T>
   std::string elementToString (const T & value);
@@ -213,6 +207,70 @@ namespace fl
   MatrixAbstract<T> &
   operator << (MatrixAbstract<T> & A, const std::string & source);
 
+  /**
+	 An adapter that allows a function to return a matrix created on the heap
+	 and guarantee that it will be destroyed in the calling function.
+   **/
+  template<class T>
+  class MatrixResult : public MatrixAbstract<T>
+  {
+  public:
+	MatrixResult () : result (0) {}
+	MatrixResult (MatrixAbstract<T> * result) : result (result) {}
+	MatrixResult (const MatrixResult<T> & that) : result (that.result) {const_cast<MatrixResult &> (that).result = 0;}
+	~MatrixResult () {if (result) delete result;}
+
+	operator MatrixAbstract<T> & () const {return *result;}
+	MatrixResult & operator = (const MatrixResult & that)
+	{
+	  if (result) delete result;
+	  result = that.result;
+	  const_cast<MatrixResult &> (that).result = 0;
+	}
+
+	virtual T & operator () (const int row, const int column) const        {return (*result)(row,column);}
+    virtual T & operator [] (const int row) const                          {return (*result)[row];}
+	virtual int rows () const                                              {return result->rows ();}
+	virtual int columns () const                                           {return result->columns ();}
+	virtual MatrixAbstract<T> * duplicate (bool deep = false) const        {return result->duplicate (deep);}
+	virtual void clear (const T scalar = (T) 0)                            {       result->clear (scalar);}
+	virtual void resize (const int rows, const int columns = 1)            {       result->resize (rows, columns);}
+	virtual void copyFrom (const MatrixAbstract<T> & that)                 {       result->copyFrom (that);}
+
+	virtual T norm (float n) const                                         {return result->norm (n);}
+	virtual T sumSquares () const                                          {return result->sumSquares ();}
+	virtual void normalize (const T scalar = 1.0)                          {       result->normalize (scalar);}
+	virtual T dot (const MatrixAbstract<T> & B) const                      {return result->dot (B);}
+	virtual Matrix<T> cross (const MatrixAbstract<T> & B) const            {return result->cross (B);}
+	virtual void identity (const T scalar = 1.0)                           {       result->identity (scalar);}
+	virtual MatrixRegion<T> row (const int r) const                        {return result->row (r);}
+	virtual MatrixRegion<T> column (const int c) const                     {return result->column (c);}
+	virtual MatrixRegion<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const {return result->region (firstRow, firstColumn, lastRow, lastColumn);}
+
+	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const {return *result * B;}
+	virtual MatrixResult<T> operator * (const T scalar) const              {return *result * scalar;}
+	virtual MatrixResult<T> operator / (const MatrixAbstract<T> & B) const {return *result / B;}
+	virtual MatrixResult<T> operator / (const T scalar) const              {return *result / scalar;}
+	virtual MatrixResult<T> operator + (const MatrixAbstract<T> & B) const {return *result + B;}
+	virtual MatrixResult<T> operator + (const T scalar) const              {return *result + scalar;}
+	virtual MatrixResult<T> operator - (const MatrixAbstract<T> & B) const {return *result - B;}
+	virtual MatrixResult<T> operator - (const T scalar) const              {return *result - scalar;}
+
+	virtual MatrixAbstract<T> & operator *= (const MatrixAbstract<T> & B)  {return *result *= B;}
+	virtual MatrixAbstract<T> & operator *= (const T scalar)               {return *result *= scalar;}
+	virtual MatrixAbstract<T> & operator /= (const MatrixAbstract<T> & B)  {return *result /= B;}
+	virtual MatrixAbstract<T> & operator /= (const T scalar)               {return *result /= scalar;}
+	virtual MatrixAbstract<T> & operator += (const MatrixAbstract<T> & B)  {return *result += B;}
+	virtual MatrixAbstract<T> & operator += (const T scalar)               {return *result += scalar;}
+	virtual MatrixAbstract<T> & operator -= (const MatrixAbstract<T> & B)  {return *result -= B;}
+	virtual MatrixAbstract<T> & operator -= (const T scalar)               {return *result -= scalar;}
+
+	virtual void read  (std::istream & stream)                             {result->read  (stream);}
+	virtual void write (std::ostream & stream) const                       {result->write (stream);}
+
+	MatrixAbstract<T> * result;  ///< We always take responsibility for destroying "result".
+  };
+
 
   // Concrete matrices  -------------------------------------------------------
 
@@ -244,6 +302,7 @@ namespace fl
 	Matrix (Pointer & that, const int rows = -1, const int columns = 1);  ///< Share memory block with that.  rows == -1 or columns == -1 means infer number from size of memory.  At least one of {rows, columns} must be positive.
 	virtual ~Matrix ();
 	void detach ();  ///< Set the state of this matrix as if it has no data.  Releases (but only frees if appropriate) any memory.
+	virtual uint32_t classID () const;
 
 	virtual T & operator () (const int row, const int column) const
 	{
@@ -255,10 +314,10 @@ namespace fl
 	}
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract<T> * duplicate () const;
+	virtual MatrixAbstract<T> * duplicate (bool deep = false) const;
 	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns = 1);
-	virtual void copyFrom (const Matrix<T> & that);
+	virtual void copyFrom (const MatrixAbstract<T> & that);
 
 	virtual Matrix reshape (const int rows, const int columns = 1) const;
 
@@ -267,21 +326,23 @@ namespace fl
 	virtual T dot (const Matrix & B) const;
 	virtual Matrix transposeSquare () const;  ///< Computes the upper triangular part of the symmetric matrix (~this * this).
 
-	Matrix operator ! () const;
-	virtual MatrixTranspose<T> operator ~ () const;
-	virtual Matrix operator * (const MatrixAbstract<T> & B) const;
-	virtual Matrix operator * (const Matrix & B) const;
-	virtual Matrix operator * (const T scalar) const;
-	virtual Matrix operator / (const T scalar) const;
-	virtual Matrix operator + (const Matrix & B) const;
-	virtual Matrix operator - (const Matrix & B) const;
+	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator * (const T scalar) const;
+	virtual MatrixResult<T> operator / (const T scalar) const;
+	virtual MatrixResult<T> operator + (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator - (const MatrixAbstract<T> & B) const;
 
-	virtual Matrix & operator *= (const Matrix & B);
+	virtual MatrixAbstract<T> & operator *= (const MatrixAbstract<T> & B);
 	virtual MatrixAbstract<T> & operator *= (const T scalar);
 	virtual MatrixAbstract<T> & operator /= (const T scalar);
-	virtual Matrix & operator += (const Matrix & B);
-	virtual Matrix & operator -= (const Matrix & B);
+	virtual MatrixAbstract<T> & operator += (const MatrixAbstract<T> & B);
+	virtual MatrixAbstract<T> & operator += (const T scalar);
+	virtual MatrixAbstract<T> & operator -= (const MatrixAbstract<T> & B);
 	virtual MatrixAbstract<T> & operator -= (const T scalar);
+
+	// Operators on a different type.  These are syntactic sugar for
+	// typecasting the second operand.
+	template<class T2> MatrixResult<T> operator - (const MatrixAbstract<T2> & B) const {return operator - ((Matrix<T>) B);}
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
@@ -322,14 +383,11 @@ namespace fl
 	}
 	Vector (const Matrix<T> & that);
 	Vector (std::istream & stream);
+	Vector (const std::string & source);
 	Vector (T * that, const int rows);  ///< Attach to memory block pointed to by that
 	Vector (Pointer & that, const int rows = -1);  ///< Share memory block with that.  rows == -1 means infer number from size of memory
 
-	Vector & operator = (const MatrixAbstract<T> & that);
-	Vector & operator = (const Matrix<T> & that);
-
-	virtual MatrixAbstract<T> * duplicate () const;
-	virtual void resize (const int rows, const int columns = 1);
+	virtual void resize (const int rows, const int columns = 1);  ///< Converts all requests to a single column with height of requested rows * requested columns.
   };
 
   /**
@@ -349,18 +407,18 @@ namespace fl
 	MatrixPacked (const int rows);  ///< columns = rows
 	MatrixPacked (const MatrixAbstract<T> & that);
 	MatrixPacked (std::istream & stream);
+	virtual uint32_t classID () const;
 
 	virtual T & operator () (const int row, const int column) const;
     virtual T & operator [] (const int row) const;
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract<T> * duplicate () const;
+	virtual MatrixAbstract<T> * duplicate (bool deep = false) const;
 	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns = -1);
 	virtual void copyFrom (const MatrixAbstract<T> & that);
-	virtual void copyFrom (const MatrixPacked & that);
 
-	virtual MatrixPacked operator ~ () const;
+	virtual MatrixResult<T> operator ~ () const;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
@@ -386,19 +444,20 @@ namespace fl
 	MatrixSparse (const MatrixAbstract<T> & that);
 	MatrixSparse (std::istream & stream);
 	~MatrixSparse ();
+	virtual uint32_t classID () const;
 
 	void set (const int row, const int column, const T value);  ///< If value is non-zero, creates element if not already there; if value is zero, removes element if it exists.
 	virtual T & operator () (const int row, const int column) const;
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract<T> * duplicate () const;
+	virtual MatrixAbstract<T> * duplicate (bool deep = false) const;
 	virtual void clear (const T scalar = (T) 0);  ///< Completely ignore the value of scalar, and simply delete all data.
 	virtual void resize (const int rows, const int columns = 1);  ///< Changing number of rows has no effect at all.  Changing number of columns resizes column list.
-	virtual void copyFrom (const MatrixSparse & that);
+	virtual void copyFrom (const MatrixAbstract<T> & that);
 
 	virtual T norm (float n) const;
 
-	virtual MatrixSparse operator - (const MatrixSparse & B) const;
+	virtual MatrixResult<T> operator - (const MatrixAbstract<T> & B) const;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
@@ -417,11 +476,12 @@ namespace fl
   public:
 	MatrixIdentity ();
 	MatrixIdentity (int size, T value = 1);
+	virtual uint32_t classID () const;
 
 	virtual T & operator () (const int row, const int column) const;
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract<T> * duplicate () const;
+	virtual MatrixAbstract<T> * duplicate (bool deep = false) const;
 	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns = -1);
 
@@ -440,12 +500,13 @@ namespace fl
 	MatrixDiagonal ();
 	MatrixDiagonal (const int rows, const int columns = -1);
 	MatrixDiagonal (const Vector<T> & that, const int rows = -1, const int columns = -1);
+	virtual uint32_t classID () const;
 
 	virtual T & operator () (const int row, const int column) const;
     virtual T & operator [] (const int row) const;
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract<T> * duplicate () const;
+	virtual MatrixAbstract<T> * duplicate (bool deep = false) const;
 	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns = -1);
 
@@ -482,12 +543,12 @@ namespace fl
   class MatrixTranspose : public MatrixAbstract<T>
   {
   public:
-	MatrixTranspose (const MatrixAbstract<T> & that);
+	MatrixTranspose (MatrixAbstract<T> * that);
 	virtual ~MatrixTranspose ();
 
 	virtual T & operator () (const int row, const int column) const
 	{
-	  return (*wrapped) (column, row);
+	  return (*wrapped)(column,row);
 	}
     virtual T & operator [] (const int row) const
 	{
@@ -495,12 +556,12 @@ namespace fl
 	}
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract<T> * duplicate () const;
+	virtual MatrixAbstract<T> * duplicate (bool deep = false) const;
 	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns);
 
-	virtual Matrix<T> operator * (const MatrixAbstract<T> & B) const;
-	virtual Matrix<T> operator * (const T scalar) const;
+	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator * (const T scalar) const;
 
 	// It is the job of the matrix being transposed to make another instance
 	// of itself.  It is our responsibility to delete this object when we
@@ -512,9 +573,7 @@ namespace fl
   class MatrixRegion : public MatrixAbstract<T>
   {
   public:
-	//MatrixRegion (const MatrixRegion & that);
 	MatrixRegion (const MatrixAbstract<T> & that, const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1);
-	//virtual ~MatrixRegion ();
 
 	template<class T2>
 	MatrixRegion & operator = (const MatrixAbstract<T2> & that)
@@ -531,7 +590,7 @@ namespace fl
 	  }
 	  return *this;
 	}
-	MatrixRegion & operator = (const MatrixRegion & that);
+	MatrixRegion & operator = (const MatrixRegion & that);  ///< deep copy semantics, that is, actually copies elements from "that" into wrapped
 
 	virtual T & operator () (const int row, const int column) const
 	{
@@ -543,13 +602,12 @@ namespace fl
 	}
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract<T> * duplicate () const;
+	virtual MatrixAbstract<T> * duplicate (bool deep = false) const;
 	virtual void clear (const T scalar = (T) 0);
 	virtual void resize (const int rows, const int columns = 1);
 
-	virtual MatrixTranspose<T> operator ~ () const;
-	virtual Matrix<T> operator * (const MatrixAbstract<T> & B) const;
-	virtual Matrix<T> operator * (const T scalar) const;
+	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator * (const T scalar) const;
 
 	const MatrixAbstract<T> * wrapped;
 	int firstRow;
@@ -585,6 +643,7 @@ namespace fl
 	  }
 	}
 	MatrixFixed (std::istream & stream);
+	virtual uint32_t classID () const;
 
 	virtual T & operator () (const int row, const int column) const
 	{
@@ -596,16 +655,17 @@ namespace fl
 	}
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract<T> * duplicate () const;
+	virtual MatrixAbstract<T> * duplicate (bool deep = false) const;
 	virtual void resize (const int rows = R, const int columns = C);
+	virtual void copyFrom (const MatrixAbstract<T> & that);
 
-	virtual MatrixFixed<T,C,R>   operator ~  () const;
-	virtual Matrix<T>            operator *  (const MatrixAbstract<T> & B) const;
-	virtual MatrixFixed<T,R,C>   operator *  (const MatrixFixed<T,R,C> & B) const;
-	virtual MatrixFixed<T,R,C>   operator *  (const T scalar) const;
-	virtual MatrixFixed<T,R,C>   operator /  (const T scalar) const;
-	virtual MatrixFixed<T,R,C> & operator *= (const MatrixFixed<T,R,C> & B);
-	virtual MatrixAbstract<T> &  operator *= (const T scalar);
+	virtual MatrixResult<T> operator ~ () const;
+	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator * (const T scalar) const;
+	virtual MatrixResult<T> operator / (const T scalar) const;
+
+	virtual MatrixAbstract<T> & operator *= (const T scalar);
+	virtual MatrixAbstract<T> & operator /= (const T scalar);
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;

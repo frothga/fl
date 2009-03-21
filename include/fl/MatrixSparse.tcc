@@ -66,6 +66,13 @@ namespace fl
   }
 
   template<class T>
+  uint32_t
+  MatrixSparse<T>::classID () const
+  {
+	return MatrixAbstractID | MatrixSparseID;
+  }
+
+  template<class T>
   void
   MatrixSparse<T>::set (const int row, const int column, const T value)
   {
@@ -124,8 +131,14 @@ namespace fl
 
   template<class T>
   MatrixAbstract<T> *
-  MatrixSparse<T>::duplicate () const
+  MatrixSparse<T>::duplicate (bool deep) const
   {
+	if (deep)
+	{
+	  MatrixSparse * result = new MatrixSparse;
+	  result->copyFrom (*this);
+	  return result;
+	}
 	return new MatrixSparse (*this);
   }
 
@@ -150,10 +163,27 @@ namespace fl
 
   template<class T>
   void
-  MatrixSparse<T>::copyFrom (const MatrixSparse & that)
+  MatrixSparse<T>::copyFrom (const MatrixAbstract<T> & that)
   {
-	rows_ = that.rows_;
-	data.copyFrom (that.data);  // performs deep copy of STL vector and map objects
+	if (that.classID () & MatrixSparseID)
+	{
+	  const MatrixSparse & MS = (const MatrixSparse &) (that);
+	  rows_ = MS.rows_;
+	  data.copyFrom (MS.data);  // performs deep copy of STL vector and map objects
+	}
+	else
+	{
+	  int m = that.rows ();
+	  int n = that.columns ();
+	  resize (m, n);
+	  for (int c = 0; c < n; c++)
+	  {
+		for (int r = 0; r < m; r++)
+		{
+		  set (r, c, that(r,c));
+		}
+	  }
+	}
   }
 
   template<class T>
@@ -243,17 +273,20 @@ namespace fl
   }
 
   template<class T>
-  MatrixSparse<T>
-  MatrixSparse<T>::operator - (const MatrixSparse<T> & B) const
+  MatrixResult<T>
+  MatrixSparse<T>::operator - (const MatrixAbstract<T> & B) const
   {
+	if (! (B.classID () & MatrixSparseID)) return MatrixAbstract<T>::operator - (B);
+	MatrixSparse & SB = (MatrixSparse &) B;
+
 	int n = data->size ();
-	MatrixSparse result (1, n);
+	MatrixSparse * result = new MatrixSparse (rows_, n);
 
 	for (int c = 0; c < n; c++)
 	{
-	  std::map<int,T> & CR = (*result.data)[c];
+	  std::map<int,T> & CR = (*result->data)[c];
 	  std::map<int,T> & CA = (*data)[c];
-	  std::map<int,T> & CB = (*B.data)[c];
+	  std::map<int,T> & CB = (*SB.data)[c];
 	  typename std::map<int,T>::iterator ir = CR.begin ();
 	  typename std::map<int,T>::iterator ia = CA.begin ();
 	  typename std::map<int,T>::iterator ib = CB.begin ();
@@ -265,7 +298,7 @@ namespace fl
 		  if (t != 0)
 		  {
 			ir = CR.insert (ir, std::make_pair (ia->first, t));
-			result.rows_ = std::max (result.rows_, ia->first + 1);
+			result->rows_ = std::max (result->rows_, ia->first + 1);
 		  }
 		  ia++;
 		  ib++;
@@ -273,13 +306,13 @@ namespace fl
 		else if (ia->first > ib->first)
 		{
 		  ir = CR.insert (ir, std::make_pair (ib->first, - ib->second));
-		  result.rows_ = std::max (result.rows_, ib->first + 1);
+		  result->rows_ = std::max (result->rows_, ib->first + 1);
 		  ib++;
 		}
 		else  // ia->first < ib->first
 		{
 		  ir = CR.insert (ir, std::make_pair (ia->first, ia->second));
-		  result.rows_ = std::max (result.rows_, ia->first + 1);
+		  result->rows_ = std::max (result->rows_, ia->first + 1);
 		  ia++;
 		}
 	  }

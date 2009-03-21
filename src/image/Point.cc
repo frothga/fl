@@ -23,6 +23,8 @@ using namespace fl;
 
 // class Point ----------------------------------------------------------------
 
+float Point::one = 1;
+
 Point::Point ()
 {
   x = 0;
@@ -40,35 +42,22 @@ Point::Point (std::istream & stream)
   read (stream);
 }
 
-/*
-Point::operator Vector<double> () const
+float &
+Point::operator () (const int row, const int column) const
 {
-  Vector<double> result (2);
-  result[0] = x;
-  result[1] = y;
-  return result;
-}
-*/
-
-Vector<float>
-Point::homogenous (float third) const
-{
-  Vector<float> result (3);
-  result[0] = x;
-  result[1] = y;
-  result[2] = third;
-  return result;
+  if (row == 0) return const_cast<float &> (x);
+  if (row == 1) return const_cast<float &> (y);
+  one = 1;
+  return one;
 }
 
-Vector<float>
-Point::homogenous (float third, float fourth) const
+float &
+Point::operator [] (const int row) const
 {
-  Vector<float> result (3);
-  result[0] = x;
-  result[1] = y;
-  result[2] = third;
-  result[3] = fourth;
-  return result;
+  if (row == 0) return const_cast<float &> (x);
+  if (row == 1) return const_cast<float &> (y);
+  one = 1;
+  return one;
 }
 
 int
@@ -84,7 +73,7 @@ Point::columns () const
 }
 
 MatrixAbstract<float> *
-Point::duplicate () const
+Point::duplicate (bool deep) const
 {
   return new Point (x, y);
 }
@@ -118,12 +107,6 @@ Point::distance (const Point & that) const
   float dx = that.x - x;
   float dy = that.y - y;
   return sqrtf (dx * dx + dy * dy);
-}
-
-float
-Point::distance () const
-{
-  return sqrtf (x * x + y * y);
 }
 
 float

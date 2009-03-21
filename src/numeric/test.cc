@@ -14,21 +14,10 @@ for details.
 */
 
 
-#include "fl/cluster.h"
-#include "fl/zroots.h"
-#include "fl/matrix.h"
-#include "fl/random.h"
 #include "fl/search.h"
-#include "fl/lapack.h"
-#include "fl/time.h"
-#include "fl/pi.h"
-#include "fl/neural.h"
-#include "fl/serialize.h"
-#include "fl/reduce.h"
+#include "fl/random.h"
 
-#include <iostream>
-#include <fstream>
-#include <complex>
+#include <limits>
 
 
 using namespace std;
@@ -38,26 +27,14 @@ using namespace fl;
 // Searchable class for testing numeric search methods
 // Expected result = 0.08241057  1.133037  2.343695
 template<class T>
-//class Test : public SearchableSparse
-class Test : public SearchableNumeric<T>
+class Test : public SearchableSparse<T>
 {
 public:
-  /*
-  Test () : SearchableSparse (1e-3)
+  Test ()
+  //: SearchableSparse (1e-3)
   {
-	cover ();
-
-	cerr << "after cover" << endl;
-	cerr << parameters << endl;
-	for (int i = 0; i < parms.size (); i++)
-	{
-	  for (int j = 0; j < parms[i].size (); j++)
-	  {
-		cerr << i << " " << j << " " << parms[i][j] << endl;
-	  }
-	}
+	this->cover ();
   }
-  */
 
   virtual int dimension ()
   {
@@ -84,37 +61,46 @@ public:
 	cerr << ".";
   }
 
-  virtual MatrixSparse<int> interaction ()
+  virtual MatrixSparse<bool> interaction ()
   {
-	MatrixSparse<int> result (15, 3);
-
-	for (int i = 0; i < 15; i++)
-	{
-	  for (int j = 0; j < 3; j++)
-	  {
-		if (randfb () > 0.75)
-		{
-		  result.set (i, j, 1);
-		}
-	  }
-	}
-	cerr << "i=" << result << endl;
+	MatrixSparse<bool> result (15, 3);
+	result.clear (true);
 
 	return result;
   }
 };
 
-
-inline double
-randbad ()
+template<class T>
+void
+testSearch ()
 {
-  double sign = randfb ();
-  double a = fabs (sign);
-  sign /= a;
-  double b = 1 * randfb ();
-  double result = sign * pow (a, b);
-  return result;
+  vector<Search<T> *> searches;
+  searches.push_back (new AnnealingAdaptive<T>);
+  searches.push_back (new LevenbergMarquardt<T>);
+  searches.push_back (new LevenbergMarquardtSparseBK<T>);
+
+  Test<T> t;
+  Matrix<T> expected ("~[0.08241057 1.133037 2.343695]");
+
+  for (int i = 0; i < searches.size (); i++)
+  {
+	Vector<T> point (3);
+	point[0] = 1;
+	point[1] = 1;
+	point[2] = 1;
+
+	searches[i]->search (t, point);
+	cerr << endl;
+	double d = (point - expected).norm (2);
+	if (d > 1e6)
+	{
+	  cerr << "Result not close enough: " << d << " = " << point << " - " << expected << endl;
+	  throw "Search fails";
+	}
+  }
+  cout << "Search passes" << endl;
 }
+
 
 inline Matrix<double>
 makeMatrix (const int m, const int n)
@@ -124,190 +110,273 @@ makeMatrix (const int m, const int n)
   {
 	for (int c = 0; c < n; c++)
 	{
-	  //A(r,c) = randbad ();
-	  //A(r,c) = randfb ();
-	  A(r,c) = randf ();
+	  A(r,c) = randfb ();
 	}
   }
-  //cerr << A << endl << endl;
-
   return A;
 }
 
+template<class T>
 void
-throwPoint (const Vector<float> & center, const float radius, vector< Vector<float> > & data)
+testOperator ()
 {
-  Vector<float> point (center.rows ());
-  for (int i = 0; i < point.rows (); i++)
+  T epsilon = sqrt (numeric_limits<T>::epsilon ());
+  cerr << "epsilon = " << epsilon << endl;
+
+  // Instantiate various matrix types and sizes.  These will not be modified during the test.
+  vector<MatrixAbstract<T> *> matrices;
+  matrices.push_back (new Matrix<T> (makeMatrix (3, 3)));
+  matrices.push_back (new Vector<T> ("[1 2 3]"));
+  matrices.push_back (new MatrixPacked<T> (*matrices[0]));
+  matrices.push_back (new MatrixSparse<T> (*matrices[0]));
+  matrices.push_back (new MatrixDiagonal<T> (*matrices[1]));
+  matrices.push_back (new MatrixIdentity<T> (3));
+  matrices.push_back (new MatrixTranspose<T> (matrices[0]));
+  matrices.push_back (new MatrixRegion<T> (*matrices[0], 1, 1, 2, 2));
+  matrices.push_back (new MatrixFixed<T,2,2> (*matrices[0]));
+
+  // Perform every operation between every combination of matrices.
+  for (int i = 0; i < matrices.size (); i++)
   {
-	point[i] = randGaussian (); // * (i ? 1 : 2);
-  }
+	MatrixAbstract<T> & A = *matrices[i];
+	const uint32_t Aid = A.classID ();
+	const int Arows = A.rows ();
+	const int Acols = A.columns ();
+	cerr << typeid (A).name () << endl;
 
-  point.normalize (radius);
-  point += center;
+	// Unary operations
 
-  data.push_back (point);
-}
-
-void
-makeClusters (int clusters, int dimension, vector< Vector<float> > & data)
-{
-  vector< Vector<float> > center;
-  for (int i = 0; i < clusters; i++)
-  {
-	Vector<float> point (dimension);
-	point.clear ();
-	point[i] = 1;
-	center.push_back (point);
-  }
-
-  int iterations = dimension * dimension;  // We need d + d * (d + 1) / 2 data points per cluster to do k-means.  We get iterations * centers data points.
-  float radius = 0.1;
-  for (int i = 0; i < iterations; i++)
-  {
-    for (int j = 0; j < center.size (); j++)
+	//   Inversion
+	MatrixResult<T> result;
+	if (Arows == Acols)
 	{
-	  throwPoint (center[j], radius, data);
-    }
+	  result = A * !A;
+	  if (result.rows () != result.columns ()) throw "A * !A is not square";
+	  for (int c = 0; c < result.columns (); c++)
+	  {
+		for (int r = 0; r < result.rows (); r++)
+		{
+		  if (r == c)
+		  {
+			if (abs (result(r,c) - (T) 1) > epsilon) throw "A * !A diagonal is not 1";
+		  }
+		  else
+		  {
+			if (abs (result(r,c)) > epsilon) throw "A * !A off-diagonal is not 0";
+		  }
+		}
+	  }
+	}
+
+
+	//   Transpose
+	result = ~A;
+	if (result.rows () != Acols  ||  result.columns () != Arows) throw "~A dimensions are wrong";
+	for (int c = 0; c < result.columns (); c++)
+	{
+	  for (int r = 0; r < result.rows (); r++)
+	  {
+		if (abs (result(r,c) - A(c,r)) > epsilon) throw "~A unexpected element value";
+	  }
+	}
+	
+
+	// Binary operations with scalar
+	{
+	  T scalar = (T) 2;
+	  MatrixResult<T> resultTimes = A * scalar;
+	  MatrixResult<T> resultOver  = A / scalar;
+	  MatrixResult<T> resultPlus  = A + scalar;
+	  MatrixResult<T> resultMinus = A - scalar;
+	  MatrixAbstract<T> * selfTimes = A.duplicate (true);
+	  MatrixAbstract<T> * selfOver  = A.duplicate (true);
+	  MatrixAbstract<T> * selfPlus  = A.duplicate (true);
+	  MatrixAbstract<T> * selfMinus = A.duplicate (true);
+	  (*selfTimes) *= scalar;
+	  (*selfOver)  /= scalar;
+	  (*selfPlus)  += scalar;
+	  (*selfMinus) -= scalar;
+	  if (resultTimes.rows () != Arows  ||  resultTimes.columns () != Acols) throw "A * scalar: dimensions are wrong";
+	  if (resultOver .rows () != Arows  ||  resultOver .columns () != Acols) throw "A / scalar: dimensions are wrong";
+	  if (resultPlus .rows () != Arows  ||  resultPlus .columns () != Acols) throw "A + scalar: dimensions are wrong";
+	  if (resultMinus.rows () != Arows  ||  resultMinus.columns () != Acols) throw "A - scalar: dimensions are wrong";
+	  if (selfTimes->rows () != Arows  ||  selfTimes->columns () != Acols) throw "A *= scalar: dimensions are wrong";
+	  if (selfOver ->rows () != Arows  ||  selfOver ->columns () != Acols) throw "A /= scalar: dimensions are wrong";
+	  if (selfPlus ->rows () != Arows  ||  selfPlus ->columns () != Acols) throw "A += scalar: dimensions are wrong";
+	  if (selfMinus->rows () != Arows  ||  selfMinus->columns () != Acols) throw "A -= scalar: dimensions are wrong";
+	  for (int c = 0; c < Acols; c++)
+	  {
+		for (int r = 0; r < Arows; r++)
+		{
+		  // Determine expected values
+		  T & element  = A(r,c);
+		  T product    = element * scalar;
+		  T quotient   = element / scalar;
+		  T sum        = element + scalar;
+		  T difference = element - scalar;
+
+		  if (abs (resultTimes (r,c) - product   ) > epsilon) throw "A * scalar: unexpected element value";
+		  if (abs (resultOver  (r,c) - quotient  ) > epsilon) throw "A / scalar: unexpected element value";
+		  if (abs (resultPlus  (r,c) - sum       ) > epsilon) throw "A + scalar: unexpected element value";
+		  if (abs (resultMinus (r,c) - difference) > epsilon) throw "A - scalar: unexpected element value";
+		  if (abs ((*selfTimes)(r,c) - product   ) > epsilon) throw "A *= scalar: unexpected element value";
+		  if (abs ((*selfOver )(r,c) - quotient  ) > epsilon) throw "A /= scalar: unexpected element value";
+
+		  // Don't test elements if A can't represent them.
+		  if ((Aid & MatrixDiagonalID)  &&  r != c) continue;
+		  if ((Aid & MatrixIdentityID)  &&  (r < Arows - 1  ||  c < Acols - 1)) continue;
+
+		  if (abs ((*selfPlus )(r,c) - sum       ) > epsilon) throw "A += scalar: unexpected element value";
+		  if (abs ((*selfMinus)(r,c) - difference) > epsilon) throw "A -= scalar: unexpected element value";
+		}
+	  }
+	  delete selfTimes;
+	  delete selfOver;
+	  delete selfPlus;
+	  delete selfMinus;
+	}
+
+
+	// Binary operations with matrix
+	for (int j = 0; j < matrices.size (); j++)  // cover full set of matrices to ensure every one functions as both left and right operand
+	{
+	  MatrixAbstract<T> & B = *matrices[j];
+	  cerr << "  " << typeid (B).name () << endl;
+	  const int Brows = B.rows ();
+	  const int Bcols = B.columns ();
+	  const int Erows = min (Arows, Brows);  // size of overlap region for elementwise operations
+	  const int Ecols = min (Acols, Bcols);
+	  int Prows = Arows;  // expected size of self-product
+	  int Pcols = Bcols;
+	  if (Aid & MatrixPackedID) Prows = Pcols = min (Arows, Bcols);
+	  if (Aid & MatrixIdentityID) Prows = Pcols = max (Arows, Bcols);
+	  if (Aid & MatrixFixedID)
+	  {
+		Prows = Arows;
+		Pcols = Acols;
+	  }
+
+	  MatrixResult<T> resultElTimes = A & B;
+	  MatrixResult<T> resultTimes   = A * B;
+	  MatrixResult<T> resultOver    = A / B;
+	  MatrixResult<T> resultPlus    = A + B;
+	  MatrixResult<T> resultMinus   = A - B;
+	  MatrixAbstract<T> * selfElTimes = A.duplicate (true);
+	  MatrixAbstract<T> * selfTimes   = A.duplicate (true);
+	  MatrixAbstract<T> * selfOver    = A.duplicate (true);
+	  MatrixAbstract<T> * selfPlus    = A.duplicate (true);
+	  MatrixAbstract<T> * selfMinus   = A.duplicate (true);
+	  (*selfElTimes) &= B;
+	  (*selfTimes)   *= B;
+	  (*selfOver)    /= B;
+	  (*selfPlus)    += B;
+	  (*selfMinus)   -= B;
+	  if (resultElTimes.rows () != Arows  ||  resultElTimes.columns () != Acols) throw "A & B: dimensions are wrong";
+	  if (resultTimes  .rows () != Arows  ||  resultTimes  .columns () != Bcols) throw "A * B: dimensions are wrong";
+	  if (resultOver   .rows () != Arows  ||  resultOver   .columns () != Acols) throw "A / B: dimensions are wrong";
+	  if (resultPlus   .rows () != Arows  ||  resultPlus   .columns () != Acols) throw "A + B: dimensions are wrong";
+	  if (resultMinus  .rows () != Arows  ||  resultMinus  .columns () != Acols) throw "A - B: dimensions are wrong";
+	  if (selfElTimes->rows () != Arows  ||  selfElTimes->columns () != Acols) throw "A &= B: dimensions are wrong";
+	  if (selfTimes  ->rows () != Prows  ||  selfTimes  ->columns () != Pcols) throw "A *= B: dimensions are wrong";
+	  if (selfOver   ->rows () != Arows  ||  selfOver   ->columns () != Acols) throw "A /= B: dimensions are wrong";
+	  if (selfPlus   ->rows () != Arows  ||  selfPlus   ->columns () != Acols) throw "A += B: dimensions are wrong";
+	  if (selfMinus  ->rows () != Arows  ||  selfMinus  ->columns () != Acols) throw "A -= B: dimensions are wrong";
+	  for (int r = 0; r < Arows; r++)
+	  {
+		// Test standard matrix multiply
+		const int w = min (Acols, Brows);
+		for (int c = 0; c < Bcols; c++)
+		{
+		  T product = (T) 0;
+		  for (int k = 0; k < w; k++) product += A(r,k) * B(k,c);
+
+		  if (abs (resultTimes (r,c) - product) > epsilon) throw "A * B: unexpected element value";
+
+		  if (r >= Prows  ||  c >= Pcols) continue;
+		  if ((Aid & MatrixDiagonalID)  &&  r != c) continue;
+		  if ((Aid & MatrixIdentityID)  &&  (r < Arows - 1  ||  c < Acols - 1)) continue;
+		  if ((Aid & MatrixPackedID)    &&  r > c) continue;
+
+		  if (abs ((*selfTimes)(r,c) - product) > epsilon) throw "A *= B: unexpected element value";
+		}
+
+		// Test elementwise operations
+		for (int c = 0; c < Acols; c++)
+		{
+		  // Determine expected values
+		  T & a = A(r,c);
+		  T elproduct  = a;
+		  T quotient   = a;
+		  T sum        = a;
+		  T difference = a;
+		  if (r < Erows  &&  c < Ecols)
+		  {
+			T & b = B(r,c);
+			elproduct  *= b;
+			quotient   /= b;
+			sum        += b;
+			difference -= b;
+		  }
+
+		  if (abs (resultElTimes (r,c) - elproduct ) > epsilon) throw "A & B: unexpected element value";
+		  if (abs (resultOver    (r,c) - quotient  ) > epsilon) throw "A / B: unexpected element value";
+		  if (abs (resultPlus    (r,c) - sum       ) > epsilon) throw "A + B: unexpected element value";
+		  if (abs (resultMinus   (r,c) - difference) > epsilon) throw "A - B: unexpected element value";
+
+		  if ((Aid & MatrixPackedID)    &&  r > c) continue;
+		  if ((Aid & MatrixIdentityID)  &&  (r < Arows - 1  ||  c < Acols - 1)) continue;
+
+		  if (abs ((*selfElTimes)(r,c) - elproduct ) > epsilon) throw "A &= B: unexpected element value";
+		  if (abs ((*selfOver )  (r,c) - quotient  ) > epsilon) throw "A /= B: unexpected element value";
+
+		  if ((Aid & MatrixDiagonalID)  &&  r != c) continue;
+
+		  if (abs ((*selfPlus )  (r,c) - sum       ) > epsilon) throw "A += B: unexpected element value";
+		  if (abs ((*selfMinus)  (r,c) - difference) > epsilon) throw "A -= B: unexpected element value";
+		}
+	  }
+	  delete selfElTimes;
+	  delete selfTimes;
+	  delete selfOver;
+	  delete selfPlus;
+	  delete selfMinus;
+	}
   }
+
+  cout << "operators pass" << endl;
 }
 
+
+template<class T>
 void
-regress (vector<float> & data, float & ave, float & std)
+testAll ()
 {
-  ave = 0;
-  for (int i = 0; i < data.size (); i++)
-  {
-	ave += data[i];
-  }
-  ave /= data.size ();
-
-  std = 0;
-  for (int i = 0; i < data.size (); i++)
-  {
-	float d = data[i] - ave;
-	std += d * d;
-  }
-  std /= data.size ();
+  testSearch<T> ();
+  testOperator<T> ();
 }
-
-void
-regress (vector<Vector<float> > & data, Vector<float> & ave, Matrix<float> & std)
-{
-  int dimension = data[0].rows ();
-  ave.resize (dimension);
-  ave.clear ();
-  for (int i = 0; i < data.size (); i++)
-  {
-	ave += data[i];
-  }
-  ave /= data.size ();
-
-  std.resize (dimension, dimension);
-  std.clear ();
-  for (int i = 0; i < data.size (); i++)
-  {
-	Vector<float> d = data[i] - ave;
-	std += d * ~d;
-  }
-  std /= data.size ();
-}
-
 
 
 int
 main (int argc, char * argv[])
 {
-  #define parmFloat(n,d) (argc > n ? atof (argv[n]) : (d))
-  #define parmInt(n,d) (argc > n ? atoi (argv[n]) : (d))
-  #define parmChar(n,d) (argc > n ? argv[n] : (d))
-
-
-  int seed = parmInt (3, time (NULL));
-  srand (seed);
-  cerr << "Random seed = " << seed << endl;
-
-  int m = parmInt (1, 4);  // rows
-  int n = parmInt (2, 4);  // columns
-
-  Matrix<float> A = makeMatrix (m, n);
-  Matrix<float> b = makeMatrix (m, 3);
-
-  Matrix<float> x;
-  float residual;
-  gelss (A, x, b, &residual);
-  cerr << "x by gelss:" << endl << x << endl;
-  cerr << "residual = " << residual << endl;
-
-  gelsd (A, x, b, &residual, true, true);
-  cerr << "x by gelsd:" << endl << x << endl;
-  cerr << "residual = " << residual << endl;
-
-
-
-  /*
-  vector<Vector<float> > data1;
-  for (int i = 0; i < 1000; i++)
+  try
   {
-	Vector<float> point (2);
-	point[0] = randGaussian ();
-	point[1] = randGaussian ();
-	point *= 2;
-	data1.push_back (point);
-  }
-  Vector<float> ave1;
-  Matrix<float> std1;
-  regress (data1, ave1, std1);
-  cerr << "ave1 = " << ave1 << endl;
-  cerr << "std1: " << endl << std1 << endl;
+	cout << "running all tests for float" << endl;
+	testAll<float> ();
 
-  vector<Vector<float> > data2;
-  for (int i = 0; i < 100; i++)
+	cout << "running all tests for double" << endl;
+	testAll<double> ();
+  }
+  catch (const char * message)
   {
-	Vector<float> point (2);
-	point[0] = randGaussian () + 4;
-	point[1] = randGaussian () - 3;
-	data2.push_back (point);
+	cout << "Exception: " << message << endl;
+	return 1;
   }
-  Vector<float> ave2;
-  Matrix<float> std2;
-  regress (data2, ave2, std2);
-  cerr << "ave2 = " << ave2 << endl;
-  cerr << "std2: " << endl << std2 << endl;
+  catch (int message)
+  {
+	cout << "Numeric Exception: " << message << endl;
+	return 1;
+  }
 
-  Vector<float> ave;
-  Matrix<float> std;
-  vector<Vector<float> > data = data1;
-  data.insert (data.end (), data2.begin (), data2.end ());
-  regress (data, ave, std);
-  cerr << "ave = " << ave << endl;
-  cerr << "std: " << endl << std << endl;
-
-
-  float w1 = data1.size ();
-  float w2 = data2.size ();
-  float w = w1 + w2;
-  Vector<float> ave3 = (ave1 * w1 + ave2 * w2) / w;
-  cerr << "weighted mean = " << ave3 << endl;
-  Matrix<float> shift1 = ave1 - ave3;
-  Matrix<float> shift2 = ave2 - ave3;
-  shift1 *= ~shift1;
-  shift2 *= ~shift2;
-  Matrix<float> std3 = ((std1 + shift1) * w1 + (std2 + shift2) * w2) / w;
-  cerr << "std3 = " << endl << std3 << endl;
-  */
-
-
-  /*
-  AnnealingAdaptive<double> method;
-  //LevenbergMarquardt<float> method;
-  //LevenbergMarquardtSparseBK<float> method;
-  Test<double> t;
-  Vector<double> point (3);
-  point[0] = 1;
-  point[1] = 1;
-  point[2] = 1;
-  method.search (t, point);
-  cerr << point << endl;
-  */
+  return 0;
 }

@@ -20,11 +20,12 @@ for details.
 
 #include <cmath>
 #include <limits.h>
+#include <stdint.h>
 
 #ifdef _MSC_VER
-#  include <float.h>
-#  undef min
-#  undef max
+# include <float.h>
+# undef min
+# undef max
 #endif
 
 
@@ -93,6 +94,12 @@ namespace std
 	return c == _FPCLASS_PINF  ||  c == _FPCLASS_NINF;
   }
 
+  inline double
+  log (int a)
+  {
+	return log ((double) a);
+  }
+
 #endif
 
   /**
@@ -140,8 +147,8 @@ static union
 inline bool
 issubnormal (float a)
 {
-  return    ((*(unsigned int *) &a) & 0x7F800000) == 0
-	     && ((*(unsigned int *) &a) &   0x7FFFFF) != 0;
+  return    ((*(uint32_t *) &a) & 0x7F800000) == 0
+	     && ((*(uint32_t *) &a) &   0x7FFFFF) != 0;
 }
 
 inline bool
@@ -151,8 +158,8 @@ issubnormal (double a)
 	int c = _fpclass (a);
 	return c == _FPCLASS_ND  ||  c == _FPCLASS_PD;
   #else
-	return    ((*(unsigned long long *) &a) & 0x7FF0000000000000ll) == 0
-	       && ((*(unsigned long long *) &a) &    0xFFFFFFFFFFFFFll) != 0;
+	return    ((*(uint64_t *) &a) & 0x7FF0000000000000ll) == 0
+	       && ((*(uint64_t *) &a) &    0xFFFFFFFFFFFFFll) != 0;
   #endif
 }
 

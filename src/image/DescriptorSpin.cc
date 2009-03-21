@@ -85,7 +85,7 @@ DescriptorSpin::value (const Image & image, const PointAffine & point)
 	for (int x = sourceL; x <= sourceR; x++)
 	{
 	  q.x = x;
-	  float radius = (R * q).distance ();
+	  float radius = (R * q).norm (2);
 	  if (radius < binsRadial)
 	  {
 		float weight = 1.0f - radius / binsRadial;
@@ -102,7 +102,7 @@ DescriptorSpin::value (const Image & image, const PointAffine & point)
 	for (int x = sourceL; x <= sourceR; x++)
 	{
 	  q.x = x;
-	  float radius = (R * q).distance ();
+	  float radius = (R * q).norm (2);
 	  if (radius < binsRadial)
 	  {
 		float d = that(x,y) - average;
@@ -129,7 +129,7 @@ DescriptorSpin::value (const Image & image, const PointAffine & point)
 	for (int x = sourceL; x <= sourceR; x++)
 	{
 	  q.x = x;
-	  float rf = (R * q).distance () - 0.5f;
+	  float rf = (R * q).norm (2) - 0.5f;
 	  if (rf < binsRadial)
 	  {
 		int rl = (int) floorf (rf);

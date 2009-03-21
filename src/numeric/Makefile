@@ -116,7 +116,7 @@ $(LIBPREF)$(MODULE)$(LIBSUFF): $(OBJS)
 
 
 test: test.cc $(LIBPREF)$(MODULE)$(LIBSUFF)
-	g++ -o $@ -L$(SOURCE_LIB) $^ -l$(NS)Base $(CPPFLAGS) $(CXXFLAGS) $(LAPACK_LIB)
+	$(CXX) -o $@ -L$(SOURCE_LIB) $^ -l$(NS)Base $(CPPFLAGS) $(CXXFLAGS) $(LAPACK_LIB)
 
 #CXXFLAGS = -g -O3 -march=pentiumpro
 #test: test.cc MatrixDouble.o LevenbergMarquardt.o VectorDouble.o MatrixInt.o MatrixSparseInt.o SearchableNumeric.o VectorInt.o MatrixSparseDouble.o

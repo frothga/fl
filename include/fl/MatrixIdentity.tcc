@@ -34,6 +34,13 @@ namespace fl
 	this->value = value;
   }
 
+  template<class T>
+  uint32_t
+  MatrixIdentity<T>::classID () const
+  {
+	return MatrixAbstractID | MatrixIdentityID;
+  }
+
   template <class T>
   T &
   MatrixIdentity<T>::operator () (const int row, const int column) const
@@ -66,7 +73,7 @@ namespace fl
 
   template <class T>
   MatrixAbstract<T> *
-  MatrixIdentity<T>::duplicate () const
+  MatrixIdentity<T>::duplicate (bool deep) const
   {
 	return new MatrixIdentity (size, value);
   }

@@ -65,6 +65,13 @@ namespace fl
 	data = that.data;
   }
 
+  template<class T>
+  uint32_t
+  MatrixDiagonal<T>::classID () const
+  {
+	return MatrixAbstractID | MatrixDiagonalID;
+  }
+
   template <class T>
   T &
   MatrixDiagonal<T>::operator () (const int row, const int column) const
@@ -104,8 +111,14 @@ namespace fl
 
   template <class T>
   MatrixAbstract<T> *
-  MatrixDiagonal<T>::duplicate () const
+  MatrixDiagonal<T>::duplicate (bool deep) const
   {
+	if (deep)
+	{
+	  MatrixDiagonal * result = new MatrixDiagonal (rows_, columns_);
+	  result->data.copyFrom (data);
+	  return result;
+	}
 	return new MatrixDiagonal (*this);
   }
 

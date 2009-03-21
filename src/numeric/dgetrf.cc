@@ -22,21 +22,23 @@ namespace fl
 {
   template<>
   Matrix<double>
-  Matrix<double>::operator ! () const
+  MatrixAbstract<double>::operator ! () const
   {
-	if (rows_ != columns_) return pinv (*this);  // forces dgesvd to be linked as well
+	int h = rows ();
+	int w = columns ();
+	if (w != h) return pinv (*this);  // forces dgesvd to be linked as well
 
-	Matrix<double> tempA;
-	tempA.copyFrom (*this);
+	Matrix<double> result;
+	result.copyFrom (*this);
 
-	int * ipiv = (int *) malloc (rows_ * sizeof (int));
+	int * ipiv = (int *) malloc (h * sizeof (int));
 
 	int info = 0;
 
-	dgetrf_ (rows_,
-			 rows_,
-			 & tempA[0],
-			 rows_,
+	dgetrf_ (h,
+			 h,
+			 & result[0],
+			 h,
 			 ipiv,
 			 info);
 
@@ -45,9 +47,9 @@ namespace fl
 	  int lwork = -1;
 	  double optimalSize;
 
-	  dgetri_ (rows_,
-			   & tempA[0],
-			   rows_,
+	  dgetri_ (h,
+			   & result[0],
+			   h,
 			   ipiv,
 			   & optimalSize,
 			   lwork,
@@ -56,9 +58,9 @@ namespace fl
 	  lwork = (int) optimalSize;
 	  double * work = (double *) malloc (lwork * sizeof (double));
 
-	  dgetri_ (rows_,
-			   & tempA[0],
-			   rows_,
+	  dgetri_ (h,
+			   & result[0],
+			   h,
 			   ipiv,
 			   work,
 			   lwork,
@@ -74,14 +76,7 @@ namespace fl
 	  throw info;
 	}
 
-	return tempA;
-  }
-
-  template<>
-  Matrix<double>
-  MatrixAbstract<double>::operator ! () const
-  {
-	return ! Matrix<double> (*this);
+	return result;
   }
 
   template<>

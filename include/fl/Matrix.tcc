@@ -41,6 +41,13 @@ namespace fl
   }
 
   template<class T>
+  uint32_t
+  MatrixAbstract<T>::classID () const
+  {
+	return MatrixAbstractID;
+  }
+
+  template<class T>
   T &
   MatrixAbstract<T>::operator [] (const int row) const
   {
@@ -72,6 +79,22 @@ namespace fl
 	  for (int r = 0; r < h; r++)
 	  {
 		(*this)(r,c) = scalar;
+	  }
+	}
+  }
+
+  template<class T>
+  void
+  MatrixAbstract<T>::copyFrom (const MatrixAbstract<T> & that)
+  {
+	int h = that.rows ();
+	int w = that.columns ();
+	resize (h, w);
+	for (int c = 0; c < w; c++)
+	{
+	  for (int r = 0; r < h; r++)
+	  {
+		(*this)(r,c) = that(r,c);
 	  }
 	}
   }
@@ -286,13 +309,41 @@ namespace fl
   }
 
   template<class T>
-  Matrix<T>
+  MatrixResult<T>
+  MatrixAbstract<T>::operator ~ () const
+  {
+	return new MatrixTranspose<T> (this->duplicate ());
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixAbstract<T>::operator & (const MatrixAbstract<T> & B) const
+  {
+	int h = rows ();
+	int w = columns ();
+	int oh = std::min (h, B.rows ());
+	int ow = std::min (w, B.columns ());
+	Matrix<T> * result = new Matrix<T> (h, w);
+	for (int c = 0; c < ow; c++)
+	{
+	  for (int r = 0;  r < oh; r++) (*result)(r,c) = (*this)(r,c) * B(r,c);
+	  for (int r = oh; r < h;  r++) (*result)(r,c) = (*this)(r,c);
+	}
+	for (int c = ow; c < w; c++)
+	{
+	  for (int r = 0; r < h; r++)   (*result)(r,c) = (*this)(r,c);
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
   MatrixAbstract<T>::operator * (const MatrixAbstract<T> & B) const
   {
 	int w = std::min (columns (), B.rows ());
 	int h = rows ();
 	int bw = B.columns ();
-	Matrix<T> result (h, bw);
+	Matrix<T> * result = new Matrix<T> (h, bw);
 	for (int c = 0; c < bw; c++)
 	{
 	  for (int r = 0; r < h; r++)
@@ -302,58 +353,138 @@ namespace fl
 		{
 		  element += (*this)(r,i) * B(i,c);
 		}
-		result(r,c) = element;
+		(*result)(r,c) = element;
 	  }
 	}
 	return result;
   }
 
   template<class T>
-  Matrix<T>
-  MatrixAbstract<T>::elementMultiply (const MatrixAbstract<T> & B) const
+  MatrixResult<T>
+  MatrixAbstract<T>::operator * (const T scalar) const
   {
-	int h = std::min (rows (), B.rows ());
-	int w = std::min (columns (), B.columns ());
-	Matrix<T> result (h, w);
+	int h = rows ();
+	int w = columns ();
+	Matrix<T> * result = new Matrix<T> (h, w);
 	for (int c = 0; c < w; c++)
 	{
 	  for (int r = 0; r < h; r++)
 	  {
-		result(r,c) = (*this)(r,c) * B(r,c);
+		(*result)(r,c) = (*this)(r,c) * scalar;
 	  }
 	}
 	return result;
   }
 
   template<class T>
-  Matrix<T>
+  MatrixResult<T>
+  MatrixAbstract<T>::operator / (const MatrixAbstract<T> & B) const
+  {
+	int h = rows ();
+	int w = columns ();
+	int oh = std::min (h, B.rows ());
+	int ow = std::min (w, B.columns ());
+	Matrix<T> * result = new Matrix<T> (h, w);
+	for (int c = 0; c < ow; c++)
+	{
+	  for (int r = 0;  r < oh; r++) (*result)(r,c) = (*this)(r,c) / B(r,c);
+	  for (int r = oh; r < h;  r++) (*result)(r,c) = (*this)(r,c);
+	}
+	for (int c = ow; c < w; c++)
+	{
+	  for (int r = 0; r < h; r++)   (*result)(r,c) = (*this)(r,c);
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixAbstract<T>::operator / (const T scalar) const
+  {
+	int h = rows ();
+	int w = columns ();
+	Matrix<T> * result = new Matrix<T> (h, w);
+	for (int c = 0; c < w; c++)
+	{
+	  for (int r = 0; r < h; r++)
+	  {
+		(*result)(r,c) = (*this)(r,c) / scalar;
+	  }
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
   MatrixAbstract<T>::operator + (const MatrixAbstract<T> & B) const
   {
 	int h = rows ();
 	int w = columns ();
-	Matrix<T> result (h, w);
+	int oh = std::min (h, B.rows ());
+	int ow = std::min (w, B.columns ());
+	Matrix<T> * result = new Matrix<T> (h, w);
+	for (int c = 0; c < ow; c++)
+	{
+	  for (int r = 0;  r < oh; r++) (*result)(r,c) = (*this)(r,c) + B(r,c);
+	  for (int r = oh; r < h;  r++) (*result)(r,c) = (*this)(r,c);
+	}
+	for (int c = ow; c < w; c++)
+	{
+	  for (int r = 0; r < h; r++)   (*result)(r,c) = (*this)(r,c);
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixAbstract<T>::operator + (const T scalar) const
+  {
+	int h = rows ();
+	int w = columns ();
+	Matrix<T> * result = new Matrix<T> (h, w);
 	for (int c = 0; c < w; c++)
 	{
 	  for (int r = 0; r < h; r++)
 	  {
-		result (r, c) = (*this) (r, c) + B (r, c);
+		(*result)(r,c) = (*this)(r,c) + scalar;
 	  }
 	}
 	return result;
   }
 
   template<class T>
-  Matrix<T>
+  MatrixResult<T>
   MatrixAbstract<T>::operator - (const MatrixAbstract<T> & B) const
   {
 	int h = rows ();
 	int w = columns ();
-	Matrix<T> result (h, w);
+	int oh = std::min (h, B.rows ());
+	int ow = std::min (w, B.columns ());
+	Matrix<T> * result = new Matrix<T> (h, w);
+	for (int c = 0; c < ow; c++)
+	{
+	  for (int r = 0;  r < oh; r++) (*result)(r,c) = (*this)(r,c) - B(r,c);
+	  for (int r = oh; r < h;  r++) (*result)(r,c) = (*this)(r,c);
+	}
+	for (int c = ow; c < w; c++)
+	{
+	  for (int r = 0; r < h; r++)   (*result)(r,c) = (*this)(r,c);
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixAbstract<T>::operator - (const T scalar) const
+  {
+	int h = rows ();
+	int w = columns ();
+	Matrix<T> * result = new Matrix<T> (h, w);
 	for (int c = 0; c < w; c++)
 	{
 	  for (int r = 0; r < h; r++)
 	  {
-		result(r,c) = (*this)(r,c) - B(r,c);
+		(*result)(r,c) = (*this)(r,c) - scalar;
 	  }
 	}
 	return result;
@@ -361,20 +492,17 @@ namespace fl
 
   template<class T>
   MatrixAbstract<T> &
+  MatrixAbstract<T>::operator &= (const MatrixAbstract<T> & B)
+  {
+	copyFrom ((*this) & B);
+	return *this;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
   MatrixAbstract<T>::operator *= (const MatrixAbstract<T> & B)
   {
-	// Assumes that result is exactly the same size as this, or at least no
-	// larger.
-	Matrix<T> result = (*this) * B;
-	int h = result.rows ();
-	int w = result.columns ();
-	for (int c = 0; c < w; c++)
-	{
-	  for (int r = 0; r < h; r++)
-	  {
-		(*this)(r,c) = result(r,c);
-	  }
-	}
+	copyFrom ((*this) * B);
 	return *this;
   }
 
@@ -382,15 +510,15 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator *= (const T scalar)
   {
-	int h = rows ();
-	int w = columns ();
-	for (int c = 0; c < w; c++)
-	{
-	  for (int r = 0; r < h; r++)
-	  {
-		(*this)(r,c) *= scalar;
-	  }
-	}
+	copyFrom ((*this) * scalar);
+	return *this;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixAbstract<T>::operator /= (const MatrixAbstract<T> & B)
+  {
+	copyFrom ((*this) / B);
 	return *this;
   }
 
@@ -398,15 +526,7 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator /= (const T scalar)
   {
-	int h = rows ();
-	int w = columns ();
-	for (int c = 0; c < w; c++)
-	{
-	  for (int r = 0; r < h; r++)
-	  {
-		(*this) (r, c) /= scalar;
-	  }
-	}
+	copyFrom ((*this) / scalar);
 	return *this;
   }
 
@@ -414,15 +534,15 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator += (const MatrixAbstract<T> & B)
   {
-	int h = std::min (rows (), B.rows ());
-	int w = std::min (columns (), B.columns ());
-	for (int c = 0; c < w; c++)
-	{
-	  for (int r = 0; r < h; r++)
-	  {
-		(*this) (r, c) += B (r, c);
-	  }
-	}
+	copyFrom ((*this) + B);
+	return *this;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixAbstract<T>::operator += (const T scalar)
+  {
+	copyFrom ((*this) + scalar);
 	return *this;
   }
 
@@ -430,15 +550,7 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator -= (const MatrixAbstract<T> & B)
   {
-	int h = std::min (rows (), B.rows ());
-	int w = std::min (columns (), B.columns ());
-	for (int c = 0; c < w; c++)
-	{
-	  for (int r = 0; r < h; r++)
-	  {
-		(*this) (r, c) -= B (r, c);
-	  }
-	}
+	copyFrom ((*this) - B);
 	return *this;
   }
 
@@ -446,15 +558,7 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator -= (const T scalar)
   {
-	int h = rows ();
-	int w = columns ();
-	for (int c = 0; c < w; c++)
-	{
-	  for (int r = 0; r < h; r++)
-	  {
-		(*this) (r, c) -= scalar;
-	  }
-	}
+	copyFrom ((*this) - scalar);
 	return *this;
   }
 
@@ -664,12 +768,13 @@ namespace fl
   template<class T>
   Matrix<T>::Matrix (const MatrixAbstract<T> & that)
   {
-	if (typeid (that) == typeid (Matrix<T>))
+	if (that.classID () & MatrixID)
 	{
 	  *this = (const Matrix<T> &) that;
 	}
 	else
 	{
+	  // same code as copyFrom()
 	  int h = that.rows ();
 	  int w = that.columns ();
 	  resize (h, w);
@@ -678,7 +783,7 @@ namespace fl
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  *i++ = that (r, c);
+		  *i++ = that(r,c);
 		}
 	  }
 	}
@@ -756,6 +861,13 @@ namespace fl
   }
 
   template<class T>
+  uint32_t
+  Matrix<T>::classID () const
+  {
+	return MatrixAbstractID | MatrixID;
+  }
+
+  template<class T>
   int
   Matrix<T>::rows () const
   {
@@ -771,9 +883,15 @@ namespace fl
 
   template<class T>
   MatrixAbstract<T> *
-  Matrix<T>::duplicate () const
+  Matrix<T>::duplicate (bool deep) const
   {
-	return new Matrix<T> (*this);
+	if (deep)
+	{
+	  Matrix * result = new Matrix;
+	  result->copyFrom (*this);
+	  return result;
+	}
+	return new Matrix (*this);
   }
 
   template<class T>
@@ -806,11 +924,28 @@ namespace fl
 
   template<class T>
   void
-  Matrix<T>::copyFrom (const Matrix<T> & that)
+  Matrix<T>::copyFrom (const MatrixAbstract<T> & that)
   {
-	resize (that.rows_, that.columns_);
-	//memcpy (data.memory, that.data.memory, rows_ * columns_ * sizeof (T));
-	data.copyFrom (that.data);
+	if (that.classID ()  &  MatrixID)
+	{
+	  const Matrix & M = (const Matrix &) (that);
+	  resize (M.rows_, M.columns_);
+	  data.copyFrom (M.data);
+	}
+	else
+	{
+	  int h = that.rows ();
+	  int w = that.columns ();
+	  resize (h, w);
+	  T * i = (T *) data;
+	  for (int c = 0; c < w; c++)
+	  {
+		for (int r = 0; r < h; r++)
+		{
+		  *i++ = that(r,c);
+		}
+	  }
+	}
   }
 
   template<class T>
@@ -934,20 +1069,37 @@ namespace fl
   }
 
   template<class T>
-  MatrixTranspose<T>
-  Matrix<T>::operator ~ () const
-  {
-	return MatrixTranspose<T> (*this);
-  }
-
-  template<class T>
-  Matrix<T>
+  MatrixResult<T>
   Matrix<T>::operator * (const MatrixAbstract<T> & B) const
   {
+	if (B.classID () & MatrixID)
+	{
+	  const Matrix & MB = (const Matrix &) B;
+	  int w = std::min (columns_, MB.rows_);
+	  Matrix * result = new Matrix (rows_, MB.columns_);
+	  for (int c = 0; c < MB.columns_; c++)
+	  {
+		for (int r = 0; r < rows_; r++)
+		{
+		  T * i = ((T *) data) + r;
+		  T * j = ((T *) MB.data) + c * MB.rows_;
+		  T * end = j + w;
+		  register T element = (T) 0;
+		  while (j < end)
+		  {
+			element += (*i) * (*j++);
+			i += rows_;
+		  }
+		  (*result)(r,c) = element;
+		}
+	  }
+	  return result;
+	}
+
 	int w = std::min (columns_, B.rows ());
 	int bw = B.columns ();
-	Matrix<T> result (rows_, bw);
-	T * ri = (T *) result.data;
+	Matrix * result = new Matrix (rows_, bw);
+	T * ri = (T *) result->data;
 	for (int c = 0; c < bw; c++)
 	{
 	  for (int r = 0; r < rows_; r++)
@@ -966,36 +1118,11 @@ namespace fl
   }
 
   template<class T>
-  Matrix<T>
-  Matrix<T>::operator * (const Matrix<T> & B) const
-  {
-	int w = std::min (columns_, B.rows_);
-	Matrix<T> result (rows_, B.columns_);
-	for (int c = 0; c < B.columns_; c++)
-	{
-	  for (int r = 0; r < rows_; r++)
-	  {
-		T * i = ((T *) data) + r;
-		T * j = ((T *) B.data) + c * B.rows_;
-		T * end = j + w;
-		register T element = (T) 0;
-		while (j < end)
-		{
-		  element += (*i) * (*j++);
-		  i += rows_;
-		}
-		result (r, c) = element;
-	  }
-	}
-	return result;
-  }
-
-  template<class T>
-  Matrix<T>
+  MatrixResult<T>
   Matrix<T>::operator * (const T scalar) const
   {
-	Matrix<T> result (rows_, columns_);
-	T * i = (T *) result.data;
+	Matrix * result = new Matrix (rows_, columns_);
+	T * i = (T *) result->data;
 	T * end = i + rows_ * columns_;
 	T * j = (T *) data;
 	while (i < end)
@@ -1006,11 +1133,11 @@ namespace fl
   }
 
   template<class T>
-  Matrix<T>
+  MatrixResult<T>
   Matrix<T>::operator / (const T scalar) const
   {
-	Matrix<T> result (rows_, columns_);
-	T * i = (T *) result.data;
+	Matrix * result = new Matrix (rows_, columns_);
+	T * i = (T *) result->data;
 	T * end = i + rows_ * columns_;
 	T * j = (T *) data;
 	while (i < end)
@@ -1021,37 +1148,56 @@ namespace fl
   }
 
   template<class T>
-  Matrix<T>
-  Matrix<T>::operator + (const Matrix<T> & B) const
+  MatrixResult<T>
+  Matrix<T>::operator + (const MatrixAbstract<T> & B) const
   {
-	Matrix<T> result (rows_, columns_);
-	int i = rows_ * columns_;
-	while (i--)
+	if (B.classID () & MatrixID)
 	{
-	  ((T *) result.data)[i] = ((T *) data)[i] + ((T *) B.data)[i];
+	  const Matrix & MB = (const Matrix &) B;
+	  if (MB.rows_ == rows_  &&  MB.columns_ == columns_)
+	  {
+		Matrix * result = new Matrix (rows_, columns_);
+		T * a = (T *) data;
+		T * b = (T *) MB.data;
+		T * r = (T *) result->data;
+		T * end = r + rows_ * columns_;
+		while (r < end) *r++ = *a++ + *b++;
+		return result;
+	  }
 	}
-	return result;
+	return MatrixAbstract<T>::operator + (B);
   }
 
   template<class T>
-  Matrix<T>
-  Matrix<T>::operator - (const Matrix<T> & B) const
+  MatrixResult<T>
+  Matrix<T>::operator - (const MatrixAbstract<T> & B) const
   {
-	Matrix<T> result (rows_, columns_);
-	int i = rows_ * columns_;
-	while (i--)
+	if (B.classID () & MatrixID)
 	{
-	  ((T *) result.data)[i] = ((T *) data)[i] - ((T *) B.data)[i];
+	  const Matrix & MB = (const Matrix &) B;
+	  if (MB.rows_ == rows_  &&  MB.columns_ == columns_)
+	  {
+		Matrix * result = new Matrix (rows_, columns_);
+		T * a = (T *) data;
+		T * b = (T *) MB.data;
+		T * r = (T *) result->data;
+		T * end = r + rows_ * columns_;
+		while (r < end) *r++ = *a++ - *b++;
+		return result;
+	  }
 	}
-	return result;
+	return MatrixAbstract<T>::operator - (B);
   }
 
   template<class T>
-  Matrix<T> &
-  Matrix<T>::operator *= (const Matrix<T> & B)
+  MatrixAbstract<T> &
+  Matrix<T>::operator *= (const MatrixAbstract<T> & B)
   {
-	//return *this = ((MatrixAbstract<T> &) *this) * B;
-	return *this = (*this) * B;
+	if (B.classID () & MatrixID)
+	{
+	  return *this = (*this) * (const Matrix &) B;
+	}
+	return MatrixAbstract<T>::operator *= (B);
   }
 
   template<class T>
@@ -1081,31 +1227,54 @@ namespace fl
   }
 
   template<class T>
-  Matrix<T> &
-  Matrix<T>::operator += (const Matrix & B)
+  MatrixAbstract<T> &
+  Matrix<T>::operator += (const MatrixAbstract<T> & B)
+  {
+	if (B.classID () & MatrixID)
+	{
+	  const Matrix & MB = (const Matrix &) B;
+	  if (MB.rows_ == rows_  &&  MB.columns_ == columns_)
+	  {
+		T * a   = (T *) data;
+		T * b   = (T *) MB.data;
+		T * end = a + rows_ * columns_;
+		while (a < end) *a++ += *b++;
+		return *this;
+	  }
+	}
+	return MatrixAbstract<T>::operator += (B);
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  Matrix<T>::operator += (const T scalar)
   {
 	T * i = (T *) data;
 	T * end = i + rows_ * columns_;
-	T * j = (T *) B.data;
 	while (i < end)
 	{
-	  *i++ += *j++;
+	  *i++ += scalar;
 	}
 	return *this;
   }
 
   template<class T>
-  Matrix<T> &
-  Matrix<T>::operator -= (const Matrix & B)
+  MatrixAbstract<T> &
+  Matrix<T>::operator -= (const MatrixAbstract<T> & B)
   {
-	T * i = (T *) data;
-	T * end = i + rows_ * columns_;
-	T * j = (T *) B.data;
-	while (i < end)
+	if (B.classID () & MatrixID)
 	{
-	  *i++ -= *j++;
+	  const Matrix & MB = (const Matrix &) B;
+	  if (MB.rows_ == rows_  &&  MB.columns_ == columns_)
+	  {
+		T * a   = (T *) data;
+		T * b   = (T *) MB.data;
+		T * end = a + rows_ * columns_;
+		while (a < end) *a++ -= *b++;
+		return *this;
+	  }
 	}
-	return *this;
+	return MatrixAbstract<T>::operator -= (B);
   }
 
   template<class T>
@@ -1150,9 +1319,9 @@ namespace fl
   // class MatrixTranspose<T> -------------------------------------------------
 
   template<class T>
-  MatrixTranspose<T>::MatrixTranspose (const MatrixAbstract<T> & that)
+  MatrixTranspose<T>::MatrixTranspose (MatrixAbstract<T> * that)
   {
-	wrapped = that.duplicate ();
+	wrapped = that;
   }
 
   template<class T>
@@ -1177,9 +1346,9 @@ namespace fl
 
   template<class T>
   MatrixAbstract<T> *
-  MatrixTranspose<T>::duplicate () const
+  MatrixTranspose<T>::duplicate (bool deep) const
   {
-    return new MatrixTranspose<T> (*wrapped);
+	return new MatrixTranspose<T> (wrapped->duplicate (deep));
   }
 
   template<class T>
@@ -1197,13 +1366,13 @@ namespace fl
   }
 
   template<class T>
-  Matrix<T>
+  MatrixResult<T>
   MatrixTranspose<T>::operator * (const MatrixAbstract<T> & B) const
   {
-	int w = wrapped->rows ();
+	int w = std::min (wrapped->rows (), B.rows ());
 	int h = wrapped->columns ();
 	int bw = B.columns ();
-	Matrix<T> result (h, bw);
+	Matrix<T> * result = new Matrix<T> (h, bw);
 	for (int c = 0; c < bw; c++)
 	{
 	  for (int r = 0; r < h; r++)
@@ -1213,24 +1382,24 @@ namespace fl
 		{
 		  element += (*wrapped)(i,r) * B(i,c);
 		}
-		result (r, c) = element;
+		(*result)(r,c) = element;
 	  }
 	}
 	return result;
   }
 
   template<class T>
-  Matrix<T>
+  MatrixResult<T>
   MatrixTranspose<T>::operator * (const T scalar) const
   {
     int h = wrapped->columns ();
     int w = wrapped->rows ();
-	Matrix<T> result (h, w);
+	Matrix<T> * result = new Matrix<T> (h, w);
     for (int c = 0; c < w; c++)
     {
       for (int r = 0; r < h; r++)
       {
-		result (r, c) = (*wrapped)(c, r) * scalar;
+		(*result)(r,c) = (*wrapped)(c,r) * scalar;
       }
     }
     return result;
@@ -1290,9 +1459,24 @@ namespace fl
 
   template<class T>
   MatrixAbstract<T> *
-  MatrixRegion<T>::duplicate () const
+  MatrixRegion<T>::duplicate (bool deep) const
   {
-    return new MatrixRegion<T> (*wrapped, firstRow, firstColumn, firstRow + rows_ - 1, firstColumn + columns_ - 1);
+	if (deep)
+	{
+	  // Deep copy implies we have permission to disengage from the orginal
+	  // matrix, so just realize a dense Matrix.
+	  Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	  T * i = (T *) result->data;
+	  for (int c = firstColumn; c < firstColumn + columns_; c++)
+	  {
+		for (int r = firstRow; r < firstRow + rows_; r++)
+		{
+		  *i++ = (*wrapped)(r,c);
+		}
+	  }
+	  return result;
+	}
+	return new MatrixRegion<T> (*wrapped, firstRow, firstColumn, firstRow + rows_ - 1, firstColumn + columns_ - 1);
   }
 
   template<class T>
@@ -1319,20 +1503,13 @@ namespace fl
   }
 
   template<class T>
-  MatrixTranspose<T>
-  MatrixRegion<T>::operator ~ () const
-  {
-	return MatrixTranspose<T> (*this);
-  }
-
-  template<class T>
-  Matrix<T>
+  MatrixResult<T>
   MatrixRegion<T>::operator * (const MatrixAbstract<T> & B) const
   {
-	int w = columns ();
+	int w = std::min (columns (), B.rows ());
 	int h = rows ();
 	int bw = B.columns ();
-	Matrix<T> result (h, bw);
+	Matrix<T> * result = new Matrix<T> (h, bw);
 	for (int c = 0; c < bw; c++)
 	{
 	  for (int r = 0; r < h; r++)
@@ -1342,24 +1519,24 @@ namespace fl
 		{
 		  element += (*this)(r,i) * B(i,c);
 		}
-		result (r, c) = element;
+		(*result)(r,c) = element;
 	  }
 	}
 	return result;
   }
 
   template<class T>
-  Matrix<T>
+  MatrixResult<T>
   MatrixRegion<T>::operator * (const T scalar) const
   {
     int h = rows ();
     int w = columns ();
-	Matrix<T> result (h, w);
+	Matrix<T> * result = new Matrix<T> (h, w);
     for (int c = 0; c < w; c++)
     {
       for (int r = 0; r < h; r++)
       {
-		result (r, c) = (*this)(r, c) * scalar;
+		(*result)(r,c) = (*this)(r,c) * scalar;
       }
     }
     return result;
