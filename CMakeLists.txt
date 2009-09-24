@@ -41,21 +41,24 @@ if (MSVC)
   # Some includes are available by default under Unix but are not available
   # under MSVC, so add the supplemental include directory pre-emtively.
   include_directories (${PROJECT_SOURCE_DIR}/mswin/include)
+
 else (MSVC)
+
   # CMake prefers gfortran over g77, but unfortunately that breaks my Cygwin setup.
   # Move up to gfortran ASAP, and then get rid of this next line.
   set (CMAKE_Fortran_COMPILER g77)
+  #set (CMAKE_Fortran_COMPILER gfortran)
 
   # VC Express chokes on CMake's Fortran test, so only do it under a non-VC platform.
   #enable_language (Fortran OPTIONAL)
 
   # The LAPACK and BLAS package finders assume that we are compiling in Fortran,
   # so we need to add the Fortran support library to link under C/C++.
-  if (CMAKE_Fortran_COMPILER MATCHES gfortran)
+  if (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
     set (GCC_LIBRARIES gfortran)
-  else (CMAKE_Fortran_COMPILER MATCHES gfortran)
+  else (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
     set (GCC_LIBRARIES g2c)
-  endif (CMAKE_Fortran_COMPILER MATCHES gfortran)
+  endif (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
 
   find_library (THREAD_LIB pthread pthreads)
   set          (SOCKET_LIB)
@@ -135,10 +138,17 @@ endif (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 # See above comment on MSVC install prefix.  The VS generator places some
 # intermediate files in the output directory, which is ugly.
 if (NOT MSVC)
-  set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
-  set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
   set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+  if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib64)
+    set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib64)
+  else (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
+    set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
+  endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 endif (NOT MSVC)
+
+install (DIRECTORY include/fl DESTINATION include)
 
 
 # Add all targets -------------------------------------------------------------

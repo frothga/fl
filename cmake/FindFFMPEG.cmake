@@ -18,6 +18,7 @@
 
 # Whether zlib is necessary or not depends on the configuration of FFMPEG.
 find_package (ZLIB)
+find_package (BZip2)
 
 find_path (FFMPEG_INCLUDE_DIR libavformat/avformat.h)
 
@@ -43,9 +44,16 @@ endif (FFMPEG_AVDEVICE)
 if (FFMPEG_SWSCALE)
   set (FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} ${FFMPEG_SWSCALE})
 endif (FFMPEG_SWSCALE)
+
 if (ZLIB_FOUND)
   set (FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} ${ZLIB_LIBRARIES})
 endif (ZLIB_FOUND)
+if (BZIP2_FOUND)
+  set (FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} ${BZIP2_LIBRARIES})
+endif (BZIP2_FOUND)
+if (THREAD_LIB)
+  set (FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} ${THREAD_LIB})
+endif (THREAD_LIB)
 
 #message ("ffmpeg_libraries = ${FFMPEG_LIBRARIES}")
 

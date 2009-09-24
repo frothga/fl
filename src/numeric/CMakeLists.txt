@@ -138,6 +138,5 @@ target_link_libraries (testNumeric
   flNumeric
   flBase
   ${LAPACK_LIBRARIES}
-  ${Fortran_LIB}
   ${GCC_LIBRARIES}
 )
