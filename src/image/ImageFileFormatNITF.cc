@@ -16,6 +16,8 @@ for details.
 #include "fl/endian.h"
 #include "fl/lapack.h"
 
+#include <stdio.h>
+
 
 using namespace std;
 using namespace fl;
@@ -1170,11 +1172,11 @@ public:
 	 \param band If IMODE is anything other than S, then this parameter must
 	 always zero.
    **/
-  void read (istream & stream, char * block, unsigned int blockSize, int bx, int by, int band)
+  void read (istream & stream, char * block, uint32_t blockSize, int bx, int by, int band)
   {
 	int blockIndex = band * NBPR * NBPC + by * NBPR + bx;
 
-	unsigned int blockAddress;
+	uint32_t blockAddress;
 	if (BMRBND)
 	{
 	  blockAddress = BMRBND[blockIndex];
@@ -1268,11 +1270,11 @@ public:
 	  }
 	  else if (*format == GrayFloat)
 	  {
-		bswap ((unsigned int *) imageMemory, width * height);
+		bswap ((uint32_t *) imageMemory, width * height);
 	  }
 	  else if (*format == GrayDouble)
 	  {
-		bswap ((unsigned long long *) imageMemory, width * height);
+		bswap ((uint64_t *) imageMemory, width * height);
 	  }
 #     endif
 	}
@@ -1403,8 +1405,8 @@ public:
 	  {
 		int size = NBPR * NBPC;
 		if (IMODE == "S") size *= NBANDS;
-		BMRBND = (unsigned int *) malloc (size * sizeof (unsigned int));
-		stream.read ((char *) BMRBND, size * sizeof (unsigned int));
+		BMRBND = (uint32_t *) malloc (size * sizeof (uint32_t));
+		stream.read ((char *) BMRBND, size * sizeof (uint32_t));
 
 #       if BYTE_ORDER == LITTLE_ENDIAN
 		cerr << "BMRBND before = " << BMRBND[0] << endl;
@@ -1417,7 +1419,7 @@ public:
 
   int LISH;
   int LI;
-  unsigned int offset;
+  uint32_t offset;
 
   string IC;
   string IMODE;
@@ -1429,11 +1431,11 @@ public:
   int NPPBH;
   int NPPBV;
 
-  unsigned int IMDATOFF;
-  unsigned short BMRLNTH;
-  unsigned short TMRLNTH;
-  unsigned short TPXCDLNTH;
-  unsigned int * BMRBND;
+  uint32_t IMDATOFF;
+  uint16_t BMRLNTH;
+  uint16_t TMRLNTH;
+  uint16_t TPXCDLNTH;
+  uint32_t * BMRBND;
 
   PointerPoly<PixelFormat> format;
 

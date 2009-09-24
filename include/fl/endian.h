@@ -15,16 +15,23 @@ for details.
 #define fl_endian_h
 
 
-#ifdef _MSC_VER
+#include <stdint.h>
+
+#if defined (_MSC_VER)  ||  defined (__MINGW64__)
+   // MSVC generally compiles to i86.  Deal with other cases (such as alpha)
+   // as they come up.
+#  define LITTLE_ENDIAN 1234
+#  define BYTE_ORDER    LITTLE_ENDIAN
+#else
+#  include <endian.h>
+#endif
 
 
-// MSVC generally compiles to i86.  Deal with other cases (such as alpha)
-// as they come up.
-#define LITTLE_ENDIAN 1234
-#define BYTE_ORDER    LITTLE_ENDIAN
+#if defined (_MSC_VER)  &&  defined (_M_IX86)  &&  ! defined (_M_X64)
 
-static inline unsigned int
-bswap (unsigned int x)
+
+static inline uint32_t
+bswap (uint32_t x)
 {
   __asm
   {
@@ -36,7 +43,7 @@ bswap (unsigned int x)
 }
 
 static inline void
-bswap (unsigned short * x, unsigned int count = 1)
+bswap (uint16_t * x, uint32_t count = 1)
 {
   __asm
   {
@@ -50,7 +57,7 @@ bswap (unsigned short * x, unsigned int count = 1)
 }
 
 static inline void
-bswap (unsigned int * x, unsigned int count = 1)
+bswap (uint32_t * x, uint32_t count = 1)
 {
   __asm
   {
@@ -66,7 +73,7 @@ bswap (unsigned int * x, unsigned int count = 1)
 }
 
 static inline void
-bswap (unsigned long long * x, unsigned int count = 1)
+bswap (uint64_t * x, uint32_t count = 1)
 {
   __asm
   {
@@ -85,22 +92,20 @@ bswap (unsigned long long * x, unsigned int count = 1)
 }
 
 
-#else  // GCC
+#elif defined (__GNUC__)  &&  (defined (__i386__)  ||  defined (_X86_))
 
 
 #include <sys/param.h>
 
-#ifdef i386
-
-static inline unsigned int
-bswap (unsigned int x)
+static inline uint32_t
+bswap (uint32_t x)
 {
   __asm ("bswap %0" : "=r" (x) : "0" (x));
   return x;
 }
 
 static inline void
-bswap (unsigned short * x, unsigned int count = 1)
+bswap (uint16_t * x, uint32_t count = 1)
 {
   __asm ("1:"
 		 "rorw   $8, (%0);"
@@ -111,7 +116,7 @@ bswap (unsigned short * x, unsigned int count = 1)
 }
 
 static inline void
-bswap (unsigned int * x, unsigned int count = 1)
+bswap (uint32_t * x, uint32_t count = 1)
 {
   __asm ("1:"
 		 "movl   (%0), %%eax;"
@@ -124,11 +129,11 @@ bswap (unsigned int * x, unsigned int count = 1)
 		 : "eax");
 }
 
-#ifdef ARCH_X86_64
+#if defined (ARCH_X86_64)  ||  defined (__x86_64__)
 
 /// \todo Test this code!
 static inline void
-bswap (unsigned long long * x, unsigned int count = 1)
+bswap (uint64_t * x, uint32_t count = 1)
 {
   __asm ("1:"
 		 "mov    (%0), %%rax;"
@@ -144,7 +149,7 @@ bswap (unsigned long long * x, unsigned int count = 1)
 #else  // 32-bit x86
 
 static inline void
-bswap (unsigned long long * x, unsigned int count = 1)
+bswap (uint64_t * x, uint32_t count = 1)
 {
   __asm ("1:"
 		 "movl   (%0), %%eax;"
@@ -162,20 +167,46 @@ bswap (unsigned long long * x, unsigned int count = 1)
 
 #endif  // select x64 version of bswap(long long)
 
-#else   // not an x86 CPU, so use generic routines
 
-#include <byteswap.h>
+#else   // assembly sections are not available, so use generic routines
 
-static inline unsigned int
-bswap (unsigned int x)
+
+#ifndef _MSC_VER
+
+#  include <byteswap.h>
+
+#else
+
+static inline uint16_t
+bswap_16 (uint16_t x)
+{
+  return (x >> 8) | (x << 8);
+}
+
+static inline uint32_t
+bswap_32 (uint32_t x)
+{
+  return ((x & 0xFF000000) >> 24) | ((x & 0xFF0000) >> 8) | ((x & 0xFF00) << 8) | ((x & 0xFF) << 24);
+}
+
+static inline uint64_t
+bswap_64 (uint64_t x)
+{
+  return (((uint64_t) bswap_32 (x & 0xFFFFFFFFull)) << 32) | (bswap_32 (x >> 32));
+}
+
+#endif
+
+static inline uint32_t
+bswap (uint32_t x)
 {
   return bswap_32 (x);
 }
 
 static inline void
-bswap (unsigned short * x, unsigned int count = 1)
+bswap (uint16_t * x, uint32_t count = 1)
 {
-  unsigned short * end = x + count;
+  uint16_t * end = x + count;
   while (x < end)
   {
 	*x = bswap_16 (*x);
@@ -184,9 +215,9 @@ bswap (unsigned short * x, unsigned int count = 1)
 }
 
 static inline void
-bswap (unsigned int * x, unsigned int count = 1)
+bswap (uint32_t * x, uint32_t count = 1)
 {
-  unsigned int * end = x + count;
+  uint32_t * end = x + count;
   while (x < end)
   {
 	*x = bswap_32 (*x);
@@ -195,9 +226,9 @@ bswap (unsigned int * x, unsigned int count = 1)
 }
 
 static inline void
-bswap (unsigned long long * x, unsigned int count = 1)
+bswap (uint64_t * x, uint32_t count = 1)
 {
-  unsigned long long * end = x + count;
+  uint64_t * end = x + count;
   while (x < end)
   {
 	*x = bswap_64 (*x);
@@ -205,9 +236,8 @@ bswap (unsigned long long * x, unsigned int count = 1)
   }
 }
 
-#endif  // select CPU architecture
 
-#endif  // select compiler
+#endif  // detect compiler+architecture support for assembly sections
 
 
 #endif

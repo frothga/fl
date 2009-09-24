@@ -23,12 +23,6 @@ for details.
 #include <set>
 #include <typeinfo>
 
-// Temporary hack for c99 int types in MSVC
-#ifdef _MSC_VER
-typedef unsigned int       uint32_t;
-typedef unsigned long long uint64_t;
-#endif
-
 
 // Include for tracing
 //#include <iostream>
