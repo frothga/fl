@@ -453,7 +453,7 @@ VideoInFileFFMPEG::extractImage (Image & image)
 	  image.width = cc->width;
 	  image.height = cc->height;
 	  break;
-	case PIX_FMT_YUV422:
+	case PIX_FMT_YUYV422:
 	  image.attach (picture.data[0], cc->width, cc->height, YUYV);
 	  break;
 	case PIX_FMT_UYVY422:
@@ -668,7 +668,7 @@ static PixelFormatMapping pixelFormatMap[] =
 {
   {&YUV420,   PIX_FMT_YUV420P},
   {&YUV411,   PIX_FMT_YUV411P},
-  {&YUYV,     PIX_FMT_YUV422},
+  {&YUYV,     PIX_FMT_YUYV422},
   {&UYVY,     PIX_FMT_UYVY422},
   {&RGBChar,  PIX_FMT_RGB24},
   {&BGRChar,  PIX_FMT_BGR24},
