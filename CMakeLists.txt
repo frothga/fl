@@ -44,35 +44,39 @@ if (MSVC)
 
 else (MSVC)
 
+  # VC Express chokes on CMake's Fortran test, so only do it under a non-VC platform.
+  enable_language (Fortran OPTIONAL)
+
   # CMake prefers gfortran over g77, but unfortunately that breaks my Cygwin setup.
   # Move up to gfortran ASAP, and then get rid of this next line.
-  set (CMAKE_Fortran_COMPILER g77)
-  #set (CMAKE_Fortran_COMPILER gfortran)
+  if (CYGWIN)
+    set (CMAKE_Fortran_COMPILER g77)
+  endif (CYGWIN)
 
-  # VC Express chokes on CMake's Fortran test, so only do it under a non-VC platform.
-  #enable_language (Fortran OPTIONAL)
-
-  # The LAPACK and BLAS package finders assume that we are compiling in Fortran,
-  # so we need to add the Fortran support library to link under C/C++.
   if (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
-    set (GCC_LIBRARIES gfortran)
+    set (FORTRAN_LIB gfortran)
   else (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
-    set (GCC_LIBRARIES g2c)
+    set (FORTRAN_LIB g2c)
   endif (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
+
+  set (GCC_LIBRARIES
+    ${FORTRAN_LIB}
+  )
 
   find_library (THREAD_LIB pthread pthreads)
   set          (SOCKET_LIB)
 endif (MSVC)
 
-get_property (LANGUAGES GLOBAL PROPERTY ENABLED_LANGUAGES)
-if (LANGUAGES MATCHES Fortran)
-  # Standard package finders, which depend on availability of Fortran...
-  find_package (LAPACK)
-else (LANGUAGES MATCHES Fortran)
-  # ...but Fortran really isn't necessary for finding these packages.
-  find_package (LAPACKnofortran)
-endif (LANGUAGES MATCHES Fortran)
+# Under Linux, we want to link with librt in order to use finer grained timers.
+if (CMAKE_SYSTEM_NAME MATCHES Linux)
+  find_library (RT_LIB rt)
+else (CMAKE_SYSTEM_NAME MATCHES Linux)
+  set          (RT_LIB)
+endif (CMAKE_SYSTEM_NAME MATCHES Linux)
 
+# The LAPACK package finder that comes with cmake seems to be broken, even when
+# Fortran is available.
+find_package (LAPACKnofortran)
 find_package (TIFF)
 find_package (GTIF)
 find_package (JPEG)
@@ -146,6 +150,10 @@ if (NOT MSVC)
     set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
     set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
   endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  install (DIRECTORY script/
+    DESTINATION bin
+    FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+  )
 endif (NOT MSVC)
 
 install (DIRECTORY include/fl DESTINATION include)

@@ -124,16 +124,21 @@ add_library (flNumeric
   MDA.cc
 )
 
-install (TARGETS flNumeric
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-)
+if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  install (TARGETS flNumeric
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib64
+    ARCHIVE DESTINATION lib64
+  )
+else (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  install (TARGETS flNumeric
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 
-add_executable (testNumeric
-  test.cc
-)
-
+add_executable (testNumeric test.cc)
 target_link_libraries (testNumeric
   flNumeric
   flBase

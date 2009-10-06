@@ -28,6 +28,7 @@ target_link_libraries (psnr
   flBase
   ${FFMPEG_LIBRARIES}
   ${GCC_LIBRARIES}
+  ${RT_LIB}
 )
 
 add_executable (stripm stripm.cc)
@@ -43,6 +44,7 @@ target_link_libraries (thumb
   ${JPEG_LIBRARIES}
   ${LAPACK_LIBRARIES}
   ${GCC_LIBRARIES}
+  ${RT_LIB}
 )
 
 add_executable (vread vread.cc)
@@ -55,6 +57,7 @@ target_link_libraries (vread
   ${JPEG_LIBRARIES}
   ${X11_LIBRARIES}
   ${GCC_LIBRARIES}
+  ${RT_LIB}
 )
 
 add_executable (xv xv.cc)
@@ -70,6 +73,7 @@ target_link_libraries (xv
   ${PNG_LIBRARIES}
   ${LAPACK_LIBRARIES}
   ${GCC_LIBRARIES}
+  ${RT_LIB}
 )
 
 install (TARGETS addm convertall epsall invert psnr stripm striputf8 thumb vread xv

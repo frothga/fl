@@ -17,10 +17,18 @@ add_library (flX
   SlideShow.cc
 )
 
-install (TARGETS flX
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-)
+if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  install (TARGETS flX
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib64
+    ARCHIVE DESTINATION lib64
+  )
+else (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  install (TARGETS flX
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 
 # No regression tests defined at present.

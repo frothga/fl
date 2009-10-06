@@ -106,16 +106,21 @@ add_library (flImage
   KLT.cc
 )
 
-install (TARGETS flImage
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-)
+if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  install (TARGETS flImage
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib64
+    ARCHIVE DESTINATION lib64
+  )
+else (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  install (TARGETS flImage
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 
-add_executable (testImage
-  test.cc
-)
-
+add_executable (testImage test.cc)
 target_link_libraries (testImage
   flImage
   flNumeric
@@ -126,4 +131,5 @@ target_link_libraries (testImage
   ${LAPACK_LIBRARIES}
   ${GCC_LIBRARIES}
   ${SOCKET_LIB}
+  ${RT_LIB}
 )

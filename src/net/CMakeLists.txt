@@ -12,16 +12,21 @@ add_library (flNet
   SocketStream.cc
 )
 
-install (TARGETS flNet
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-)
+if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  install (TARGETS flNet
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib64
+    ARCHIVE DESTINATION lib64
+  )
+else (CMAKE_SIZEOF_VOID_P EQUAL 8)
+  install (TARGETS flNet
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 
-add_executable (testNet
-  test.cc
-)
-
+add_executable (testNet test.cc)
 target_link_libraries (testNet
   flNet
   ${THREAD_LIB}
