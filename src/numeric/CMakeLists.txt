@@ -44,9 +44,10 @@ add_library (flNumeric
   MatrixDiagonalFloat.cc
   MatrixSparseFloat.cc
   #   Complex Double
-  ../../include/fl/MatrixComplex.tcc
   MatrixComplexDouble.cc
   VectorComplexDouble.cc
+  #   Complex Float
+  MatrixComplexFloat.cc
   #   Boolean
   ../../include/fl/MatrixBool.tcc
   ../../include/fl/MatrixSparseBool.tcc

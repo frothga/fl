@@ -38,7 +38,7 @@ namespace fl
 	sgetrf_ (h,
 			 h,
 			 & result[0],
-			 h,
+			 result.strideC,
 			 ipiv,
 			 info);
 
@@ -49,7 +49,7 @@ namespace fl
 
 	  sgetri_ (h,
 			   & result[0],
-			   h,
+			   result.strideC,
 			   ipiv,
 			   & optimalSize,
 			   lwork,
@@ -60,7 +60,7 @@ namespace fl
 
 	  sgetri_ (h,
 			   & result[0],
-			   h,
+			   result.strideC,
 			   ipiv,
 			   work,
 			   lwork,
@@ -99,7 +99,7 @@ namespace fl
 	sgetrf_ (m,
 			 m,
 			 & tempA[0],
-			 m,
+			 tempA.strideC,
 			 ipiv,
 			 info);
 

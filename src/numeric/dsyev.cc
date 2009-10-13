@@ -24,10 +24,9 @@ namespace fl
   void
   syev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool destroyA)
   {
-	const Matrix<double> * pA;
-	if (destroyA  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (A.classID () & MatrixID))
 	{
-	  eigenvectors = *pA;
+	  eigenvectors = (const Matrix<double> &) A;
 	}
 	else
 	{
@@ -49,7 +48,7 @@ namespace fl
 			uplo,
 			n,
 			& eigenvectors[0],
-			n,
+			eigenvectors.strideC,
 			& eigenvalues[0],
 			work,
 			lwork,
@@ -68,10 +67,9 @@ namespace fl
   syev (const MatrixAbstract<double> & A, Matrix<double> & eigenvalues, bool destroyA)
   {
 	Matrix<double> eigenvectors;
-	const Matrix<double> * pA;
-	if (destroyA  &&  (pA = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (A.classID () & MatrixID))
 	{
-	  eigenvectors = *pA;
+	  eigenvectors = (const Matrix<double> &) A;
 	}
 	else
 	{
@@ -93,7 +91,7 @@ namespace fl
 			uplo,
 			n,
 			& eigenvectors[0],
-			n,
+			eigenvectors.strideC,
 			& eigenvalues[0],
 			work,
 			lwork,

@@ -24,14 +24,12 @@ namespace fl
   void
   geev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors, bool destroyA)
   {
-	int lda = A.rows ();
-	int n = std::min (lda, A.columns ());
+	int n = std::min (A.rows (), A.columns ());
 
 	Matrix<float> tempA;
-	const Matrix<float> * pA;
-	if (destroyA  &&  (pA = dynamic_cast<const Matrix<float> *> (&A)))
+	if (destroyA  &&  (A.classID () & MatrixID))
 	{
-	  tempA = *pA;
+	  tempA = (const Matrix<float> &) A;
 	}
 	else
 	{
@@ -43,45 +41,59 @@ namespace fl
 
 	eigenvectors.resize (n, n);
 
-	int lwork = 5 * n;
-	float * work = (float *) malloc (lwork * sizeof (float));
+	int lwork = -1;
+	float optimalLwork;
 	int info = 0;
 
 	sgeev_ ('N',
 			'V',
 			n,
 			& tempA[0],
-			lda,
+			tempA.strideC,
 			& eigenvalues[0],
 			& wi[0],
 			0,
 			1,  // ldvl >= 1.  A lie to make lapack happy.
 			& eigenvectors[0],
+			eigenvectors.strideC,
+			&optimalLwork,
+			lwork,
+			info);
+
+	if (info) throw info;
+	lwork = (int) optimalLwork;
+	float * work = (float *) malloc (lwork * sizeof (float));
+
+	sgeev_ ('N',
+			'V',
 			n,
+			& tempA[0],
+			tempA.strideC,
+			& eigenvalues[0],
+			& wi[0],
+			0,
+			1,
+			& eigenvectors[0],
+			eigenvectors.strideC,
 			work,
 			lwork,
 			info);
 
 	free (work);
 
-	if (info)
-	{
-	  throw info;
-	}
+	if (info) throw info;
   }
 
   template<>
   void
   geev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, bool destroyA)
   {
-	int lda = A.rows ();
-	int n = std::min (lda, A.columns ());
+	int n = std::min (A.rows (), A.columns ());
 
 	Matrix<float> tempA;
-	const Matrix<float> * pA;
-	if (destroyA  &&  (pA = dynamic_cast<const Matrix<float> *> (&A)))
+	if (destroyA  &&  (A.classID () & MatrixID))
 	{
-	  tempA = *pA;
+	  tempA = (const Matrix<float> &) A;
 	}
 	else
 	{
@@ -91,45 +103,59 @@ namespace fl
 	eigenvalues.resize (n);
 	Matrix<float> wi (n);
 
-	int lwork = 5 * n;
-	float * work = (float *) malloc (lwork * sizeof (float));
+	int lwork = -1;
+	float optimalLwork;
 	int info = 0;
 
 	sgeev_ ('N',
 			'N',
 			n,
 			& tempA[0],
-			lda,
+			tempA.strideC,
 			& eigenvalues[0],
 			& wi[0],
 			0,
 			1,  // ldvl >= 1.  A lie to make lapack happy.
 			0,
-			1,  // ldvr >= 1.  ditto
+			1,  // ditto
+			&optimalLwork,
+			lwork,
+			info);
+
+	if (info) throw info;
+	lwork = (int) optimalLwork;
+	float * work = (float *) malloc (lwork * sizeof (float));
+
+	sgeev_ ('N',
+			'N',
+			n,
+			& tempA[0],
+			tempA.strideC,
+			& eigenvalues[0],
+			& wi[0],
+			0,
+			1,
+			0,
+			1,
 			work,
 			lwork,
 			info);
 
 	free (work);
 
-	if (info)
-	{
-	  throw info;
-	}
+	if (info) throw info;
   }
 
   template<>
   void
   geev (const MatrixAbstract<float> & A, Matrix<std::complex<float> > & eigenvalues, Matrix<float> & eigenvectors, bool destroyA)
   {
-	int lda = A.rows ();
-	int n = std::min (lda, A.columns ());
+	int n = std::min (A.rows (), A.columns ());
 
 	Matrix<float> tempA;
-	const Matrix<float> * pA;
-	if (destroyA  &&  (pA = dynamic_cast<const Matrix<float> *> (&A)))
+	if (destroyA  &&  (A.classID () & MatrixID))
 	{
-	  tempA = *pA;
+	  tempA = (const Matrix<float> &) A;
 	}
 	else
 	{
@@ -142,31 +168,47 @@ namespace fl
 
 	eigenvectors.resize (n, n);
 
-	int lwork = 5 * n;
-	float * work = (float *) malloc (lwork * sizeof (float));
+	int lwork = -1;
+	float optimalLwork;
 	int info = 0;
 
 	sgeev_ ('N',
 			'V',
 			n,
 			& tempA[0],
-			lda,
+			tempA.strideC,
 			& wr[0],
 			& wi[0],
 			0,
 			1,  // ldvl >= 1.  A lie to make lapack happy.
 			& eigenvectors[0],
+			eigenvectors.strideC,
+			&optimalLwork,
+			lwork,
+			info);
+
+	if (info) throw info;
+	lwork = (int) optimalLwork;
+	float * work = (float *) malloc (lwork * sizeof (float));
+
+	sgeev_ ('N',
+			'V',
 			n,
+			& tempA[0],
+			tempA.strideC,
+			& wr[0],
+			& wi[0],
+			0,
+			1,
+			& eigenvectors[0],
+			eigenvectors.strideC,
 			work,
 			lwork,
 			info);
 
 	free (work);
 
-	if (info)
-	{
-	  throw info;
-	}
+	if (info) throw info;
 
 	for (int i = 0; i < n; i++)
 	{

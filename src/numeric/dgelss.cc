@@ -26,45 +26,46 @@ namespace fl
   void
   gelss (const MatrixAbstract<double> & A, Matrix<double> & x, const MatrixAbstract<double> & B, double * residual, bool destroyA, bool destroyB)
   {
-	int m = A.rows ();
-	int n = A.columns ();
-	int nrhs = B.columns ();
-	int ldx = std::max (m, n);
-	assert (B.rows () == m);
+	const int m    = std::min (A.rows (), B.rows ());
+	const int n    = A.columns ();
+	const int nrhs = B.columns ();
+	const int mn   = std::max (m, n);  // the minimum allowable leading dimension (stride) of B
 
 	Matrix<double> tempA;
-	const Matrix<double> * p;
-	if (destroyA  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (A.classID () & MatrixID))
 	{
-	  tempA = *p;
+	  tempA = (const Matrix<double> &) A;
 	}
 	else
 	{
 	  tempA.copyFrom (A);
 	}
 
-	p = dynamic_cast<const Matrix<double> *> (&B);
-	if (destroyB  &&  ldx == m  &&  p)
+	const Matrix<double> * p = 0;
+	if (B.classID () & MatrixID) p = (const Matrix<double> *) &B;
+	if (destroyB  &&  p  &&  p->strideC >= mn)
 	{
 	  x = *p;
 	}
-	else
+	else  // must copy the elements of B into X
 	{
-	  x.resize (ldx, nrhs);
+	  x.resize (mn, nrhs);
 	  double * xp = & x(0,0);
-	  int step = ldx - m;
+	  const int xstep = x.strideC - m;
 	  if (p)
 	  {
 		double * bp = & B(0,0);
-		double * end = bp + m * nrhs;
+		double * end = bp + p->strideC * nrhs;
+		const int bstep = p->strideC - m;
 		while (bp < end)
 		{
-		  double * rowEnd = bp + m;
-		  while (bp < rowEnd)
+		  double * columnEnd = bp + m;
+		  while (bp < columnEnd)
 		  {
 			*xp++ = *bp++;
 		  }
-		  xp += step;
+		  xp += xstep;
+		  bp += bstep;
 		}
 	  }
 	  else
@@ -75,81 +76,72 @@ namespace fl
 		  {
 			*xp++ = B(r,c);
 		  }
-		  xp += step;
+		  xp += xstep;
 		}
 	  }
 	}
 
-	Matrix<double> s (std::min (m, n), 1);
+	Vector<double> s (std::min (m, n));
 
 	int rank;
-	int ldwork = 5 * std::max (ldx, nrhs);
-	double * work = (double *) malloc (ldwork * sizeof (double));
+	double optimalSize;
+	int lwork = -1;
 	int info = 0;
 
 	dgelss_ (m,
 			 n,
 			 nrhs,
 			 & tempA[0],
-			 m,
+			 tempA.strideC,
 			 & x[0],
-			 ldx,
+			 x.strideC,
+			 & s[0],
+			 -1.0,  // use machine precision
+			 rank,
+			 & optimalSize,
+			 lwork,
+			 info);
+
+	if (info) throw info;
+	lwork = (int) optimalSize;
+	double * work = (double *) malloc (lwork * sizeof (double));
+
+	dgelss_ (m,
+			 n,
+			 nrhs,
+			 & tempA[0],
+			 tempA.strideC,
+			 & x[0],
+			 x.strideC,
 			 & s[0],
 			 -1.0,  // use machine precision
 			 rank,
 			 work,
-			 ldwork,
+			 lwork,
 			 info);
 
 	free (work);
+	if (info) throw info;
 
-	if (info)
+	x.rows_ = n;
+	if (residual)
 	{
-	  throw info;
-	}
-
-	if (ldx > n)
-	{
-	  Matrix<double> tempX (n, nrhs);
-	  double * xp = & x(0,0);
-	  double * tp = & tempX(0,0);
-	  double * end = tp + n * nrhs;
-	  int step = ldx - n;
-	  while (tp < end)
+	  register double total = 0;
+	  const int rows = m - n;
+	  if (rows > 0)
 	  {
-		double * rowEnd = tp + n;
-		while (tp < rowEnd)
-		{
-		  *tp++ = *xp++;
-		}
-		xp += step;
-	  }
-
-	  if (residual)
-	  {
-		double total = 0;
-		double * xp = & x(0,0);
-		double * end = xp + ldx * nrhs;
+		double * xp  = (double *) x.data;
+		double * end = xp + x.strideC * nrhs;
+		const int step = x.strideC - rows;
+		xp += n;
 		while (xp < end)
 		{
-		  double * rowEnd = xp + ldx;
-		  xp += n;
-		  while (xp < rowEnd)
-		  {
-			total += *xp * *xp++;
-		  }
+		  double * columnEnd = xp + rows;
+		  while (xp < columnEnd) total += *xp * *xp++;
+		  xp += step;
 		}
-		*residual = total;
 	  }
-
-	  x = tempX;
-	}
-	else
-	{
-	  if (residual)
-	  {
-		*residual = 0;
-	  }
+	  *residual = total;
 	}
   }
 }

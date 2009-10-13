@@ -108,8 +108,7 @@ namespace fl
 	virtual T norm (float n) const;  ///< Generalized Frobenius norm: (sum_elements (element^n))^(1/n).  Effectively: INFINITY is max, 1 is sum, 2 is standard Frobenius norm.  n==0 is technically undefined, but we treat is as the count of non-zero elements.
 	virtual T sumSquares () const;  ///< Similar to norm(2), but without taking the square root.
 	virtual void normalize (const T scalar = 1.0);  ///< View matrix as vector and adjust so norm (2) == scalar.
-	virtual T dot (const MatrixAbstract & B) const;  ///< View both matrices as vectors and return dot product.  Ie: returns the sum of the products of corresponding elements.
-	virtual Matrix<T> cross (const MatrixAbstract & B) const;  ///< View both matrices as vectors and return cross product.  (Is there a better definition that covers 2D matrices?)
+	virtual T dot (const MatrixAbstract & B) const;  ///< Return the dot product of the first columns of the respective matrices.
 	virtual void identity (const T scalar = 1.0);  ///< Set main diagonal to scalar and everything else to zero.
 	virtual MatrixRegion<T> row (const int r) const;  ///< Returns a view row r.  The matrix is oriented "horizontal".
 	virtual MatrixRegion<T> column (const int c) const;  ///< Returns a view of column c.
@@ -127,7 +126,7 @@ namespace fl
 	Matrix<T> operator ! () const;  ///< Invert matrix if square, otherwise create pseudo-inverse.  Can't be virtual, because this forces a link dependency on LAPACK for any matrix class that uses it to implement inversion.
 	virtual MatrixResult<T> operator ~ () const;  ///< Transpose matrix.
 
-	// The operator forms of these functions are implemented below, outside this class.
+	virtual MatrixResult<T> operator ^ (const MatrixAbstract & B) const;  ///< View both matrices as vectors and return cross product.  (Is there a better definition that covers 2D matrices?)
 	virtual MatrixResult<T> operator & (const MatrixAbstract & B) const;  ///< Elementwise multiplication.  The prettiest name for this operator would be ".*", but that is not overloadable.
 	virtual MatrixResult<T> operator * (const MatrixAbstract & B) const;  ///< Multiply matrices: this * B
 	virtual MatrixResult<T> operator * (const T scalar)           const;  ///< Multiply each element by scalar
@@ -138,6 +137,7 @@ namespace fl
 	virtual MatrixResult<T> operator - (const MatrixAbstract & B) const;  ///< Elementwise difference.
 	virtual MatrixResult<T> operator - (const T scalar)           const;  ///< Subtract scalar from each element
 
+	virtual MatrixAbstract & operator ^= (const MatrixAbstract & B);  ///< View both matrices as vectors and compute cross product, stored back to this
 	virtual MatrixAbstract & operator &= (const MatrixAbstract & B);  ///< Elementwise multiply, stored back to this
 	virtual MatrixAbstract & operator *= (const MatrixAbstract & B);  ///< Standard matrix multiplication, stored back to this
 	virtual MatrixAbstract & operator *= (const T scalar);            ///< Multiply each element by scalar
@@ -241,12 +241,13 @@ namespace fl
 	virtual T sumSquares () const                                          {return result->sumSquares ();}
 	virtual void normalize (const T scalar = 1.0)                          {       result->normalize (scalar);}
 	virtual T dot (const MatrixAbstract<T> & B) const                      {return result->dot (B);}
-	virtual Matrix<T> cross (const MatrixAbstract<T> & B) const            {return result->cross (B);}
 	virtual void identity (const T scalar = 1.0)                           {       result->identity (scalar);}
 	virtual MatrixRegion<T> row (const int r) const                        {return result->row (r);}
 	virtual MatrixRegion<T> column (const int c) const                     {return result->column (c);}
 	virtual MatrixRegion<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const {return result->region (firstRow, firstColumn, lastRow, lastColumn);}
 
+	virtual MatrixResult<T> operator ^ (const MatrixAbstract<T> & B) const {return *result ^ B;}
+	virtual MatrixResult<T> operator & (const MatrixAbstract<T> & B) const {return *result & B;}
 	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const {return *result * B;}
 	virtual MatrixResult<T> operator * (const T scalar) const              {return *result * scalar;}
 	virtual MatrixResult<T> operator / (const MatrixAbstract<T> & B) const {return *result / B;}
@@ -256,6 +257,8 @@ namespace fl
 	virtual MatrixResult<T> operator - (const MatrixAbstract<T> & B) const {return *result - B;}
 	virtual MatrixResult<T> operator - (const T scalar) const              {return *result - scalar;}
 
+	virtual MatrixAbstract<T> & operator ^= (const MatrixAbstract<T> & B)  {return *result ^= B;}
+	virtual MatrixAbstract<T> & operator &= (const MatrixAbstract<T> & B)  {return *result &= B;}
 	virtual MatrixAbstract<T> & operator *= (const MatrixAbstract<T> & B)  {return *result *= B;}
 	virtual MatrixAbstract<T> & operator *= (const T scalar)               {return *result *= scalar;}
 	virtual MatrixAbstract<T> & operator /= (const MatrixAbstract<T> & B)  {return *result /= B;}
@@ -306,8 +309,11 @@ namespace fl
 
 	virtual T & operator () (const int row, const int column) const
 	{
-	  return ((T *) data)[column * rows_ + row];
+	  return ((T *) data)[column * strideC + row];
 	}
+	/**
+	   Guarantees correctness only for the first column, unless rows() == strideC.
+	 **/
     virtual T & operator [] (const int row) const
 	{
 	  return ((T *) data)[row];
@@ -316,10 +322,10 @@ namespace fl
 	virtual int columns () const;
 	virtual MatrixAbstract<T> * duplicate (bool deep = false) const;
 	virtual void clear (const T scalar = (T) 0);
-	virtual void resize (const int rows, const int columns = 1);
+	virtual void resize (const int rows, const int columns = 1);  ///< Always sets strideC = rows.
 	virtual void copyFrom (const MatrixAbstract<T> & that);
 
-	virtual Matrix reshape (const int rows, const int columns = 1) const;
+	virtual Matrix reshape (const int rows, const int columns = 1, bool inPlace = false) const;
 
 	virtual T norm (float n) const;
 	virtual T sumSquares () const;
@@ -342,6 +348,7 @@ namespace fl
 
 	// Operators on a different type.  These are syntactic sugar for
 	// typecasting the second operand.
+	template<class T2> MatrixResult<T> operator * (const MatrixAbstract<T2> & B) const {return operator * ((Matrix<T>) B);}
 	template<class T2> MatrixResult<T> operator - (const MatrixAbstract<T2> & B) const {return operator - ((Matrix<T>) B);}
 
 	virtual void read (std::istream & stream);
@@ -351,6 +358,7 @@ namespace fl
 	Pointer data;
 	int rows_;
 	int columns_;
+	int strideC;  ///< Number of elements between start of each column in memory.  Equivalent to "leading dimension" in LAPACK parlance.  Could be in terms of bytes, like PixelBufferPacked::stride, but the need for this is very unlikely, so not worth the programming effort.
   };
 
   /**

@@ -24,10 +24,9 @@ namespace fl
   void
   sygv (const MatrixAbstract<float> & A, const MatrixAbstract<float> & B, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors, bool destroyA, bool destroyB)
   {
-	const Matrix<float> * p;
-	if (destroyA  &&  (p = dynamic_cast<const Matrix<float> *> (&A)))
+	if (destroyA  &&  (A.classID () & MatrixID))
 	{
-	  eigenvectors = *p;
+	  eigenvectors = (const Matrix<float> &) A;
 	}
 	else
 	{
@@ -35,9 +34,9 @@ namespace fl
 	}
 
 	Matrix<float> tempB;
-	if (destroyB  &&  (p = dynamic_cast<const Matrix<float> *> (&B)))
+	if (destroyB  &&  (B.classID () & MatrixID))
 	{
-	  tempB = *p;
+	  tempB = (const Matrix<float> &) B;
 	}
 	else
 	{
@@ -57,14 +56,15 @@ namespace fl
 			'U',
 			n,
 			& eigenvectors[0],
-			n,
+			eigenvectors.strideC,
 			& tempB[0],
-			n,
+			tempB.strideC,
 			& eigenvalues[0],
 			& optimalSize,
 			lwork,
 			info);
 
+	if (info) throw info;
 	lwork = (int) optimalSize;
 	float * work = (float *) malloc (lwork * sizeof (float));
 
@@ -74,9 +74,9 @@ namespace fl
 			'U',
 			n,
 			& eigenvectors[0],
-			n,
+			eigenvectors.strideC,
 			& tempB[0],
-			n,
+			tempB.strideC,
 			& eigenvalues[0],
 			work,
 			lwork,
@@ -84,9 +84,6 @@ namespace fl
 
 	free (work);
 
-	if (info)
-	{
-	  throw info;
-	}
+	if (info) throw info;
   }
 }

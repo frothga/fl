@@ -14,8 +14,18 @@ for details.
 */
 
 
+#include <complex>
+/// A small cheat to make the basic norm() template work.
+namespace std
+{
+  inline complex<double>
+  max (const double & a, const complex<double> & b)
+  {
+	return complex<double> (max (a, b.real ()), 0);
+  }
+}
+
 #include "fl/Matrix.tcc"
-#include "fl/MatrixComplex.tcc"
 #include "fl/serialize.h"
 
 

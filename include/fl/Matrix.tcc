@@ -107,7 +107,7 @@ namespace fl
 	int w = columns ();
 	if (n == INFINITY)
 	{
-	  T result = std::abs ((*this)(0,0));
+	  T result = (T) 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
@@ -124,14 +124,14 @@ namespace fl
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  if ((*this)(r,c)) result++;
+		  if (std::abs ((*this)(r,c)) > 0) result++;
 		}
 	  }
 	  return (T) result;
 	}
 	else if (n == 1.0f)
 	{
-	  T result = 0;
+	  T result = (T) 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
@@ -143,7 +143,7 @@ namespace fl
 	}
 	else if (n == 2.0f)
 	{
-	  T result = 0;
+	  T result = (T) 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
@@ -156,7 +156,7 @@ namespace fl
 	}
 	else
 	{
-	  T result = 0;
+	  T result = (T) 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
@@ -164,7 +164,7 @@ namespace fl
 		  result += (T) std::pow ((*this) (r, c), (T) n);
 		}
 	  }
-	  return (T) std::pow (result, (T) (1.0f / n));
+	  return (T) std::pow (result, (T) (1.0 / n));
 	}
   }
 
@@ -207,38 +207,9 @@ namespace fl
   T
   MatrixAbstract<T>::dot (const MatrixAbstract<T> & B) const
   {
-	int h = rows ();
-	int w = columns ();
-	int bh = B.rows ();
-	int count = bh * B.columns ();
-	int i = 0;
-	T result = (T) 0;
-	for (int c = 0; c < w; c++)
-	{
-	  for (int r = 0; r < h; r++)
-	  {
-		result += (*this)(r,c) * B(i % bh, i / bh);
-		if (++i >= count)
-		{
-		  return result;
-		}
-	  }
-	}
-	return result;
-  }
-
-  template<class T>
-  Matrix<T>
-  MatrixAbstract<T>::cross (const MatrixAbstract<T> & B) const
-  {
-	// This version is only good for 3 element vectors.  Need to choose
-	// a cross-product hack for higher dimensions
-
-	Matrix<T> result (3);
-	result[0] = (*this)[1] * B[2] - (*this)[2] * B[1];
-	result[1] = (*this)[2] * B[0] - (*this)[0] * B[2];
-	result[2] = (*this)[0] * B[1] - (*this)[1] * B[0];
-
+	int h = std::min (rows (), B.rows ());
+	register T result = (T) 0;
+	for (int r = 0; r < h; r++) result += (*this)(r,1) * B(r,1);
 	return result;
   }
 
@@ -313,6 +284,21 @@ namespace fl
   MatrixAbstract<T>::operator ~ () const
   {
 	return new MatrixTranspose<T> (this->duplicate ());
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixAbstract<T>::operator ^ (const MatrixAbstract<T> & B) const
+  {
+	// This version is only good for 3 element vectors.  Need to choose
+	// a cross-product hack for higher dimensions
+
+	Matrix<T> * result = new Matrix<T> (3);
+	(*result)[0] = (*this)[1] * B[2] - (*this)[2] * B[1];
+	(*result)[1] = (*this)[2] * B[0] - (*this)[0] * B[2];
+	(*result)[2] = (*this)[0] * B[1] - (*this)[1] * B[0];
+
+	return result;
   }
 
   template<class T>
@@ -488,6 +474,14 @@ namespace fl
 	  }
 	}
 	return result;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixAbstract<T>::operator ^= (const MatrixAbstract<T> & B)
+  {
+	copyFrom ((*this) ^ B);
+	return *this;
   }
 
   template<class T>
@@ -757,6 +751,7 @@ namespace fl
   {
 	rows_ = 0;
 	columns_ = 0;
+	strideC = 0;
   };
 
   template<class T>
@@ -800,6 +795,7 @@ namespace fl
   {
 	rows_ = 0;
 	columns_ = 0;
+	strideC = 0;
 	*this << source;
   }
 
@@ -809,6 +805,7 @@ namespace fl
 	data.attach (that, rows * columns * sizeof (T));
 	rows_ = rows;
 	columns_ = columns;
+	strideC = rows;
   }
 
   template<class T>
@@ -843,6 +840,7 @@ namespace fl
 	  rows_ = rows;
 	  columns_ = columns;
 	}
+	strideC = rows_;
   }
 
   template<class T>
@@ -857,6 +855,7 @@ namespace fl
   {
 	rows_ = 0;
 	columns_ = 0;
+	strideC = 0;
 	data.detach ();
   }
 
@@ -905,7 +904,7 @@ namespace fl
 	else
 	{
 	  T * i = (T *) data;
-	  T * end = i + rows_ * columns_;
+	  T * end = i + strideC * columns_;
 	  while (i < end)
 	  {
 		*i++ = scalar;
@@ -920,6 +919,7 @@ namespace fl
 	data.grow (rows * columns * sizeof (T));
 	rows_ = rows;
 	columns_ = columns;
+	strideC = rows;
   }
 
   template<class T>
@@ -930,7 +930,23 @@ namespace fl
 	{
 	  const Matrix & M = (const Matrix &) (that);
 	  resize (M.rows_, M.columns_);
-	  data.copyFrom (M.data);
+	  const int step = M.strideC - M.rows_;
+	  if (step == 0)
+	  {
+		data.copyFrom (M.data);
+	  }
+	  else
+	  {
+		T * i = (T *) data;
+		T * j = (T *) M.data;
+		T * end = i + rows_ * columns_;
+		while (i < end)
+		{
+		  T * columnEnd = i + rows_;
+		  while (i < columnEnd) *i++ = *j++;
+		  j += step;
+		}
+	  }
 	}
 	else
 	{
@@ -948,15 +964,70 @@ namespace fl
 	}
   }
 
+  /**
+	 Unwind the elements columnwise and reflow them into a matrix of the
+	 given size.  If the new matrix has a larger number of elements, then
+	 repeat the element sequence until the new matrix is filled.  If the
+	 number of rows is changed (the most likely case) and the source matrix
+	 has a number of rows different than its stride, then this function
+	 will move data in memory to provide contiguous access to elements.
+
+	 @param avoidCopy If the new size is no larger in each dimension than
+	 the old size, you can avoid copying the elements by setting this flag.
+	 The consequence is that the values in the new matrix will not follow
+	 the columnwise unwind behavior, but will simply be a block out of the
+	 source matrix of the specified size.
+  **/
   template<class T>
   Matrix<T>
-  Matrix<T>::reshape (const int rows, const int columns) const
+  Matrix<T>::reshape (const int rows, const int columns, bool inPlace) const
   {
-	Matrix result = *this;
-	result.rows_ = rows;
-	result.columns_ = columns;
-	// Should also add code to repeat the data block if my (rows_ * columns_)
-	// is less than the requested (rows * columns).
+	if (inPlace)
+	{
+	  if (rows <= strideC  &&  columns <= columns_)
+	  {
+		Matrix result = *this;  // should be shallow copy; strideC will be the same
+		result.rows_    = rows;
+		result.columns_ = columns;
+		return result;
+	  }
+	}
+	else
+	{
+	  if (rows_ == strideC  &&  rows * columns <= rows_ * columns_)
+	  {
+		Matrix result = *this;
+		result.rows_    = rows;
+		result.columns_ = columns;
+		result.strideC  = rows;
+		return result;
+	  }
+	}
+
+	// Create new matrix and copy data into a dense block.
+	Matrix result (rows, columns);
+	const int currentSize = rows_ * columns_;
+	const int resultSize  = rows  * columns;
+	const int step        = strideC - rows_;
+	T * resultData = (T *) result.data;
+	T * source     = (T *) data;
+	T * dest       = resultData;
+	//   Copy an integral number of columns over
+	T * end = dest + (std::min (currentSize, resultSize) / rows_) * rows_;
+	while (dest < end)
+	{
+	  T * columnEnd = source + rows_;
+	  while (source < columnEnd) *dest++ = *source++;
+	  source += step;
+	}
+
+	// Finish filling result:
+	//   currentSize < resultSize -- duplicate data block in result
+	//   currentSize > resultSize -- copy over part of a final column
+	end = resultData + resultSize;
+	if (currentSize < resultSize) source = resultData;
+	while (dest < end) *dest++ = *source++;
+
 	return result;
   }
 
@@ -968,13 +1039,16 @@ namespace fl
   {
 	// Some of this code may have to be modified for complex numbers.
 	T * i = (T *) data;
-	T * end = i + rows_ * columns_;
+	T * end = i + strideC * columns_;
+	const int step = strideC - rows_;
 	if (n == INFINITY)
 	{
-	  T result = std::abs (*i++);  // result is undefined for empty Matrix
+	  T result = (T) 0;
 	  while (i < end)
 	  {
-		result = std::max (std::abs (*i++), result);
+		T * columnEnd = i + rows_;
+		while (i < columnEnd) result = std::max (std::abs (*i++), result);
+		i += step;
 	  }
 	  return result;
 	}
@@ -983,36 +1057,44 @@ namespace fl
 	  unsigned int result = 0;
 	  while (i < end)
 	  {
-		if (*i++) result++;
+		T * columnEnd = i + rows_;
+		while (i < columnEnd) if (std::abs (*i++) > 0) result++;
+		i += step;
 	  }
 	  return (T) result;
 	}
 	else if (n == 1.0f)
 	{
-	  T result = 0;
+	  T result = (T) 0;
 	  while (i < end)
 	  {
-		result += *i++;
+		T * columnEnd = i + rows_;
+		while (i < columnEnd) result += *i++;
+		i += step;
 	  }
 	  return result;
 	}
 	else if (n == 2.0f)
 	{
-	  T result = 0;
+	  T result = (T) 0;
 	  while (i < end)
 	  {
-		result += (*i) * (*i++);
+		T * columnEnd = i + rows_;
+		while (i < columnEnd) result += (*i) * (*i++);
+		i += step;
 	  }
 	  return (T) std::sqrt (result);
 	}
 	else
 	{
-	  T result = 0;
+	  T result = (T) 0;
 	  while (i < end)
 	  {
-		result += (T) std::pow (*i++, (T) n);
+		T * columnEnd = i + rows_;
+		while (i < columnEnd) result += (T) std::pow (*i++, (T) n);
+		i += step;
 	  }
-	  return (T) std::pow (result, (T) (1.0f / n));
+	  return (T) std::pow (result, (T) (1.0 / n));
 	}
   }
 
@@ -1022,10 +1104,13 @@ namespace fl
   {
 	T * i = (T *) data;
 	T * end = i + rows_ * columns_;
+	const int step = strideC - rows_;
 	T result = 0;
 	while (i < end)
 	{
-	  result += (*i) * (*i++);
+	  T * columnEnd = i + rows_;
+	  while (i < columnEnd) result += (*i) * (*i++);
+	  i += step;
 	}
 	return result;
   }
@@ -1034,14 +1119,11 @@ namespace fl
   T
   Matrix<T>::dot (const Matrix<T> & B) const
   {
-	T result = (T) 0;
-	T * i = (T *) data;
-	T * end = i + rows_ * columns_;
-	T * j = (T *) B.data;
-	while (i < end)
-	{
-	  result += (*i++) * (*j++);
-	}
+	register T result = (T) 0;
+	T * i   = (T *) data;
+	T * j   = (T *) B.data;
+	T * end = i + std::min (rows_, B.rows_);
+	while (i < end) result += (*i++) * (*j++);
 	return result;
   }
 
@@ -1072,48 +1154,49 @@ namespace fl
   MatrixResult<T>
   Matrix<T>::operator * (const MatrixAbstract<T> & B) const
   {
+	const int w  = std::min (columns_, B.rows ());
+	const int bw = B.columns ();
+	Matrix * result = new Matrix (rows_, bw);
+	T * ri = (T *) result->data;
+
 	if (B.classID () & MatrixID)
 	{
 	  const Matrix & MB = (const Matrix &) B;
-	  int w = std::min (columns_, MB.rows_);
-	  Matrix * result = new Matrix (rows_, MB.columns_);
-	  for (int c = 0; c < MB.columns_; c++)
+	  for (int c = 0; c < bw; c++)
 	  {
 		for (int r = 0; r < rows_; r++)
 		{
 		  T * i = ((T *) data) + r;
-		  T * j = ((T *) MB.data) + c * MB.rows_;
+		  T * j = ((T *) MB.data) + c * MB.strideC;
 		  T * end = j + w;
 		  register T element = (T) 0;
 		  while (j < end)
 		  {
 			element += (*i) * (*j++);
-			i += rows_;
+			i += strideC;
 		  }
-		  (*result)(r,c) = element;
+		  *ri++ = element;
 		}
 	  }
-	  return result;
+	}
+	else
+	{
+	  for (int c = 0; c < bw; c++)
+	  {
+		for (int r = 0; r < rows_; r++)
+		{
+		  T * i = ((T *) data) + r;
+		  register T element = (T) 0;
+		  for (int j = 0; j < w; j++)
+		  {
+			element += (*i) * B (j, c);
+			i += strideC;
+		  }
+		  *ri++ = element;
+		}
+	  }
 	}
 
-	int w = std::min (columns_, B.rows ());
-	int bw = B.columns ();
-	Matrix * result = new Matrix (rows_, bw);
-	T * ri = (T *) result->data;
-	for (int c = 0; c < bw; c++)
-	{
-	  for (int r = 0; r < rows_; r++)
-	  {
-		T * i = ((T *) data) + r;
-		register T element = (T) 0;
-		for (int j = 0; j < w; j++)
-		{
-		  element += (*i) * B (j, c);
-		  i += rows_;
-		}
-		*ri++ = element;
-	  }
-	}
 	return result;
   }
 
@@ -1122,12 +1205,15 @@ namespace fl
   Matrix<T>::operator * (const T scalar) const
   {
 	Matrix * result = new Matrix (rows_, columns_);
-	T * i = (T *) result->data;
-	T * end = i + rows_ * columns_;
-	T * j = (T *) data;
-	while (i < end)
+	T * i   = (T *) data;
+	T * r   = (T *) result->data;
+	T * end = r + rows_ * columns_;
+	const int step = strideC - rows_;
+	while (r < end)
 	{
-	  *i++ = *j++ * scalar;
+	  T * columnEnd = i + rows_;
+	  while (i < columnEnd) *r++ = *i++ * scalar;
+	  i += step;
 	}
 	return result;
   }
@@ -1137,12 +1223,15 @@ namespace fl
   Matrix<T>::operator / (const T scalar) const
   {
 	Matrix * result = new Matrix (rows_, columns_);
-	T * i = (T *) result->data;
-	T * end = i + rows_ * columns_;
-	T * j = (T *) data;
-	while (i < end)
+	T * i   = (T *) data;
+	T * r   = (T *) result->data;
+	T * end = r + rows_ * columns_;
+	const int step = strideC - rows_;
+	while (r < end)
 	{
-	  *i++ = *j++ / scalar;
+	  T * columnEnd = i + rows_;
+	  while (i < columnEnd) *r++ = *i++ / scalar;
+	  i += step;
 	}
 	return result;
   }
@@ -1151,42 +1240,72 @@ namespace fl
   MatrixResult<T>
   Matrix<T>::operator + (const MatrixAbstract<T> & B) const
   {
-	if (B.classID () & MatrixID)
+	if ((B.classID () & MatrixID) == 0) return MatrixAbstract<T>::operator + (B);
+
+	Matrix * result = new Matrix (rows_, columns_);
+	const Matrix & MB = (const Matrix &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - rows_;
+	const int stepB = MB.strideC - oh;
+	T * a = (T *) data;
+	T * b = (T *) MB.data;
+	T * r = (T *) result->data;
+	T * end = r + rows_ * ow;
+	while (r < end)
 	{
-	  const Matrix & MB = (const Matrix &) B;
-	  if (MB.rows_ == rows_  &&  MB.columns_ == columns_)
-	  {
-		Matrix * result = new Matrix (rows_, columns_);
-		T * a = (T *) data;
-		T * b = (T *) MB.data;
-		T * r = (T *) result->data;
-		T * end = r + rows_ * columns_;
-		while (r < end) *r++ = *a++ + *b++;
-		return result;
-	  }
+	  T * overlapEnd = r + oh;
+	  T * columnEnd = r + rows_;
+	  while (r < overlapEnd) *r++ = *a++ + *b++;
+	  while (r < columnEnd)  *r++ = *a++;
+	  a += stepA;
+	  b += stepB;
 	}
-	return MatrixAbstract<T>::operator + (B);
+	end += rows_ * (columns_ - ow);
+	while (r < end)
+	{
+	  T * columnEnd = r + rows_;
+	  while (r < columnEnd) *r++ = *a++;
+	  a += stepA;
+	}
+
+	return result;
   }
 
   template<class T>
   MatrixResult<T>
   Matrix<T>::operator - (const MatrixAbstract<T> & B) const
   {
-	if (B.classID () & MatrixID)
+	if ((B.classID () & MatrixID) == 0) return MatrixAbstract<T>::operator - (B);
+
+	Matrix * result = new Matrix (rows_, columns_);
+	const Matrix & MB = (const Matrix &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - rows_;
+	const int stepB = MB.strideC - oh;
+	T * a = (T *) data;
+	T * b = (T *) MB.data;
+	T * r = (T *) result->data;
+	T * end = r + rows_ * ow;
+	while (r < end)
 	{
-	  const Matrix & MB = (const Matrix &) B;
-	  if (MB.rows_ == rows_  &&  MB.columns_ == columns_)
-	  {
-		Matrix * result = new Matrix (rows_, columns_);
-		T * a = (T *) data;
-		T * b = (T *) MB.data;
-		T * r = (T *) result->data;
-		T * end = r + rows_ * columns_;
-		while (r < end) *r++ = *a++ - *b++;
-		return result;
-	  }
+	  T * overlapEnd = r + oh;
+	  T * columnEnd = r + rows_;
+	  while (r < overlapEnd) *r++ = *a++ - *b++;
+	  while (r < columnEnd)  *r++ = *a++;
+	  a += stepA;
+	  b += stepB;
 	}
-	return MatrixAbstract<T>::operator - (B);
+	end += rows_ * (columns_ - ow);
+	while (r < end)
+	{
+	  T * columnEnd = r + rows_;
+	  while (r < columnEnd) *r++ = *a++;
+	  a += stepA;
+	}
+
+	return result;
   }
 
   template<class T>
@@ -1205,10 +1324,13 @@ namespace fl
   Matrix<T>::operator *= (const T scalar)
   {
 	T * i = (T *) data;
-	T * end = i + rows_ * columns_;
+	T * end = i + strideC * columns_;
+	const int step = strideC - rows_;
 	while (i < end)
 	{
-	  *i++ *= scalar;
+	  T * columnEnd = i + rows_;
+	  while (i < columnEnd) *i++ *= scalar;
+	  i += step;
 	}
 	return *this;
   }
@@ -1218,10 +1340,13 @@ namespace fl
   Matrix<T>::operator /= (const T scalar)
   {
 	T * i = (T *) data;
-	T * end = i + rows_ * columns_;
+	T * end = i + strideC * columns_;
+	const int step = strideC - rows_;
 	while (i < end)
 	{
-	  *i++ /= scalar;
+	  T * columnEnd = i + rows_;
+	  while (i < columnEnd) *i++ /= scalar;
+	  i += step;
 	}
 	return *this;
   }
@@ -1230,30 +1355,39 @@ namespace fl
   MatrixAbstract<T> &
   Matrix<T>::operator += (const MatrixAbstract<T> & B)
   {
-	if (B.classID () & MatrixID)
+	if ((B.classID () & MatrixID) == 0) return MatrixAbstract<T>::operator += (B);
+
+	const Matrix & MB = (const Matrix &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - oh;
+	const int stepB = MB.strideC - oh;
+	T * a   = (T *) data;
+	T * b   = (T *) MB.data;
+	T * end = a + strideC * ow;
+	while (a < end)
 	{
-	  const Matrix & MB = (const Matrix &) B;
-	  if (MB.rows_ == rows_  &&  MB.columns_ == columns_)
-	  {
-		T * a   = (T *) data;
-		T * b   = (T *) MB.data;
-		T * end = a + rows_ * columns_;
-		while (a < end) *a++ += *b++;
-		return *this;
-	  }
+	  T * columnEnd = a + oh;
+	  while (a < columnEnd) *a++ += *b++;
+	  a += stepA;
+	  b += stepB;
 	}
-	return MatrixAbstract<T>::operator += (B);
+
+	return *this;
   }
 
   template<class T>
   MatrixAbstract<T> &
   Matrix<T>::operator += (const T scalar)
   {
-	T * i = (T *) data;
-	T * end = i + rows_ * columns_;
+	T * i   = (T *) data;
+	T * end = i + strideC * columns_;
+	const int step = strideC - rows_;
 	while (i < end)
 	{
-	  *i++ += scalar;
+	  T * columnEnd = i + rows_;
+	  while (i < columnEnd) *i++ += scalar;
+	  i += step;
 	}
 	return *this;
   }
@@ -1262,30 +1396,39 @@ namespace fl
   MatrixAbstract<T> &
   Matrix<T>::operator -= (const MatrixAbstract<T> & B)
   {
-	if (B.classID () & MatrixID)
+	if ((B.classID () & MatrixID) == 0) return MatrixAbstract<T>::operator -= (B);
+
+	const Matrix & MB = (const Matrix &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - oh;
+	const int stepB = MB.strideC - oh;
+	T * a   = (T *) data;
+	T * b   = (T *) MB.data;
+	T * end = a + strideC * ow;
+	while (a < end)
 	{
-	  const Matrix & MB = (const Matrix &) B;
-	  if (MB.rows_ == rows_  &&  MB.columns_ == columns_)
-	  {
-		T * a   = (T *) data;
-		T * b   = (T *) MB.data;
-		T * end = a + rows_ * columns_;
-		while (a < end) *a++ -= *b++;
-		return *this;
-	  }
+	  T * columnEnd = a + oh;
+	  while (a < columnEnd) *a++ -= *b++;
+	  a += stepA;
+	  b += stepB;
 	}
-	return MatrixAbstract<T>::operator -= (B);
+
+	return *this;
   }
 
   template<class T>
   MatrixAbstract<T> &
   Matrix<T>::operator -= (const T scalar)
   {
-	T * i = (T *) data;
-	T * end = i + rows_ * columns_;
+	T * i   = (T *) data;
+	T * end = i + strideC * columns_;
+	const int step = strideC - rows_;
 	while (i < end)
 	{
-	  *i++ -= scalar;
+	  T * columnEnd = i + rows_;
+	  while (i < columnEnd) *i++ -= scalar;
+	  i += step;
 	}
 	return *this;
   }
@@ -1296,6 +1439,7 @@ namespace fl
   {
 	stream.read ((char *) &rows_, sizeof (rows_));
 	stream.read ((char *) &columns_, sizeof (columns_));
+	strideC = rows_;
 	if (! stream.good ())
 	{
 	  throw "Stream bad.  Unable to finish reading Matrix.";
@@ -1311,8 +1455,15 @@ namespace fl
   {
 	stream.write ((char *) &rows_, sizeof (rows_));
 	stream.write ((char *) &columns_, sizeof (columns_));
-	int count = rows_ * columns_ * sizeof (T);
-	if (count > 0) stream.write ((char *) data, count);
+	T * i = (T *) data;
+	const int bytes = rows_ * sizeof (T);
+	int count = bytes * columns_;
+	while (count > 0)
+	{
+	  stream.write ((char *) i, bytes);
+	  i += strideC;
+	  count -= bytes;
+	}
   }
 
 

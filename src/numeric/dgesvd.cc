@@ -31,10 +31,9 @@ namespace fl
 	int minmn = std::min (m, n);
 
 	Matrix<double> tempA;
-	const Matrix<double> * p;
-	if (destroyA  &&  (p = dynamic_cast<const Matrix<double> *> (&A)))
+	if (destroyA  &&  (A.classID () & MatrixID))
 	{
-	  tempA = *p;
+	  tempA = (const Matrix<double> &) A;
 	}
 	else
 	{
@@ -85,16 +84,17 @@ namespace fl
 			 m,
 			 n,
 			 & tempA[0],
-			 m,
+			 tempA.strideC,
 			 & S[0],
 			 & U[0],
-			 U.rows (),
+			 U.strideC,
 			 & VT[0],
-			 VT.rows (),
+			 VT.strideC,
 			 &optimalSize,
 			 lwork,
 			 info);
 
+	if (info) throw info;
 	lwork = (int) optimalSize;
     double * work = (double *) malloc (lwork * sizeof (double));
 
@@ -104,22 +104,19 @@ namespace fl
 			 m,
 			 n,
 			 & tempA[0],
-			 m,
+			 tempA.strideC,
 			 & S[0],
 			 & U[0],
-			 U.rows (),
+			 U.strideC,
 			 & VT[0],
-			 VT.rows (),
+			 VT.strideC,
 			 work,
 			 lwork,
 			 info);
 
     free (work);
 
-	if (info)
-	{
-	  throw info;
-	}
+	if (info) throw info;
   }
 
   template<>

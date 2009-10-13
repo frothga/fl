@@ -48,7 +48,7 @@ namespace fl
 			& tempA(0,0),
 			& eigenvalues[0],
 			& eigenvectors(0,0),
-			n,
+			eigenvectors.strideC,
 			work,
 			info);
 

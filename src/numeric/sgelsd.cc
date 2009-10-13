@@ -14,12 +14,8 @@ for details.
 
 #include "fl/lapack.h"
 #include "fl/lapackprotos.h"
-#include "fl/lapackproto.h"
 
 #include <assert.h>
-
-
-using namespace std;
 
 
 namespace fl
@@ -28,46 +24,46 @@ namespace fl
   void
   gelsd (const MatrixAbstract<float> & A, Matrix<float> & x, const MatrixAbstract<float> & B, float * residual, bool destroyA, bool destroyB)
   {
-	int m = A.rows ();
-	int n = A.columns ();
-	int minmn = min (m, n);
-	int nrhs = B.columns ();
-	int ldx = max (m, n);
-	assert (B.rows () == m);
+	const int m    = std::min (A.rows (), B.rows ());
+	const int n    = A.columns ();
+	const int nrhs = B.columns ();
+	const int mn   = std::max (m, n);  // the minimum allowable leading dimension (stride) of B
 
 	Matrix<float> tempA;
-	const Matrix<float> * p;
-	if (destroyA  &&  (p = dynamic_cast<const Matrix<float> *> (&A)))
+	if (destroyA  &&  (A.classID () & MatrixID))
 	{
-	  tempA = *p;
+	  tempA = (const Matrix<float> &) A;
 	}
 	else
 	{
 	  tempA.copyFrom (A);
 	}
 
-	p = dynamic_cast<const Matrix<float> *> (&B);
-	if (destroyB  &&  ldx == m  &&  p)
+	const Matrix<float> * p = 0;
+	if (B.classID () & MatrixID) p = (const Matrix<float> *) &B;
+	if (destroyB  &&  p  &&  p->strideC >= mn)
 	{
 	  x = *p;
 	}
-	else
+	else  // must copy the elements of B into X
 	{
-	  x.resize (ldx, nrhs);
+	  x.resize (mn, nrhs);
 	  float * xp = & x(0,0);
-	  int step = ldx - m;
+	  const int xstep = x.strideC - m;
 	  if (p)
 	  {
 		float * bp = & B(0,0);
-		float * end = bp + m * nrhs;
+		float * end = bp + p->strideC * nrhs;
+		const int bstep = p->strideC - m;
 		while (bp < end)
 		{
-		  float * rowEnd = bp + m;
-		  while (bp < rowEnd)
+		  float * columnEnd = bp + m;
+		  while (bp < columnEnd)
 		  {
 			*xp++ = *bp++;
 		  }
-		  xp += step;
+		  xp += xstep;
+		  bp += bstep;
 		}
 	  }
 	  else
@@ -78,21 +74,17 @@ namespace fl
 		  {
 			*xp++ = B(r,c);
 		  }
-		  xp += step;
+		  xp += xstep;
 		}
 	  }
 	}
 
-	int smlsiz = ilaenv (9, "SGELSD", " ", 0, 0, 0, 0);
-	int nlvl = max (0, (int) ceil (log (minmn / (smlsiz + 1.0)) / log (2.0)));
-
-	float * s = (float *) malloc (minmn * sizeof (float));
-	int liwork = 3 * minmn * nlvl + 11 * minmn;
-	int * iwork = (int *) malloc (liwork * sizeof (int));
+	Vector<float> s (std::min (m, n));
 
 	int rank;
-    int lwork = -1;
-	float optimalSize;
+    int lwork = -1;  // space query
+	float optimalLwork;
+	int   optimalLiwork;
 	int info = 0;
 
 	// Do space query first
@@ -100,29 +92,32 @@ namespace fl
 			 n,
 			 nrhs,
 			 & tempA[0],
-			 m,
+			 tempA.strideC,
 			 & x[0],
-			 ldx,
-			 s,
+			 x.strideC,
+			 & s[0],
 			 -1.0,  // use machine precision
 			 rank,
-			 &optimalSize,
+			 &optimalLwork,
 			 lwork,
-			 iwork,
+			 &optimalLiwork,
 			 info);
 
-	lwork = (int) optimalSize;
-    float * work = (float *) malloc (lwork * sizeof (float));
+	if (info) throw info;
+	lwork      = (int) optimalLwork;
+	int liwork =       optimalLiwork;
+    float * work  = (float *) malloc (lwork  * sizeof (float));
+	int *   iwork = (int *)   malloc (liwork * sizeof (int));
 
 	// And then the actual computation
 	sgelsd_ (m,
 			 n,
 			 nrhs,
 			 & tempA[0],
-			 m,
+			 tempA.strideC,
 			 & x[0],
-			 ldx,
-			 s,
+			 x.strideC,
+			 & s[0],
 			 -1.0,  // use machine precision
 			 rank,
 			 work,
@@ -131,56 +126,29 @@ namespace fl
 			 info);
 
 	free (work);
-	free (s);
 	free (iwork);
 
-	if (info)
-	{
-	  throw info;
-	}
+	if (info) throw info;
 
-	if (ldx > n)
+	x.rows_ = n;
+	if (residual)
 	{
-	  Matrix<float> tempX (n, nrhs);
-	  float * xp = & x(0,0);
-	  float * tp = & tempX(0,0);
-	  float * end = tp + n * nrhs;
-	  int step = ldx - n;
-	  while (tp < end)
+	  register float total = 0;
+	  const int rows = m - n;
+	  if (rows > 0)
 	  {
-		float * rowEnd = tp + n;
-		while (tp < rowEnd)
-		{
-		  *tp++ = *xp++;
-		}
-		xp += step;
-	  }
-
-	  if (residual)
-	  {
-		float total = 0;
-		float * xp = & x(0,0);
-		float * end = xp + ldx * nrhs;
+		float * xp  = (float *) x.data;
+		float * end = xp + x.strideC * nrhs;
+		const int step = x.strideC - rows;
+		xp += n;
 		while (xp < end)
 		{
-		  float * rowEnd = xp + ldx;
-		  xp += n;
-		  while (xp < rowEnd)
-		  {
-			total += *xp * *xp++;
-		  }
+		  float * columnEnd = xp + rows;
+		  while (xp < columnEnd) total += *xp * *xp++;
+		  xp += step;
 		}
-		*residual = total;
 	  }
-
-	  x = tempX;
-	}
-	else
-	{
-	  if (residual)
-	  {
-		*residual = 0;
-	  }
+	  *residual = total;
 	}
   }
 }

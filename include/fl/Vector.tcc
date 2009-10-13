@@ -30,15 +30,17 @@ namespace fl
   template<class T>
   Vector<T>::Vector ()
   {
-	this->rows_ = 0;
+	this->rows_    = 0;
 	this->columns_ = 0;
+	this->strideC  = 0;
   }
 
   template<class T>
   Vector<T>::Vector (const int rows)
   {
-	this->rows_ = rows;
+	this->rows_    = rows;
 	this->columns_ = 1;
+	this->strideC  = rows;
 	this->data.grow (rows * sizeof (T));
   }
 
@@ -70,9 +72,10 @@ namespace fl
   template<class T>
   Vector<T>::Vector (const Matrix<T> & that)
   {
-	this->data = that.data;
-	this->rows_ = that.rows_ * that.columns_;
+	this->data     = that.data;
+	this->rows_    = that.rows_ * that.columns_;
 	this->columns_ = 1;
+	this->strideC  = this->rows_;
   }
 
   template<class T>
@@ -91,8 +94,9 @@ namespace fl
   Vector<T>::Vector (T * that, const int rows)
   {
 	this->data.attach (that, rows * sizeof (T));
-	this->rows_ = rows;
+	this->rows_    = rows;
 	this->columns_ = 1;
+	this->strideC  = rows;
   }
 
   template<class T>
@@ -117,6 +121,7 @@ namespace fl
 	{
 	  this->rows_ = rows;
 	}
+	this->strideC = this->rows_;
   }
 
   template<class T>
