@@ -152,6 +152,9 @@ struct FormatMapping
 FormatMapping formatMap[] =
 {
   {(PixelFormat *) 2, B8(0001000), 1,  0, 1, 3, 1, 0, 0},  // palette
+  {(PixelFormat *) 3, B8(1110000), 1,  1, 1, 0, 1, 0, 0},  // GrayBits
+  {(PixelFormat *) 3, B8(1110000), 1,  2, 1, 0, 1, 0, 0},  // GrayBits
+  {(PixelFormat *) 3, B8(1110000), 1,  4, 1, 0, 1, 0, 0},  // GrayBits
   {&GrayChar,         B8(1110000), 1,  8, 1, 0, 1, 0, 0},  // No-care on photometric: we don't distinguish positive from negative images at this time.
   {(PixelFormat *) 1, B8(1110000), 1, 16, 1, 0, 1, 0, 0},  // GrayShort, with consideration for SMaxSampleValue
   {&GrayFloat,        B8(1110000), 1, 32, 3, 0, 1, 0, 0},
@@ -193,6 +196,9 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	uint16 * extraFormat;
 	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_EXTRASAMPLES, &extraCount, &extraFormat);
 	if (! ok) throw "Unable to get needed tag values.";
+	//cerr << "tif pix fmt info: " << samplesPerPixel << " " << bitsPerSample << " " << sampleFormat << " " << photometric << " " << planarConfig << " " << extraCount;
+	//for (int i = 0; i < extraCount; i++) cerr << " " << extraFormat[i];
+	//cerr << endl;
 
 	for (FormatMapping * m = formatMap; m->format; m++)
 	{
@@ -243,6 +249,11 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 
 		  cerr << "palette " << bitsPerSample << endl;
 		  format = new PixelFormatPalette (reds, greens, blues, sizeof (uint16), bitsPerSample);
+		  break;
+		}
+		case 3:
+		{
+		  format = new PixelFormatGrayBits (bitsPerSample);
 		  break;
 		}
 		default:
