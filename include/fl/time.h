@@ -32,7 +32,7 @@ for details.
 
 namespace fl
 {
-# ifdef WIN32
+# if defined(WIN32)  &&  ! defined(__CYGWIN__)
   inline int
   sleep (unsigned int seconds)
   {
@@ -41,6 +41,24 @@ namespace fl
   }
 # endif
 
+  /**
+	 Read time at highest available resolution.  In most cases this is
+	 wall-clock time, but under Linux it can be switched to other timing
+	 sources by defining CLOCK_SOURCE before loading this header file.
+	 A key side-effect of this is to modify the behavior of Stopwatch.
+	 Some common clock sources under Linux:
+	 <dl>
+	 <dt>CLOCK_REALTIME
+	     <dd>System-wide realtime clock.
+	 <dt>CLOCK_MONOTONIC
+	     <dd>Represents monotonic time since some unspecified starting point.
+		 (Presumably not affected by changin system time.)
+	 <dt>CLOCK_PROCESS_CPUTIME_ID
+	     <dd>High-resolution per-process timer from the CPU.
+	 <dt>CLOCK_THREAD_CPUTIME_ID
+	     <dd>Thread-specific CPU-time clock.
+	 </dl>
+   **/
   inline double
   getTimestamp ()
   {
@@ -52,7 +70,17 @@ namespace fl
 	QueryPerformanceFrequency (&frequency);
 	return (double) count.QuadPart / frequency.QuadPart;
 
-#   else
+#   elif defined(linux)
+
+#     ifndef CLOCK_SOURCE
+#     define CLOCK_SOURCE CLOCK_MONOTONIC
+#     endif
+
+	struct timespec t;
+	clock_gettime (CLOCK_SOURCE, &t);
+	return t.tv_sec + (double) t.tv_nsec / 1e9;
+
+#   else   // other posix systems
 
 	struct timeval t;
 	gettimeofday (&t, NULL);
