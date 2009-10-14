@@ -102,7 +102,7 @@ namespace fl
 	virtual MatrixAbstract * duplicate (bool deep = false) const = 0; ///< Make a new instance of self on the heap.  Used for views.  Since this is class sensitive, it must be overridden.  @param deep Indicates that all levels of associated data must be duplicated.  If false, then only the main object needs to be duplicated (shallow copy), but deep copy is still permitted.
 	virtual void clear (const T scalar = (T) 0);  ///< Set all elements to given value.
 	virtual void resize (const int rows, const int columns = 1) = 0;  ///< Change number of rows and columns.  Does not preserve data.
-	virtual void copyFrom (const MatrixAbstract<T> & that);
+	virtual void copyFrom (const MatrixAbstract<T> & that);  ///< Deep copy
 
 	// Higher level functions
 	virtual T norm (float n) const;  ///< Generalized Frobenius norm: (sum_elements (element^n))^(1/n).  Effectively: INFINITY is max, 1 is sum, 2 is standard Frobenius norm.  n==0 is technically undefined, but we treat is as the count of non-zero elements.
@@ -110,9 +110,9 @@ namespace fl
 	virtual void normalize (const T scalar = 1.0);  ///< View matrix as vector and adjust so norm (2) == scalar.
 	virtual T dot (const MatrixAbstract & B) const;  ///< Return the dot product of the first columns of the respective matrices.
 	virtual void identity (const T scalar = 1.0);  ///< Set main diagonal to scalar and everything else to zero.
-	virtual MatrixRegion<T> row (const int r) const;  ///< Returns a view row r.  The matrix is oriented "horizontal".
-	virtual MatrixRegion<T> column (const int c) const;  ///< Returns a view of column c.
-	virtual MatrixRegion<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const;  ///< Same as call to MatrixRegion<T> (*this, firstRow, firstColumn, lastRow, lastColumn)
+	virtual MatrixResult<T> row (const int r) const;  ///< Returns a view row r.  The matrix is oriented "horizontal".
+	virtual MatrixResult<T> column (const int c) const;  ///< Returns a view of column c.
+	virtual MatrixResult<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const;  ///< Same as call to MatrixRegion<T> (*this, firstRow, firstColumn, lastRow, lastColumn)
 	const char * toString (std::string & buffer) const;  ///< Convenience funtion.  Same output as operator <<
 
 	// Basic operations
@@ -215,17 +215,30 @@ namespace fl
   class MatrixResult : public MatrixAbstract<T>
   {
   public:
-	MatrixResult () : result (0) {}
 	MatrixResult (MatrixAbstract<T> * result) : result (result) {}
-	MatrixResult (const MatrixResult<T> & that) : result (that.result) {const_cast<MatrixResult &> (that).result = 0;}
-	~MatrixResult () {if (result) delete result;}
+	~MatrixResult () {delete result;}
 
 	operator MatrixAbstract<T> & () const {return *result;}
+
 	MatrixResult & operator = (const MatrixResult & that)
 	{
-	  if (result) delete result;
-	  result = that.result;
-	  const_cast<MatrixResult &> (that).result = 0;
+	  result->copyFrom (*that.result);
+	  return *this;
+	}
+	template<class T2>
+	MatrixResult & operator = (const MatrixAbstract<T2> & that)
+	{
+	  int h = that.rows ();
+	  int w = that.columns ();
+	  result->resize (h, w);
+	  for (int c = 0; c < w; c++)
+	  {
+		for (int r = 0; r < h; r++)
+		{
+		  (*result)(r,c) = (T) that(r,c);
+		}
+	  }
+	  return *this;
 	}
 
 	virtual T & operator () (const int row, const int column) const        {return (*result)(row,column);}
@@ -242,9 +255,9 @@ namespace fl
 	virtual void normalize (const T scalar = 1.0)                          {       result->normalize (scalar);}
 	virtual T dot (const MatrixAbstract<T> & B) const                      {return result->dot (B);}
 	virtual void identity (const T scalar = 1.0)                           {       result->identity (scalar);}
-	virtual MatrixRegion<T> row (const int r) const                        {return result->row (r);}
-	virtual MatrixRegion<T> column (const int c) const                     {return result->column (c);}
-	virtual MatrixRegion<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const {return result->region (firstRow, firstColumn, lastRow, lastColumn);}
+	virtual MatrixResult<T> row (const int r) const                        {return result->row (r);}
+	virtual MatrixResult<T> column (const int c) const                     {return result->column (c);}
+	virtual MatrixResult<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const {return result->region (firstRow, firstColumn, lastRow, lastColumn);}
 
 	virtual MatrixResult<T> operator ^ (const MatrixAbstract<T> & B) const {return *result ^ B;}
 	virtual MatrixResult<T> operator & (const MatrixAbstract<T> & B) const {return *result & B;}

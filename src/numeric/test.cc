@@ -152,7 +152,7 @@ testOperator ()
 	// Unary operations
 
 	//   Inversion
-	MatrixResult<T> result;
+	Matrix<T> result;
 	int expectedSize;
 	if (Arows <= Acols)  // right inverse
 	{
@@ -196,10 +196,10 @@ testOperator ()
 	// Binary operations with scalar
 	{
 	  T scalar = (T) 2;
-	  MatrixResult<T> resultTimes = A * scalar;
-	  MatrixResult<T> resultOver  = A / scalar;
-	  MatrixResult<T> resultPlus  = A + scalar;
-	  MatrixResult<T> resultMinus = A - scalar;
+	  Matrix<T> resultTimes = A * scalar;
+	  Matrix<T> resultOver  = A / scalar;
+	  Matrix<T> resultPlus  = A + scalar;
+	  Matrix<T> resultMinus = A - scalar;
 	  MatrixAbstract<T> * selfTimes = A.duplicate (true);
 	  MatrixAbstract<T> * selfOver  = A.duplicate (true);
 	  MatrixAbstract<T> * selfPlus  = A.duplicate (true);
@@ -269,11 +269,11 @@ testOperator ()
 	  }
 
 	  // TODO: test cross product (^) once it is generalized to any dimension (wedge product)
-	  MatrixResult<T> resultElTimes = A & B;
-	  MatrixResult<T> resultTimes   = A * B;
-	  MatrixResult<T> resultOver    = A / B;
-	  MatrixResult<T> resultPlus    = A + B;
-	  MatrixResult<T> resultMinus   = A - B;
+	  Matrix<T> resultElTimes = A & B;
+	  Matrix<T> resultTimes   = A * B;
+	  Matrix<T> resultOver    = A / B;
+	  Matrix<T> resultPlus    = A + B;
+	  Matrix<T> resultMinus   = A - B;
 	  MatrixAbstract<T> * selfElTimes = A.duplicate (true);
 	  MatrixAbstract<T> * selfTimes   = A.duplicate (true);
 	  MatrixAbstract<T> * selfOver    = A.duplicate (true);
@@ -706,21 +706,11 @@ main (int argc, char * argv[])
 {
   try
   {
-	Matrix<complex<float> > A (3, 3);
-	for (int i = 0; i < 9; i++) A[i] = i;
-	cerr << A.norm (0) << endl;
-	cerr << A.norm (1) << endl;
-	cerr << A.norm (1.5) << endl;
-	cerr << A.norm (2) << endl;
-	cerr << A.norm (INFINITY) << endl;
-
-	/*
 	cout << "running all tests for float" << endl;
 	testAll<float> ();
 
 	cout << "running all tests for double" << endl;
 	testAll<double> ();
-	*/
   }
   catch (const char * message)
   {

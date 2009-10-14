@@ -226,24 +226,24 @@ namespace fl
   }
 
   template<class T>
-  MatrixRegion<T>
+  MatrixResult<T>
   MatrixAbstract<T>::row (const int r) const
   {
-	return MatrixRegion<T> (*this, r, 0, r, columns () - 1);
+	return new MatrixRegion<T> (*this, r, 0, r, columns () - 1);
   }
 
   template<class T>
-  MatrixRegion<T>
+  MatrixResult<T>
   MatrixAbstract<T>::column (const int c) const
   {
-	return MatrixRegion<T> (*this, 0, c, rows () - 1, c);
+	return new MatrixRegion<T> (*this, 0, c, rows () - 1, c);
   }
 
   template<class T>
-  MatrixRegion<T>
+  MatrixResult<T>
   MatrixAbstract<T>::region (const int firstRow, const int firstColumn, int lastRow, int lastColumn) const
   {
-	return MatrixRegion<T> (*this, firstRow, firstColumn, lastRow, lastColumn);
+	return new MatrixRegion<T> (*this, firstRow, firstColumn, lastRow, lastColumn);
   }
 
   template<class T>
@@ -1581,16 +1581,7 @@ namespace fl
   MatrixRegion<T> &
   MatrixRegion<T>::operator = (const MatrixRegion<T> & that)
   {
-	int h = that.rows ();
-	int w = that.columns ();
-	resize (h, w);
-	for (int c = 0; c < w; c++)
-	{
-	  for (int r = 0; r < h; r++)
-	  {
-		(*this)(r,c) = that(r,c);
-	  }
-	}
+	copyFrom (that);
 	return *this;
   }
 
