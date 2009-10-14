@@ -41,14 +41,14 @@ readability.
 // user macros ----------------------------------------------------------------
 
 /** for upto 8-bit binary constants **/
-#define B8(d) ((unsigned char) B8__(HEX__(d)))
+#define B8(d) ((uint8_t) B8__(HEX__(d)))
 
 /** for upto 16-bit binary constants, MSB first **/
-#define B16(dmsb,dlsb) (  ((unsigned short) B8(dmsb) << 8) \
-                        +                   B8(dlsb))
+#define B16(dmsb,dlsb) (  ((uint16_t) B8(dmsb) << 8) \
+                        +             B8(dlsb))
 
 /** for upto 32-bit binary constants, MSB first **/
-#define B32(dmsb,db2,db3,dlsb) (    ((unsigned long) B8 (dmsb) << 24) \
-                                  + ((unsigned long) B8 (db2)  << 16) \
-                                  + ((unsigned long) B8 (db3)  <<  8) \
-                                  +                  B8 (dlsb))
+#define B32(dmsb,db2,db3,dlsb) (    ((uint32_t) B8 (dmsb) << 24) \
+                                  + ((uint32_t) B8 (db2)  << 16) \
+                                  + ((uint32_t) B8 (db3)  <<  8) \
+                                  +             B8 (dlsb))
