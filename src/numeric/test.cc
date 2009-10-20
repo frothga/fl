@@ -132,11 +132,12 @@ testOperator ()
   vector<MatrixAbstract<T> *> matrices;
   matrices.push_back (new Matrix<T> (makeMatrix (3, 3)));
   matrices.push_back (new Vector<T> ("[1 2 3]"));
+  matrices.push_back (new MatrixStrided<T> (((Matrix<T> *) matrices[0])->data, 4, 2, 2, 1, 3));
   matrices.push_back (new MatrixPacked<T> (*matrices[0]));
   matrices.push_back (new MatrixSparse<T> (*matrices[0]));
   matrices.push_back (new MatrixDiagonal<T> (*matrices[1]));
   matrices.push_back (new MatrixIdentity<T> (3));
-  matrices.push_back (new MatrixTranspose<T> (matrices[0]));
+  matrices.push_back (new MatrixTranspose<T> (matrices[0]->clone ()));
   matrices.push_back (new MatrixRegion<T> (*matrices[0], 1, 1, 2, 2));
   matrices.push_back (new MatrixFixed<T,2,2> (*matrices[0]));
 
@@ -196,14 +197,14 @@ testOperator ()
 	// Binary operations with scalar
 	{
 	  T scalar = (T) 2;
-	  Matrix<T> resultTimes = A * scalar;
-	  Matrix<T> resultOver  = A / scalar;
-	  Matrix<T> resultPlus  = A + scalar;
-	  Matrix<T> resultMinus = A - scalar;
-	  MatrixAbstract<T> * selfTimes = A.duplicate (true);
-	  MatrixAbstract<T> * selfOver  = A.duplicate (true);
-	  MatrixAbstract<T> * selfPlus  = A.duplicate (true);
-	  MatrixAbstract<T> * selfMinus = A.duplicate (true);
+	  MatrixResult<T> resultTimes = A * scalar;
+	  MatrixResult<T> resultOver  = A / scalar;
+	  MatrixResult<T> resultPlus  = A + scalar;
+	  MatrixResult<T> resultMinus = A - scalar;
+	  MatrixAbstract<T> * selfTimes = A.clone (true);
+	  MatrixAbstract<T> * selfOver  = A.clone (true);
+	  MatrixAbstract<T> * selfPlus  = A.clone (true);
+	  MatrixAbstract<T> * selfMinus = A.clone (true);
 	  (*selfTimes) *= scalar;
 	  (*selfOver)  /= scalar;
 	  (*selfPlus)  += scalar;
@@ -269,16 +270,16 @@ testOperator ()
 	  }
 
 	  // TODO: test cross product (^) once it is generalized to any dimension (wedge product)
-	  Matrix<T> resultElTimes = A & B;
-	  Matrix<T> resultTimes   = A * B;
-	  Matrix<T> resultOver    = A / B;
-	  Matrix<T> resultPlus    = A + B;
-	  Matrix<T> resultMinus   = A - B;
-	  MatrixAbstract<T> * selfElTimes = A.duplicate (true);
-	  MatrixAbstract<T> * selfTimes   = A.duplicate (true);
-	  MatrixAbstract<T> * selfOver    = A.duplicate (true);
-	  MatrixAbstract<T> * selfPlus    = A.duplicate (true);
-	  MatrixAbstract<T> * selfMinus   = A.duplicate (true);
+	  MatrixResult<T> resultElTimes = A & B;
+	  MatrixResult<T> resultTimes   = A * B;
+	  MatrixResult<T> resultOver    = A / B;
+	  MatrixResult<T> resultPlus    = A + B;
+	  MatrixResult<T> resultMinus   = A - B;
+	  MatrixAbstract<T> * selfElTimes = A.clone (true);
+	  MatrixAbstract<T> * selfTimes   = A.clone (true);
+	  MatrixAbstract<T> * selfOver    = A.clone (true);
+	  MatrixAbstract<T> * selfPlus    = A.clone (true);
+	  MatrixAbstract<T> * selfMinus   = A.clone (true);
 	  (*selfElTimes) &= B;
 	  (*selfTimes)   *= B;
 	  (*selfOver)    /= B;
@@ -356,8 +357,7 @@ testOperator ()
 	}
   }
 
-  // TODO: clean up the errors found by valgrind when destructing views (MatrixTranspose, MatrixRegion)
-  //for (int i = matrices.size () - 1; i >= 0; i--) delete matrices[i];
+  for (int i = matrices.size () - 1; i >= 0; i--) delete matrices[i];
 
   cout << "operators pass" << endl;
 }
@@ -391,14 +391,14 @@ testReshape ()
 	}
   }
 
-  // useStride mode, fewer rows, columns same
+  // inPlace mode, fewer rows, columns same
   B = A.reshape (2, 3, true);
-  if (B.rows () != 2  ||  B.columns () != 3) throw "reshape strided 2x3 unexpected size";
+  if (B.rows () != 2  ||  B.columns () != 3) throw "reshape in place 2x3 unexpected size";
   for (int c = 0; c < 3; c++)
   {
 	for (int r = 0; r < 2; r++)
 	{
-	  if (B(r,c) != (c * 3 + r) % 9) throw "reshape strided 2x3 unexpected value";
+	  if (B(r,c) != (c * 3 + r) % 9) throw "reshape in place 2x3 unexpected value";
 	}
   }
 
@@ -408,7 +408,7 @@ testReshape ()
   if (B(0,0) != 0  ||  B(1,0) != 1  ||  B(0,1) != 2  ||  B(1,1) != 3) throw "reshape 2x2 unexpected value";
 
   // more rows, fewer columns
-  B = A.reshape (9,1);
+  B = A.reshape (9, 1);
   if (B.rows () != 9  ||  B.columns () != 1) throw "reshape 9x1 unexpected size";
   for (int i = 0; i < 9; i++) if (B(i,0) != i) throw "reshape 9x1 unexpected value";
 
@@ -435,6 +435,29 @@ testReshape ()
   }
 
   cout << "reshape passes" << endl;
+}
+
+template<class T>
+void
+testStrided ()
+{
+  Matrix<T> A (7, 5);
+  for (int i = 0; i < 35; i++) A[i] = i;
+  A = A.reshape (4, 5, true);
+
+  MatrixStrided<T> B = ~A.region (1, 1, 3, 2);
+  if (B.rows () != 2  ||  B.columns () != 3) throw "strided transpose unexpected size";
+  if (B(0,0) != 8  ||  B(1,0) != 15  ||  B(0,1) != 9  ||  B(1,1) != 16  ||  B(0,2) != 10  ||  B(1,2) != 17) throw "strided transpose unexpected value";
+
+  B = A.row (1);
+  if (B.rows () != 1  ||  B.columns () != 5) throw "strided row unexpected size";
+  for (int i = 0; i < 5; i++) if (B[i] != i * 7 + 1) throw "strided row unexpected value";
+
+  B = A.column (1);
+  if (B.rows () != 4  ||  B.columns () != 1) throw "strided column unexpected size";
+  for (int i = 0; i < 4; i++) if (B[i] != i + 7) throw "strided column unexpected value";
+
+  cout << "MatrixStrided passes" << endl;
 }
 
 template<class T>
@@ -693,6 +716,7 @@ testAll ()
   //testSearch<T> ();  // search is broken, and appears to have been so for a while
   testOperator<T> ();
   testReshape<T> ();
+  testStrided<T> ();
   testNorm<T> ();
   testClear<T> ();
   testSumSquares<T> ();

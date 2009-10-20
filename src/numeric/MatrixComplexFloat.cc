@@ -34,6 +34,7 @@ using namespace std;
 
 
 template class MatrixAbstract<complex<float> >;
+template class MatrixStrided<complex<float> >;
 template class Matrix<complex<float> >;
 template class MatrixTranspose<complex<float> >;
 template class MatrixRegion<complex<float> >;

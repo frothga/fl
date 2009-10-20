@@ -4,6 +4,13 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+Copyright 2005, 2009 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -42,6 +49,13 @@ namespace fl
   }
 
   template <class T>
+  MatrixAbstract<T> *
+  MatrixIdentity<T>::clone (bool deep) const
+  {
+	return new MatrixIdentity (size, value);
+  }
+
+  template <class T>
   T &
   MatrixIdentity<T>::operator () (const int row, const int column) const
   {
@@ -72,10 +86,10 @@ namespace fl
   }
 
   template <class T>
-  MatrixAbstract<T> *
-  MatrixIdentity<T>::duplicate (bool deep) const
+  void
+  MatrixIdentity<T>::resize (const int rows, const int columns)
   {
-	return new MatrixIdentity (size, value);
+	size = std::max (rows, columns);
   }
 
   template <class T>
@@ -83,13 +97,6 @@ namespace fl
   MatrixIdentity<T>::clear (const T scalar)
   {
 	value = scalar;
-  }
-
-  template <class T>
-  void
-  MatrixIdentity<T>::resize (const int rows, const int columns)
-  {
-	size = std::max (rows, columns);
   }
 }
 

@@ -25,6 +25,7 @@ using namespace fl;
 template <> int MatrixAbstract<bool>::displayWidth = 1;
 
 template class MatrixAbstract<bool>;
+template class MatrixStrided<bool>;
 template class Matrix<bool>;
 template class MatrixTranspose<bool>;
 template class MatrixRegion<bool>;

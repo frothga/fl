@@ -42,6 +42,12 @@ Point::Point (std::istream & stream)
   read (stream);
 }
 
+MatrixAbstract<float> *
+Point::clone (bool deep) const
+{
+  return new Point (x, y);
+}
+
 float &
 Point::operator () (const int row, const int column) const
 {
@@ -70,12 +76,6 @@ int
 Point::columns () const
 {
   return 1;
-}
-
-MatrixAbstract<float> *
-Point::duplicate (bool deep) const
-{
-  return new Point (x, y);
 }
 
 void

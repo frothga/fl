@@ -69,6 +69,51 @@ namespace fl
   }
 
   template<class T>
+  MatrixAbstract<T> *
+  MatrixPacked<T>::clone (bool deep) const
+  {
+	if (deep)
+	{
+	  MatrixPacked * result = new MatrixPacked;
+	  result->copyFrom (*this);
+	  return result;
+	}
+	return new MatrixPacked<T> (*this);
+  }
+
+  template<class T>
+  void
+  MatrixPacked<T>::copyFrom (const MatrixAbstract<T> & that, bool deep)
+  {
+	if (that.classID () & MatrixPackedID)
+	{
+	  const MatrixPacked & MP = (const MatrixPacked &) that;
+	  if (deep)
+	  {
+		resize (MP.rows_);
+		data.copyFrom (MP.data);
+	  }
+	  else
+	  {
+		operator = (MP);
+	  }
+	}
+	else
+	{
+	  // We only copy the upper triangle
+	  resize (that.rows (), that.columns ());
+	  T * i = (T *) data;
+	  for (int c = 0; c < rows_; c++)
+	  {
+		for (int r = 0; r <= c; r++)
+		{
+		  *i++ = that(r,c);
+		}
+	  }
+	}
+  }
+
+  template<class T>
   T &
   MatrixPacked<T>::operator () (const int row, const int column) const
   {
@@ -104,16 +149,15 @@ namespace fl
   }
 
   template<class T>
-  MatrixAbstract<T> *
-  MatrixPacked<T>::duplicate (bool deep) const
+  void
+  MatrixPacked<T>::resize (const int rows, const int columns)
   {
-	if (deep)
+	int newrows = columns > 0 ? std::min (rows, columns) : rows;
+	if (rows_ != newrows)
 	{
-	  MatrixPacked * result = new MatrixPacked;
-	  result->copyFrom (*this);
-	  return result;
+	  rows_ = newrows;
+	  data.grow (sizeof (T) * (rows_ + 1) * rows_ / 2);
 	}
-	return new MatrixPacked<T> (*this);
   }
 
   template<class T>
@@ -133,43 +177,6 @@ namespace fl
 		*i++ = scalar;
 	  }
 	}	  
-  }
-
-  template<class T>
-  void
-  MatrixPacked<T>::resize (const int rows, const int columns)
-  {
-	int newrows = columns > 0 ? std::min (rows, columns) : rows;
-	if (rows_ != newrows)
-	{
-	  rows_ = newrows;
-	  data.grow (sizeof (T) * (rows_ + 1) * rows_ / 2);
-	}
-  }
-
-  template<class T>
-  void
-  MatrixPacked<T>::copyFrom (const MatrixAbstract<T> & that)
-  {
-	if (that.classID () & MatrixPackedID)
-	{
-	  const MatrixPacked & MP = (const MatrixPacked &) that;
-	  resize (MP.rows_);
-	  data.copyFrom (MP.data);
-	}
-	else
-	{
-	  // We only copy the upper triangle
-	  resize (that.rows (), that.columns ());
-	  T * i = (T *) data;
-	  for (int c = 0; c < rows_; c++)
-	  {
-		for (int r = 0; r <= c; r++)
-		{
-		  *i++ = that(r,c);
-		}
-	  }
-	}
   }
 
   template<class T>

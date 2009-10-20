@@ -73,6 +73,51 @@ namespace fl
   }
 
   template<class T>
+  MatrixAbstract<T> *
+  MatrixSparse<T>::clone (bool deep) const
+  {
+	if (deep)
+	{
+	  MatrixSparse * result = new MatrixSparse;
+	  result->copyFrom (*this);
+	  return result;
+	}
+	return new MatrixSparse (*this);
+  }
+
+  template<class T>
+  void
+  MatrixSparse<T>::copyFrom (const MatrixAbstract<T> & that, bool deep)
+  {
+	if (that.classID () & MatrixSparseID)
+	{
+	  const MatrixSparse & MS = (const MatrixSparse &) (that);
+	  if (deep)
+	  {
+		rows_ = MS.rows_;
+		data.copyFrom (MS.data);  // performs deep copy of STL vector and map objects
+	  }
+	  else
+	  {
+		operator = (MS);
+	  }
+	}
+	else
+	{
+	  int m = that.rows ();
+	  int n = that.columns ();
+	  resize (m, n);
+	  for (int c = 0; c < n; c++)
+	  {
+		for (int r = 0; r < m; r++)
+		{
+		  set (r, c, that(r,c));
+		}
+	  }
+	}
+  }
+
+  template<class T>
   void
   MatrixSparse<T>::set (const int row, const int column, const T value)
   {
@@ -130,16 +175,11 @@ namespace fl
   }
 
   template<class T>
-  MatrixAbstract<T> *
-  MatrixSparse<T>::duplicate (bool deep) const
+  void
+  MatrixSparse<T>::resize (const int rows, const int columns)
   {
-	if (deep)
-	{
-	  MatrixSparse * result = new MatrixSparse;
-	  result->copyFrom (*this);
-	  return result;
-	}
-	return new MatrixSparse (*this);
+	rows_ = rows;
+	data->resize (columns);
   }
 
   template<class T>
@@ -150,39 +190,6 @@ namespace fl
 	while (i < data->end ())
 	{
 	  (i++)->clear ();
-	}
-  }
-
-  template<class T>
-  void
-  MatrixSparse<T>::resize (const int rows, const int columns)
-  {
-	rows_ = rows;
-	data->resize (columns);
-  }
-
-  template<class T>
-  void
-  MatrixSparse<T>::copyFrom (const MatrixAbstract<T> & that)
-  {
-	if (that.classID () & MatrixSparseID)
-	{
-	  const MatrixSparse & MS = (const MatrixSparse &) (that);
-	  rows_ = MS.rows_;
-	  data.copyFrom (MS.data);  // performs deep copy of STL vector and map objects
-	}
-	else
-	{
-	  int m = that.rows ();
-	  int n = that.columns ();
-	  resize (m, n);
-	  for (int c = 0; c < n; c++)
-	  {
-		for (int r = 0; r < m; r++)
-		{
-		  set (r, c, that(r,c));
-		}
-	  }
 	}
   }
 

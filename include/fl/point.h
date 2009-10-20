@@ -50,11 +50,12 @@ namespace fl
 	}
 	Point (std::istream & stream);
 
+	virtual MatrixAbstract<float> * clone (bool deep = false) const;
+
 	virtual float & operator () (const int row, const int column) const;
-    virtual float & operator [] (const int row) const;
+	virtual float & operator [] (const int row) const;
 	virtual int rows () const;
 	virtual int columns () const;
-	virtual MatrixAbstract<float> * duplicate (bool deep = false) const;
 	virtual void resize (const int rows, const int columns = 1);  ///< We only have one size.  This will throw an exception if (rows * columns) != 2.
 
 	virtual void read (std::istream & stream);

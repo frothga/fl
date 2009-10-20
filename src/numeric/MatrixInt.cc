@@ -22,6 +22,7 @@ using namespace fl;
 
 
 template class MatrixAbstract<int>;
+template class MatrixStrided<int>;
 template class Matrix<int>;
 template class MatrixTranspose<int>;
 template class MatrixRegion<int>;

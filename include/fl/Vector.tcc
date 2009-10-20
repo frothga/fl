@@ -30,39 +30,38 @@ namespace fl
   template<class T>
   Vector<T>::Vector ()
   {
-	this->rows_    = 0;
-	this->columns_ = 0;
-	this->strideC  = 0;
   }
 
   template<class T>
   Vector<T>::Vector (const int rows)
+  : Matrix<T> (rows, 1)
   {
-	this->rows_    = rows;
-	this->columns_ = 1;
-	this->strideC  = rows;
-	this->data.grow (rows * sizeof (T));
   }
 
   template<class T>
   Vector<T>::Vector (const MatrixAbstract<T> & that)
   {
-	if (that.classID () & MatrixID)
+	if (that.classID () & MatrixStridedID)
 	{
-	  *this = (const Matrix<T> &) that;
-	}
-	else
-	{
-	  int h = that.rows ();
-	  int w = that.columns ();
-	  resize (h * w, 1);
-	  T * i = (T *) this->data;
-	  for (int c = 0; c < w; c++)
+	  const MatrixStrided<T> & MS = (const MatrixStrided<T> &) that;
+	  if (MS.offset == 0  &&  MS.strideR == 1  &&  MS.strideC == MS.rows_)
 	  {
-		for (int r = 0; r < h; r++)
-		{
-		  *i++ = that(r,c);
-		}
+		MatrixStrided<T>::operator = (MS);
+		this->strideC = this->rows_ *= this->columns_;
+		this->columns_ = 1;
+		return;
+	  }
+	}
+
+	int h = that.rows ();
+	int w = that.columns ();
+	resize (h * w, 1);
+	T * i = (T *) this->data;
+	for (int c = 0; c < w; c++)
+	{
+	  for (int r = 0; r < h; r++)
+	  {
+		*i++ = that(r,c);
 	  }
 	}
 	// Implicitly, a MatrixPacked will convert into a Vector with rows * rows
@@ -92,36 +91,14 @@ namespace fl
 
   template<class T>
   Vector<T>::Vector (T * that, const int rows)
+  : Matrix<T> (that, rows, 1)
   {
-	this->data.attach (that, rows * sizeof (T));
-	this->rows_    = rows;
-	this->columns_ = 1;
-	this->strideC  = rows;
   }
 
   template<class T>
   Vector<T>::Vector (Pointer & that, const int rows)
+  : Matrix<T> (that, rows, 1)
   {
-	this->data = that;
-	this->columns_ = 1;
-	if (rows < 0)  // infer number from size of memory block and size of our data type
-	{
-	  int size = this->data.size ();
-	  if (size < 0)
-	  {
-		// Pointer does not know the size of memory block, so we pretend it is empty.  This is really an error condition.
-		this->rows_ = 0;
-	  }
-	  else
-	  {
-		this->rows_ = size / sizeof (T);
-	  }
-	}
-	else  // number of rows is given
-	{
-	  this->rows_ = rows;
-	}
-	this->strideC = this->rows_;
   }
 
   template<class T>

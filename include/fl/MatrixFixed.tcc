@@ -40,36 +40,15 @@ namespace fl
   }
 
   template<class T, int R, int C>
-  int
-  MatrixFixed<T,R,C>::rows () const
-  {
-	return R;
-  }
-
-  template<class T, int R, int C>
-  int
-  MatrixFixed<T,R,C>::columns () const
-  {
-	return C;
-  }
-
-  template<class T, int R, int C>
   MatrixAbstract<T> *
-  MatrixFixed<T,R,C>::duplicate (bool deep) const
+  MatrixFixed<T,R,C>::clone (bool deep) const
   {
 	return new MatrixFixed<T,R,C> (*this);
   }
 
   template<class T, int R, int C>
   void
-  MatrixFixed<T,R,C>::resize (const int rows, const int columns)
-  {
-	assert (rows == R  &&  columns == C);
-  }
-
-  template<class T, int R, int C>
-  void
-  MatrixFixed<T,R,C>::copyFrom (const MatrixAbstract<T> & that)
+  MatrixFixed<T,R,C>::copyFrom (const MatrixAbstract<T> & that, bool deep)
   {
 	int h = std::min (R, that.rows ());
 	int w = std::min (C, that.columns ());
@@ -88,6 +67,27 @@ namespace fl
 		data[c][r] = (T) 0;
 	  }
 	}
+  }
+
+  template<class T, int R, int C>
+  int
+  MatrixFixed<T,R,C>::rows () const
+  {
+	return R;
+  }
+
+  template<class T, int R, int C>
+  int
+  MatrixFixed<T,R,C>::columns () const
+  {
+	return C;
+  }
+
+  template<class T, int R, int C>
+  void
+  MatrixFixed<T,R,C>::resize (const int rows, const int columns)
+  {
+	assert (rows == R  &&  columns == C);
   }
 
   template<class T, int R, int C>

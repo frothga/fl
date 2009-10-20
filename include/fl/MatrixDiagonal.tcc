@@ -4,6 +4,13 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+Copyright 2009 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -73,6 +80,19 @@ namespace fl
   }
 
   template <class T>
+  MatrixAbstract<T> *
+  MatrixDiagonal<T>::clone (bool deep) const
+  {
+	if (deep)
+	{
+	  MatrixDiagonal * result = new MatrixDiagonal (rows_, columns_);
+	  result->data.copyFrom (data);
+	  return result;
+	}
+	return new MatrixDiagonal (*this);
+  }
+
+  template <class T>
   T &
   MatrixDiagonal<T>::operator () (const int row, const int column) const
   {
@@ -110,16 +130,19 @@ namespace fl
   }
 
   template <class T>
-  MatrixAbstract<T> *
-  MatrixDiagonal<T>::duplicate (bool deep) const
+  void
+  MatrixDiagonal<T>::resize (const int rows, const int columns)
   {
-	if (deep)
+	rows_ = rows;
+	if (columns == -1)
 	{
-	  MatrixDiagonal * result = new MatrixDiagonal (rows_, columns_);
-	  result->data.copyFrom (data);
-	  return result;
+	  columns_ = rows_;
 	}
-	return new MatrixDiagonal (*this);
+	else
+	{
+	  columns_ = columns;
+	}
+	data.grow (std::min (rows_, columns_) * sizeof (T));
   }
 
   template <class T>
@@ -139,22 +162,6 @@ namespace fl
 		*i++ = scalar;
 	  }
 	}	  
-  }
-
-  template <class T>
-  void
-  MatrixDiagonal<T>::resize (const int rows, const int columns)
-  {
-	rows_ = rows;
-	if (columns == -1)
-	{
-	  columns_ = rows_;
-	}
-	else
-	{
-	  columns_ = columns;
-	}
-	data.grow (std::min (rows_, columns_) * sizeof (T));
   }
 }
 
