@@ -92,7 +92,7 @@ bswap (uint64_t * x, uint32_t count = 1)
 }
 
 
-#elif defined (__GNUC__)  &&  (defined (__i386__)  ||  defined (_X86_))
+#elif defined (__GNUC__)  &&  (defined (__i386__)  ||  defined (_X86_)  ||  defined (__x86_64__))
 
 
 #include <sys/param.h>
@@ -109,8 +109,8 @@ bswap (uint16_t * x, uint32_t count = 1)
 {
   __asm ("1:"
 		 "rorw   $8, (%0);"
-		 "addl   $2, %0;"
-		 "loopl  1b;"
+		 "add    $2, %0;"
+		 "loop   1b;"
 		 :
 		 : "r" (x), "c" (count));
 }
@@ -119,11 +119,11 @@ static inline void
 bswap (uint32_t * x, uint32_t count = 1)
 {
   __asm ("1:"
-		 "movl   (%0), %%eax;"
+		 "mov    (%0), %%eax;"
 		 "bswap  %%eax;"
-		 "movl   %%eax, (%0);"
-		 "addl   $4, %0;"
-		 "loopl  1b;"
+		 "mov    %%eax, (%0);"
+		 "add    $4, %0;"
+		 "loop   1b;"
 		 :
 		 : "r" (x), "c" (count)
 		 : "eax");
@@ -131,7 +131,6 @@ bswap (uint32_t * x, uint32_t count = 1)
 
 #if defined (ARCH_X86_64)  ||  defined (__x86_64__)
 
-/// \todo Test this code!
 static inline void
 bswap (uint64_t * x, uint32_t count = 1)
 {
@@ -152,14 +151,14 @@ static inline void
 bswap (uint64_t * x, uint32_t count = 1)
 {
   __asm ("1:"
-		 "movl   (%0), %%eax;"
-		 "movl   4(%0), %%edx;"
+		 "mov    (%0), %%eax;"
+		 "mov    4(%0), %%edx;"
 		 "bswap  %%eax;"
 		 "bswap  %%edx;"
-		 "movl   %%edx, (%0);"
-		 "movl   %%eax, 4(%0);"
-		 "addl   $8, %0;"
-		 "loopl  1b;"
+		 "mov    %%edx, (%0);"
+		 "mov    %%eax, 4(%0);"
+		 "add    $8, %0;"
+		 "loop   1b;"
 		 :
 		 : "r" (x), "c" (count)
 		 : "eax", "edx");
