@@ -21,41 +21,103 @@ for details.
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <ostream>
 
 
 namespace fl
 {
-  /*  Preliminary scratchings on atomic operations.
-#if defined (__GNUC__)  &&  defined (__i386__)
-#elif defined (_MSC_VER)
-__declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
-{
-    __asm
-    {
-        lock xadd dword ptr [ECX], EDX
-        mov EAX, EDX
-        ret
-    }
-}
-#else
-  int atomicInc (int * a)
+# undef needFLmutexPointer
+# if defined (__GNUC__)  &&  (defined (__i386__)  ||  defined (__x86_64__))
+
+  static inline void
+  atomicInc (int32_t & a)
   {
-	return ++(*a);
+	__asm ("movl      $1, %%eax;"
+		   "lock xadd %%eax, %0;"
+		   : "=m" (a)
+		   : "m" (a)
+		   : "cc", "eax");
   }
 
-  int atomicDec (int * a)
+  static inline int32_t
+  atomicDec (int32_t & a)
   {
-	return --(*a);
+	register int32_t result;
+	__asm ("movl      $-1, %0;"
+		   "lock xadd %0, %1;"
+		   "subl      $1, %0;"  // adjust value so it represents pre-decrement, not post-decrement
+		   : "=r" (result), "=m" (a)
+		   : "m" (a)
+		   : "cc");
+	return result;
   }
-#endif
-  */
+
+# elif defined (_MSC_VER)  &&  defined (_M_IX86)  &&  ! defined (_M_X64)
+
+  static inline void
+  atomicInc (int32_t & a)
+  {
+	__asm
+	{
+	  mov       eax, a
+	  mov       ebx, 1
+	  lock xadd [eax], ebx
+	}
+  }
+
+  static inline int32_t
+  atomicDec (int32_t & a)
+  {
+	int32_t result;
+	__asm
+	{
+	  mov       eax, a
+	  mov       ebx, -1
+	  lock xadd [eax], ebx
+	  sub       ebx, 1
+	  mov       result, ebx
+	}
+	return result;
+  }
+
+# else  // Generic code
+
+  // The simplest way to ensure atomicity is a single global mutex.  This isn't
+  // very good for performance, so it is better to develop platform-specific
+  // solutions.
+
+# include <pthread.h>
+# define needFLmutexPointer 1
+
+  extern pthread_mutex_t mutexPointer;
+
+  static inline void
+  atomicInc (int32_t & a)
+  {
+	pthread_mutex_lock   (&mutexPointer);
+	a++;
+	pthread_mutex_unlock (&mutexPointer);
+  }
+
+  static inline int32_t
+  atomicDec (int32_t & a)
+  {
+	pthread_mutex_lock   (&mutexPointer);
+	int result = --a;
+	pthread_mutex_unlock (&mutexPointer);
+	return result;
+  }
+
+# endif
 
   /**
 	 Keeps track of a block of memory, which can be shared by multiple objects
 	 and multiple threads.  The block can either be managed by Pointer, or
 	 it can belong to any other part of the system.  Only managed blocks get
 	 reference counting, automatic deletion, and reallocation.
+
+	 <p>This code assumes that <code>sizeof(int32_t) <= sizeof(ptrdiff_t)</code>.
   **/
   class Pointer
   {
@@ -185,11 +247,11 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	  }
 	}
 
-	ptrdiff_t refcount () const
+	int32_t refcount () const
 	{
 	  if (metaData < 0)
 	  {
-		return ((ptrdiff_t *) memory)[-1];
+		return ((int32_t *) memory)[-1];
 	  }
 	  return -1;
 	}
@@ -227,7 +289,7 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	{
 	  if (metaData < 0)
 	  {
-		if (--((ptrdiff_t *) memory)[-1] == 0)
+		if (atomicDec (((int32_t *) memory)[-1]) == 0)
 		{
 		  free ((ptrdiff_t *) memory - 2);
 		}
@@ -249,7 +311,7 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	  metaData = that.metaData;
 	  if (metaData < 0)
 	  {
-		((ptrdiff_t *) memory)[-1]++;
+		atomicInc (((int32_t *) memory)[-1]);
 	  }
 	}
 	void allocate (ptrdiff_t size)
@@ -258,7 +320,7 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	  if (memory)
 	  {
 		memory = & ((ptrdiff_t *) memory)[2];
-		((ptrdiff_t *) memory)[-1] = 1;
+		((int32_t *)   memory)[-1] = 1;
 		((ptrdiff_t *) memory)[-2] = size;
 		metaData = -1;
 	  }
@@ -427,12 +489,12 @@ __declspec(naked) int __fastcall Xadd (volatile int* pNum, int val)
 	 ReferenceCounted or at least implement the same interface.
 
 	 <p>Note that this class does not have a copyFrom() function, because it
-	 would require adding a duplicate() function to the ReferenceCounted
+	 would require adding a clone() function to the ReferenceCounted
 	 interface.  (We don't know the exact class of "memory", so we don't know
-	 how to contruct another instance of it a priori.  A duplicate() function
+	 how to contruct another instance of it a priori.  A clone() function
 	 encapsulates this knowledge in the wrapped class itself.)  That may be a
 	 reasonable thing to do, but it would also adds to the burden of using
-	 this tool.  On the other hand, it is simple enough to duplicate the object
+	 this tool.  On the other hand, it is simple enough to clone the object
 	 in client code.
   **/
   template<class T>

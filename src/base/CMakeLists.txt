@@ -17,6 +17,7 @@ add_library (flBase
   ../../include/fl/string.h
   ../../include/fl/time.h
   Parameters.cc
+  Pointer.cc
   random.cc
 )
 
