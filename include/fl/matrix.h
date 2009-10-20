@@ -412,7 +412,7 @@ namespace fl
 	virtual void clear (const T scalar = (T) 0);
 	virtual T norm (float n) const;
 	virtual T sumSquares () const;
-	virtual T dot (const Matrix & B) const;
+	virtual T dot (const MatrixAbstract<T> & B) const;
 	virtual Matrix transposeSquare () const;  ///< Computes the upper triangular part of the symmetric matrix (~this * this).
 
 	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;

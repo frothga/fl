@@ -556,6 +556,10 @@ testDot ()
 	b[i] = 2 - i;
   }
   if (abs (a.dot (b) - answer) > epsilon) throw "dot unexpected value";
+
+  MatrixRegion<T> R (b);
+  if (abs (a.dot (R) - answer) > epsilon) throw "dot(Region) unexpected value";
+
   cout << "dot passes" << endl;
 }
 

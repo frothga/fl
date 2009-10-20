@@ -1308,13 +1308,23 @@ namespace fl
 
   template<class T>
   T
-  Matrix<T>::dot (const Matrix<T> & B) const
+  Matrix<T>::dot (const MatrixAbstract<T> & B) const
   {
 	register T result = (T) 0;
-	T * i   = (T *) this->data;
-	T * j   = (T *) B.data;
-	T * end = i + std::min (this->rows_, B.rows_);
-	while (i < end) result += (*i++) * (*j++);
+	T * i = (T *) this->data;
+	if (B.classID () & MatrixID)
+	{
+	  const Matrix & M = (const Matrix &) B;
+	  T * j   = (T *) M.data;
+	  T * end = i + std::min (this->rows_, M.rows_);
+	  while (i < end) result += (*i++) * (*j++);
+	}
+	else
+	{
+	  int j = 0;
+	  T * end = i + std::min (this->rows_, B.rows ());
+	  while (i < end) result += (*i++) * B[j++];
+	}
 	return result;
   }
 
@@ -1431,7 +1441,7 @@ namespace fl
   MatrixResult<T>
   Matrix<T>::operator + (const MatrixAbstract<T> & B) const
   {
-	if ((B.classID () & MatrixID) == 0) return MatrixAbstract<T>::operator + (B);
+	if ((B.classID () & MatrixID) == 0) return MatrixStrided<T>::operator + (B);
 
 	Matrix * result = new Matrix (this->rows_, this->columns_);
 	const Matrix & MB = (const Matrix &) B;
@@ -1467,7 +1477,7 @@ namespace fl
   MatrixResult<T>
   Matrix<T>::operator - (const MatrixAbstract<T> & B) const
   {
-	if ((B.classID () & MatrixID) == 0) return MatrixAbstract<T>::operator - (B);
+	if ((B.classID () & MatrixID) == 0) return MatrixStrided<T>::operator - (B);
 
 	Matrix * result = new Matrix (this->rows_, this->columns_);
 	const Matrix & MB = (const Matrix &) B;
@@ -1507,7 +1517,7 @@ namespace fl
 	{
 	  return *this = (*this) * (const Matrix &) B;
 	}
-	return MatrixAbstract<T>::operator *= (B);
+	return MatrixStrided<T>::operator *= (B);
   }
 
   template<class T>
@@ -1546,7 +1556,7 @@ namespace fl
   MatrixAbstract<T> &
   Matrix<T>::operator += (const MatrixAbstract<T> & B)
   {
-	if ((B.classID () & MatrixID) == 0) return MatrixAbstract<T>::operator += (B);
+	if ((B.classID () & MatrixID) == 0) return MatrixStrided<T>::operator += (B);
 
 	const Matrix & MB = (const Matrix &) B;
 	const int oh = std::min (this->rows_,    MB.rows_);
@@ -1587,7 +1597,7 @@ namespace fl
   MatrixAbstract<T> &
   Matrix<T>::operator -= (const MatrixAbstract<T> & B)
   {
-	if ((B.classID () & MatrixID) == 0) return MatrixAbstract<T>::operator -= (B);
+	if ((B.classID () & MatrixID) == 0) return MatrixStrided<T>::operator -= (B);
 
 	const Matrix & MB = (const Matrix &) B;
 	const int oh = std::min (this->rows_,    MB.rows_);
