@@ -132,7 +132,7 @@ testOperator ()
   vector<MatrixAbstract<T> *> matrices;
   matrices.push_back (new Matrix<T> (makeMatrix (3, 3)));
   matrices.push_back (new Vector<T> ("[1 2 3]"));
-  matrices.push_back (new MatrixStrided<T> (((Matrix<T> *) matrices[0])->data, 4, 2, 2, 1, 3));
+  matrices.push_back ((~((Matrix<T> *) matrices[0])->region (1, 1, 2, 2)).clone ());
   matrices.push_back (new MatrixPacked<T> (*matrices[0]));
   matrices.push_back (new MatrixSparse<T> (*matrices[0]));
   matrices.push_back (new MatrixDiagonal<T> (*matrices[1]));

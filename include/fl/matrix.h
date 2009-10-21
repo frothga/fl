@@ -365,11 +365,43 @@ namespace fl
 	virtual void resize (const int rows, const int columns = 1);  ///< Always sets strideC = rows.
 
 	virtual void clear (const T scalar = (T) 0);
+	virtual T norm (float n) const;
+	virtual T sumSquares () const;
+	virtual T dot (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> transposeSquare () const;  ///< Computes the upper triangular part of the symmetric matrix (~this * this).
 	virtual MatrixResult<T> row (const int r) const;
 	virtual MatrixResult<T> column (const int c) const;
 	virtual MatrixResult<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const;
 
 	virtual MatrixResult<T> operator ~ () const;
+
+	virtual MatrixResult<T> operator & (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator * (const T scalar) const;
+	virtual MatrixResult<T> operator / (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator / (const T scalar) const;
+	virtual MatrixResult<T> operator + (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator + (const T scalar) const;
+	virtual MatrixResult<T> operator - (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator - (const T scalar) const;
+
+	virtual MatrixAbstract<T> & operator &= (const MatrixAbstract<T> & B);
+	virtual MatrixAbstract<T> & operator *= (const MatrixAbstract<T> & B);
+	virtual MatrixAbstract<T> & operator *= (const T scalar);
+	virtual MatrixAbstract<T> & operator /= (const MatrixAbstract<T> & B);
+	virtual MatrixAbstract<T> & operator /= (const T scalar);
+	virtual MatrixAbstract<T> & operator += (const MatrixAbstract<T> & B);
+	virtual MatrixAbstract<T> & operator += (const T scalar);
+	virtual MatrixAbstract<T> & operator -= (const MatrixAbstract<T> & B);
+	virtual MatrixAbstract<T> & operator -= (const T scalar);
+
+	// Operators on a different type.  These are syntactic sugar for
+	// typecasting the second operand.
+	template<class T2> MatrixResult<T> operator * (const MatrixAbstract<T2> & B) const {return operator * ((MatrixStrided<T>) B);}
+	template<class T2> MatrixResult<T> operator - (const MatrixAbstract<T2> & B) const {return operator - ((MatrixStrided<T>) B);}
+
+	virtual void read (std::istream & stream);
+	virtual void write (std::ostream & stream) const;
 
 	// Data
 	Pointer data;
@@ -410,32 +442,6 @@ namespace fl
 	virtual Matrix reshape (const int rows, const int columns = 1, bool inPlace = false) const;
 
 	virtual void clear (const T scalar = (T) 0);
-	virtual T norm (float n) const;
-	virtual T sumSquares () const;
-	virtual T dot (const MatrixAbstract<T> & B) const;
-	virtual Matrix transposeSquare () const;  ///< Computes the upper triangular part of the symmetric matrix (~this * this).
-
-	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
-	virtual MatrixResult<T> operator * (const T scalar) const;
-	virtual MatrixResult<T> operator / (const T scalar) const;
-	virtual MatrixResult<T> operator + (const MatrixAbstract<T> & B) const;
-	virtual MatrixResult<T> operator - (const MatrixAbstract<T> & B) const;
-
-	virtual MatrixAbstract<T> & operator *= (const MatrixAbstract<T> & B);
-	virtual MatrixAbstract<T> & operator *= (const T scalar);
-	virtual MatrixAbstract<T> & operator /= (const T scalar);
-	virtual MatrixAbstract<T> & operator += (const MatrixAbstract<T> & B);
-	virtual MatrixAbstract<T> & operator += (const T scalar);
-	virtual MatrixAbstract<T> & operator -= (const MatrixAbstract<T> & B);
-	virtual MatrixAbstract<T> & operator -= (const T scalar);
-
-	// Operators on a different type.  These are syntactic sugar for
-	// typecasting the second operand.
-	template<class T2> MatrixResult<T> operator * (const MatrixAbstract<T2> & B) const {return operator * ((Matrix<T>) B);}
-	template<class T2> MatrixResult<T> operator - (const MatrixAbstract<T2> & B) const {return operator - ((Matrix<T>) B);}
-
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
   };
 
   /**

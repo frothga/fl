@@ -922,6 +922,168 @@ namespace fl
   }
 
   template<class T>
+  T
+  MatrixStrided<T>::norm (float n) const
+  {
+	// Some of this code may have to be modified for complex numbers.
+	T * i = (T *) data + offset;
+	T * end = i + columns_ * strideC;
+	const int stepC = strideC - rows_ * strideR;
+	if (n == INFINITY)
+	{
+	  T result = (T) 0;
+	  while (i != end)
+	  {
+		T * columnEnd = i + rows_ * strideR;
+		while (i != columnEnd)
+		{
+		  result = std::max (std::abs (*i), result);
+		  i += strideR;
+		}
+		i += stepC;
+	  }
+	  return result;
+	}
+	else if (n == 0.0f)
+	{
+	  unsigned int result = 0;
+	  while (i != end)
+	  {
+		T * columnEnd = i + rows_ * strideR;
+		while (i != columnEnd)
+		{
+		  if (std::abs (*i) > 0) result++;
+		  i += strideR;
+		}
+		i += stepC;
+	  }
+	  return (T) result;
+	}
+	else if (n == 1.0f)
+	{
+	  T result = (T) 0;
+	  while (i != end)
+	  {
+		T * columnEnd = i + rows_ * strideR;
+		while (i != columnEnd)
+		{
+		  result += *i;
+		  i += strideR;
+		}
+		i += stepC;
+	  }
+	  return result;
+	}
+	else if (n == 2.0f)
+	{
+	  T result = (T) 0;
+	  while (i != end)
+	  {
+		T * columnEnd = i + rows_ * strideR;
+		while (i != columnEnd)
+		{
+		  result += (*i) * (*i);
+		  i += strideR;
+		}
+		i += stepC;
+	  }
+	  return (T) std::sqrt (result);
+	}
+	else
+	{
+	  T result = (T) 0;
+	  while (i != end)
+	  {
+		T * columnEnd = i + rows_ * strideR;
+		while (i != columnEnd)
+		{
+		  result += (T) std::pow (*i, (T) n);
+		  i += strideR;
+		}
+		i += stepC;
+	  }
+	  return (T) std::pow (result, (T) (1.0 / n));
+	}
+  }
+
+  template<class T>
+  T
+  MatrixStrided<T>::sumSquares () const
+  {
+	T * i = (T *) data + offset;
+	T * end = i + columns_ * strideC;
+	const int stepC = strideC - rows_ * strideR;
+	T result = 0;
+	while (i != end)
+	{
+	  T * columnEnd = i + rows_ * strideR;
+	  while (i != columnEnd)
+	  {
+		result += (*i) * (*i);
+		i += strideR;
+	  }
+	  i += stepC;
+	}
+	return result;
+  }
+
+  template<class T>
+  T
+  MatrixStrided<T>::dot (const MatrixAbstract<T> & B) const
+  {
+	register T result = (T) 0;
+	T * i   = (T *) data + offset;
+	T * end = i + std::min (rows_, B.rows ()) * strideR;
+	if (B.classID () & MatrixStridedID)
+	{
+	  const MatrixStrided & M = (const MatrixStrided &) B;
+	  T * j = (T *) M.data + offset;
+	  while (i != end)
+	  {
+		result += (*i) * (*j);
+		i +=   strideR;
+		j += M.strideR;
+	  }
+	}
+	else
+	{
+	  int j = 0;
+	  while (i != end)
+	  {
+		result += (*i) * B[j++];
+		i += strideR;
+	  }
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::transposeSquare () const
+  {
+	Matrix<T> * result = new Matrix<T> (columns_, columns_);
+	T * base = (T *) data + offset;
+	for (int i = 0; i < columns_; i++)
+	{
+	  for (int j = i; j < columns_; j++)
+	  {
+		T * ki = base + i * strideC;
+		T * kj = base + j * strideC;
+		T * end = ki + rows_ * strideR;
+		register T sum = (T) 0;
+		while (ki != end)
+		{
+		  sum += (*ki) * (*kj);
+		  ki += strideR;
+		  kj += strideR;
+		}
+		(*result)(i,j) = sum;
+	  }
+	}
+	return result;
+  }
+
+  template<class T>
   MatrixResult<T>
   MatrixStrided<T>::row (const int r) const
   {
@@ -959,6 +1121,610 @@ namespace fl
   MatrixStrided<T>::operator ~ () const
   {
 	return new MatrixStrided (data, offset, columns_, rows_, strideC, strideR);
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::operator & (const MatrixAbstract<T> & B) const
+  {
+	if ((B.classID () & MatrixStridedID) == 0) return MatrixAbstract<T>::operator & (B);
+
+	Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	const MatrixStrided & MB = (const MatrixStrided &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - rows_ *    strideR;
+	const int stepB = MB.strideC - oh    * MB.strideR;
+	T * a = (T *)    data +    offset;
+	T * b = (T *) MB.data + MB.offset;
+	T * r = (T *) result->data;
+	T * end = r + rows_ * ow;
+	while (r < end)
+	{
+	  T * overlapEnd = r + oh;
+	  T * columnEnd  = r + rows_;
+	  while (r < overlapEnd)
+	  {
+		*r++ = *a * *b;
+		a +=    strideR;
+		b += MB.strideR;
+	  }
+	  while (r < columnEnd)
+	  {
+		*r++ = *a;
+		a += strideR;
+	  }
+	  a += stepA;
+	  b += stepB;
+	}
+	end += rows_ * (columns_ - ow);
+	while (r < end)
+	{
+	  T * columnEnd = r + rows_;
+	  while (r < columnEnd)
+	  {
+		*r++ = *a;
+		a += strideR;
+	  }
+	  a += stepA;
+	}
+
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::operator * (const MatrixAbstract<T> & B) const
+  {
+	const int w  = std::min (columns_, B.rows ());
+	const int bw = B.columns ();
+	Matrix<T> * result = new Matrix<T> (rows_, bw);
+	T * ri = (T *) result->data;
+
+	if (B.classID () & MatrixStridedID)
+	{
+	  const MatrixStrided & MB = (const MatrixStrided &) B;
+	  for (int c = 0; c < bw; c++)
+	  {
+		for (int r = 0; r < rows_; r++)
+		{
+		  T * i = ((T *)    data) +    offset + r *    strideR;
+		  T * j = ((T *) MB.data) + MB.offset + c * MB.strideC;
+		  T * end = j + w * MB.strideR;
+		  register T element = (T) 0;
+		  while (j != end)
+		  {
+			element += (*i) * (*j);
+			i +=    strideC;
+			j += MB.strideR;
+		  }
+		  *ri++ = element;
+		}
+	  }
+	}
+	else
+	{
+	  for (int c = 0; c < bw; c++)
+	  {
+		for (int r = 0; r < rows_; r++)
+		{
+		  T * i = ((T *) data) + offset + r * strideR;
+		  register T element = (T) 0;
+		  for (int j = 0; j < w; j++)
+		  {
+			element += (*i) * B (j, c);
+			i += strideC;
+		  }
+		  *ri++ = element;
+		}
+	  }
+	}
+
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::operator * (const T scalar) const
+  {
+	Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	T * i   = (T *) data + offset;
+	T * r   = (T *) result->data;
+	T * end = r + rows_ * columns_;
+	const int stepC = strideC - rows_ * strideR;
+	while (r < end)
+	{
+	  T * columnEnd = r + rows_;
+	  while (r < columnEnd)
+	  {
+		*r++ = *i * scalar;
+		i += strideR;
+	  }
+	  i += stepC;
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::operator / (const MatrixAbstract<T> & B) const
+  {
+	if ((B.classID () & MatrixStridedID) == 0) return MatrixAbstract<T>::operator / (B);
+
+	Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	const MatrixStrided & MB = (const MatrixStrided &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - rows_ *    strideR;
+	const int stepB = MB.strideC - oh    * MB.strideR;
+	T * a = (T *)    data +    offset;
+	T * b = (T *) MB.data + MB.offset;
+	T * r = (T *) result->data;
+	T * end = r + rows_ * ow;
+	while (r < end)
+	{
+	  T * overlapEnd = r + oh;
+	  T * columnEnd  = r + rows_;
+	  while (r < overlapEnd)
+	  {
+		*r++ = *a / *b;
+		a +=    strideR;
+		b += MB.strideR;
+	  }
+	  while (r < columnEnd)
+	  {
+		*r++ = *a;
+		a += strideR;
+	  }
+	  a += stepA;
+	  b += stepB;
+	}
+	end += rows_ * (columns_ - ow);
+	while (r < end)
+	{
+	  T * columnEnd = r + rows_;
+	  while (r < columnEnd)
+	  {
+		*r++ = *a;
+		a += strideR;
+	  }
+	  a += stepA;
+	}
+
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::operator / (const T scalar) const
+  {
+	Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	T * i   = (T *) data + offset;
+	T * r   = (T *) result->data;
+	T * end = r + rows_ * columns_;
+	const int stepC = strideC - rows_ * strideR;
+	while (r < end)
+	{
+	  T * columnEnd = r + rows_;
+	  while (r < columnEnd)
+	  {
+		*r++ = *i / scalar;
+		i += strideR;
+	  }
+	  i += stepC;
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::operator + (const MatrixAbstract<T> & B) const
+  {
+	if ((B.classID () & MatrixStridedID) == 0) return MatrixAbstract<T>::operator + (B);
+
+	Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	const MatrixStrided & MB = (const MatrixStrided &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - rows_ *    strideR;
+	const int stepB = MB.strideC - oh    * MB.strideR;
+	T * a = (T *)    data +    offset;
+	T * b = (T *) MB.data + MB.offset;
+	T * r = (T *) result->data;
+	T * end = r + rows_ * ow;
+	while (r < end)
+	{
+	  T * overlapEnd = r + oh;
+	  T * columnEnd  = r + rows_;
+	  while (r < overlapEnd)
+	  {
+		*r++ = *a + *b;
+		a +=    strideR;
+		b += MB.strideR;
+	  }
+	  while (r < columnEnd)
+	  {
+		*r++ = *a;
+		a += strideR;
+	  }
+	  a += stepA;
+	  b += stepB;
+	}
+	end += rows_ * (columns_ - ow);
+	while (r < end)
+	{
+	  T * columnEnd = r + rows_;
+	  while (r < columnEnd)
+	  {
+		*r++ = *a;
+		a += strideR;
+	  }
+	  a += stepA;
+	}
+
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::operator + (const T scalar) const
+  {
+	Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	T * i   = (T *) data + offset;
+	T * r   = (T *) result->data;
+	T * end = r + rows_ * columns_;
+	const int stepC = strideC - rows_ * strideR;
+	while (r < end)
+	{
+	  T * columnEnd = r + rows_;
+	  while (r < columnEnd)
+	  {
+		*r++ = *i + scalar;
+		i += strideR;
+	  }
+	  i += stepC;
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::operator - (const MatrixAbstract<T> & B) const
+  {
+	if ((B.classID () & MatrixStridedID) == 0) return MatrixAbstract<T>::operator - (B);
+
+	Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	const MatrixStrided & MB = (const MatrixStrided &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - rows_ *    strideR;
+	const int stepB = MB.strideC - oh    * MB.strideR;
+	T * a = (T *)    data +    offset;
+	T * b = (T *) MB.data + MB.offset;
+	T * r = (T *) result->data;
+	T * end = r + rows_ * ow;
+	while (r < end)
+	{
+	  T * overlapEnd = r + oh;
+	  T * columnEnd  = r + rows_;
+	  while (r < overlapEnd)
+	  {
+		*r++ = *a - *b;
+		a +=    strideR;
+		b += MB.strideR;
+	  }
+	  while (r < columnEnd)
+	  {
+		*r++ = *a;
+		a += strideR;
+	  }
+	  a += stepA;
+	  b += stepB;
+	}
+	end += rows_ * (columns_ - ow);
+	while (r < end)
+	{
+	  T * columnEnd = r + rows_;
+	  while (r < columnEnd)
+	  {
+		*r++ = *a;
+		a += strideR;
+	  }
+	  a += stepA;
+	}
+
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::operator - (const T scalar) const
+  {
+	Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	T * i   = (T *) data + offset;
+	T * r   = (T *) result->data;
+	T * end = r + rows_ * columns_;
+	const int stepC = strideC - rows_ * strideR;
+	while (r < end)
+	{
+	  T * columnEnd = r + rows_;
+	  while (r < columnEnd)
+	  {
+		*r++ = *i - scalar;
+		i += strideR;
+	  }
+	  i += stepC;
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixStrided<T>::operator &= (const MatrixAbstract<T> & B)
+  {
+	if ((B.classID () & MatrixStridedID) == 0) return MatrixAbstract<T>::operator &= (B);
+
+	const MatrixStrided & MB = (const MatrixStrided &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - oh *    strideR;
+	const int stepB = MB.strideC - oh * MB.strideR;
+	T * a   = (T *)    data +    offset;
+	T * b   = (T *) MB.data + MB.offset;
+	T * end = a + strideC * ow;
+	while (a != end)
+	{
+	  T * columnEnd = a + oh * strideR;
+	  while (a != columnEnd)
+	  {
+		*a *= *b;
+		a +=    strideR;
+		b += MB.strideR;
+	  }
+	  a += stepA;
+	  b += stepB;
+	}
+
+	return *this;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixStrided<T>::operator *= (const MatrixAbstract<T> & B)
+  {
+	if (B.classID () & MatrixStridedID) return operator = (operator * ((const MatrixStrided &) B));
+	return MatrixAbstract<T>::operator *= (B);
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixStrided<T>::operator *= (const T scalar)
+  {
+	T * i = (T *) data + offset;
+	T * end = i + strideC * columns_;
+	const int stepC = strideC - rows_ * strideR;
+	while (i != end)
+	{
+	  T * columnEnd = i + rows_ * strideR;
+	  while (i != columnEnd)
+	  {
+		*i *= scalar;
+		i += strideR;
+	  }
+	  i += stepC;
+	}
+	return *this;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixStrided<T>::operator /= (const MatrixAbstract<T> & B)
+  {
+	if ((B.classID () & MatrixStridedID) == 0) return MatrixAbstract<T>::operator /= (B);
+
+	const MatrixStrided & MB = (const MatrixStrided &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - oh *    strideR;
+	const int stepB = MB.strideC - oh * MB.strideR;
+	T * a   = (T *)    data +    offset;
+	T * b   = (T *) MB.data + MB.offset;
+	T * end = a + strideC * ow;
+	while (a != end)
+	{
+	  T * columnEnd = a + oh * strideR;
+	  while (a != columnEnd)
+	  {
+		*a /= *b;
+		a +=    strideR;
+		b += MB.strideR;
+	  }
+	  a += stepA;
+	  b += stepB;
+	}
+
+	return *this;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixStrided<T>::operator /= (const T scalar)
+  {
+	T * i = (T *) data + offset;
+	T * end = i + strideC * columns_;
+	const int stepC = strideC - rows_ * strideR;
+	while (i != end)
+	{
+	  T * columnEnd = i + rows_ * strideR;
+	  while (i != columnEnd)
+	  {
+		*i /= scalar;
+		i += strideR;
+	  }
+	  i += stepC;
+	}
+	return *this;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixStrided<T>::operator += (const MatrixAbstract<T> & B)
+  {
+	if ((B.classID () & MatrixStridedID) == 0) return MatrixAbstract<T>::operator += (B);
+
+	const MatrixStrided & MB = (const MatrixStrided &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - oh *    strideR;
+	const int stepB = MB.strideC - oh * MB.strideR;
+	T * a   = (T *)    data +    offset;
+	T * b   = (T *) MB.data + MB.offset;
+	T * end = a + strideC * ow;
+	while (a != end)
+	{
+	  T * columnEnd = a + oh * strideR;
+	  while (a != columnEnd)
+	  {
+		*a += *b;
+		a +=    strideR;
+		b += MB.strideR;
+	  }
+	  a += stepA;
+	  b += stepB;
+	}
+
+	return *this;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixStrided<T>::operator += (const T scalar)
+  {
+	T * i = (T *) data + offset;
+	T * end = i + strideC * columns_;
+	const int stepC = strideC - rows_ * strideR;
+	while (i != end)
+	{
+	  T * columnEnd = i + rows_ * strideR;
+	  while (i != columnEnd)
+	  {
+		*i += scalar;
+		i += strideR;
+	  }
+	  i += stepC;
+	}
+	return *this;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixStrided<T>::operator -= (const MatrixAbstract<T> & B)
+  {
+	if ((B.classID () & MatrixStridedID) == 0) return MatrixAbstract<T>::operator -= (B);
+
+	const MatrixStrided & MB = (const MatrixStrided &) B;
+	const int oh = std::min (rows_,    MB.rows_);
+	const int ow = std::min (columns_, MB.columns_);
+	const int stepA =    strideC - oh *    strideR;
+	const int stepB = MB.strideC - oh * MB.strideR;
+	T * a   = (T *)    data +    offset;
+	T * b   = (T *) MB.data + MB.offset;
+	T * end = a + strideC * ow;
+	while (a != end)
+	{
+	  T * columnEnd = a + oh * strideR;
+	  while (a != columnEnd)
+	  {
+		*a -= *b;
+		a +=    strideR;
+		b += MB.strideR;
+	  }
+	  a += stepA;
+	  b += stepB;
+	}
+
+	return *this;
+  }
+
+  template<class T>
+  MatrixAbstract<T> &
+  MatrixStrided<T>::operator -= (const T scalar)
+  {
+	T * i = (T *) data + offset;
+	T * end = i + strideC * columns_;
+	const int stepC = strideC - rows_ * strideR;
+	while (i != end)
+	{
+	  T * columnEnd = i + rows_ * strideR;
+	  while (i != columnEnd)
+	  {
+		*i -= scalar;
+		i += strideR;
+	  }
+	  i += stepC;
+	}
+	return *this;
+  }
+
+  template<class T>
+  void
+  MatrixStrided<T>::read (std::istream & stream)
+  {
+	offset  = 0;
+	stream.read ((char *) & rows_,    sizeof (rows_));
+	stream.read ((char *) & columns_, sizeof (columns_));
+	strideR = 1;
+	strideC = rows_;
+	if (! stream.good ())
+	{
+	  throw "Stream bad.  Unable to finish reading Matrix.";
+	}
+	int bytes = rows_ * columns_ * sizeof (T);
+	this->data.grow (bytes);
+	stream.read ((char *) data, bytes);
+  }
+
+  template<class T>
+  void
+  MatrixStrided<T>::write (std::ostream & stream) const
+  {
+	stream.write ((char *) & rows_,    sizeof (rows_));
+	stream.write ((char *) & columns_, sizeof (columns_));
+	T * i = (T *) data + offset;
+	// Chunk the output as much as possible.  This makes writing to the stream much faster.
+	if (strideR == 1)
+	{
+	  if (strideC == rows_)
+	  {
+		stream.write ((char *) i, rows_ * columns_);
+	  }
+	  else
+	  {
+		const int bytes = rows_ * sizeof (T);
+		int count = bytes * columns_;
+		while (count > 0)
+		{
+		  stream.write ((char *) i, bytes);
+		  i += strideC;
+		  count -= bytes;
+		}
+	  }
+	}
+	else
+	{
+	  T * end = i + strideC * columns_;
+	  const int stepC = strideC - rows_ * strideR;
+	  while (i != end)
+	  {
+		T * columnEnd = i + rows_ * strideR;
+		while (i != columnEnd)
+		{
+		  stream.write ((char *) i, sizeof (T));
+		  i += strideR;
+		}
+		i += stepC;
+	  }
+	}
   }
 
 
@@ -1005,7 +1771,7 @@ namespace fl
   template<class T>
   Matrix<T>::Matrix (std::istream & stream)
   {
-	read (stream);
+	MatrixStrided<T>::read (stream);
   }
 
   template<class T>
@@ -1220,451 +1986,6 @@ namespace fl
 		*i++ = scalar;
 	  }
 	}	  
-  }
-
-  // This version of norm() is suitable for float and double.  Other
-  // numeric types may need more specialization.
-  template<class T>
-  T
-  Matrix<T>::norm (float n) const
-  {
-	// Some of this code may have to be modified for complex numbers.
-	T * i = (T *) this->data;
-	T * end = i + this->strideC * this->columns_;
-	const int step = this->strideC - this->rows_;
-	if (n == INFINITY)
-	{
-	  T result = (T) 0;
-	  while (i < end)
-	  {
-		T * columnEnd = i + this->rows_;
-		while (i < columnEnd) result = std::max (std::abs (*i++), result);
-		i += step;
-	  }
-	  return result;
-	}
-	else if (n == 0.0f)
-	{
-	  unsigned int result = 0;
-	  while (i < end)
-	  {
-		T * columnEnd = i + this->rows_;
-		while (i < columnEnd) if (std::abs (*i++) > 0) result++;
-		i += step;
-	  }
-	  return (T) result;
-	}
-	else if (n == 1.0f)
-	{
-	  T result = (T) 0;
-	  while (i < end)
-	  {
-		T * columnEnd = i + this->rows_;
-		while (i < columnEnd) result += *i++;
-		i += step;
-	  }
-	  return result;
-	}
-	else if (n == 2.0f)
-	{
-	  T result = (T) 0;
-	  while (i < end)
-	  {
-		T * columnEnd = i + this->rows_;
-		while (i < columnEnd) result += (*i) * (*i++);
-		i += step;
-	  }
-	  return (T) std::sqrt (result);
-	}
-	else
-	{
-	  T result = (T) 0;
-	  while (i < end)
-	  {
-		T * columnEnd = i + this->rows_;
-		while (i < columnEnd) result += (T) std::pow (*i++, (T) n);
-		i += step;
-	  }
-	  return (T) std::pow (result, (T) (1.0 / n));
-	}
-  }
-
-  template<class T>
-  T
-  Matrix<T>::sumSquares () const
-  {
-	T * i = (T *) this->data;
-	T * end = i + this->rows_ * this->columns_;
-	const int step = this->strideC - this->rows_;
-	T result = 0;
-	while (i < end)
-	{
-	  T * columnEnd = i + this->rows_;
-	  while (i < columnEnd) result += (*i) * (*i++);
-	  i += step;
-	}
-	return result;
-  }
-
-  template<class T>
-  T
-  Matrix<T>::dot (const MatrixAbstract<T> & B) const
-  {
-	register T result = (T) 0;
-	T * i = (T *) this->data;
-	if (B.classID () & MatrixID)
-	{
-	  const Matrix & M = (const Matrix &) B;
-	  T * j   = (T *) M.data;
-	  T * end = i + std::min (this->rows_, M.rows_);
-	  while (i < end) result += (*i++) * (*j++);
-	}
-	else
-	{
-	  int j = 0;
-	  T * end = i + std::min (this->rows_, B.rows ());
-	  while (i < end) result += (*i++) * B[j++];
-	}
-	return result;
-  }
-
-  template<class T>
-  Matrix<T>
-  Matrix<T>::transposeSquare () const
-  {
-	Matrix result (this->columns_, this->columns_);
-	for (int i = 0; i < this->columns_; i++)
-	{
-	  for (int j = i; j < this->columns_; j++)
-	  {
-		T * ki = & (*this)(0,i);
-		T * kj = & (*this)(0,j);
-		T * end = ki + this->rows_;
-		register T sum = (T) 0;
-		while (ki < end)
-		{
-		  sum += (*ki++) * (*kj++);
-		}
-		result(i,j) = sum;
-	  }
-	}
-	return result;
-  }
-
-  template<class T>
-  MatrixResult<T>
-  Matrix<T>::operator * (const MatrixAbstract<T> & B) const
-  {
-	const int w  = std::min (this->columns_, B.rows ());
-	const int bw = B.columns ();
-	Matrix * result = new Matrix (this->rows_, bw);
-	T * ri = (T *) result->data;
-
-	if (B.classID () & MatrixID)
-	{
-	  const Matrix & MB = (const Matrix &) B;
-	  for (int c = 0; c < bw; c++)
-	  {
-		for (int r = 0; r < this->rows_; r++)
-		{
-		  T * i = ((T *) this->data) + r;
-		  T * j = ((T *) MB.data) + c * MB.strideC;
-		  T * end = j + w;
-		  register T element = (T) 0;
-		  while (j < end)
-		  {
-			element += (*i) * (*j++);
-			i += this->strideC;
-		  }
-		  *ri++ = element;
-		}
-	  }
-	}
-	else
-	{
-	  for (int c = 0; c < bw; c++)
-	  {
-		for (int r = 0; r < this->rows_; r++)
-		{
-		  T * i = ((T *) this->data) + r;
-		  register T element = (T) 0;
-		  for (int j = 0; j < w; j++)
-		  {
-			element += (*i) * B (j, c);
-			i += this->strideC;
-		  }
-		  *ri++ = element;
-		}
-	  }
-	}
-
-	return result;
-  }
-
-  template<class T>
-  MatrixResult<T>
-  Matrix<T>::operator * (const T scalar) const
-  {
-	Matrix * result = new Matrix (this->rows_, this->columns_);
-	T * i   = (T *) this->data;
-	T * r   = (T *) result->data;
-	T * end = r + this->rows_ * this->columns_;
-	const int step = this->strideC - this->rows_;
-	while (r < end)
-	{
-	  T * columnEnd = i + this->rows_;
-	  while (i < columnEnd) *r++ = *i++ * scalar;
-	  i += step;
-	}
-	return result;
-  }
-
-  template<class T>
-  MatrixResult<T>
-  Matrix<T>::operator / (const T scalar) const
-  {
-	Matrix * result = new Matrix (this->rows_, this->columns_);
-	T * i   = (T *) this->data;
-	T * r   = (T *) result->data;
-	T * end = r + this->rows_ * this->columns_;
-	const int step = this->strideC - this->rows_;
-	while (r < end)
-	{
-	  T * columnEnd = i +this->rows_;
-	  while (i < columnEnd) *r++ = *i++ / scalar;
-	  i += step;
-	}
-	return result;
-  }
-
-  template<class T>
-  MatrixResult<T>
-  Matrix<T>::operator + (const MatrixAbstract<T> & B) const
-  {
-	if ((B.classID () & MatrixID) == 0) return MatrixStrided<T>::operator + (B);
-
-	Matrix * result = new Matrix (this->rows_, this->columns_);
-	const Matrix & MB = (const Matrix &) B;
-	const int oh = std::min (this->rows_,    MB.rows_);
-	const int ow = std::min (this->columns_, MB.columns_);
-	const int stepA = this->strideC - this->rows_;
-	const int stepB = MB   .strideC - oh;
-	T * a = (T *) this->data;
-	T * b = (T *) MB.data;
-	T * r = (T *) result->data;
-	T * end = r + this->rows_ * ow;
-	while (r < end)
-	{
-	  T * overlapEnd = r + oh;
-	  T * columnEnd = r + this->rows_;
-	  while (r < overlapEnd) *r++ = *a++ + *b++;
-	  while (r < columnEnd)  *r++ = *a++;
-	  a += stepA;
-	  b += stepB;
-	}
-	end += this->rows_ * (this->columns_ - ow);
-	while (r < end)
-	{
-	  T * columnEnd = r + this->rows_;
-	  while (r < columnEnd) *r++ = *a++;
-	  a += stepA;
-	}
-
-	return result;
-  }
-
-  template<class T>
-  MatrixResult<T>
-  Matrix<T>::operator - (const MatrixAbstract<T> & B) const
-  {
-	if ((B.classID () & MatrixID) == 0) return MatrixStrided<T>::operator - (B);
-
-	Matrix * result = new Matrix (this->rows_, this->columns_);
-	const Matrix & MB = (const Matrix &) B;
-	const int oh = std::min (this->rows_,    MB.rows_);
-	const int ow = std::min (this->columns_, MB.columns_);
-	const int stepA = this->strideC - this->rows_;
-	const int stepB = MB   .strideC - oh;
-	T * a = (T *) this->data;
-	T * b = (T *) MB.data;
-	T * r = (T *) result->data;
-	T * end = r + this->rows_ * ow;
-	while (r < end)
-	{
-	  T * overlapEnd = r + oh;
-	  T * columnEnd = r + this->rows_;
-	  while (r < overlapEnd) *r++ = *a++ - *b++;
-	  while (r < columnEnd)  *r++ = *a++;
-	  a += stepA;
-	  b += stepB;
-	}
-	end += this->rows_ * (this->columns_ - ow);
-	while (r < end)
-	{
-	  T * columnEnd = r + this->rows_;
-	  while (r < columnEnd) *r++ = *a++;
-	  a += stepA;
-	}
-
-	return result;
-  }
-
-  template<class T>
-  MatrixAbstract<T> &
-  Matrix<T>::operator *= (const MatrixAbstract<T> & B)
-  {
-	if (B.classID () & MatrixID)
-	{
-	  return *this = (*this) * (const Matrix &) B;
-	}
-	return MatrixStrided<T>::operator *= (B);
-  }
-
-  template<class T>
-  MatrixAbstract<T> &
-  Matrix<T>::operator *= (const T scalar)
-  {
-	T * i = (T *) this->data;
-	T * end = i + this->strideC * this->columns_;
-	const int step = this->strideC - this->rows_;
-	while (i < end)
-	{
-	  T * columnEnd = i + this->rows_;
-	  while (i < columnEnd) *i++ *= scalar;
-	  i += step;
-	}
-	return *this;
-  }
-
-  template<class T>
-  MatrixAbstract<T> &
-  Matrix<T>::operator /= (const T scalar)
-  {
-	T * i = (T *) this->data;
-	T * end = i + this->strideC * this->columns_;
-	const int step = this->strideC - this->rows_;
-	while (i < end)
-	{
-	  T * columnEnd = i + this->rows_;
-	  while (i < columnEnd) *i++ /= scalar;
-	  i += step;
-	}
-	return *this;
-  }
-
-  template<class T>
-  MatrixAbstract<T> &
-  Matrix<T>::operator += (const MatrixAbstract<T> & B)
-  {
-	if ((B.classID () & MatrixID) == 0) return MatrixStrided<T>::operator += (B);
-
-	const Matrix & MB = (const Matrix &) B;
-	const int oh = std::min (this->rows_,    MB.rows_);
-	const int ow = std::min (this->columns_, MB.columns_);
-	const int stepA = this->strideC - oh;
-	const int stepB = MB   .strideC - oh;
-	T * a   = (T *) this->data;
-	T * b   = (T *) MB.data;
-	T * end = a + this->strideC * ow;
-	while (a < end)
-	{
-	  T * columnEnd = a + oh;
-	  while (a < columnEnd) *a++ += *b++;
-	  a += stepA;
-	  b += stepB;
-	}
-
-	return *this;
-  }
-
-  template<class T>
-  MatrixAbstract<T> &
-  Matrix<T>::operator += (const T scalar)
-  {
-	T * i   = (T *) this->data;
-	T * end = i + this->strideC * this->columns_;
-	const int step = this->strideC - this->rows_;
-	while (i < end)
-	{
-	  T * columnEnd = i + this->rows_;
-	  while (i < columnEnd) *i++ += scalar;
-	  i += step;
-	}
-	return *this;
-  }
-
-  template<class T>
-  MatrixAbstract<T> &
-  Matrix<T>::operator -= (const MatrixAbstract<T> & B)
-  {
-	if ((B.classID () & MatrixID) == 0) return MatrixStrided<T>::operator -= (B);
-
-	const Matrix & MB = (const Matrix &) B;
-	const int oh = std::min (this->rows_,    MB.rows_);
-	const int ow = std::min (this->columns_, MB.columns_);
-	const int stepA = this->strideC - oh;
-	const int stepB = MB   .strideC - oh;
-	T * a   = (T *) this->data;
-	T * b   = (T *) MB.data;
-	T * end = a + this->strideC * ow;
-	while (a < end)
-	{
-	  T * columnEnd = a + oh;
-	  while (a < columnEnd) *a++ -= *b++;
-	  a += stepA;
-	  b += stepB;
-	}
-
-	return *this;
-  }
-
-  template<class T>
-  MatrixAbstract<T> &
-  Matrix<T>::operator -= (const T scalar)
-  {
-	T * i   = (T *) this->data;
-	T * end = i + this->strideC * this->columns_;
-	const int step = this->strideC - this->rows_;
-	while (i < end)
-	{
-	  T * columnEnd = i + this->rows_;
-	  while (i < columnEnd) *i++ -= scalar;
-	  i += step;
-	}
-	return *this;
-  }
-
-  template<class T>
-  void
-  Matrix<T>::read (std::istream & stream)
-  {
-	stream.read ((char *) & this->rows_,    sizeof (this->rows_));
-	stream.read ((char *) & this->columns_, sizeof (this->columns_));
-	this->strideC = this->rows_;
-	if (! stream.good ())
-	{
-	  throw "Stream bad.  Unable to finish reading Matrix.";
-	}
-	int bytes = this->rows_ * this->columns_ * sizeof (T);
-	this->data.grow (bytes);
-	stream.read ((char *) this->data, bytes);
-  }
-
-  template<class T>
-  void
-  Matrix<T>::write (std::ostream & stream) const
-  {
-	stream.write ((char *) & this->rows_,    sizeof (this->rows_));
-	stream.write ((char *) & this->columns_, sizeof (this->columns_));
-	T * i = (T *) this->data;
-	const int bytes = this->rows_ * sizeof (T);
-	int count = bytes * this->columns_;
-	while (count > 0)
-	{
-	  stream.write ((char *) i, bytes);
-	  i += this->strideC;
-	  count -= bytes;
-	}
   }
 
 

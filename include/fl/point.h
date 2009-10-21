@@ -161,7 +161,7 @@ namespace fl
 
   template<class T>
   inline MatrixResult<float>
-  operator * (const Matrix<T> & M, const Point & p)
+  operator * (const MatrixStrided<T> & M, const Point & p)
   {
 	Point * result = new Point;
 	result->x = M(0,0) * p.x + M(0,1) * p.y;

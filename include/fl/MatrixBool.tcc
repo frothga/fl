@@ -39,7 +39,7 @@ namespace fl
 
   template<>
   bool
-  Matrix<bool>::norm (float n) const
+  MatrixStrided<bool>::norm (float n) const
   {
 	bool * i = (bool *) data;
 	bool * end = i + rows_ * columns_;
