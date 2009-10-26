@@ -52,7 +52,7 @@ namespace fl
 	     <dd>System-wide realtime clock.
 	 <dt>CLOCK_MONOTONIC
 	     <dd>Represents monotonic time since some unspecified starting point.
-		 (Presumably not affected by changin system time.)
+		 (Presumably not affected by modifying system time.)
 	 <dt>CLOCK_PROCESS_CPUTIME_ID
 	     <dd>High-resolution per-process timer from the CPU.
 	 <dt>CLOCK_THREAD_CPUTIME_ID
