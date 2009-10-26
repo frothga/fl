@@ -4,9 +4,6 @@ TODO
 * Sparse matrices using contigs rather than linked lists.
 * Add MatrixBlock which consists of pointers to MatrixAbstract at each cell.
 
-* Add leading dimension and start address to Matrix template.  This will allow it to deliver submatrices directly, and to return shorter matrices from functions like gelss without copying.  This would fully implement the matrix representation implied by LAPACK.
-* Add MatrixStrided with both rowStep and columnStep.  This can implement dense transpose matrices.
-
 * Add a separate start address from memory block base in PixelFormatPacked.  This would allow ROI style processing.
 
 * Ability to return directory of metadata tags from ImageFile.
