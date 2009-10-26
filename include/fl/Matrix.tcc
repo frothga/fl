@@ -20,6 +20,7 @@ for details.
 
 #include "fl/matrix.h"
 #include "fl/string.h"
+#include "fl/blasproto.h"
 
 #include <algorithm>
 #include <typeinfo>
@@ -323,27 +324,19 @@ namespace fl
 	return result;
   }
 
+  /**
+	 It is more time efficient to realize both operands into dense
+	 matrices, because otherwise each element is retrieved multiple times.
+	 However, this is not space efficient, and may not always be the most
+	 desirable action.  If a class exists primarily to represent a very
+	 large (probably sparse) matrix in a space efficient way, it should
+	 override this implementation.
+  **/
   template<class T>
   MatrixResult<T>
   MatrixAbstract<T>::operator * (const MatrixAbstract<T> & B) const
   {
-	int w = std::min (columns (), B.rows ());
-	int h = rows ();
-	int bw = B.columns ();
-	Matrix<T> * result = new Matrix<T> (h, bw);
-	for (int c = 0; c < bw; c++)
-	{
-	  for (int r = 0; r < h; r++)
-	  {
-		register T element = (T) 0;
-		for (int i = 0; i < w; i++)
-		{
-		  element += (*this)(r,i) * B(i,c);
-		}
-		(*result)(r,c) = element;
-	  }
-	}
-	return result;
+	return MatrixStrided<T> (*this) * MatrixStrided<T> (B);
   }
 
   template<class T>
@@ -925,7 +918,6 @@ namespace fl
   T
   MatrixStrided<T>::norm (float n) const
   {
-	// Some of this code may have to be modified for complex numbers.
 	T * i = (T *) data + offset;
 	T * end = i + columns_ * strideC;
 	const int stepC = strideC - rows_ * strideR;
@@ -976,6 +968,13 @@ namespace fl
 	}
 	else if (n == 2.0f)
 	{
+#     ifdef HAVE_BLAS
+	  if (columns_ == 1)                 return nrm2 (rows_,            i, strideR);
+	  if (rows_    == 1)                 return nrm2 (columns_,         i, strideC);
+	  if (strideC == rows_    * strideR) return nrm2 (rows_ * columns_, i, strideR);
+	  if (strideR == columns_ * strideC) return nrm2 (rows_ * columns_, i, strideC);
+#     endif
+
 	  T result = (T) 0;
 	  while (i != end)
 	  {
@@ -1032,22 +1031,28 @@ namespace fl
   MatrixStrided<T>::dot (const MatrixAbstract<T> & B) const
   {
 	register T result = (T) 0;
-	T * i   = (T *) data + offset;
-	T * end = i + std::min (rows_, B.rows ()) * strideR;
+	const int n = std::min (rows_, B.rows ());
+	T * i = (T *) data + offset;
 	if (B.classID () & MatrixStridedID)
 	{
 	  const MatrixStrided & M = (const MatrixStrided &) B;
 	  T * j = (T *) M.data + offset;
+#     ifdef HAVE_BLAS
+	  result = fl::dot (n, i, strideR, j, M.strideR);
+#     else
+	  T * end = i + n * strideR;
 	  while (i != end)
 	  {
 		result += (*i) * (*j);
 		i +=   strideR;
 		j += M.strideR;
 	  }
+#     endif
 	}
 	else
 	{
 	  int j = 0;
+	  T * end = i + n * strideR;
 	  while (i != end)
 	  {
 		result += (*i) * B[j++];
@@ -1176,50 +1181,70 @@ namespace fl
   MatrixResult<T>
   MatrixStrided<T>::operator * (const MatrixAbstract<T> & B) const
   {
-	const int w  = std::min (columns_, B.rows ());
-	const int bw = B.columns ();
+	if ((B.classID () & MatrixStridedID) == 0) return operator * (MatrixStrided (B));  // For efficiency's sake, realize the second matrix rather than repeatedly calling its accessors for each given element.
+
+	const MatrixStrided & MB = (const MatrixStrided &) B;
+	const int w  = std::min (columns_, MB.rows_);
+	const int bw = MB.columns_;
 	Matrix<T> * result = new Matrix<T> (rows_, bw);
-	T * ri = (T *) result->data;
+	T * c = (T *) result->data;
 
-	if (B.classID () & MatrixStridedID)
+#   ifdef HAVE_BLAS
+	if (rows_ * bw * w > 1000)  // Only run BLAS for non-trivial sized problems.  Should really be a tuneable parameter.
 	{
-	  const MatrixStrided & MB = (const MatrixStrided &) B;
-	  for (int c = 0; c < bw; c++)
+	  if (strideR == 1)
 	  {
-		for (int r = 0; r < rows_; r++)
+		if (MB.strideR == 1)
 		{
-		  T * i = ((T *)    data) +    offset + r *    strideR;
-		  T * j = ((T *) MB.data) + MB.offset + c * MB.strideC;
-		  T * end = j + w * MB.strideR;
-		  register T element = (T) 0;
-		  while (j != end)
-		  {
-			element += (*i) * (*j);
-			i +=    strideC;
-			j += MB.strideR;
-		  }
-		  *ri++ = element;
+		  gemm ('n', 'n', rows_, bw, w, (T) 1, (T *) data + offset, strideC, (T *) MB.data + MB.offset, MB.strideC, (T) 0, c, rows_);
+		  return result;
+		}
+		if (MB.strideC == 1)
+		{
+		  gemm ('n', 'T', rows_, bw, w, (T) 1, (T *) data + offset, strideC, (T *) MB.data + MB.offset, MB.strideR, (T) 0, c, rows_);
+		  return result;
+		}
+	  }
+	  else if (strideC == 1)
+	  {
+		if (MB.strideR == 1)
+		{
+		  gemm ('T', 'n', rows_, bw, w, (T) 1, (T *) data + offset, strideR, (T *) MB.data + MB.offset, MB.strideC, (T) 0, c, rows_);
+		  return result;
+		}
+		if (MB.strideC == 1)
+		{
+		  gemm ('T', 'T', rows_, bw, w, (T) 1, (T *) data + offset, strideR, (T *) MB.data + MB.offset, MB.strideR, (T) 0, c, rows_);
+		  return result;
 		}
 	  }
 	}
-	else
-	{
-	  for (int c = 0; c < bw; c++)
-	  {
-		for (int r = 0; r < rows_; r++)
-		{
-		  T * i = ((T *) data) + offset + r * strideR;
-		  register T element = (T) 0;
-		  for (int j = 0; j < w; j++)
-		  {
-			element += (*i) * B (j, c);
-			i += strideC;
-		  }
-		  *ri++ = element;
-		}
-	  }
-	}
+#   endif
 
+	T * aa  = (T *)    data +    offset;
+	T * b   = (T *) MB.data + MB.offset;
+	T * end = c + rows_ * bw;
+	while (c < end)
+	{
+	  T * a = aa;
+	  T * columnEnd = c + rows_;
+	  while (c < columnEnd)
+	  {
+		register T element = (T) 0;
+		T * i = a;
+		T * j = b;
+		T * rowEnd = j + w * MB.strideR;
+		while (j != rowEnd)
+		{
+		  element += (*i) * (*j);
+		  i +=    strideC;
+		  j += MB.strideR;
+		}
+		*c++ = element;
+		a += strideR;
+	  }
+	  b += MB.strideC;
+	}
 	return result;
   }
 
@@ -1501,6 +1526,30 @@ namespace fl
   MatrixStrided<T>::operator *= (const T scalar)
   {
 	T * i = (T *) data + offset;
+
+#   ifdef HAVE_BLAS
+	if (columns_ == 1)
+	{
+	  scal (rows_, scalar, i, strideR);
+	  return * this;
+	}
+	if (rows_ == 1)
+	{
+	  scal (columns_, scalar, i, strideC);
+	  return *this;
+	}
+	if (strideC == rows_ * strideR)
+	{
+	  scal (rows_ * columns_, scalar, i, strideR);
+	  return *this;
+	}
+	if (strideR == columns_ * strideC)
+	{
+	  scal (rows_ * columns_, scalar, i, strideC);
+	  return *this;
+	}
+#   endif
+
 	T * end = i + strideC * columns_;
 	const int stepC = strideC - rows_ * strideR;
 	while (i != end)
@@ -1575,10 +1624,34 @@ namespace fl
 	const MatrixStrided & MB = (const MatrixStrided &) B;
 	const int oh = std::min (rows_,    MB.rows_);
 	const int ow = std::min (columns_, MB.columns_);
-	const int stepA =    strideC - oh *    strideR;
-	const int stepB = MB.strideC - oh * MB.strideR;
 	T * a   = (T *)    data +    offset;
 	T * b   = (T *) MB.data + MB.offset;
+
+#   ifdef HAVE_BLAS
+	if (ow == 1)
+	{
+	  axpy (oh, (T) 1, b, MB.strideR, a, strideR);
+	  return * this;
+	}
+	if (oh == 1)
+	{
+	  axpy (ow, (T) 1, b, MB.strideC, a, strideC);
+	  return *this;
+	}
+	if (strideC == oh * strideR  &&  MB.strideC == oh * MB.strideR)
+	{
+	  axpy (oh * ow, (T) 1, b, MB.strideR, a, strideR);
+	  return *this;
+	}
+	if (strideR == ow * strideC  &&  MB.strideR == ow * MB.strideC)
+	{
+	  axpy (oh * ow, (T) 1, b, MB.strideC, a, strideC);
+	  return *this;
+	}
+#   endif
+
+	const int stepA =    strideC - oh *    strideR;
+	const int stepB = MB.strideC - oh * MB.strideR;
 	T * end = a + strideC * ow;
 	while (a != end)
 	{

@@ -61,9 +61,9 @@ add_library (flNumeric
 
   # Lapack bridge
   ../../include/fl/lapack.h
+  ../../include/fl/lapack.tcc
   ../../include/fl/lapackproto.h
-  ../../include/fl/lapackprotod.h
-  ../../include/fl/lapackprotos.h
+  ../../include/fl/blasproto.h
   #   Double
   dgeev.cc
   dgelss.cc
@@ -145,4 +145,5 @@ target_link_libraries (testNumeric
   flBase
   ${LAPACK_LIBRARIES}
   ${GCC_LIBRARIES}
+  ${RT_LIB}
 )

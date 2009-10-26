@@ -68,6 +68,17 @@ namespace fl
 
   /**
 	 Compute eigenvalues and right eigenvectors for general (non-symmetric)
+	 matrix.  This version returns the imaginary component of any complex
+	 eigenvalues, rather than just ignoring it.
+	 \param destroyA Indicates that A may be overwritten if A is a dense
+	 Matrix.  The default is for A to be copied, which is less efficient
+	 but allows A to be reused in other calculations.
+  **/
+  template<class T>
+  void geev (const MatrixAbstract<T> & A, Matrix<std::complex<T> > & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
+
+  /**
+	 Compute eigenvalues and right eigenvectors for general (non-symmetric)
 	 matrix.
 	 \param destroyA Indicates that A may be overwritten if A is a dense
 	 Matrix.  The default is for A to be copied, which is less efficient
@@ -84,17 +95,6 @@ namespace fl
   **/
   template<class T>
   void geev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, bool destroyA = false);
-
-  /**
-	 Compute eigenvalues and right eigenvectors for general (non-symmetric)
-	 matrix.  This version returns the imaginary component of any complex
-	 eigenvalues, rather than just ignoring it.
-	 \param destroyA Indicates that A may be overwritten if A is a dense
-	 Matrix.  The default is for A to be copied, which is less efficient
-	 but allows A to be reused in other calculations.
-  **/
-  template<class T>
-  void geev (const MatrixAbstract<T> & A, Matrix<std::complex<T> > & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
 
   /**
 	 Solve least squares problem using SVD via QR.

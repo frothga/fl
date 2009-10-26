@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -14,117 +14,11 @@ for details.
 */
 
 
-#include "fl/lapack.h"
-#include "fl/lapackprotos.h"
+#include "fl/lapack.tcc"
 
 
 namespace fl
 {
-  template<>
-  Matrix<float>
-  MatrixAbstract<float>::operator ! () const
-  {
-	int h = rows ();
-	int w = columns ();
-	if (w != h) return pinv (*this);  // forces dgesvd to be linked as well
-
-	Matrix<float> result;
-	result.copyFrom (*this);
-
-	int * ipiv = (int *) malloc (h * sizeof (int));
-
-	int info = 0;
-
-	sgetrf_ (h,
-			 h,
-			 & result[0],
-			 result.strideC,
-			 ipiv,
-			 info);
-
-	if (info == 0)
-	{
-	  int lwork = -1;
-	  float optimalSize;
-
-	  sgetri_ (h,
-			   & result[0],
-			   result.strideC,
-			   ipiv,
-			   & optimalSize,
-			   lwork,
-			   info);
-
-	  lwork = (int) optimalSize;
-	  float * work = (float *) malloc (lwork * sizeof (float));
-
-	  sgetri_ (h,
-			   & result[0],
-			   result.strideC,
-			   ipiv,
-			   work,
-			   lwork,
-			   info);
-
-	  free (work);
-	}
-
-	free (ipiv);
-
-	if (info != 0)
-	{
-	  throw info;
-	}
-
-	return result;
-  }
-
-  template<>
-  float
-  det (const MatrixAbstract<float> & A)
-  {
-	int m = A.rows ();
-	if (m != A.columns ())
-	{
-	  throw "det only works on square matrices";
-	}
-
-	Matrix<float> tempA;
-	tempA.copyFrom (A);
-
-	int * ipiv = (int *) malloc (m * sizeof (int));
-
-	int info = 0;
-
-	sgetrf_ (m,
-			 m,
-			 & tempA[0],
-			 tempA.strideC,
-			 ipiv,
-			 info);
-
-	int exchanges = 0;
-	float result = 1;
-	for (int i = 0; i < m; i++)
-	{
-	  result *= tempA(i,i);
-	  if (ipiv[i] != i + 1)
-	  {
-		exchanges++;
-	  }
-	}
-	if (exchanges % 2)
-	{
-	  result *= -1;
-	}
-
-	free (ipiv);
-
-	if (info != 0)
-	{
-	  throw info;
-	}
-
-	return result;
-  }
+  template Matrix<float> MatrixAbstract<float>::operator ! () const;
+  template float det (const MatrixAbstract<float> & A);
 }

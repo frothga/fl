@@ -27,6 +27,7 @@ target_link_libraries (psnr
   flNumeric
   flBase
   ${FFMPEG_LIBRARIES}
+  ${LAPACK_LIBRARIES}
   ${GCC_LIBRARIES}
   ${RT_LIB}
 )
@@ -56,6 +57,7 @@ target_link_libraries (vread
   ${FFMPEG_LIBRARIES}
   ${JPEG_LIBRARIES}
   ${X11_LIBRARIES}
+  ${LAPACK_LIBRARIES}
   ${GCC_LIBRARIES}
   ${RT_LIB}
 )

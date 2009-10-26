@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -14,94 +14,11 @@ for details.
 */
 
 
-#include "fl/lapack.h"
-#include "fl/lapackprotos.h"
+#include "fl/lapack.tcc"
 
 
 namespace fl
 {
-  template<>
-  void
-  syev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors, bool destroyA)
-  {
-	if (destroyA  &&  (A.classID () & MatrixID))
-	{
-	  eigenvectors = (const Matrix<float> &) A;
-	}
-	else
-	{
-	  eigenvectors.copyFrom (A);
-	}
-
-	int n = eigenvectors.rows ();
-	eigenvalues.resize (n);
-
-	char jobz = 'V';
-	char uplo = 'U';
-
-	int lwork = n * n;
-	lwork = std::max (lwork, 10);  // Special case for n == 1 and n == 2;
-	float * work = (float *) malloc (lwork * sizeof (float));
-	int info = 0;
-
-	ssyev_ (jobz,
-			uplo,
-			n,
-			& eigenvectors[0],
-			eigenvectors.strideC,
-			& eigenvalues[0],
-			work,
-			lwork,
-			info);
-
-	free (work);
-
-	if (info)
-	{
-	  throw info;
-	}
-  }
-
-  template<>
-  void
-  syev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, bool destroyA)
-  {
-	Matrix<float> eigenvectors;
-	if (destroyA  &&  (A.classID () & MatrixID))
-	{
-	  eigenvectors = (const Matrix<float> &) A;
-	}
-	else
-	{
-	  eigenvectors.copyFrom (A);
-	}
-
-	int n = A.rows ();
-	eigenvalues.resize (n);
-
-	char jobz = 'N';
-	char uplo = 'U';
-
-	int lwork = n * n;
-	lwork = std::max (lwork, 10);  // Special case for n == 1 and n == 2;
-	float * work = (float *) malloc (lwork * sizeof (float));
-	int info = 0;
-
-	ssyev_ (jobz,
-			uplo,
-			n,
-			& eigenvectors[0],
-			eigenvectors.strideC,
-			& eigenvalues[0],
-			work,
-			lwork,
-			info);
-
-	free (work);
-
-	if (info)
-	{
-	  throw info;
-	}
-  }
+  template void syev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors, bool destroyA);
+  template void syev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, bool destroyA);
 }
