@@ -3,7 +3,7 @@ Author: Fred Rothganger
 Created 3/26/08
 
 
-Copyright 2008 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -205,7 +205,7 @@ ImageFileDelegatePNG::write (const Image & image, int x, int y)
 	  else if (image.format->depth == 4.0f / 8.0f) format = new PixelFormatGrayBits (4);
 	  else if (image.format->depth <= 1.0f)        format = &GrayChar;
 	  else                                         format = &GrayShort;
-	  depth = (int) rint (format->depth * 8);
+	  depth = (int) roundp (format->depth * 8);
 	}
 	else
 	{
@@ -215,7 +215,7 @@ ImageFileDelegatePNG::write (const Image & image, int x, int y)
 	  {
 		colorFormat |= PNG_COLOR_MASK_PALETTE;
 		format = pfp;
-		depth = (int) rint (format->depth * 8);
+		depth = (int) roundp (format->depth * 8);
 
 		paletteCount = (0x1 << pfp->bits);
 		palette = (png_colorp) malloc (sizeof (png_color) * paletteCount);
@@ -311,7 +311,7 @@ ImageFileDelegatePNG::get (const string & name, int & value)
   get (name, v);
   if (v.rows () > 0  &&  v.columns () > 0)
   {
-	value = (int) rint (v(0,0));
+	value = (int) roundp (v(0,0));
   }
 }
 

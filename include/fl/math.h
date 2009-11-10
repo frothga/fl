@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -69,18 +69,6 @@ namespace std
 
 #else
 
-  inline float
-  rint (float a)
-  {
-	return floorf (a + 0.5f);
-  }
-
-  inline double
-  rint (double a)
-  {
-	return floor (a + 0.5);
-  }
-
   inline int
   isnan (double a)
   {
@@ -121,46 +109,69 @@ namespace std
   {
 	return min (a, min (b, min (c, d)));
   }
-
 }
 
 
-#ifndef INFINITY
-static union
+namespace fl
 {
-  unsigned char c[4];
-  float f;
-} fl_infinity = {0, 0, 0x80, 0x7f};
-#define INFINITY fl_infinity.f
-#endif
+# ifndef INFINITY
+  static union
+  {
+	unsigned char c[4];
+	float f;
+  }
+  infinity = {0, 0, 0x80, 0x7f};
+# define INFINITY fl::infinity.f
+# endif
 
-#ifndef NAN
-static union
-{
-  unsigned char c[4];
-  float f;
-} fl_nan = {0, 0, 0xc0, 0x7f};
-#define NAN fl_nan.f
-#endif
+# ifndef NAN
+  static union
+  {
+	unsigned char c[4];
+	float f;
+  }
+  nan = {0, 0, 0xc0, 0x7f};
+# define NAN fl::nan.f
+# endif
 
+  inline bool
+  issubnormal (float a)
+  {
+	return    ((*(uint32_t *) &a) & 0x7F800000) == 0
+	       && ((*(uint32_t *) &a) &   0x7FFFFF) != 0;
+  }
 
-inline bool
-issubnormal (float a)
-{
-  return    ((*(uint32_t *) &a) & 0x7F800000) == 0
-	     && ((*(uint32_t *) &a) &   0x7FFFFF) != 0;
-}
-
-inline bool
-issubnormal (double a)
-{
-  #ifdef _MSC_VER
+  inline bool
+  issubnormal (double a)
+  {
+#   ifdef _MSC_VER
 	int c = _fpclass (a);
 	return c == _FPCLASS_ND  ||  c == _FPCLASS_PD;
-  #else
+#   else
 	return    ((*(uint64_t *) &a) & 0x7FF0000000000000ll) == 0
 	       && ((*(uint64_t *) &a) &    0xFFFFFFFFFFFFFll) != 0;
-  #endif
+#   endif
+  }
+
+  /**
+	 Same as round(), but when <code>|a - roundp(a)| = 0.5</code> the result will
+	 be the more positive integer.
+  **/
+  inline float
+  roundp (float a)
+  {
+	return floorf (a + 0.5f);
+  }
+
+  /**
+	 Same as round(), but when <code>|a - roundp(a)| = 0.5</code> the result will
+	 be the more positive integer.
+  **/
+  inline double
+  roundp (double a)
+  {
+	return floor (a + 0.5);
+  }
 }
 
 

@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -575,7 +575,7 @@ PixelFormat::buildFloat2Char ()
 	  f = 1.055 * pow (f, 1.0 / 2.4) - 0.055;
 	}
 
-	result[i] = (unsigned char) rint (f * 255);
+	result[i] = (unsigned char) roundp (f * 255);
   }
   return result;
 }
@@ -3696,7 +3696,7 @@ PixelFormatRGBAChar::fromPackedYUV (const Image & image, Image & result) const
   assert (o);
   unsigned int *       toPixel  = (unsigned int *) o->memory;
   const unsigned int * end      = (unsigned int *) ((char *) toPixel + o->stride * result.height);
-  const int            rowWidth = (int) rint (result.width * depth);
+  const int            rowWidth = (int) roundp (result.width * depth);
   const int            toStep   = o->stride - rowWidth;
 
   while (toPixel < end)
@@ -4242,7 +4242,7 @@ PixelFormatPackedYUV::fromAny (const Image & image, Image & result) const
   const int             rowWidth = (int) (result.width * depth);
   const int             toStep   = o->stride - rowWidth;
 
-  const unsigned int shift = 16 + (int) rint (log ((double) ratioH) / log (2.0));
+  const unsigned int shift = 16 + (int) roundp (log ((double) ratioH) / log (2.0));
   const int bias           = 0x808 << (shift - 4);  // include both bias and rounding in single constant
   const int maximum        = (~(unsigned int) 0) >> (24 - shift);
 
@@ -4340,7 +4340,7 @@ PixelFormatPackedYUV::fromYUV (const Image & image, Image & result) const
   const int             rowWidth = (int) (result.width * depth);
   const int             toStep   = o->stride - rowWidth;
 
-  const unsigned int shift = 8 + (int) rint (log ((double) ratioH) / log (2.0));
+  const unsigned int shift = 8 + (int) roundp (log ((double) ratioH) / log (2.0));
   const unsigned int roundup = 0x80 << (shift - 8);
 
   int y = 0;
@@ -4491,7 +4491,7 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
   int rowWidth      = result.width;
   int blockRowWidth = ratioH;
 
-  const unsigned int shift = 16 + (int) rint (log ((double) ratioH * ratioV) / log (2.0));
+  const unsigned int shift = 16 + (int) roundp (log ((double) ratioH * ratioV) / log (2.0));
   const int bias           = 0x808 << (shift - 4);  // include both bias and rounding in single constant
   const int maximum        = (~(unsigned int) 0) >> (24 - shift);
 
@@ -4802,10 +4802,10 @@ PixelFormatPlanarYCbCr::buildAll ()
 
   for (int i = 0; i < 256; i++)
   {
-	lutYin[i]   = (int) rint (i * 219.0 / 255.0) + 16;
-	lutUVin[i]  = (int) rint (i * 224.0 / 255.0) + 16;
-	lutYout[i]  = min (max ((int) rint ((i - 16) * 255.0 / 219.0), 0), 255);
-	lutUVout[i] = min (max ((int) rint ((i - 16) * 255.0 / 224.0), 0), 255);
+	lutYin[i]   = (int) roundp (i * 219.0 / 255.0) + 16;
+	lutUVin[i]  = (int) roundp (i * 224.0 / 255.0) + 16;
+	lutYout[i]  = min (max ((int) roundp ((i - 16) * 255.0 / 219.0), 0), 255);
+	lutUVout[i] = min (max ((int) roundp ((i - 16) * 255.0 / 224.0), 0), 255);
 
 	double f = (i - 16) / 219.0;
 	if (f <= 0.04045)  // This linear portion extends into the negative numbers
@@ -4843,7 +4843,7 @@ PixelFormatPlanarYCbCr::fromAny (const Image & image, Image & result) const
   const int toBlockStep    = ratioH - o->stride0 * ratioV;
   const int toBlockRowStep = o->stride0 - ratioH;
 
-  const unsigned int shift = 16 + (int) rint (log ((double) ratioH * ratioV) / log (2.0));
+  const unsigned int shift = 16 + (int) roundp (log ((double) ratioH * ratioV) / log (2.0));
   const int bias = 0x808 << (shift - 4);
 
   if (i)

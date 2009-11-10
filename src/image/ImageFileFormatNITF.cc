@@ -3,7 +3,7 @@ Author: Fred Rothganger
 Created 2/26/2006
 
 
-Copyright 2008 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -142,7 +142,7 @@ public:
 	}
 	else
 	{
-	  long long v = (long long) rint (value);
+	  long long v = (long long) roundp (value);
 	  sprintf (buffer, "%0*lli", map->size, v);
 	  memcpy (data, buffer, map->size);
 	}
@@ -575,7 +575,7 @@ public:
 
   virtual void set (const string & name, double value)
   {
-	count = (int) rint (value);
+	count = (int) roundp (value);
   }
 
   virtual void set (const string & name, int value)
@@ -696,11 +696,11 @@ public:
   {
 	if (name == "NLUTS")
 	{
-	  NLUTS = (int) rint (value);
+	  NLUTS = (int) roundp (value);
 	}
 	else if (name == "NELUT")
 	{
-	  NELUT = (int) rint (value);
+	  NELUT = (int) roundp (value);
 	}
 	throw "must resize lut";
   }
@@ -1229,7 +1229,7 @@ public:
 	  // blocks.
 	  Image block (*image.format);
 	  if (x % NPPBH  ||  y % NPPBV  ||  width != NPPBH  ||  height % NPPBV) block.resize (NPPBH, NPPBV);
-	  int blockSize = (int) rint (NPPBH * NPPBV * format->depth);
+	  int blockSize = (int) roundp (NPPBH * NPPBV * format->depth);
 	  char * blockBuffer = (char *) ((PixelBufferPacked *) block.buffer)->memory;
 
 	  for (int oy = 0; oy < height;)  // output y: position in output image
@@ -1613,7 +1613,7 @@ ImageFileDelegateNITF::get (const string & name, int & value)
   get (name, v);
   if (v.rows () > 0  &&  v.columns () > 0)
   {
-	value = (int) rint (v(0,0));
+	value = (int) roundp (v(0,0));
   }
 }
 
@@ -1814,7 +1814,7 @@ ImageFileDelegateNITF::set (const string & name, const Matrix<double> & value)
   remapSpecialNames (name, n);
   if (name == "imageIndex")
   {
-	imageIndex = (int) rint (value(0,0));
+	imageIndex = (int) roundp (value(0,0));
 	imageIndex = min (imageIndex, 998);
 
 	while (imageIndex >= images.size ())

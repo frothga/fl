@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2008 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -30,7 +30,7 @@ GaussianDerivative1D::GaussianDerivative1D (double sigma, const BorderMode mode,
   double sigma2 = sigma * sigma;
   double C = 1.0 / (sqrt (2.0 * PI) * sigma);
 
-  int h = (int) rint (Gaussian2D::cutoff * sigma);
+  int h = (int) roundp (Gaussian2D::cutoff * sigma);
   resize (2 * h + 1, 1);
 
   double * kernel = (double *) ((PixelBufferPacked *) buffer)->memory;

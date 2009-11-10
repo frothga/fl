@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -124,9 +124,9 @@ VideoInFileFFMPEG::seekTime (double timestamp)
   // targetPTS uses ceil() to force rounding errors in the direction of the
   // next frame.  This produces more intuitive results.
   int64_t targetPTS  = (int64_t) ceil (timestamp * stream->time_base.den / stream->time_base.num);
-  int64_t startPTS   = (int64_t) rint (startTime * stream->time_base.den / stream->time_base.num);
-  int64_t horizonPTS = targetPTS - (int64_t) rint ((double) stream->time_base.den / stream->time_base.num);  // willing to sift forward up to 1 second before using seek
-  int64_t framePeriod = (int64_t) rint ((double) stream->r_frame_rate.den / stream->r_frame_rate.num * stream->time_base.den / stream->time_base.num);
+  int64_t startPTS   = (int64_t) roundp (startTime * stream->time_base.den / stream->time_base.num);
+  int64_t horizonPTS = targetPTS - (int64_t) roundp ((double) stream->time_base.den / stream->time_base.num);  // willing to sift forward up to 1 second before using seek
+  int64_t framePeriod = (int64_t) roundp ((double) stream->r_frame_rate.den / stream->r_frame_rate.num * stream->time_base.den / stream->time_base.num);
 
   while (targetPTS < picture.pts  ||  nextPTS <= targetPTS)  // targetPTS is not in [picture.pts, nextPTS), ie: not in the current picture.  This relies on nextPTS always being set to the start of the next image, or to AV_NOPTS_VALUE if end of video.
   {
@@ -207,12 +207,12 @@ VideoInFileFFMPEG::seekTime (double timestamp)
   gotPicture = 1;  // Hack to reactivate a picture if we already have it in hand.
 
   // Determine the number of frame that seek obtained
-  // Use rint() because DTS should be exactly on some frame's timestamp,
+  // Use round() because DTS should be exactly on some frame's timestamp,
   // and we want to compensate for numerical error.
   // Add 1 to be consistent with normal frame_number semantics.  IE: we have
   // already retrieved the picture, so frame_number should point to next
   // picture.
-  cc->frame_number = 1 + (int) rint
+  cc->frame_number = 1 + (int) roundp
   (
     ((double) (picture.pts - startPTS) * stream->time_base.num / stream->time_base.den)
 	* stream->r_frame_rate.num / stream->r_frame_rate.den
@@ -293,7 +293,7 @@ VideoInFileFFMPEG::readNext (Image * image)
 	  {
 		case CODEC_ID_DVVIDEO:
 		case CODEC_ID_RAWVIDEO:
-		  nextPTS = picture.pts + (int64_t) rint ((double) stream->r_frame_rate.den / stream->r_frame_rate.num * stream->time_base.den / stream->time_base.num);  // TODO: use AV rational arithmetic instead
+		  nextPTS = picture.pts + (int64_t) roundp ((double) stream->r_frame_rate.den / stream->r_frame_rate.num * stream->time_base.den / stream->time_base.num);  // TODO: use AV rational arithmetic instead
 		  break;
 		default:
 		  nextPTS = packet.dts;
@@ -778,7 +778,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   if (image.timestamp < 95443)  // approximately 2^33 / 90kHz, or about 26.5 hours.  Times larger than this are probably coming from the system clock and are not intended to be encoded in the video.
   {
 	AVCodecContext & cc = *stream->codec;
-	dest.pts = (int64_t) rint (image.timestamp * cc.time_base.den / cc.time_base.num);
+	dest.pts = (int64_t) roundp (image.timestamp * cc.time_base.den / cc.time_base.num);
   }
 
   // Finally, encode and write the frame
@@ -848,20 +848,20 @@ VideoOutFileFFMPEG::set (const std::string & name, double value)
 	  else  // arbitrary framerate is acceptable
 	  {
 		stream->codec->time_base.num = AV_TIME_BASE;
-		stream->codec->time_base.den = (int) rint (value * AV_TIME_BASE);
+		stream->codec->time_base.den = (int) roundp (value * AV_TIME_BASE);
 	  }
 	}
 	else if (name == "bitrate")
 	{
-	  stream->codec->bit_rate = (int) rint (value);
+	  stream->codec->bit_rate = (int) roundp (value);
 	}
 	else if (name == "gop")
 	{
-	  stream->codec->gop_size = (int) rint (value);
+	  stream->codec->gop_size = (int) roundp (value);
 	}
 	else if (name == "bframes")
 	{
-	  stream->codec->max_b_frames = (int) rint (value);
+	  stream->codec->max_b_frames = (int) roundp (value);
 	}
   }
 }

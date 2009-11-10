@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -146,8 +146,8 @@ TransformGauss::filter (const Image & image)
 		  y += H10;
 		  if (x > firstX5  &&  x < lastX5  &&  y > firstY5  &&  y < lastY5)
 		  {
-			int rx = (int) rint (x);
-			int ry = (int) rint (y);
+			int rx = (int) roundp (x);
+			int ry = (int) roundp (y);
 			int beginX = rx - Gshw;
 			int beginY = ry - Gshh;
 			int endX   = rx + Gshw;
@@ -216,8 +216,8 @@ TransformGauss::filter (const Image & image)
 		  y += H10;
 		  if (x > firstX5  &&  x < lastX5  &&  y > firstY5  &&  y < lastY5)
 		  {
-			int rx = (int) rint (x);
-			int ry = (int) rint (y);
+			int rx = (int) roundp (x);
+			int ry = (int) roundp (y);
 			int beginX = rx - Gshw;
 			int beginY = ry - Gshh;
 			int endX   = rx + Gshw;
@@ -285,8 +285,8 @@ TransformGauss::filter (const Image & image)
 		  y += H10;
 		  if (x > firstX5  &&  x < lastX5  &&  y > firstY5  &&  y < lastY5)
 		  {
-			int rx = (int) rint (x);
-			int ry = (int) rint (y);
+			int rx = (int) roundp (x);
+			int ry = (int) roundp (y);
 			int beginX = rx - Gshw;
 			int beginY = ry - Gshh;
 			int endX   = rx + Gshw;

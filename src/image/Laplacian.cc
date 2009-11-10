@@ -4,6 +4,13 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+Copyright 2010 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -25,7 +32,7 @@ Laplacian::Laplacian (double sigma, const BorderMode mode, const PixelFormat & f
 
   this->sigma = sigma;
 
-  int half = (int) rint (Gaussian2D::cutoff * sigma);
+  int half = (int) roundp (Gaussian2D::cutoff * sigma);
   const int size = 2 * half + 1;
 
   ImageOf<double> temp (size, size, GrayDouble);

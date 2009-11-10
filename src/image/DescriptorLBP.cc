@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -168,10 +168,10 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
   {
 	double h = fabs (S(0,0) * supportRadial);
 	double v = fabs (S(1,1) * supportRadial);
-	sourceL = (int) rint (max (S(0,2) - h, (double) R));
-	sourceR = (int) rint (min (S(0,2) + h, (double) image.width - 1 - R));
-	sourceT = (int) rint (max (S(1,2) - v, (double) R));
-	sourceB = (int) rint (min (S(1,2) + v, (double) image.height - 1 - R));
+	sourceL = (int) roundp (max (S(0,2) - h, (double) R));
+	sourceR = (int) roundp (min (S(0,2) + h, (double) image.width - 1 - R));
+	sourceT = (int) roundp (max (S(1,2) - v, (double) R));
+	sourceB = (int) roundp (min (S(1,2) + v, (double) image.height - 1 - R));
 	preprocess (image);
   }
   else  // Shape change, so we must compute a transformed patch

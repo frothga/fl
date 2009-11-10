@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2008 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -108,7 +108,7 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 
   // Prepare a Gaussian kernel to use as our neighborhood function
   float sigma2 = sigma * sigma;
-  int h = (int) rint (4 * sigma);  // "half" = distance from middle until cell values become insignificant
+  int h = (int) roundp (4 * sigma);  // "half" = distance from middle until cell values become insignificant
   int s = 2 * h + 1;  // "size" of kernel
   Matrix<float> lambda (s, s);
   for (int column = 0; column < s; column++)

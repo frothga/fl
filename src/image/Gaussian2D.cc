@@ -4,6 +4,13 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+Copyright 2010 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -25,7 +32,7 @@ Gaussian2D::Gaussian2D (double sigma, const BorderMode mode, const PixelFormat &
   const double sigma2 = sigma * sigma;
 
   const double C = 1.0 / (2 * PI * sigma2);
-  int h = (int) rint (cutoff * sigma);  // "half" = distance from middle until cell values become insignificant
+  int h = (int) roundp (cutoff * sigma);  // "half" = distance from middle until cell values become insignificant
   int s = 2 * h + 1;  // "size" of kernel
 
   ImageOf<double> temp (s, s, GrayDouble);

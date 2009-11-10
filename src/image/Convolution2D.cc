@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -338,8 +338,8 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
   int midX = width / 2;
   int midY = height / 2;
 
-  int x = (int) rint (p.x);
-  int y = (int) rint (p.y);
+  int x = (int) roundp (p.x);
+  int y = (int) roundp (p.y);
 
   int hh = min (lastH, x + midX);
   int hl = max (0,     x + midX - (image.width - 1));

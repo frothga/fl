@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005 Sandia Corporation.
+Copyright 2005, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -81,7 +81,7 @@ InterestHessian::InterestHessian (int maxPoints, float thresholdFactor, float ne
   stepSize = powf (stepSize, 1.0f / extraSteps);
   this->stepSize = stepSize;
 
-  firstStep = max (0, (int) rint (logf (firstScale) / logf (stepSize)) - extraSteps);
+  firstStep = max (0, (int) roundp (logf (firstScale) / logf (stepSize)) - extraSteps);
   int lastStep = (int) ceil ((logf (lastScale) / logf (stepSize) - firstStep) / extraSteps) * extraSteps + firstStep;
 
   // Generate Laplacian filters

@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -394,7 +394,7 @@ ImageFileDelegateJPEG::get (const string & name, int & value)
   get (name, v);
   if (v.rows () > 0  &&  v.columns () > 0)
   {
-	value = (int) rint (v(0,0));
+	value = (int) roundp (v(0,0));
   }
 }
 
@@ -529,7 +529,7 @@ ImageFileDelegateJPEG::set (const string & name, const Matrix<double> & value)
 {
   if (name == "quality")
   {
-	quality = (int) rint (value(0,0));
+	quality = (int) roundp (value(0,0));
 	return;
   }
 

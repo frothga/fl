@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005 Sandia Corporation.
+Copyright 2005, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -67,10 +67,10 @@ DescriptorSpin::value (const Image & image, const PointAffine & point)
   Point pbl = S * bl;
   Point pbr = S * br;
 
-  int sourceL = (int) rint (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0f));
-  int sourceR = (int) rint (min (max (ptl.x, ptr.x, pbl.x, pbr.x), image.width - 1.0f));
-  int sourceT = (int) rint (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0f));
-  int sourceB = (int) rint (min (max (ptl.y, ptr.y, pbl.y, pbr.y), image.height - 1.0f));
+  int sourceL = (int) roundp (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0f));
+  int sourceR = (int) roundp (min (max (ptl.x, ptr.x, pbl.x, pbr.x), image.width - 1.0f));
+  int sourceT = (int) roundp (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0f));
+  int sourceB = (int) roundp (min (max (ptl.y, ptr.y, pbl.y, pbr.y), image.height - 1.0f));
 
   R.region (0, 0, 1, 2) *= binsRadial / supportRadial;  // Now R maps directly to radial bin values
 

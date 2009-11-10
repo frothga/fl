@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -127,15 +127,15 @@ CanvasImage::pen (const Point & p, unsigned int color)
 {
   if (lineWidth == 1)  // hack for simple line drawing
   {
-	int x = (int) rint (p.x);
-	int y = (int) rint (p.y);
+	int x = (int) roundp (p.x);
+	int y = (int) roundp (p.y);
 	if (x >= 0  &&  x < width  &&  y >= 0  &&  y < height) setRGBA (x, y, color);
   }
   else
   {
 	int h = penTip.width / 2;
-	int px = (int) rint (p.x) - h;
-	int py = (int) rint (p.y) - h;
+	int px = (int) roundp (p.x) - h;
+	int py = (int) roundp (p.y) - h;
 
 	int xl = max (0,                 -px);
 	int xh = min (penTip.width - 1,  (width - 1) - px);
@@ -486,8 +486,8 @@ CanvasImage::drawFilledPolygon (const vector<Point> & points, unsigned int color
 		  r = min (width - 0.500001f, r);
 		  if (r < l) continue;
 
-		  int intL = (int) rint (l);
-		  int intR = (int) rint (r);
+		  int intL = (int) roundp (l);
+		  int intR = (int) roundp (r);
 		  if (intL == intR)
 		  {
 			C.setAlpha ((int) (0xFF * (r - l) * alpha));
@@ -534,10 +534,10 @@ CanvasImage::drawFilledPolygon (const vector<Point> & points, unsigned int color
 void
 CanvasImage::drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill)
 {
-  int x0 = (int) rint (corner0.x);
-  int x1 = (int) rint (corner1.x);
-  int y0 = (int) rint (corner0.y);
-  int y1 = (int) rint (corner1.y);
+  int x0 = (int) roundp (corner0.x);
+  int x1 = (int) roundp (corner1.x);
+  int y0 = (int) roundp (corner0.y);
+  int y1 = (int) roundp (corner1.y);
 
   if (x0 > x1)
   {
@@ -800,8 +800,8 @@ CanvasImage::drawText (const string & text, const Point & point, unsigned int co
     if (error) continue;
 
 	FT_Bitmap & bitmap = slot->bitmap;
-	int left = (int) rint (pen.x + slot->bitmap_left);
-	int top  = (int) rint (pen.y - slot->bitmap_top);
+	int left = (int) roundp (pen.x + slot->bitmap_left);
+	int top  = (int) roundp (pen.y - slot->bitmap_top);
 
 	int xl = max (0,            -left);
 	int xh = min (bitmap.width, width - left) - 1;
@@ -965,7 +965,7 @@ CanvasImage::setFont (const std::string & name, float size)
   if (((FT_Face) face)->face_flags & FT_FACE_FLAG_SCALABLE)
   {
 	error = FT_Set_Char_Size ((FT_Face) face,
-							  (int) rint (size * 64),
+							  (int) roundp (size * 64),
 							  0,
 							  96,  // estimated pixels per inch of image
 							  0);
@@ -988,7 +988,7 @@ CanvasImage::setFont (const std::string & name, float size)
 
 	if (bestSize)
 	{
-	  error = FT_Set_Pixel_Sizes ((FT_Face) face, 0, (int) rint (bestSize->y_ppem / 64.0f));
+	  error = FT_Set_Pixel_Sizes ((FT_Face) face, 0, (int) roundp (bestSize->y_ppem / 64.0f));
 	}
   }
   if (error) throw "Requested font size is not available";
