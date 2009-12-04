@@ -11,8 +11,8 @@ for details.
 */
 
 
-#ifndef fl_lapackproto_h
-#define fl_lapackproto_h
+#ifndef fl_blasproto_h
+#define fl_blasproto_h
 
 #ifdef HAVE_BLAS
 
