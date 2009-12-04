@@ -27,11 +27,6 @@ for details.
 // For debugging only
 #include "fl/slideshow.h"
 
-// For Birchfield comparison
-#include "klt.h"
-#include "fl/search.h"
-#include "fl/LineSearch.tcc"
-
 
 using namespace std;
 using namespace fl;
@@ -1385,6 +1380,30 @@ testVideo ()
   cout << "VideoFileFormatFFMPEG passes" << endl;
 }
 
+inline bool
+compareColors (const char * message, const uint32_t & expected, const uint32_t & actual, const int & threshold)
+{
+  int er = (expected & 0xFF000000) >> 24;
+  int eg = (expected &   0xFF0000) >> 16;
+  int eb = (expected &     0xFF00) >> 8;
+  int ea =  expected &       0xFF;
+
+  int ar = (actual & 0xFF000000) >> 24;
+  int ag = (actual &   0xFF0000) >> 16;
+  int ab = (actual &     0xFF00) >> 8;
+  int aa =  actual &       0xFF;
+
+  if (   er - ar > threshold
+      || eg - ag > threshold
+      || eb - ab > threshold
+      || ea - aa > threshold)
+  {
+	cerr << message << ": " << hex << expected << " - " << actual << dec << endl;
+	return true;
+  }
+  return false;
+}
+
 // Image::bitblt
 void
 testBitblt (Image & test, fl::PixelFormat & format)
@@ -1392,16 +1411,26 @@ testBitblt (Image & test, fl::PixelFormat & format)
   cerr << typeid (format).name () << endl;
   Image source = test * format;
 
-  int quantum = 1;
-  if (const Macropixel     * f = dynamic_cast<const Macropixel     *> (&format)) quantum = f->pixels;
-  if (const PixelFormatYUV * f = dynamic_cast<const PixelFormatYUV *> (&format)) quantum = f->ratioH;  // If format is both Macropixel and YUV, then YUV takes precedence.
-  int offsetX = quantum * (int) ceil (5.0 / quantum);  // how much to shift small blocks from corners of test image in target
-  int offsetY = offsetX;
-  cerr << quantum << " " << offsetX << endl;
+  int quantumX = 1;
+  int quantumY = 1;
+  if (const Macropixel * f = dynamic_cast<const Macropixel *> (&format))
+  {
+	quantumX = f->pixels;
+  }
+  if (const PixelFormatYUV * f = dynamic_cast<const PixelFormatYUV *> (&format))
+  {
+	// If format is both Macropixel and YUV, then YUV takes precedence.
+	quantumX = f->ratioH;
+	quantumY = f->ratioV;
+  }
+  int offsetX = quantumX * (int) ceil (5.0 / quantumX);  // how much to shift small blocks from corners of test image in target
+  int offsetY = quantumY * (int) ceil (5.0 / quantumY);
+  cerr << quantumX << " " << offsetX << endl;
+  cerr << quantumY << " " << offsetY << endl;
   int padX    = 2 * offsetX;  // black perimeter around test image as it appears in target
   int padY    = 2 * offsetY;
-  int centerX = quantum * (int) rint (source.width  / (2.0 * quantum));
-  int centerY = quantum * (int) rint (source.height / (2.0 * quantum));
+  int centerX = quantumX * (int) roundp (source.width  / (2.0 * quantumX));
+  int centerY = quantumY * (int) roundp (source.height / (2.0 * quantumY));
   cerr << centerX << " " << centerY << endl;
   int sourceX = centerX - offsetX;
   int sourceY = centerY - offsetY;
@@ -1414,7 +1443,7 @@ testBitblt (Image & test, fl::PixelFormat & format)
 
   Image target (width, height, format);
   target.clear ();
-  unsigned char black = target.getRGBA (0, 0);  // If there is an alpha channel, black = 0; if not, black = 0xFF.
+  uint32_t black = target.getRGBA (0, 0);  // If there is an alpha channel, black = 0; if not, black = 0xFF.
   target.bitblt (source, padX, padY);
 
   target.bitblt (target, offsetX, offsetY, fromX, fromY, padX, padY);
@@ -1437,8 +1466,8 @@ testBitblt (Image & test, fl::PixelFormat & format)
   {
 	if (target.getRGBA (x, perimeterT) != black  ||  target.getRGBA (x, perimeterB) != black)
 	{
-	  cerr << x << " " << perimeterT << " " << target.getRGBA (x, perimeterT) << endl;
-	  cerr << x << " " << perimeterB << " " << target.getRGBA (x, perimeterB) << endl;
+	  cerr << x << " " << perimeterT << " " << hex << target.getRGBA (x, perimeterT) << dec << endl;
+	  cerr << x << " " << perimeterB << " " << hex << target.getRGBA (x, perimeterB) << dec << endl;
 	  throw "Unexpected non-black pixel in perimeter";
 	}
   }
@@ -1446,29 +1475,30 @@ testBitblt (Image & test, fl::PixelFormat & format)
   {
 	if (target.getRGBA (perimeterL, y) != black  ||  target.getRGBA (perimeterR, y) != black)
 	{
-	  cerr << perimeterL << " " << y << target.getRGBA (perimeterL, y) << endl;
-	  cerr << perimeterR << " " << y << target.getRGBA (perimeterR, y) << endl;
+	  cerr << perimeterL << " " << y << hex << target.getRGBA (perimeterL, y) << dec << endl;
+	  cerr << perimeterR << " " << y << hex << target.getRGBA (perimeterR, y) << dec << endl;
 	  throw "Unexpected non-black pixel in perimeter";
 	}
   }
 
   //   patch contents
+  //   Since non-packed formats go through a round-trip conversion to RGB, we
+  //   need to tolerate some nonzero amount of color error.
+  int threshold = 0;
+  if (! (const PixelBufferPacked *) source.buffer) threshold = 2;
   for (int y = 0; y < padY; y++)
   {
 	for (int x = 0; x < padX; x++)
 	{
-	  unsigned int s = source.getRGBA (sourceX + x, sourceY + y);
-	  if (   target.getRGBA (offsetX + x, offsetY + y) != s
-	      || target.getRGBA (offsetX + x, bottom  + y) != s
-	      || target.getRGBA (right   + x, offsetY + y) != s
-	      || target.getRGBA (right   + x, bottom  + y) != s)
+	  uint32_t s = source.getRGBA (sourceX + x, sourceY + y);
+	  bool failed = false;
+	  failed |= compareColors ("top    left  ", s, target.getRGBA (offsetX + x, offsetY + y), threshold);
+	  failed |= compareColors ("bottom left  ", s, target.getRGBA (offsetX + x, bottom  + y), threshold);
+	  failed |= compareColors ("top    right ", s, target.getRGBA (right   + x, offsetY + y), threshold);
+	  failed |= compareColors ("bottom right ", s, target.getRGBA (right   + x, bottom  + y), threshold);
+	  if (failed)
 	  {
-		cerr << x << " " << y << endl;
-		cerr << hex << s << endl;
-		cerr << target.getRGBA (offsetX + x, offsetY + y) << endl;
-		cerr << target.getRGBA (offsetX + x, bottom  + y) << endl;
-		cerr << target.getRGBA (right   + x, offsetY + y) << endl;
-		cerr << target.getRGBA (right   + x, bottom  + y) << dec << endl;
+		cerr << "at " << x << " " << y << endl;
 		throw "Pixel value not copied correctly";
 	  }
 	}
@@ -1498,31 +1528,23 @@ testBitblt ()
   cout << "Image::bitblt passes" << endl;
 }
 
-/**
-   KLT
-   @param searchRadius Assuming a windowRadius of 3, the following is
-   a map from searchRadius values to pyramid configurations:
-   range    levels  ratio
-   1-3      1       1
-   4-9      2       2
-   10-15    2       4
-   16-27    2       8
-   28+      3+      8    (levels determined by formula, ratio fixed at 8)
-**/
+// KLT
 float
-testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 0.9)
+testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f)
 {
-  //cerr << "scaleRatio = " << scaleRatio << endl;
+  const int range = searchRadius * 2;
+  const int steps = 10;
+  const float lastStep = steps - 1;  // actually an integer, but using float here reduces the need for casts later
+
   KLT klt (windowRadius, searchRadius, scaleRatio);
   srand (1);
 
-  Image test ("test.jpg");
-  //Image test ("mars.jpg");  // necessary for searchRadius >= 28.  Note: for some weird reason, the position of the KLT constructor in this code makes a difference (including on performance).  Loading mars.jpg causes this program to crash under Cygwin unless the KLT constructore comes first.
+  Image test ("test.jpg");  // Only big enough to test searchRadius < 28.  Note: for some weird reason, the position of the KLT constructor in this code makes a difference (including on performance).  Loading mars.jpg causes this program to crash under Cygwin unless the KLT constructore comes first.
   test *= GrayFloat;
 
   Image image0 (GrayFloat);
-  const int windowWidth  = test.width  - searchRadius * 2;
-  const int windowHeight = test.height - searchRadius * 2;
+  const int windowWidth  = test.width  - range;
+  const int windowHeight = test.height - range;
   image0.bitblt (test, 0, 0, searchRadius, searchRadius, windowWidth, windowHeight);
 
   // Find a few interest points
@@ -1531,240 +1553,58 @@ testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 0.9)
   h.run (image0, points);
 
   // Perturb image, and verify that KLT can find each point in new image
-  Stopwatch timer (false);
   int succeeded = 0;
   int total = 0;
-  for (int i = 0; i < 100; i++)
+  Matrix<double> A (2, 3);
+  A.identity ();
+  for (int x = 0; x < steps; x++)
   {
-	Matrix<double> A (2, 3);
-	A.identity ();
-	A(0,2) = randfb () * searchRadius;
-	A(1,2) = randfb () * searchRadius;
-
-	Transform t (A);
-	t.setWindow ((test.width - 1) / 2.0, (test.height - 1) / 2.0, windowWidth, windowHeight);  // force destination viewport to remain at center of original image, so we actually get a shift.
-	Image image1 = test * t;
-
-	timer.start ();
-	klt.nextImage (image0);
-	klt.nextImage (image1);
-	timer.stop ();
-
-	for (int j = 0; j < points.size (); j++)
+	A(0,2) = x * range / lastStep - searchRadius;
+	for (int y = 0; y < steps; y++)
 	{
-	  PointInterest original = *points[j];
-	  PointInterest p        = original;
-	  PointInterest expected = original;
-	  expected.x += A(0,2);
-	  expected.y += A(1,2);
-	  klt.original = original;
-	  klt.expected = expected;
+	  A(1,2) = y * range / lastStep - searchRadius;
 
-	  total++;
-	  int e = 0;
-	  try
+	  Transform t (A);
+	  t.setWindow ((test.width - 1) / 2.0, (test.height - 1) / 2.0, windowWidth, windowHeight);  // force destination viewport to remain at center of original image, so we actually get a shift.
+	  Image image1 = test * t;
+
+	  klt.nextImage (image0);
+	  klt.nextImage (image1);
+
+	  for (int j = 0; j < points.size (); j++)
 	  {
-		klt.track (p);
-	  }
-	  catch (int error)
-	  {
-		e = error;
-		//cerr << "klt exception " << error << endl;
-	  }
-	  double d = expected.distance (p);
-	  //cerr << p << " " << expected << " " << d << endl;
-	  if (d > 1)
-	  {
-		//cerr << "Warning: Excess distance between expected and actual position = " << d << endl;
-		//cerr << "  original " << original << endl;
-		//cerr << "  expected " << expected << endl;
-		//cerr << "  but got  " << p        << endl;
-	  }
-	  else succeeded++;
+		PointInterest original = *points[j];
+		PointInterest p        = original;
+		PointInterest expected = original;
+		expected.x += A(0,2);
+		expected.y += A(1,2);
 
-	  // should also measure and report how reliably the exception codes predict failure
-	}
-  }
-
-  float ratio = (float) succeeded / total;
-  cerr << "time = " << timer << endl;
-  return ratio;
-  cerr << "ratio " << ratio << " = " << succeeded << " / " << total << endl;
-  if (ratio < 0.7)
-  {
-	cout << "Too few points succeeded: " << ratio << " = " << succeeded << " / " << total << endl;
-	throw "KLT fails";
-  }
-
-  cout << "KLT passes" << endl;
-}
-
-class SearchKLT : public SearchableNumeric<float>
-{
-public:
-  SearchKLT (int windowRadius, int searchRadius)
-  : SearchableNumeric<float> (0.01),
-	windowRadius (windowRadius),
-	searchRadius (searchRadius)
-  {
-  }
-
-  virtual int dimension ()
-  {
-	return 1;
-  }
-
-  virtual void value (const Vector<float> & point, Vector<float> & result)
-  {
-	float r = testKLT (windowRadius, searchRadius, point[0]);
-	result.resize (1);
-	result[0] = 1.0f - r;
-	cerr << point[0] << " \t" << result[0] << " \t" << r << endl;
-  }
-
-  int windowRadius;
-  int searchRadius;
-};
-
-void
-searchKLT ()
-{
-  for (int i = 28; i <= 50; i++)
-  {
-	SearchKLT s (3, i);
-	Vector<float> point (1);
-	//cerr << i << " " << testKLT (i, 0.9) << endl;
-	
-	point[0] = 2;
-	LineSearch<float> ls (0.1);
-	try
-	{
-	  ls.search (s, point);
-	}
-	catch (int error)
-	{
-	}
-	cout << i << " = " << point[0] << endl;
-	
-  }
-}
-
-void
-compareBirchfield ()
-{
-  const int searchRadius = 15;
-
-  Image test ("test.jpg");
-  test *= GrayFloat;
-
-  Image image0 (GrayFloat);
-  const int windowWidth  = test.width  - searchRadius * 2;
-  const int windowHeight = test.height - searchRadius * 2;
-  image0.bitblt (test, 0, 0, searchRadius, searchRadius, windowWidth, windowHeight);
-
-  // Find a few interest points
-  InterestHarris h (1, 30);  // 250
-  InterestPointSet points;
-  h.run (image0, points);
-
-  // Set up Birchfield
-  KLT_TrackingContext tc = KLTCreateTrackingContext ();
-  KLT_FeatureList fl = KLTCreateFeatureList (points.size ());
-  cerr << "birchfield pyramid levels,ratio = " << tc->nPyramidLevels << " " << tc->subsampling << endl;
-
-  // Perturb image, and verify that KLT can find each point in new image
-  int succeeded = 0;
-  int total = 0;
-  for (int i = 0; i < 1; i++)  // 10
-  {
-	Matrix<double> A (2, 3);
-	A.identity ();
-	A(0,2) = randfb () * searchRadius;
-	A(1,2) = randfb () * searchRadius;
-
-	Transform t (A);
-	t.setWindow ((test.width - 1) / 2.0, (test.height - 1) / 2.0, windowWidth, windowHeight);  // force destination viewport to remain at center of original image, so we actually get a shift.
-	Image image1 = test * t;
-
-	//for (int j = 0; j < points.size (); j++)
-	int j = 0;
-	{
-	  PointInterest * p = points[j];
-	  KLT_FeatureRec * f = fl->feature[j];
-	  f->x = p->x;
-	  f->y = p->y;
-	  f->val = 0;
-	}
-
-	Image char0 = image0 * GrayChar;
-	Image char1 = image1 * GrayChar;
-	unsigned char * img0 = (unsigned char *) ((PixelBufferPacked *) char0.buffer)->memory;
-	unsigned char * img1 = (unsigned char *) ((PixelBufferPacked *) char1.buffer)->memory;
-	KLTTrackFeatures (tc, img0, img1, windowWidth, windowHeight, fl);
-
-	//for (int j = 0; j < points.size (); j++)
-	j = 0;
-	{
-	  PointInterest original = *points[j];
-	  PointInterest expected = original;
-	  expected.x += A(0,2);
-	  expected.y += A(1,2);
-	  KLT_FeatureRec * f = fl->feature[j];
-
-	  total++;
-	  if (f->val == KLT_TRACKED)
-	  {
-		double dx = f->x - expected.x;
-		double dy = f->y - expected.y;
-		double d = sqrt (dx * dx + dy * dy);
-		cerr << "[" << f->x << " " << f->y << "] " << expected << " " << d << endl;
-		if (d > 1)
+		total++;
+		int e = 0;
+		try
 		{
-		  cerr << "Warning: Excess distance between expected and actual position = " << d << endl;
-		  cerr << "  original " << original << endl;
-		  cerr << "  expected " << expected << endl;
-		  cerr << "  but got  [" << f->x << " " << f->y << "]" << endl;
+		  klt.track (p);
 		}
-		else succeeded++;
-	  }
-	  else
-	  {
-		cerr << "birchfield failure code " << f->val << endl;
-		cerr << "  original " << original << endl;
-		cerr << "  expected " << expected << endl;
-		cerr << "  but got  [" << f->x << " " << f->y << "]" << endl;
+		catch (int error)
+		{
+		  e = error;
+		  //cerr << "klt exception " << error << endl;
+		}
+		double d = expected.distance (p);
+		if (d < 1) succeeded++;
+		// should also measure and report how reliably the exception codes predict failure
 	  }
 	}
+	cerr << ".";
   }
+  cerr << endl;
 
   float ratio = (float) succeeded / total;
-  cerr << "ratio " << ratio << " = " << succeeded << " / " << total << endl;
-  if (ratio < 0.7)
-  {
-	cout << "Too few points succeeded: " << ratio << " = " << succeeded << " / " << total << endl;
-	throw "KLT fails";
-  }
+  cerr << "KLT success rate = " << ratio << " = " << succeeded << " / " << total << endl;
+  if (ratio < 0.7) throw "KLT fails";
 
   cout << "KLT passes" << endl;
 }
-
-
-class testSearch : public SearchableNumeric<float>
-{
-public:
-  virtual int dimension ()
-  {
-	return 1;
-  }
-
-  virtual void value (const Vector<float> & point, Vector<float> & result)
-  {
-	result.resize (1);
-	float x = point[0];
-	result[0] = (x - 5) * (x - 5);
-	cerr << result[0] << " " << x << endl;
-  }
-};
 
 
 int
@@ -1774,7 +1614,6 @@ main (int argc, char * argv[])
   {
 	new ImageFileFormatJPEG;
 
-	/*
 	testPixelFormat ();
 	testAbsoluteValue ();
 	testCanvasImage ();
@@ -1790,20 +1629,7 @@ main (int argc, char * argv[])
 	testTransform ();
 	testVideo ();
 	testBitblt ();
-	*/
-
-
-	searchKLT ();
-	/*
-	for (int i = 26; i < 200; i++)
-	{
-	  cerr << i << endl;
-	  testKLT (3, i, 1);
-	  cerr << endl;
-	}
-	*/
-	//testKLT ();
-	//compareBirchfield ();
+	testKLT ();
   }
   catch (const char * error)
   {
