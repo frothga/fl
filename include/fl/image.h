@@ -916,7 +916,10 @@ namespace fl
   extern PixelFormatRGBAFloat          RGBAFloat;
   extern PixelFormatRGBChar            RGBChar;
   extern PixelFormatRGBShort           RGBShort;
+  extern PixelFormatRGBABits           B5G5R5;
   extern PixelFormatRGBABits           BGRChar;
+  extern PixelFormatRGBABits           BGRChar4;
+  extern PixelFormatRGBABits           BGRAChar;
   extern PixelFormatPackedYUV          UYVY;
   extern PixelFormatPackedYUV          YUYV;
   extern PixelFormatPackedYUV          UYV;
@@ -1167,6 +1170,15 @@ namespace fl
 	static void getMagic (std::istream & stream, std::string & magic);  ///< Attempts to read magic.size () worth of bytes from stream and return them in magic.  Always returns stream to original position.
 
 	static std::vector<ImageFileFormat *> formats;
+  };
+
+  class ImageFileFormatBMP : public ImageFileFormat
+  {
+  public:
+	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
+	virtual float isIn (std::istream & stream) const;
+	virtual float handles (const std::string & formatName) const;
   };
 
   class ImageFileFormatPGM : public ImageFileFormat

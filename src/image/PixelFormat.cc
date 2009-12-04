@@ -97,9 +97,15 @@ PixelFormatHLSFloat           fl::HLSFloat;
 
 // These "bits" formats must be endian independent.
 #if BYTE_ORDER == LITTLE_ENDIAN
-PixelFormatRGBABits   fl::BGRChar (3, 0xFF0000, 0xFF00, 0xFF, 0x0);
+PixelFormatRGBABits fl::B5G5R5   (2, 0x7C00,   0x3E0,    0x1F,       0x0);
+PixelFormatRGBABits fl::BGRChar  (3, 0xFF0000, 0xFF00,   0xFF,       0x0);
+PixelFormatRGBABits fl::BGRChar4 (4, 0xFF0000, 0xFF00,   0xFF,       0x0);
+PixelFormatRGBABits fl::BGRAChar (4, 0xFF0000, 0xFF00,   0xFF,       0xFF000000);
 #elif BYTE_ORDER == BIG_ENDIAN
-PixelFormatRGBABits   fl::BGRChar (3, 0xFF, 0xFF00, 0xFF0000, 0x0);
+PixelFormatRGBABits fl::B5G5R5   (2, 0x1F,     0x3E0,    0x7C00,     0x0);
+PixelFormatRGBABits fl::BGRChar  (3, 0xFF,     0xFF00,   0xFF0000,   0x0);
+PixelFormatRGBABits fl::BGRChar4 (4, 0xFF00,   0xFF0000, 0xFF000000, 0x0);
+PixelFormatRGBABits fl::BGRAChar (4, 0xFF00,   0xFF0000, 0xFF000000, 0xFF);
 #else
 // This traps unhandled endian types for the entire file, not just the "bits"
 // formats.  The other BYTE_ORDER tests in this file can safely skip this case.
@@ -127,7 +133,10 @@ static int incrementRefcount ()
   YUV420      .PointerPolyReferenceCount++;
   YUV411      .PointerPolyReferenceCount++;
   HLSFloat    .PointerPolyReferenceCount++;
+  B5G5R5      .PointerPolyReferenceCount++;
   BGRChar     .PointerPolyReferenceCount++;
+  BGRChar4    .PointerPolyReferenceCount++;
+  BGRAChar    .PointerPolyReferenceCount++;
 
   return 1;
 }

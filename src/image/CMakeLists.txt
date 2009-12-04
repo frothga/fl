@@ -21,6 +21,7 @@ add_library (flImage
 
   # Image file formats
   ImageFileFormat.cc
+  ImageFileFormatBMP.cc
   ImageFileFormatPGM.cc
   ImageFileFormatEPS.cc
   ImageFileFormatJPEG.cc
