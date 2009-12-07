@@ -15,7 +15,7 @@ for details.
 #include "fl/endian.h"
 
 #if BYTE_ORDER != LITTLE_ENDIAN
-#  warning This code does not yet support anything other than little-endian.
+#  warning This code only supports little-endian.  Big-endian would require a small amount of work to add.
 #endif
 
 
@@ -173,10 +173,6 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
 	if (colors != 0) cerr << "WARNING: Illegal size of color palette for BI_BITFIELDS mode: " << colors << endl;
 	colors = 3;
   }
-  cerr << "  dibSize  = " << dibSize << endl;
-  cerr << "  bitdepth = " << bitdepth << endl;
-  cerr << "  colors   = " << colors << endl;
-  cerr << "  compression = " << compression << endl;
 
   // Read palette
   if (colors)

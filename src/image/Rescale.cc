@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2008 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -32,7 +32,14 @@ Rescale::Rescale (double a, double b)
 Rescale::Rescale (const Image & image, bool useFullRange)
 {
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
-  if (! imageBuffer) throw "Rescale only handles packed buffers for now";
+  if (! imageBuffer)
+  {
+	// We are only interested in gray pixel types, but other types are
+	// not an error.  Therefore, set default values
+	a = 1;
+	b = 0;
+	return;
+  }
   void * start = (void *) imageBuffer->memory;
 
   double lo = INFINITY;
@@ -89,7 +96,7 @@ Image
 Rescale::filter (const Image & image)
 {
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
-  if (! imageBuffer) throw "Rescale only handles packed buffers for now";
+  if (! imageBuffer) return Image (image);
   void * start = (void *) imageBuffer->memory;
 
   if (*image.format == GrayFloat)
