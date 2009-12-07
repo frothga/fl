@@ -1,10 +1,46 @@
 # Author: Fred Rothganger
-# Copyright 2009 Sandia Corporation.
+# Copyright 2009, 2010 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Leser General Public License.  See the file
 # LICENSE for details.
 
+
+if (BLAS_FOUND)
+  set (flNumericBLAS
+    ../../include/fl/blasproto.h
+  )
+endif (BLAS_FOUND)
+
+if (Pthread_FOUND)
+  set (maybeKMeansParallel KMeansParallel.cc)
+endif (Pthread_FOUND)
+
+if (LAPACK_FOUND)
+  set (flNumericLAPACK
+    ../../include/fl/lapack.h
+    ../../include/fl/lapack.tcc
+    ../../include/fl/lapackproto.h
+    #   Double
+    dgeev.cc
+    dgelss.cc
+    dgelsd.cc
+    dgesvd.cc
+    dgetrf.cc
+    dspev.cc
+    dsyev.cc
+    dsygv.cc
+    #   Float
+    sgeev.cc
+    sgelss.cc
+    sgelsd.cc
+    sgesvd.cc
+    sgetrf.cc
+    sspev.cc
+    ssyev.cc
+    ssygv.cc
+  )
+endif (LAPACK_FOUND)
 
 add_library (flNumeric
   ../../include/fl/math.h
@@ -60,28 +96,8 @@ add_library (flNumeric
   MatrixSparseInt.cc
 
   # Lapack bridge
-  ../../include/fl/lapack.h
-  ../../include/fl/lapack.tcc
-  ../../include/fl/lapackproto.h
-  ../../include/fl/blasproto.h
-  #   Double
-  dgeev.cc
-  dgelss.cc
-  dgelsd.cc
-  dgesvd.cc
-  dgetrf.cc
-  dspev.cc
-  dsyev.cc
-  dsygv.cc
-  #   Float
-  sgeev.cc
-  sgelss.cc
-  sgelsd.cc
-  sgesvd.cc
-  sgetrf.cc
-  sspev.cc
-  ssyev.cc
-  ssygv.cc
+  ${flNumericBLAS}
+  ${flNumericLAPACK}
 
   # Search
   ../../include/fl/search.h
@@ -108,7 +124,7 @@ add_library (flNumeric
   ../../include/fl/cluster.h
   ClusterMethod.cc
   KMeans.cc
-  KMeansParallel.cc
+  ${maybeKMeansParallel}
   Kohonen.cc
   Agglomerate.cc
 
@@ -144,6 +160,7 @@ target_link_libraries (testNumeric
   flNumeric
   flBase
   ${LAPACK_LIBRARIES}
+  ${BLAS_LIBRARIES}
   ${GCC_LIBRARIES}
-  ${RT_LIB}
+  ${RT_LIBRARIES}
 )

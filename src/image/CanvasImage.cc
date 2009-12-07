@@ -20,14 +20,16 @@ for details.
 
 #include <algorithm>
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#ifdef WIN32
-#  include <windows.h>
-#  undef min
-#  undef max
-#else
-#  include <dirent.h>
+#ifdef HAVE_FREETYPE
+#  include <ft2build.h>
+#  include FT_FREETYPE_H
+#  ifdef WIN32
+#    include <windows.h>
+#    undef min
+#    undef max
+#  else
+#    include <dirent.h>
+#  endif
 #endif
 
 
@@ -567,6 +569,7 @@ CanvasImage::drawFilledRectangle (const Point & corner0, const Point & corner1, 
 void
 CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
 {
+# ifdef HAVE_LAPACK
   // Adjust for scaling and translation
   Point tcenter = trans (center);
   MatrixFixed<double,2,2> tshape;
@@ -706,6 +709,7 @@ CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & 
 	  pen (p, color);
 	}
   }
+# endif
 }
 
 /**
@@ -777,6 +781,7 @@ CanvasImage::drawMSER (const PointMSER & point, const Image & image, unsigned in
 void
 CanvasImage::drawText (const string & text, const Point & point, unsigned int color, float angle)
 {
+# ifdef HAVE_FREETYPE
   if (face == 0)
   {
 	setFont ("Helvetica", 12);
@@ -853,6 +858,7 @@ CanvasImage::drawText (const string & text, const Point & point, unsigned int co
     pen.x += slot->advance.x / 64.0f;
     pen.y -= slot->advance.y / 64.0f;
   }
+# endif
 }
 
 void
@@ -902,9 +908,11 @@ CanvasImage::setPointSize (float radius)
   pointRadius = radius;
 }
 
+
 void
 CanvasImage::setFont (const std::string & name, float size)
 {
+# ifdef HAVE_FREETYPE
   initFontLibrary ();
   if (fontMap.size () < 1) throw "No fonts";
 
@@ -992,32 +1000,36 @@ CanvasImage::setFont (const std::string & name, float size)
 	}
   }
   if (error) throw "Requested font size is not available";
+# endif
 }
 
 void
 CanvasImage::initFontLibrary ()
 {
+# ifdef HAVE_FREETYPE
   if (library != 0) return;
 
   FT_Error error = FT_Init_FreeType ((FT_Library *) &library);
   if (error) throw error;
 
   // Scan default list of likely font directories...
-# ifdef WIN32
+#   ifdef WIN32
   scanFontDirectory ("/WINDOWS/Fonts");
-# else
+#   else
   scanFontDirectory ("/cygdrive/c/WINDOWS/Fonts");
   scanFontDirectory ("/usr/X11R6/lib/X11/fonts/TTF");
   scanFontDirectory ("/usr/X11R6/lib/X11/fonts/Type1");
   // Do these once scanFontDirectory looks for "fonts.dir".  Otherwise, takes too long.
   //scanFontDirectory ("/usr/X11R6/lib/X11/fonts/100dpi");
   //scanFontDirectory ("/usr/X11R6/lib/X11/fonts/75dpi");
+#   endif
 # endif
 }
 
 void
 CanvasImage::addFontFile (const string & path)
 {
+# ifdef HAVE_FREETYPE
   // Probe file to see if it is a font
   FT_Face face;
   FT_Error error = FT_New_Face ((FT_Library) library, path.c_str (), 0, (FT_Face *) &face);
@@ -1053,14 +1065,16 @@ CanvasImage::addFontFile (const string & path)
   lowercase (postscriptName);
   fontMap.insert (make_pair (postscriptName, path));
   cerr << ".";
+# endif
 }
 
 void
 CanvasImage::scanFontDirectory (const string & path)
 {
+# ifdef HAVE_FREETYPE
   cerr << "Scanning " << path;
 
-# ifdef WIN32
+#   ifdef WIN32
 
   WIN32_FIND_DATA fd;
   HANDLE hFind = ::FindFirstFile ((path + "/*.*").c_str (), &fd);
@@ -1080,7 +1094,7 @@ CanvasImage::scanFontDirectory (const string & path)
 
   ::FindClose (hFind);
 
-# else
+#   else
 
   DIR * dirh = opendir (path.c_str ());
   if (! dirh)
@@ -1095,7 +1109,8 @@ CanvasImage::scanFontDirectory (const string & path)
 	dirp = readdir (dirh);
   }
 
-# endif
+#   endif
 
   cerr << endl;
+# endif
 }

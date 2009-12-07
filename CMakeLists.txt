@@ -25,22 +25,34 @@ if (MSVC)
     set (CMAKE_LIBRARY_PATH mswin/lib)
   endif (CMAKE_CL_64)
 
-  # Add libraries under MSVC that are automatically linked by GCC compiler.
-  find_library (GCC_LIB gcc)
-  find_library (MINGWEX_LIB mingwex)
-  find_library (FORTRAN_LIB g2c gfortran)
-  set (GCC_LIBRARIES
-    ${GCC_LIB}
-    ${MINGWEX_LIB}
-    ${FORTRAN_LIB}
-  )
+  # Add compiler support libraries.
+  find_library (GCC_LIB      gcc)
+  find_library (MINGWEX_LIB  mingwex)
+  find_library (MOLDNAME_LIB moldname)
+  find_library (FORTRAN_LIB  fortran)
+  if (GCC_LIB)
+    set (GCC_LIBRARIES ${GCC_LIBRARIES} ${GCC_LIB})
+  endif (GCC_LIB)
+  if (MINGWEX_LIB)
+    set (GCC_LIBRARIES ${GCC_LIBRARIES} ${MINGWEX_LIB})
+  endif (MINGWEX_LIB)
+  if (MOLDNAME_LIB)
+    set (GCC_LIBRARIES ${GCC_LIBRARIES} ${MOLDNAME_LIB})
+  endif (MOLDNAME_LIB)
+  if (FORTRAN_LIB)
+    set (GCC_LIBRARIES ${GCC_LIBRARIES} ${FORTRAN_LIB})
+  endif (FORTRAN_LIB)
 
-  find_library (THREAD_LIB pthreadVC2)
-  set          (SOCKET_LIB ws2_32)
+  set (SOCKET_LIBRARIES ws2_32)
 
   # Some includes are available by default under Unix but are not available
   # under MSVC, so add the supplemental include directory pre-emtively.
   include_directories (${PROJECT_SOURCE_DIR}/mswin/include)
+
+  # Avoid linkage conflicts caused by using mswin libraries.
+  if (NOT CMAKE_EXE_LINKER_FLAGS MATCHES libcmt)
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libcmt;libcmtd" CACHE STRING "linker flags" FORCE)
+  endif (NOT CMAKE_EXE_LINKER_FLAGS MATCHES libcmt)
 
 else (MSVC)
 
@@ -53,27 +65,26 @@ else (MSVC)
     set (CMAKE_Fortran_COMPILER g77)
   endif (CYGWIN)
 
-  if (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
+  if     (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
     set (FORTRAN_LIB gfortran)
-  else (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
+  elseif (CMAKE_Fortran_COMPILER MATCHES g77)
     set (FORTRAN_LIB g2c)
-  endif (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
+  else   (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
+    set (FORTRAN_LIB "")
+  endif  (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
 
-  set (GCC_LIBRARIES
-    ${FORTRAN_LIB}
-  )
+  set (GCC_LIBRARIES ${FORTRAN_LIB})
 
-  find_library (THREAD_LIB pthread pthreads)
-  set          (SOCKET_LIB)
 endif (MSVC)
 
 # Under Linux, we want to link with librt in order to use finer grained timers.
 if (CMAKE_SYSTEM_NAME MATCHES Linux)
-  find_library (RT_LIB rt)
+  find_library (RT_LIBRARIES rt)
 else (CMAKE_SYSTEM_NAME MATCHES Linux)
-  set          (RT_LIB)
+  set          (RT_LIBRARIES)
 endif (CMAKE_SYSTEM_NAME MATCHES Linux)
 
+find_package (Pthread)
 # The LAPACK package finder that comes with cmake seems to be broken, even when
 # Fortran is available.
 find_package (LAPACKnofortran)
@@ -84,6 +95,10 @@ find_package (PNG)
 find_package (Freetype)
 find_package (X11)
 find_package (FFMPEG)
+
+if (Pthread_FOUND)
+  add_definitions (-DHAVE_PTHREAD)
+endif (Pthread_FOUND)
 
 if (LAPACK_FOUND)
   add_definitions (-DHAVE_LAPACK)
@@ -165,7 +180,9 @@ add_subdirectory (src/base)
 add_subdirectory (src/net)
 add_subdirectory (src/numeric)
 add_subdirectory (src/image)
-if (NOT MSVC)
+if (X11_FOUND)
   add_subdirectory (src/X)
+endif (X11_FOUND)
+if (NOT MSVC)
   add_subdirectory (src/util)
 endif (NOT MSVC)

@@ -154,6 +154,7 @@ testOperator ()
 
 	//   Inversion
 	Matrix<T> result;
+#   ifdef HAVE_LAPACK
 	int expectedSize;
 	if (Arows <= Acols)  // right inverse
 	{
@@ -180,6 +181,7 @@ testOperator ()
 		}
 	  }
 	}
+#   endif
 
 
 	//   Transpose
@@ -725,7 +727,9 @@ testAll ()
   testClear<T> ();
   testSumSquares<T> ();
   testDot<T> ();
+# ifdef HAVE_LAPACK
   testLAPACK<T> ();
+# endif
 }
 
 

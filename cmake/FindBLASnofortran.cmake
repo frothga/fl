@@ -14,12 +14,14 @@ find_library (BLAS_LIB blas)
 include (FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS (BLAS  DEFAULT_MSG  BLAS_LIB)
 
-# GotoBLAS may require pthreads.  Out of laziness, we assume that we are
-# always using GotoBLAS and it is always built to require pthreads.
-set (BLAS_LIBRARIES
-  ${BLAS_LIB}
-  ${THREAD_LIB}
-)
+if (BLAS_FOUND)
+  set (BLAS_LIBRARIES ${BLAS_LIB})
+  # GotoBLAS may require pthreads.  Out of laziness, we assume that we are
+  # always using GotoBLAS and it is always built to require pthreads.
+  if (Pthread_FOUND)
+    set (BLAS_LIBRARIES ${BLAS_LIBRARIES} ${Pthread_LIBRARIES})
+  endif (Pthread_FOUND)
+endif (BLAS_FOUND)
 
 set (BLAS_LINKER_FLAGS)
 

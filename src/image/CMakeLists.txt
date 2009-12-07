@@ -6,7 +6,34 @@
 # LICENSE for details.
 
 
-include_directories (${FREETYPE_INCLUDE_DIRS})
+if (Freetype_FOUND)
+  include_directories (${FREETYPE_INCLUDE_DIRS})
+endif (Freetype_FOUND)
+
+if (TIFF_FOUND)
+  set (flImageTIFF ImageFileFormatTIFF.cc)
+endif (TIFF_FOUND)
+
+if (JPEG_FOUND)
+  set (flImageJPEG ImageFileFormatJPEG.cc)
+endif (JPEG_FOUND)
+
+if (PNG_FOUND)
+  set (flImagePNG ImageFileFormatPNG.cc)
+endif (PNG_FOUND)
+
+if (FFMPEG_FOUND)
+  # Should rearrange code so that Video.cc and video.h can be built without FFMPEG present.
+  set (flImageFFMPEG
+    ../../include/fl/video.h
+    Video.cc
+    VideoFileFormatFFMPEG.cc
+  )
+endif (FFMPEG_FOUND)
+
+if (X11_FOUND)
+  set (flImageX flX ${X11_LIBRARIES})
+endif (X11_FOUND)
 
 add_library (flImage
   # Base Image
@@ -24,11 +51,11 @@ add_library (flImage
   ImageFileFormatBMP.cc
   ImageFileFormatPGM.cc
   ImageFileFormatEPS.cc
-  ImageFileFormatJPEG.cc
-  ImageFileFormatTIFF.cc
   ImageFileFormatMatlab.cc
   ImageFileFormatNITF.cc
-  ImageFileFormatPNG.cc
+  ${flImageTIFF}
+  ${flImageJPEG}
+  ${flImagePNG}
 
   # Canvas
   ../../include/fl/canvas.h
@@ -100,11 +127,9 @@ add_library (flImage
   InterestMSER.cc
 
   # Video
-  ../../include/fl/video.h
   ../../include/fl/track.h
-  Video.cc
-  VideoFileFormatFFMPEG.cc
   KLT.cc
+  ${flImageFFMPEG}
 )
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -123,6 +148,7 @@ endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 
 add_executable (testImage test.cc)
 target_link_libraries (testImage
+  ${flImageX}
   flImage
   flNumeric
   flBase
@@ -130,7 +156,8 @@ target_link_libraries (testImage
   ${JPEG_LIBRARIES}
   ${FFMPEG_LIBRARIES}
   ${LAPACK_LIBRARIES}
+  ${BLAS_LIBRARIES}
   ${GCC_LIBRARIES}
-  ${SOCKET_LIB}
-  ${RT_LIB}
+  ${SOCKET_LIBRARIES}
+  ${RT_LIBRARIES}
 )

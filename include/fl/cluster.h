@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -24,6 +24,9 @@ for details.
 
 #include <iostream>
 #include <vector>
+#ifdef HAVE_PTHREAD
+#  include <pthread.h>
+#endif
 
 
 namespace fl
@@ -107,6 +110,7 @@ namespace fl
 	off_t clusterFileSize;
   };
 
+# ifdef HAVE_PTHREAD
   class KMeansParallel : public KMeans, public Listener
   {
   public:
@@ -136,6 +140,7 @@ namespace fl
 	std::vector<int> workUnits;  ///< List of current tasks, identified only by ints.  Basically, these are positions in a well-defined loop.
 	int              unitsPending;  ///< Number of workUnits still being worked on.  Allows for error recovery by monitoring completion as a separate concept from tasks claimed by a thread.
   };
+# endif
 
   // Find a more elegant way to disseminate these constants!
 #define workUnitSize 1000

@@ -4,7 +4,7 @@ Created 2/11/2006 to provide convenient setup of TCP connections.  Adapted
 from numeric/KMeansParallel.cc network code.
 
 
-Copyright 2008 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -15,6 +15,9 @@ for details.
 #include "fl/socket.h"
 
 #include <string.h>
+#ifdef HAVE_PTHREAD
+#  include <pthread.h>
+#endif
 
 
 using namespace fl;
@@ -115,6 +118,7 @@ Listener::listen (int port, int lastPort)
 	  continue;  // Not fatal, so resume litening
 	}
 
+#   ifdef HAVE_PTHREAD
 	if (threaded)
 	{
 	  ThreadDataHolder * data = new ThreadDataHolder;
@@ -126,13 +130,14 @@ Listener::listen (int port, int lastPort)
 
 	  pthread_t pid;
 	  pthread_create (&pid, NULL, processConnectionThread, data);
+
+	  continue;  // Don't fall through to the non-threaded processor below.
 	}
-	else
-	{
-	  SocketStream ss (connection, timeout);
-	  ss.ownSocket = true;
-	  processConnection (ss, clientAddress);
-	}
+#   endif
+
+	SocketStream ss (connection, timeout);
+	ss.ownSocket = true;
+	processConnection (ss, clientAddress);
   }
 }
 

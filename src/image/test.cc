@@ -3,7 +3,7 @@ Author: Fred Rothganger
 Created 2/24/2006 to perform regression testing on the image library.
 
 
-Copyright 2008 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,10 +16,12 @@ for details.
 #include "fl/canvas.h"
 #include "fl/descriptor.h"
 #include "fl/random.h"
-#include "fl/video.h"
 #include "fl/interest.h"
 #include "fl/time.h"
 #include "fl/track.h"
+#ifdef HAVE_FFMPEG
+#  include "fl/video.h"
+#endif
 
 #include <float.h>
 #include <typeinfo>
@@ -64,6 +66,7 @@ testAbsoluteValue (Image & image)
   }
 }
 
+#ifdef HAVE_LAPACK
 void
 testTransform (Image & image)
 {
@@ -102,6 +105,7 @@ testTransform (Image & image)
 	}
   }
 }
+#endif
 
 /**
    This is kind of a mini ConvolutionDiscrete1D.  It is meant to be a reliable
@@ -348,7 +352,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	  //cerr << "    ratioH,V = " << ratioH << " " << ratioV << endl;
 	  PixelFormatYUV * frompfyuv = dynamic_cast<PixelFormatYUV *> (fromFormat);
 
-	  const unsigned int shift = 16 + (int) rint (log ((double) ratioH * ratioV) / log (2.0));
+	  const unsigned int shift = 16 + (int) roundp (log ((double) ratioH * ratioV) / log (2.0));
 	  const int roundup = 0x8000 << (shift - 16);
 	  const int bias = 0x808 << (shift - 4);  // also includes roundup
 	  const int maximum = (~(unsigned int) 0) >> (24 - shift);
@@ -902,6 +906,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 void
 testPixelFormat ()
 {
+# ifdef HAVE_JPEG
   // Create some formats to more fully test RGBABits
   PointerPoly<fl::PixelFormat> R2G3B2A0 = new PixelFormatRGBABits (1, 0x03, 0x1C, 0x60, 0);
   PointerPoly<fl::PixelFormat> R5G6B5A0 = new PixelFormatRGBABits (2, 0xF800, 0x07E0, 0x001F, 0);
@@ -926,7 +931,10 @@ testPixelFormat ()
   formats.push_back (&YUV420);
   formats.push_back (&YUV411);
   formats.push_back (&HLSFloat);
+  formats.push_back (&B5G5R5);
   formats.push_back (&BGRChar);
+  formats.push_back (&BGRChar4);
+  formats.push_back (&BGRAChar);
   formats.push_back ( R2G3B2A0);
   formats.push_back ( R5G6B5A0);
   formats.push_back ( R8G8B8A0);
@@ -942,6 +950,9 @@ testPixelFormat ()
   timer.stop ();
 
   cout << "PixelFormat passes " << timer << endl;
+# else
+  cout << "WARNING: PixelFormat not tested due to lack of JPEG" << endl;
+# endif
 }
 
 // AbsoluteValue -- float and double
@@ -987,6 +998,7 @@ testCanvasImage ()
 void
 testConvolutionDiscrete1D ()
 {
+# if defined (HAVE_JPEG)  &&  defined (HAVE_LAPACK)
   vector<ConvolutionDiscrete1D *> kernels;
   Gaussian1D oddKernel (1, Crop, GrayDouble);
   ConvolutionDiscrete1D evenKernel = oddKernel * Transform ((oddKernel.width + 1.0) / oddKernel.width, 1.0);
@@ -1052,6 +1064,9 @@ testConvolutionDiscrete1D ()
   }
 
   cout << "ConvlutionDiscrete1D passes" << endl;
+# else
+  cout << "WARNING: ConvolutionDiscrete1D not tested due to lack of JPEG or LAPACK" << endl;
+# endif
 }
 
 // ConvolutionDiscrete1D::normalFloats -- float double
@@ -1133,6 +1148,7 @@ testConvolutionDiscrete2DnormalFloats ()
 void
 testDescriptorFilters ()
 {
+# ifdef HAVE_LAPACK
   DescriptorFilters desc;
 
   CanvasImage circle (11, 11, GrayFloat);
@@ -1195,6 +1211,9 @@ testDescriptorFilters ()
   }
 
   cout << "DescriptorFilters, Rescale and Rotate180 pass" << endl;
+# else
+  cout << "WARNING: DescriptorFilters, Rescale and Rotate180 not tested due to lack of LAPACK" << endl;
+# endif
 }
 
 // DescriptorLBP
@@ -1203,6 +1222,7 @@ testDescriptorFilters ()
 void
 testDescriptors ()
 {
+# ifdef HAVE_LAPACK
   CanvasImage image (360, 240, GrayFloat);
   image.clear ();
   image.drawFilledRectangle (Point (160, 120), Point (165, 125));
@@ -1230,6 +1250,9 @@ testDescriptors ()
 
   cout << "DescriptorPatch passes" << endl;
   cerr << "more work needed to verify results for DescriptorLBP and DescriptorTextonScale" << endl;
+# else
+  cout << "WARNING: DescriptorPatch, DescriptorLBP and DescriptorTextonScale not tested due to lack of LAPACK" << endl;
+# endif
 }
 
 // IntensityAverage
@@ -1287,6 +1310,7 @@ testIntensityFilters ()
 void
 testInterest ()
 {
+# ifdef HAVE_JPEG
   Image image ("test.jpg");
   image *= GrayChar;
 
@@ -1310,24 +1334,32 @@ testInterest ()
   }
 
   cout << "InterestDOG, InterestMSER, InterestHarrisLaplacian and InterestHessian pass" << endl;
+# else
+  cout << "WARNING: Interest operators not tested due to lack of JPEG" << endl;
+# endif
 }
 
 // Transform -- {8dof 6dof} X {float double}
 void
 testTransform ()
 {
+# ifdef HAVE_LAPACK
   Image image (640, 480, GrayFloat);
   testTransform (image);
   image.format = &GrayDouble;
   image.resize (640, 480);
   testTransform (image);
   cout << "Transform passes" << endl;
+# else
+  cout << "WARNING: Transform not tested due to lack of LAPACK" << endl;
+# endif
 }
 
 // VideoFileFormatFFMPEG
 void
 testVideo ()
 {
+# ifdef HAVE_FFMPEG
   new VideoFileFormatFFMPEG;
 
   {
@@ -1378,6 +1410,9 @@ testVideo ()
   }
 
   cout << "VideoFileFormatFFMPEG passes" << endl;
+# else
+  cout << "WARNING: Video not tested due to lack of FFMPEG" << endl;
+# endif
 }
 
 inline bool
@@ -1508,6 +1543,7 @@ testBitblt (Image & test, fl::PixelFormat & format)
 void
 testBitblt ()
 {
+# ifdef HAVE_JPEG
   Image test ("test.jpg");
 
   PointerPoly<fl::PixelFormat> GrayBits = new PixelFormatGrayBits (1);
@@ -1526,12 +1562,16 @@ testBitblt ()
   testBitblt (test,  HLSFloat);
 
   cout << "Image::bitblt passes" << endl;
+# else
+  cout << "Image:bitblt not tested" << endl;
+# endif
 }
 
 // KLT
-float
+void
 testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f)
 {
+# if defined (HAVE_JPEG)  &&  defined (HAVE_LAPACK)
   const int range = searchRadius * 2;
   const int steps = 10;
   const float lastStep = steps - 1;  // actually an integer, but using float here reduces the need for casts later
@@ -1604,6 +1644,9 @@ testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f)
   if (ratio < 0.7) throw "KLT fails";
 
   cout << "KLT passes" << endl;
+# else
+  cout << "WARNING: KLT not tested due to lack of JPEG or LAPACK" << endl;
+# endif
 }
 
 
@@ -1612,7 +1655,9 @@ main (int argc, char * argv[])
 {
   try
   {
+#   ifdef HAVE_JPEG
 	new ImageFileFormatJPEG;
+#   endif
 
 	testPixelFormat ();
 	testAbsoluteValue ();
