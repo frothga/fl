@@ -1,0 +1,241 @@
+Instructions for building Microsoft C versions of the support libraries.
+========================================================================
+
+This file explains how to build support libraries that can be linked into software built by Miscrosft toochains.  If you simply wish to use FL on a Windows system, the simplest way is to completely operate within the Cygwin environment.  However, if you goal is to use Miscrosoft tools, you must prepare libraries that are compatible.
+
+
+Directory structure and naming conventions
+------------------------------------------
+The directory mswin generally resides directly under the root FL directory.  It contains subdirectories similar in structure to other posix software installations (bin, include, lib, lib64).  It also contains a "build" directory, which in turn contains source directories for the various supporting libraries.  When populating this structure from scratch, you should search for and download the most recent source code for each package.
+
+Most files retain the name they normally receive from the build process in their respective projects.  However, libraries are renamed to be simple and follow MS naming conventions.  In particular, all libraries end in ".lib", and they generally to not have a leading or trailing "lib" in the name.  The following are desirable library names:
+
+	jpeg.lib        // drop extraneous "lib"
+	z.lib           // drop extraneous "lib"
+	tiff.lib        // drop extraneous "lib"
+	freetype.lib    // No version number
+
+
+Build environment and tools
+---------------------------
+The preferred approach is to use the MS toolchain itself.  Some of these packages come with Visual Studio projects.  Other packages come with nmake scripts, and build best in a command window, often called a "Visual Studio Command Prompt".  When Visual Studio is installed, there sould be a Start menu item under the VS program group for launching such a command prompt.
+
+To build 64bit versions, you will need the x64 cross-compiler supplied with Visual Studio Pro (or higher) editions.  Alternately, you can install the latest Windows SDK and select the 64bit toolchain.  You can then run nmake, or launch an express edition from the command line:
+
+	vcexpress /useenv
+
+One of these packages (FFMPEG) can only be built under Cygwin or MinGW.  For the present, this precludes building 64-bit versions of those libraries, due to differences in calling convention between 64-bit versions of MinGW and MS toolchains.  To prepare the Cygwin environment, download "Setup.exe" from the Cygwin web-site and place it in c:\cygwin\setup.  Run it, and ensure that the following packages are selected in addition to any defaults.
+
+	emacs-X11
+	gcc4
+	make
+	xinit
+
+
+MinGW supplied libraries
+------------------------
+Currently, only FFMPEG needs to be build under MinGW / Cygwin.  To support its dependencies, copy the following into mswin/lib and rename appropriately:
+
+	/usr/lib/mingw/libmingwex.a                      --> mingwex.lib
+	/usr/lib/mingw/libmoldname{msvcrt version}.a     --> moldname.lib
+	/usr/lib/gcc/{host name}/{gcc version}/libgcc.a  --> gcc.lib
+
+The unix-style pathing is as seen by a Cygwin shell, and assumes a Cygwin installation.
+
+mingwex.lib needs to be modified to avoid some linkage problems.  Type the following in a shell:
+
+	lib /remove:mbrtowc.o mingwex.lib
+	lib /remove:wcrtomb.o mingwex.lib
+
+
+FL supplied headers
+-------------------
+As of this writing, MS does not provide stdint.h or inttypes.h.  Instead, there are minimal substitutes already present in mswin/include.  Remove these if MS ever achieves better standards compliance.
+
+
+FreeType
+--------
+Solution file is builds/win32/{latest vc}/freetype.sln.  Build the "LIB Release Multithreaded" configuration.
+
+Copy the library to mswin/lib or lib64, and rename:
+
+	objs/win32/{latest vc}/freetype{version}.lib  --> freetype.lib
+
+Copy the contents of the include directory into mswin/include.
+
+
+Pthreads-w32
+------------
+32-bit:  The preferred method is to download pre-built binaries.  Download and execute
+
+	http://sourceware.org/pub/pthreads-win32/pthreads-w32-x-x-x-release.exe
+
+Copy the following:
+
+	Pre-built.2/include/*
+	Pre-built.2/lib/pthreadVC2.dll
+	Pre-built.2/lib/pthreadVC2.lib
+
+Keep the version suffixes in pthreadXXX.lib and pthreadXXX.dll, since the lib creates a dependency on the DLL with the suffix in its name.
+
+64-bit:  Go to http://sourceforge.net/projects/mingw-w64 and look for pthreads-w32 in the downloads section.  Get and apply the patch.  Then build using Visual Studio.  Open pthread.dsw and allow VS to convert it (assuming you are using a more recent version of VS).
+
+
+LAPACK and BLAS
+---------------
+Prebuilt binaries are available from the CLAPACK project:http://www.netlib.org/clapack/LIB_WINDOWS/prebuilt_libraries_windows.html
+Use the Release nowrap versions.
+
+The reference implementation of BLAS is sufficient, but a more efficient one can be built using GotoBLAS from the University of Texas: http://www.tacc.utexas.edu/software_modules.php
+GotoBLAS requires a Cygwin environment to build.  Instructions are included in the downloaded package.
+
+Copy libraries to mswin/lib or lib64 and rename:
+
+	BLAS_nowrap.lib     --> blas.lib
+	clapack_nowrap.lib  --> lapack.lib
+	libf2c.lib          --> fortran.lib
+
+
+JPEG
+----
+The following instructions are designed for a raw download of the 1998 version of jpeg-6b.  Overwrite the configuration files with vc specific version:
+
+	jconfig.vc  --> jconfig.h
+	makefile.vc --> makefile
+
+Start a Visual Studio Command Prompt and type:
+
+	cd {mswin}/build/jpeg-6b
+	nmake clean all
+
+Ignore warnings about security.
+
+Copy the library to mswin/lib or lib64, and rename:
+
+	libjpeg.lib  --> jpeg.lib
+
+Copy the headers to mswin/include:
+
+	jconfig.h
+	jerror.h
+	jmorecfg.h
+	jpeglib.h
+
+
+Z
+-
+Launch projects/visualc6/zlib.dsw
+This workspace file is out of date, but still converts successfully as of VS2008.
+
+Select "LIB Release" mode and build.
+
+Copy the library to mswin/lib or lib64 and rename:
+
+	Win32_LIB_Release/zlib.lib  --> z.lib
+
+Copy the headers to mswin/include:
+
+	zconf.h
+	zlib.h
+
+
+TIFF
+----
+Build JPEG and Z first, so that TIFF can refer to them.
+
+Modify nmake.opt by uncommenting the lines for JPEG and ZLIB support.  Point each one to mswin to get the built libraries.
+
+	JPEGDIR = {absolute path to mswin; may need quote marks}
+	JPEG_INCLUDE = -I$(JPEGDIR)/include
+	JPEG_LIB = $(JPEGDIR)/lib/jpeg.lib
+
+	ZLIBDIR = {absolute path to mswin; may need quote marks}
+	ZLIB_INCLUDE = -I$(ZLIBDIR)/include
+	ZLIB_LIB = $(ZLIBDIR)/lib/z.lib
+
+Overwrite configuration with vc specific files:  (Note that the names are changed in newer versions of TIFF.  Instructions apply to version 3.8.2)
+
+	libtiff/tiffconf.vc.h   --> libtiff/tiffconf.h
+	libtiff/tif_config.vc.h --> libtiff/tif_config.h
+
+Open a Visual Studio Command Prompt and type:
+
+	cd {mswin}/build/{tiff project directory}
+	nmake /f Makefile.vc clean    // if you want to clean out a previous build
+	nmake /f Makefile.vc
+
+Copy the library to mswin/lib or lib64 and rename:
+
+	libtiff/libtiff.lib  --> tiff.lib
+
+Copy the headers to mswin/include:
+
+	libtiff/tiff.h
+	libtiff/tiffconf.h
+	libtiff/tiffio.h
+	libtiff/tiffvers.h
+
+
+GeoTIFF
+-------
+Overwrite configuration with vc specific files:
+
+	geo_config.h.vc --> geo_config.h
+	makefile.vc     --> makefile
+
+Edit makefile:
+
+	TIFF_DIR = ..\{tiff project directory}\libtiff
+	PREFIX = {absolute path to mswin directory; may need quotes}
+
+Compile and install with nmake:
+
+	nmake devinstall
+
+Optionally, get rid of mswin/bin/geotiff.dll and mswin/lib/geotiff_i.lib
+
+
+PNG
+---
+Open projects/{most recent visualc version}/libpng.sln in Visual Studio.
+
+Select "LIB Release" mode.
+
+Edit properties of the "libpng" project to set the correct path to the zlib project directory in "Additional Include Directories".
+
+Build only the libpng project.  Either delete or disable other projects besides "libpng", or use a project-only option from the build menu.
+
+Copy the library up to mswin/lib or lib64 and rename:
+
+	projects/{visualc x}/Win32_LIB_Release/libpng.lib  --> png.lib
+
+Copy the headers up to mswin/include:
+
+	png.h
+	pngconf.h
+
+
+FFmpeg
+------
+Must be built under Cygwin or MinGW.  Currently, no 64-bit version can be built that is compatible with MS toolchains.
+
+Start a Cygwin shell and type:
+
+	./configure --prefix={full path to ffmpeg}/encap --disable-ffmpeg --disable-ffplay --disable-ffserver --extra-cflags="-mno-cygwin"
+
+and correct the following defines in the resulting config.h:
+
+	#define HAVE_INET_ATON 0
+	#define HAVE_LLRINT 1
+	#define HAVE_MEMALIGN 0
+	#define HAVE_MKSTEMP 0
+
+(These configuration errors probably result from not using a pure MinGW cross-compiler.  Some Cygwin environment headers may be slipping in.)
+
+Then type
+
+	make clean
+	make
+	make install
+
+Finally, copy the contents of the "encap" directory up to mswin.  Rename all the libraries appropriately.
