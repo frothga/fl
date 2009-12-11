@@ -42,19 +42,19 @@ main (int argc, char * argv[])
 	}
 
 	// Internal formats
-	new ImageFileFormatBMP;
-	new ImageFileFormatPGM;
-	new ImageFileFormatMatlab;
-	new ImageFileFormatNITF;
+	ImageFileFormatBMP   ::use ();
+	ImageFileFormatPGM   ::use ();
+	ImageFileFormatMatlab::use ();
+	ImageFileFormatNITF  ::use ();
 	// External formats
 #   ifdef HAVE_PNG
-	new ImageFileFormatPNG;
+	ImageFileFormatPNG   ::use ();
 #   endif
 #   ifdef HAVE_JPEG
-	new ImageFileFormatJPEG;
+	ImageFileFormatJPEG  ::use ();
 #   endif
 #   ifdef HAVE_TIFF
-	new ImageFileFormatTIFF;
+	ImageFileFormatTIFF  ::use ();
 #   endif
 
 

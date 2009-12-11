@@ -16,8 +16,8 @@ main (int argc, char * argv[])
   Parameters parms (argc, argv);
   float size = parms.getFloat ("size", 64);
 
-  new ImageFileFormatJPEG;
-  new VideoFileFormatFFMPEG;
+  ImageFileFormatJPEG  ::use ();
+  VideoFileFormatFFMPEG::use ();
 
   for (int i = 0; i < parms.fileNames.size (); i++)
   {

@@ -1156,7 +1156,6 @@ namespace fl
   class ImageFileFormat
   {
   public:
-	ImageFileFormat ();
 	virtual ~ImageFileFormat ();
 
 	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const = 0;
@@ -1175,6 +1174,7 @@ namespace fl
   class ImageFileFormatBMP : public ImageFileFormat
   {
   public:
+	static void use ();
 	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
 	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
@@ -1184,6 +1184,7 @@ namespace fl
   class ImageFileFormatPGM : public ImageFileFormat
   {
   public:
+	static void use ();
 	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
 	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
@@ -1193,6 +1194,7 @@ namespace fl
   class ImageFileFormatPNG : public ImageFileFormat
   {
   public:
+	static void use ();
 	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
 	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
@@ -1202,6 +1204,7 @@ namespace fl
   class ImageFileFormatEPS : public ImageFileFormat
   {
   public:
+	static void use ();
 	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
 	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
@@ -1211,6 +1214,7 @@ namespace fl
   class ImageFileFormatJPEG : public ImageFileFormat
   {
   public:
+	static void use ();
 	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
 	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
@@ -1220,6 +1224,7 @@ namespace fl
   class ImageFileFormatTIFF : public ImageFileFormat
   {
   public:
+	static void use ();
 	ImageFileFormatTIFF ();  ///< To initialize libgeotiff, if it is available.
 	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
 	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
@@ -1230,6 +1235,7 @@ namespace fl
   class ImageFileFormatNITF : public ImageFileFormat
   {
   public:
+	static void use ();
 	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
 	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;
@@ -1239,6 +1245,7 @@ namespace fl
   class ImageFileFormatMatlab : public ImageFileFormat
   {
   public:
+	static void use ();
 	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
 	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
 	virtual float isIn (std::istream & stream) const;

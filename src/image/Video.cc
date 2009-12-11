@@ -158,11 +158,6 @@ VideoOutFile::~VideoOutFile ()
 
 vector<VideoFileFormat *> VideoFileFormat::formats;
 
-VideoFileFormat::VideoFileFormat ()
-{
-  formats.push_back (this);
-}
-
 VideoFileFormat::~VideoFileFormat ()
 {
   vector<VideoFileFormat *>::iterator i;

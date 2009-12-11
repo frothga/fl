@@ -1836,6 +1836,17 @@ ImageFileDelegateNITF::set (const string & name, const Matrix<double> & value)
 
 // class ImageFileFormatNITF --------------------------------------------------
 
+void
+ImageFileFormatNITF::use ()
+{
+  vector<ImageFileFormat *>::iterator i;
+  for (i = formats.begin (); i < formats.end (); i++)
+  {
+	if (typeid (**i) == typeid (ImageFileFormatNITF)) return;
+  }
+  formats.push_back (new ImageFileFormatNITF);
+}
+
 ImageFileDelegate *
 ImageFileFormatNITF::open (std::istream & stream, bool ownStream) const
 {

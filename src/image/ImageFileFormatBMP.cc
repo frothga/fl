@@ -591,6 +591,17 @@ ImageFileDelegateBMP::write (const Image & image, int ignorex, int ignorey)
 
 // class ImageFileFormatBMP ---------------------------------------------------
 
+void
+ImageFileFormatBMP::use ()
+{
+  vector<ImageFileFormat *>::iterator i;
+  for (i = formats.begin (); i < formats.end (); i++)
+  {
+	if (typeid (**i) == typeid (ImageFileFormatBMP)) return;
+  }
+  formats.push_back (new ImageFileFormatBMP);
+}
+
 ImageFileDelegate *
 ImageFileFormatBMP::open (std::istream & stream, bool ownStream) const
 {

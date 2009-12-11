@@ -565,6 +565,17 @@ ImageFileDelegateJPEG::set (const string & name, const Matrix<double> & value)
 
 // class ImageFileFormatJPEG --------------------------------------------------
 
+void
+ImageFileFormatJPEG::use ()
+{
+  vector<ImageFileFormat *>::iterator i;
+  for (i = formats.begin (); i < formats.end (); i++)
+  {
+	if (typeid (**i) == typeid (ImageFileFormatJPEG)) return;
+  }
+  formats.push_back (new ImageFileFormatJPEG);
+}
+
 ImageFileDelegate *
 ImageFileFormatJPEG::open (std::istream & stream, bool ownStream) const
 {

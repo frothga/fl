@@ -1360,7 +1360,7 @@ void
 testVideo ()
 {
 # ifdef HAVE_FFMPEG
-  new VideoFileFormatFFMPEG;
+  VideoFileFormatFFMPEG::use ();
 
   {
 	VideoOut vout ("test.mpg");
@@ -1656,7 +1656,7 @@ main (int argc, char * argv[])
   try
   {
 #   ifdef HAVE_JPEG
-	new ImageFileFormatJPEG;
+	ImageFileFormatJPEG::use ();
 #   endif
 
 	testPixelFormat ();

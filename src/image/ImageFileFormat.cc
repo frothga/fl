@@ -230,11 +230,6 @@ ImageFile::set (const std::string & name, const Matrix<double> & value)
 
 vector<ImageFileFormat *> ImageFileFormat::formats;
 
-ImageFileFormat::ImageFileFormat ()
-{
-  formats.push_back (this);
-}
-
 ImageFileFormat::~ImageFileFormat ()
 {
   vector<ImageFileFormat *>::iterator i;

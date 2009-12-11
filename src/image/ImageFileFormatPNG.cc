@@ -393,6 +393,17 @@ ImageFileDelegatePNG::flushHandler (png_structp png)
 
 // class ImageFileFormatPNG --------------------------------------------------
 
+void
+ImageFileFormatPNG::use ()
+{
+  vector<ImageFileFormat *>::iterator i;
+  for (i = formats.begin (); i < formats.end (); i++)
+  {
+	if (typeid (**i) == typeid (ImageFileFormatPNG)) return;
+  }
+  formats.push_back (new ImageFileFormatPNG);
+}
+
 ImageFileDelegate *
 ImageFileFormatPNG::open (std::istream & stream, bool ownStream) const
 {

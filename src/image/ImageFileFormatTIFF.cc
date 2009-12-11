@@ -1525,6 +1525,17 @@ ImageFileDelegateTIFF::tiffUnmap (thandle_t handle, tdata_t data, toff_t offset)
 
 // class ImageFileFormatTIFF --------------------------------------------------
 
+void
+ImageFileFormatTIFF::use ()
+{
+  vector<ImageFileFormat *>::iterator i;
+  for (i = formats.begin (); i < formats.end (); i++)
+  {
+	if (typeid (**i) == typeid (ImageFileFormatTIFF)) return;
+  }
+  formats.push_back (new ImageFileFormatTIFF);
+}
+
 ImageFileFormatTIFF::ImageFileFormatTIFF ()
 {
 # ifdef HAVE_GEOTIFF

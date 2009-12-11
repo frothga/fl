@@ -18,19 +18,7 @@ for details.
 #define fl_video_h
 
 
-// Force stdint.h under Fedora Core (and maybe others) to define the INT64_C
-// macro for use with FFMPEG constants (namely AV_NOPTS_VALUE).  This
-// definition must occur before stdint.h is otherwise included.
-#define __STDC_CONSTANT_MACROS
-
-
 #include "fl/image.h"
-
-// This include is needed to declare data members in VideoFileFFMPEG
-extern "C"
-{
-#include <libavformat/avformat.h>
-}
 
 
 namespace fl
@@ -112,7 +100,6 @@ namespace fl
   class VideoFileFormat
   {
   public:
-	VideoFileFormat ();
 	virtual ~VideoFileFormat ();
 
 	virtual VideoInFile * openInput (const std::string & fileName) const = 0;  ///< Creates a new VideoInFile attached to the given file and positioned before the first frame.  The caller is responsible to destroy the object.
@@ -133,67 +120,11 @@ namespace fl
   // This could also be broken up into several classes to allow less of the
   // codecs or formats to be imported from the FFMPEG library.
 
-  class VideoInFileFFMPEG : public VideoInFile
-  {
-  public:
-	VideoInFileFFMPEG (const std::string & fileName);
-	virtual ~VideoInFileFFMPEG ();
-
-	virtual void seekFrame (int frame);
-	virtual void seekTime (double timestamp);
-	virtual void readNext (Image & image);
-	virtual bool good () const;
-	virtual void setTimestampMode (bool frames = false);
-	virtual void get (const std::string & name, double & value);
-
-	// private ...
-	void open (const std::string & fileName);
-	void close ();
-	void readNext (Image * image);  ///< same as readNext() above, except if image is null, then don't do extraction step
-	void extractImage (Image & image);
-
-	AVFormatContext * fc;
-	AVCodecContext * cc;
-	AVStream * stream;
-	AVCodec * codec;	
-	AVFrame picture;
-	AVPacket packet;  ///< Ensure that if nextImage() attaches image to packet, the memory won't be freed before next read.
-	int size;
-	unsigned char * data;
-	int gotPicture;  ///< indicates that picture contains a full image
-	int state;  ///< state == 0 means good; anything else means we can't read more frames
-	bool timestampMode;  ///< Indicates that image.timestamp should be frame number rather than presentation time.
-	int64_t expectedSkew;  ///< How much before a given target time to read in order to get a keyframe, in stream units.
-	bool seekLinear;  ///< Indicates that the file only supports linear seeking, not random seeking.  Generally due to lack of timestamps in stream.
-	int64_t nextPTS;  ///< DTS of most recent packet pushed into decoder.  In MPEG, this will be the PTS of the next picture to come out of decoder, which occurs next time a packet is pushed in.
-	double startTime;  ///< Best estimate of timestamp on first image in video.
-
-	std::string fileName;
-  };
-
-  class VideoOutFileFFMPEG : public VideoOutFile
-  {
-  public:
-	VideoOutFileFFMPEG (const std::string & fileName, const std::string & formatName, const std::string & codecName);
-	~VideoOutFileFFMPEG ();
-
-	virtual void writeNext (const Image & image);
-	virtual bool good () const;
-	virtual void set (const std::string & name, double value);
-
-	AVFormatContext * fc;
-	AVStream * stream;
-	AVCodec * codec;
-	fl::PixelFormat * pixelFormat;  ///< The format in which the codec receives the image.
-	bool needHeader;  ///< indicates that file header needs to be written; also that codec needs to be opened
-	fl::Pointer videoBuffer;  ///< Working memory for encoder.
-	int state;
-  };
-
   class VideoFileFormatFFMPEG : public VideoFileFormat
   {
   public:
 	VideoFileFormatFFMPEG ();
+	static void use ();
 
 	virtual VideoInFile * openInput (const std::string & fileName) const;
 	virtual VideoOutFile * openOutput (const std::string & fileName, const std::string & formatName, const std::string & codecName) const;
