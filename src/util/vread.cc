@@ -44,7 +44,8 @@ class VideoShow : public SlideShow
 {
 public:
   VideoShow (const string fileName)
-  : vin (fileName)
+  : fileName (fileName),
+	vin (fileName)
   {
 	useFrames = true;
 	vin.setTimestampMode (useFrames);
@@ -226,10 +227,7 @@ public:
 	}
 	if (! me->vin.good ()  &&  me->playing)
 	{
-	  // Figure a nice way to reopen file
-	  VideoInFileFFMPEG * vin = (VideoInFileFFMPEG *) me->vin.file;
-	  vin->state = 0;
-	  vin->seekFrame (0);
+	  me->vin.open (me->fileName);  // forces close() first
 	}
 	me->playing = false;
   }
@@ -258,6 +256,7 @@ public:
   bool useFrames;
   double startTime;
   double duration;
+  string fileName;
   string stem;
   pthread_t pidPlayThread;
   bool playing;
