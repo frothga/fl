@@ -24,28 +24,13 @@ To build 64bit versions, you will need the x64 cross-compiler supplied with Visu
 
 	vcexpress /useenv
 
-One of these packages (FFMPEG) can only be built under Cygwin or MinGW.  For the present, this precludes building 64-bit versions of those libraries, due to differences in calling convention between 64-bit versions of MinGW and MS toolchains.  To prepare the Cygwin environment, download "Setup.exe" from the Cygwin web-site and place it in c:\cygwin\setup.  Run it, and ensure that the following packages are selected in addition to any defaults.
+One of these packages (FFMPEG) can only be built under MinGW + MSYS.  First install MinGW (either 32-bit or 64-bit), then install MSYS and have it point its /mingw directory to the correct version of MinGW.
 
-	emacs-X11
-	gcc4
-	make
-	xinit
+MinGW 32-bit: To prepare the MinGW compiler, go to http://sourceforge.net/projects/mingw/files, download the latest installer, and place it in c:\mingw32\setup.  Accept the default "current" package.
 
+MinGW 64-bit: Currently, the 64-bit calling conventions used by GCC differ from those used by the MS toolchain, so the 64-bit libraries built by MinGW don't work in MS compiled programs.  Here are instructions to set up 64-bit MinGW, in case this is ever resolved...  Download from http://sourceforge.net/projects/mingw-w64.  Install in c:\mingw64, and add it to the path as described above.
 
-MinGW supplied libraries
-------------------------
-Currently, only FFMPEG needs to be build under MinGW / Cygwin.  To support its dependencies, copy the following into mswin/lib and rename appropriately:
-
-	/usr/lib/mingw/libmingwex.a                      --> mingwex.lib
-	/usr/lib/mingw/libmoldname{msvcrt version}.a     --> moldname.lib
-	/usr/lib/gcc/{host name}/{gcc version}/libgcc.a  --> gcc.lib
-
-The unix-style pathing is as seen by a Cygwin shell, and assumes a Cygwin installation.
-
-mingwex.lib needs to be modified to avoid some linkage problems.  Type the following in a shell:
-
-	lib /remove:mbrtowc.o mingwex.lib
-	lib /remove:wcrtomb.o mingwex.lib
+To prepare the MSYS environment, go to http://sourceforge.net/projects/mingw/files and download/run the latest MSYS Base System installer program.  Install in c:\msys.
 
 
 FL supplied headers
@@ -66,11 +51,27 @@ Copy the contents of the include directory into mswin/include.
 
 Pthreads-w32
 ------------
-32-bit:  The preferred method is to download pre-built binaries.  Download and execute
+32-bit:  Download and execute
 
 	http://sourceware.org/pub/pthreads-win32/pthreads-w32-x-x-x-release.exe
 
-Copy the following:
+Open pthread.2/pthread.dsw and allow VS to convert it.  Select Release mode and compile.
+
+Copy the library to mswin/lib or lib64:
+
+	pthread.2/pthreadVC2.lib
+
+Copy the DLL to mswin/bin:
+
+	pthread.2/pthreadVC2.dll
+
+Copy headers to mswin/include:
+
+	pthread.2/pthread.h
+	pthread.2/sched.h
+	pthread.2/semaphore.h
+
+Alternately, you can copy the prebuilt version:
 
 	Pre-built.2/include/*
 	Pre-built.2/lib/pthreadVC2.dll
@@ -78,13 +79,15 @@ Copy the following:
 
 Keep the version suffixes in pthreadXXX.lib and pthreadXXX.dll, since the lib creates a dependency on the DLL with the suffix in its name.
 
-64-bit:  Go to http://sourceforge.net/projects/mingw-w64 and look for pthreads-w32 in the downloads section.  Get and apply the patch.  Then build using Visual Studio.  Open pthread.dsw and allow VS to convert it (assuming you are using a more recent version of VS).
+64-bit:  Go to http://sourceforge.net/projects/mingw-w64 and look for pthreads-w32 in the downloads section.  Get and apply the patch.  Then build using Visual Studio.
 
 
 LAPACK and BLAS
 ---------------
 Prebuilt binaries are available from the CLAPACK project:http://www.netlib.org/clapack/LIB_WINDOWS/prebuilt_libraries_windows.html
 Use the Release nowrap versions.
+
+If you wish to build the libraries, follow the instructions given in http://www.netlib.org/clapack/readme.install.  In particular, follow the instructions for a non-wrapped Fortran interface to BLAS, rather than a CBLAS interface.
 
 The reference implementation of BLAS is sufficient, but a more efficient one can be built using GotoBLAS from the University of Texas: http://www.tacc.utexas.edu/software_modules.php
 GotoBLAS requires a Cygwin environment to build.  Instructions are included in the downloaded package.
@@ -168,6 +171,8 @@ Copy the library to mswin/lib or lib64 and rename:
 
 	libtiff/libtiff.lib  --> tiff.lib
 
+(Note that libtiff.lib is a static version, while libtiff_i.lib is an import library associated with libtiff.dll.  The instructions here assume a preference for static linking.)
+
 Copy the headers to mswin/include:
 
 	libtiff/tiff.h
@@ -217,25 +222,38 @@ Copy the headers up to mswin/include:
 
 FFmpeg
 ------
-Must be built under Cygwin or MinGW.  Currently, no 64-bit version can be built that is compatible with MS toolchains.
+Must be built using MinGW.  Building as shared libraries (DLLs) works better, because it eliminates the need to supply as many dependencies to VC++.  Guidance for building FFmpeg under MinGW may be found at http://ffmpeg.arrozcru.org.  There are prebuilt libraries available for download from that web site, but they appear to be configured for GPL.  If LGPL is necessary (generally the case), do the following...
 
-Start a Cygwin shell and type:
+Download the latest code from http://ffmpeg.org, and extract it into c:/msys/ffmpeg.
 
-	./configure --prefix={full path to ffmpeg}/encap --disable-ffmpeg --disable-ffplay --disable-ffserver --extra-cflags="-mno-cygwin"
+Start an MSYS session and type:
 
-and correct the following defines in the resulting config.h:
-
-	#define HAVE_INET_ATON 0
-	#define HAVE_LLRINT 1
-	#define HAVE_MEMALIGN 0
-	#define HAVE_MKSTEMP 0
-
-(These configuration errors probably result from not using a pure MinGW cross-compiler.  Some Cygwin environment headers may be slipping in.)
-
-Then type
-
-	make clean
+	export PATH="/c/Program Files/{latest Visual Studio}/VC/bin":"/c/Program Files/{latest Visual Studio}/Common7/IDE":$PATH   // to make lib.exe available
+	cd /ffmpeg
+	./configure --prefix=/ffmpeg/encap --disable-ffmpeg --disable-ffplay --disable-ffserver --enable-memalign-hack --enable-shared --disable-static
+	make clean        // if you need to clean out a previous build
+	rm -rf encap      // to clean out previous distribution
 	make
-	make install
+	make install      // put new distribution in encap directory
 
-Finally, copy the contents of the "encap" directory up to mswin.  Rename all the libraries appropriately.
+Ignore error messages from configure about the missing "pr" command.  This comes from part of the script that writes out log messages, and its absence is not fatal.
+
+Copy DLLs to mswin/bin:
+
+	/ffmpeg/encap/avcodec-{major version}.dll
+	/ffmpeg/encap/avdevice-{major version}.dll
+	/ffmpeg/encap/avformat-{major version}.dll
+	/ffmpeg/encap/avutil-{major version}.dll
+	/ffmpeg/encap/swscale-{major version}.dll
+
+where {major version} is the number before the first dot in a version string.  The major version is necessary, because this is what the import libraries are constructed to look for.  All other forms are simply copies of xxx-{major version}.dll.
+
+Copy import libaries to mswin/lib or lib64:
+
+	/ffmpeg/encap/avcodec.lib
+	/ffmpeg/encap/avdevice.lib
+	/ffmpeg/encap/avformat.lib
+	/ffmpeg/encap/avutil.lib
+	/ffmpeg/encap/swscale.lib
+
+Copy /ffmpeg/encap/include to mswin/include.

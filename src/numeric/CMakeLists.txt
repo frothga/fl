@@ -140,6 +140,13 @@ add_library (flNumeric
   PCA.cc
   MDA.cc
 )
+target_link_libraries (flNumeric
+  flBase
+  ${LAPACK_LIBRARIES}
+  ${BLAS_LIBRARIES}
+  ${GCC_LIBRARIES}
+  ${RT_LIBRARIES}
+)
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
   install (TARGETS flNumeric

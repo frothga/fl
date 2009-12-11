@@ -41,6 +41,7 @@ if (LAPACK_FOUND)
       ${FFMPEG_LIBRARIES}
       ${LAPACK_LIBRARIES}
       ${GCC_LIBRARIES}
+      ${SOCKET_LIBRARIES}
       ${RT_LIBRARIES}
     )
     install (TARGETS psnr RUNTIME DESTINATION bin)
@@ -54,6 +55,7 @@ if (LAPACK_FOUND)
       ${JPEG_LIBRARIES}
       ${LAPACK_LIBRARIES}
       ${GCC_LIBRARIES}
+      ${SOCKET_LIBRARIES}
       ${RT_LIBRARIES}
     )
     install (TARGETS thumb RUNTIME DESTINATION bin)
@@ -70,6 +72,7 @@ if (LAPACK_FOUND)
         ${X11_LIBRARIES}
         ${LAPACK_LIBRARIES}
         ${GCC_LIBRARIES}
+        ${SOCKET_LIBRARIES}
         ${RT_LIBRARIES}
       )
       install (TARGETS vread RUNTIME DESTINATION bin)

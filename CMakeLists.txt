@@ -8,6 +8,7 @@
 
 project (FL)
 cmake_minimum_required (VERSION 2.6)
+option (BUILD_SHARED_LIBS "Generate shared rather than static libraries" OFF)
 
 
 # Gather up optional support libraries ----------------------------------------
@@ -26,19 +27,7 @@ if (MSVC)
   endif (CMAKE_CL_64)
 
   # Add compiler support libraries.
-  find_library (GCC_LIB      gcc)
-  find_library (MINGWEX_LIB  mingwex)
-  find_library (MOLDNAME_LIB moldname)
   find_library (FORTRAN_LIB  fortran)
-  if (GCC_LIB)
-    set (GCC_LIBRARIES ${GCC_LIBRARIES} ${GCC_LIB})
-  endif (GCC_LIB)
-  if (MINGWEX_LIB)
-    set (GCC_LIBRARIES ${GCC_LIBRARIES} ${MINGWEX_LIB})
-  endif (MINGWEX_LIB)
-  if (MOLDNAME_LIB)
-    set (GCC_LIBRARIES ${GCC_LIBRARIES} ${MOLDNAME_LIB})
-  endif (MOLDNAME_LIB)
   if (FORTRAN_LIB)
     set (GCC_LIBRARIES ${GCC_LIBRARIES} ${FORTRAN_LIB})
   endif (FORTRAN_LIB)

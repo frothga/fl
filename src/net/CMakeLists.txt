@@ -11,6 +11,10 @@ add_library (flNet
   Listener.cc
   SocketStream.cc
 )
+target_link_libraries (flNet
+  ${Pthread_LIBRARIES}
+  ${SOCKET_LIBRARIES}
+)
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
   install (TARGETS flNet
