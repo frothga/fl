@@ -34,6 +34,9 @@ public:
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
+  virtual void get (const std::string & name, int & value);
+  virtual void set (const std::string & name, int value);
+
   istream * in;
   ostream * out;
   bool ownStream;
@@ -48,7 +51,7 @@ ImageFileDelegateBMP::ImageFileDelegateBMP (istream * in, ostream * out, bool ow
   this->out = out;
   this->ownStream = ownStream;
 
-  topDown = false;
+  topDown = true;  // Assumed format for most memory blocks held by this library.
   palette = 0;
 }
 
@@ -79,8 +82,8 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
   uint32_t fileSize      = 0;
   uint32_t pixelsOffset  = 0;
   uint32_t dibSize       = 0;
-  uint32_t width         = 0;
-  uint32_t height        = 0;
+  int32_t  width         = 0;
+  int32_t  height        = 0;
   uint16_t planes        = 0;
   uint16_t bitdepth      = 0;
   uint32_t compression   = 0;
@@ -165,6 +168,10 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
   {
 	height = -height;
 	topDown = true;
+  }
+  else
+  {
+	topDown = false;
   }
   if (colors == 0  &&  bitdepth < 16) colors = 0x1 << bitdepth;  // 2^bitdepth
   uint32_t paletteEntrySize = dibSize == 12 ? 3 : 4;
@@ -465,14 +472,27 @@ ImageFileDelegateBMP::write (const Image & image, int ignorex, int ignorey)
 	alphaMask = pf->alphaMask;
 	if (*pf != BGRChar  &&  *pf != BGRChar4  &&  *pf != B5G5R5)
 	{
-	  compression = 3;  // BI_BITFIELDS
-	  if (alphaMask)
+	  if (bitdepth == 16  ||  bitdepth == 32)
 	  {
-		dibSize = 108;  // BITMAPV4HEADER, the only way to write an alpha mask
+		compression = 3;  // BI_BITFIELDS
+		if (alphaMask)
+		{
+		  dibSize = 108;  // BITMAPV4HEADER, the only way to write an alpha mask
+		}
+		else
+		{
+		  colors = 3;  // Write R, G and B masks to color palette
+		}
 	  }
-	  else
+	  else if (bitdepth < 16)
 	  {
-		colors = 3;  // Write R, G and B masks to color palette
+		write (image * B5G5R5, ignorex, ignorey);
+		return;
+	  }
+	  else  // includes RGBChar
+	  {
+		write (image * BGRChar, ignorex, ignorey);
+		return;
 	  }
 	}
 	PixelBufferPacked * pbp = (PixelBufferPacked *) image.buffer;
@@ -515,6 +535,8 @@ ImageFileDelegateBMP::write (const Image & image, int ignorex, int ignorey)
   }
 
   // Prepare remaining header fields
+  int32_t  width         = image.width;
+  int32_t  height        = topDown ? -image.height : image.height;
   uint32_t rowBytes      = 4 * (int) ceil (image.width * bitdepth / 32.0);  // not a header field, but used to compute them
   uint16_t planes        = 1;
   uint32_t pixelsOffset  = 14 + dibSize + colors * 4;
@@ -533,8 +555,8 @@ ImageFileDelegateBMP::write (const Image & image, int ignorex, int ignorey)
   out->write ((char *) &temp16,       sizeof (temp16));
   out->write ((char *) &pixelsOffset, sizeof (pixelsOffset));
   out->write ((char *) &dibSize,      sizeof (dibSize));
-  out->write ((char *) &image.width,  sizeof (image.width));
-  out->write ((char *) &image.height, sizeof (image.height));
+  out->write ((char *) &width,        sizeof (width));
+  out->write ((char *) &height,       sizeof (height));
   out->write ((char *) &planes,       sizeof (planes));
   out->write ((char *) &bitdepth,     sizeof (bitdepth));
   out->write ((char *) &compression,  sizeof (compression));
@@ -586,6 +608,18 @@ ImageFileDelegateBMP::write (const Image & image, int ignorex, int ignorey)
 	  buffer += stride;
 	}
   }
+}
+
+void
+ImageFileDelegateBMP::get (const std::string & name, int & value)
+{
+  if (name == "topdown") value = topDown;
+}
+
+void
+ImageFileDelegateBMP::set (const std::string & name, int value)
+{
+  if (name == "topdown") topDown = value;
 }
 
 
