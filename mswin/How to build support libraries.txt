@@ -57,9 +57,9 @@ Pthreads-w32
 
 Open pthread.2/pthread.dsw and allow VS to convert it.  Select Release mode and compile.
 
-Copy the library to mswin/lib or lib64:
+Copy the library to mswin/lib or lib64 and rename:
 
-	pthread.2/pthreadVC2.lib
+	pthread.2/pthreadVC2.lib  --> pthread.lib
 
 Copy the DLL to mswin/bin:
 
@@ -77,7 +77,7 @@ Alternately, you can copy the prebuilt version:
 	Pre-built.2/lib/pthreadVC2.dll
 	Pre-built.2/lib/pthreadVC2.lib
 
-Keep the version suffixes in pthreadXXX.lib and pthreadXXX.dll, since the lib creates a dependency on the DLL with the suffix in its name.
+Keep the version suffix in pthreadXXX.dll, since the lib creates a dependency on a DLL with that specific suffix in its name.
 
 64-bit:  Go to http://sourceforge.net/projects/mingw-w64 and look for pthreads-w32 in the downloads section.  Get and apply the patch.  Then build using Visual Studio.
 
@@ -228,13 +228,15 @@ Download the latest code from http://ffmpeg.org, and extract it into c:/msys/ffm
 
 Start an MSYS session and type:
 
-	export PATH="/c/Program Files/{latest Visual Studio}/VC/bin":"/c/Program Files/{latest Visual Studio}/Common7/IDE":$PATH   // to make lib.exe available
+	export PATH="/c/Program Files/Microsoft Visual Studio 9.0/VC/bin":"/c/Program Files/Microsoft Visual Studio 9.0/Common7/IDE":$PATH   // to make lib.exe available
 	cd /ffmpeg
 	./configure --prefix=/ffmpeg/encap --disable-ffmpeg --disable-ffplay --disable-ffserver --enable-memalign-hack --enable-shared --disable-static
 	make clean        // if you need to clean out a previous build
 	rm -rf encap      // to clean out previous distribution
 	make
 	make install      // put new distribution in encap directory
+
+Substitute your chosen version of Visual Studio in the PATH setting above.
 
 Ignore error messages from configure about the missing "pr" command.  This comes from part of the script that writes out log messages, and its absence is not fatal.
 
