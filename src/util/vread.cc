@@ -228,6 +228,7 @@ public:
 	if (! me->vin.good ()  &&  me->playing)
 	{
 	  me->vin.open (me->fileName);  // forces close() first
+	  me->vin.setTimestampMode (me->useFrames);
 	}
 	me->playing = false;
   }

@@ -36,6 +36,8 @@ using namespace std;
 using namespace fl;
 
 
+// class VideoInFileFFMPEG ----------------------------------------------------
+
 class VideoInFileFFMPEG : public VideoInFile
 {
 public:
@@ -62,7 +64,6 @@ public:
   AVFrame picture;
   AVPacket packet;  ///< Ensure that if nextImage() attaches image to packet, the memory won't be freed before next read.
   int size;
-  unsigned char * data;
   int gotPicture;  ///< indicates that picture contains a full image
   int state;  ///< state == 0 means good; anything else means we can't read more frames
   bool timestampMode;  ///< Indicates that image.timestamp should be frame number rather than presentation time.
@@ -73,28 +74,6 @@ public:
 
   std::string fileName;
 };
-
-class VideoOutFileFFMPEG : public VideoOutFile
-{
-public:
-  VideoOutFileFFMPEG (const std::string & fileName, const std::string & formatName, const std::string & codecName);
-  ~VideoOutFileFFMPEG ();
-
-  virtual void writeNext (const Image & image);
-  virtual bool good () const;
-  virtual void set (const std::string & name, double value);
-
-  AVFormatContext * fc;
-  AVStream * stream;
-  AVCodec * codec;
-  fl::PixelFormat * pixelFormat;  ///< The format in which the codec receives the image.
-  bool needHeader;  ///< indicates that file header needs to be written; also that codec needs to be opened
-  fl::Pointer videoBuffer;  ///< Working memory for encoder.
-  int state;
-};
-
-
-// class VideoInFileFFMPEG ----------------------------------------------------
 
 VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName)
 {
@@ -141,7 +120,6 @@ VideoInFileFFMPEG::seekFrame (int frame)
 	  avcodec_flush_buffers (cc);
 	  av_free_packet (&packet);
 	  size = 0;
-	  data = 0;
 	  cc->frame_number = 0;
 	}
 
@@ -236,8 +214,7 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	  while (packet.stream_index != stream->index  ||  (stream->parser  &&  ! (packet.flags & PKT_FLAG_KEY)));
 	  state = 0;
 	  size = packet.size;
-	  data = packet.data;
-	  gotPicture = false;
+	  gotPicture = 0;
 
 	  // Guard against unseekability
 	  if (packet.dts == AV_NOPTS_VALUE)
@@ -296,63 +273,54 @@ VideoInFileFFMPEG::readNext (Image & image)
 void
 VideoInFileFFMPEG::readNext (Image * image)
 {
-  if (state)
-  {
-	return;  // Don't attempt to read when we are in an error state.
-  }
+  if (state) return;  // Don't attempt to read when we are in an error state.
 
   while (! gotPicture)
   {
+	// Mysteriously, it is necessary to pay attention to whether or not
+	// avcodec_decode_video2() fully consumes a packet.  It seems that
+	// ffplay does not need to do this, but rather just feeds it packets
+	// and then disposes of them.  Either I don't understand the ffplay
+	// code, or I'm doing something wrong here.  In any case, it seems to
+	// be working OK.
 	if (size <= 0)
 	{
-	  av_free_packet (&packet);  // sets packet.size to zero
+	  av_free_packet (&packet);
 	  state = av_read_frame (fc, &packet);
-	  if (state < 0)
-	  {
-		size = 0;
-		data = 0;
-	  }
-	  else
-	  {
-		state = 0;
-		if (packet.stream_index != stream->index) continue;
-		size = packet.size;
-		data = packet.data;
-	  }
+	  if (state < 0) return;
+	  state = 0;
+	  if (packet.stream_index != stream->index) continue;
+	  size = packet.size;
 	}
 
-	while ((size > 0  ||  state)  &&  ! gotPicture)
+	int used = avcodec_decode_video2 (cc, &picture, &gotPicture, &packet);
+	if (used < 0)
 	{
-	  int used = avcodec_decode_video (cc, &picture, &gotPicture, data, size);
-	  if (used < 0)
-	  {
-		state = used;
-		return;
-	  }
-	  size -= used;
-	  data += used;
+	  state = used;
+	  return;
+	}
+	size -= used;
 
-	  if (gotPicture)
-	  {
-		state = 0;  // to reset EOF condition while emptying out codec's queue.
+	if (gotPicture)
+	{
+	  state = 0;  // to reset EOF condition while emptying out codec's queue.
 
-		if (picture.pts == AV_NOPTS_VALUE  ||  picture.pts == 0)
+	  if (picture.pts == AV_NOPTS_VALUE  ||  picture.pts == 0)
+	  {
+		switch (codec->id)
 		{
-		  switch (codec->id)
-		  {
-			case CODEC_ID_DVVIDEO:
-			case CODEC_ID_RAWVIDEO:
-			  picture.pts = packet.pts;  // since decoding is immediate
-			  break;
-			default:
-			  picture.pts = nextPTS;
-		  }
+		  case CODEC_ID_DVVIDEO:
+		  case CODEC_ID_RAWVIDEO:
+			picture.pts = packet.pts;  // since decoding is immediate
+			break;
+		  default:
+			picture.pts = nextPTS;
 		}
 	  }
-	  else if (state)
-	  {
-		return;
-	  }
+	}
+	else if (state)
+	{
+	  return;
 	}
 
 	if (packet.dts != AV_NOPTS_VALUE)
@@ -369,10 +337,7 @@ VideoInFileFFMPEG::readNext (Image * image)
 	}
   }
 
-  if (gotPicture  &&  image)
-  {
-	extractImage (*image);
-  }
+  if (image) extractImage (*image);
 }
 
 /**
@@ -436,10 +401,11 @@ VideoInFileFFMPEG::open (const string & fileName)
   stream = 0;
   for (int i = 0; i < fc->nb_streams; i++)
   {
-	if (fc->streams[i]->codec->codec_type == CODEC_TYPE_VIDEO)
+	fc->streams[i]->discard = AVDISCARD_ALL;
+	if (stream == 0  &&  fc->streams[i]->codec->codec_type == CODEC_TYPE_VIDEO)
 	{
 	  stream = fc->streams[i];
-	  break;
+	  fc->streams[i]->discard = AVDISCARD_DEFAULT;
 	}
   }
   if (! stream)
@@ -481,13 +447,13 @@ VideoInFileFFMPEG::open (const string & fileName)
   {
 	startTime = (double) fc->start_time / AV_TIME_BASE;
   }
-  startTime = max (startTime, 0.0);
+  startTime = max (startTime, 0.0);  // TODO: is this still needed?  test against lola vobs
 }
 
 void
 VideoInFileFFMPEG::close ()
 {
-  av_free_packet (&packet);  // sets size field to zero
+  av_free_packet (&packet);
   if (cc  &&  cc->codec)
   {
 	avcodec_close (cc);
@@ -554,14 +520,50 @@ VideoInFileFFMPEG::extractImage (Image & image)
 
 // class VideoOutFileFFMPEG ---------------------------------------------------
 
+class VideoOutFileFFMPEG : public VideoOutFile
+{
+public:
+  VideoOutFileFFMPEG (const std::string & fileName, const std::string & formatName, const std::string & codecName);
+  ~VideoOutFileFFMPEG ();
+
+  void open (const std::string & fileName, const std::string & formatName, const std::string & codecName);
+  void close ();
+  virtual void writeNext (const Image & image);
+  virtual bool good () const;
+  virtual void set (const std::string & name, double value);
+
+  AVFormatContext * fc;
+  AVStream * stream;
+  AVCodec * codec;
+  fl::PixelFormat * pixelFormat;  ///< The format in which the codec receives the image.
+  bool needHeader;  ///< indicates that file header needs to be written; also that codec needs to be opened
+  fl::Pointer videoBuffer;  ///< Working memory for encoder.
+  int state;
+};
+
 VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std::string & formatName, const std::string & codecName)
 {
+  state = 0;
+  fc = 0;
   stream = 0;
   codec = 0;
   pixelFormat = 0;
-  needHeader = true;
+  needHeader = false;
 
-  fc = av_alloc_format_context ();
+  open (fileName, formatName, codecName);
+}
+
+VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
+{
+  close ();
+}
+
+void
+VideoOutFileFFMPEG::open (const std::string & fileName, const std::string & formatName, const std::string & codecName)
+{
+  close ();
+
+  fc = avformat_alloc_context ();
   if (! fc)
   {
 	state = -10;
@@ -624,9 +626,7 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
   {
 	cc.max_b_frames = 2;
   }
-  if (   ! strcmp (fc->oformat->name, "mp4")
-	  || ! strcmp (fc->oformat->name, "mov")
-	  || ! strcmp (fc->oformat->name, "3gp"))
+  if (fc->oformat->flags & AVFMT_GLOBALHEADER)
   {
 	cc.flags |= CODEC_FLAG_GLOBAL_HEADER;
   }
@@ -643,84 +643,72 @@ VideoOutFileFFMPEG::VideoOutFileFFMPEG (const std::string & fileName, const std:
   }
 
   state = av_set_parameters (fc, 0);
-  if (state < 0)
+  if (state < 0) return;
+
+  if (fc->oformat->flags & AVFMT_NOFILE)
   {
-	return;
+	cerr << "WARNING: Non-file type video format.  Not sure how this works, but proceeding anyway." << endl;
   }
-
-  state = url_fopen (& fc->pb, fileName.c_str (), URL_WRONLY);
-  if (state < 0)
+  else
   {
-	return;
-  }
-
-  state = 0;
-}
-
-VideoOutFileFFMPEG::~VideoOutFileFFMPEG ()
-{
-  // Some members are zeroed here, even though this object is being destructed
-  // and the members will never be touched again.  The rationale is that
-  // this code could eventually be moved into a close() method, with a
-  // corresponding open() method, so the the members may eventually be reused.
-
-  if (codec)
-  {
-	if (! needHeader)
-	{
-	  // Flush codec (ie: push out any B frames).
-	  const int bufferSize = 1024 * 1024;
-	  unsigned char * videoBuffer = new unsigned char[bufferSize];
-	  while (true)
-	  {
-		int size = avcodec_encode_video (stream->codec, videoBuffer, bufferSize, 0);
-		if (size > 0)
-		{
-		  AVPacket packet;
-		  av_init_packet (&packet);
-		  packet.pts = stream->codec->coded_frame->pts;
-		  if (stream->codec->coded_frame->key_frame)
-		  {
-			packet.flags |= PKT_FLAG_KEY;
-		  }
-		  packet.stream_index = stream->index;
-		  packet.data = videoBuffer;
-		  packet.size = size;
-		  state = av_write_frame (fc, &packet);
-		}
-		else
-		{
-		  break;
-		}
-	  }
-	  delete [] videoBuffer;
-
-	  avcodec_close (stream->codec);
-	}
-	codec = 0;
-  }
-
-  if (! state  &&  fc  &&  ! needHeader)
-  {
-	av_write_trailer (fc);  // Clears private data used by avformat.  Private data is not allocated until av_write_header(), so this is balanced.
+	state = url_fopen (& fc->pb, fileName.c_str (), URL_WRONLY);
+	if (state < 0) return;
   }
 
   needHeader = true;
+  state = 0;
+}
+
+void
+VideoOutFileFFMPEG::close ()
+{
+  if (! needHeader)  // A header was written, and probably some frames as well, so file needs to be closed out properly.
+  {
+	if (codec)
+	{
+	  // Flush codec (ie: push out any B frames).
+	  videoBuffer.grow (FF_MIN_BUFFER_SIZE);
+	  int bufferSize = videoBuffer.size ();
+	  while (state == 0)
+	  {
+		int size = avcodec_encode_video (stream->codec, (uint8_t *) videoBuffer, bufferSize, 0);
+		if (size <= 0) break;
+
+		AVPacket packet;
+		av_init_packet (&packet);
+		packet.pts = stream->codec->coded_frame->pts;
+		if (stream->codec->coded_frame->key_frame)
+		{
+		  packet.flags |= PKT_FLAG_KEY;
+		}
+		packet.stream_index = stream->index;
+		packet.data = videoBuffer;
+		packet.size = size;
+		state = av_interleaved_write_frame (fc, &packet);
+	  }
+	}
+
+	if (fc  &&  ! state)
+	{
+	  av_write_trailer (fc);  // Clears private data used by avformat.  Private data is not allocated until av_write_header(), so this is balanced.
+	}
+  }
+
+  if (codec)
+  {
+	avcodec_close (stream->codec);
+	codec = 0;
+  }
 
   if (stream)
   {
-	if (stream->codec->stats_in)
-	{
-	  av_free (stream->codec->stats_in);
-	}
-
 	av_free (stream);
 	stream = 0;
   }
 
   if (fc)
   {
-	url_fclose (fc->pb);
+	if (! (fc->oformat->flags & AVFMT_NOFILE)) url_fclose (fc->pb);
 	av_free (fc);
 	fc = 0;
   }
@@ -747,10 +735,7 @@ static PixelFormatMapping pixelFormatMap[] =
 void
 VideoOutFileFFMPEG::writeNext (const Image & image)
 {
-  if (state)
-  {
-	return;
-  }
+  if (state) return;
 
   stream->codec->width = image.width;
   stream->codec->height = image.height;
@@ -792,6 +777,22 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	stream->codec->pix_fmt = best;
   }
 
+  if (needHeader)
+  {
+	// Must know pixel format before opening codec, and we only know that
+	// after receiving the first image, so we open the codec here rather than
+	// in open().
+	state = avcodec_open (stream->codec, codec);
+	if (state < 0) return;
+	state = 0;
+
+	state = av_write_header (fc);
+	if (state < 0) return;
+	state = 0;
+
+	needHeader = false;
+  }
+
   if (! pixelFormat)
   {
 	PixelFormatMapping * m = pixelFormatMap;
@@ -802,25 +803,6 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	}
 	if (! m->fl) throw "Unsupported PIX_FMT";
 	pixelFormat = m->fl;
-  }
-
-  if (needHeader)
-  {
-	needHeader = false;
-
-	state = avcodec_open (stream->codec, codec);
-	if (state < 0)
-	{
-	  return;
-	}
-	state = 0;
-
-	state = av_write_header (fc);
-	if (state < 0)
-	{
-	  return;
-	}
-	state = 0;
   }
 
   // Get image into a format that FFMPEG understands...
@@ -843,17 +825,18 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   }
   else throw "Unhandled buffer type";
 
+  AVCodecContext * cc = stream->codec;
   if (image.timestamp < 95443)  // approximately 2^33 / 90kHz, or about 26.5 hours.  Times larger than this are probably coming from the system clock and are not intended to be encoded in the video.
   {
-	AVCodecContext & cc = *stream->codec;
-	dest.pts = (int64_t) roundp (image.timestamp * cc.time_base.den / cc.time_base.num);
+	dest.pts = (int64_t) roundp (image.timestamp * cc->time_base.den / cc->time_base.num);
   }
 
   // Finally, encode and write the frame
-  int size = 1024 * 1024;
+  int size = max (FF_MIN_BUFFER_SIZE, (int) ceil (converted.format->depth * converted.width * converted.height));  // Assumption: encoded image will never be larger than raw image.
   videoBuffer.grow (size);
-  size = avcodec_encode_video (stream->codec, (unsigned char *) videoBuffer, size, &dest);
-  if (size < 0)  // TODO: Not sure if this case ever happens.
+  size = videoBuffer.size ();
+  size = avcodec_encode_video (cc, (uint8_t *) videoBuffer, size, &dest);
+  if (size < 0)
   {
 	state = size;
   }
@@ -861,21 +844,33 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   {
 	AVPacket packet;
 	av_init_packet (&packet);
-	packet.pts = av_rescale_q (stream->codec->coded_frame->pts, stream->codec->time_base, stream->time_base);
-	if (stream->codec->coded_frame->key_frame)
+	packet.stream_index = stream->index;
+
+	if (fc->oformat->flags & AVFMT_RAWPICTURE)
 	{
 	  packet.flags |= PKT_FLAG_KEY;
+	  packet.data = (uint8_t *) &dest;
+	  packet.size = sizeof (AVPicture);
 	}
-	packet.stream_index = stream->index;
-	packet.data = (unsigned char *) videoBuffer;
-	packet.size = size;
-	state = av_write_frame (fc, &packet);
+	else
+	{
+	  if (cc->coded_frame->pts != AV_NOPTS_VALUE)
+	  {
+		packet.pts = av_rescale_q (cc->coded_frame->pts, cc->time_base, stream->time_base);
+	  }
+	  if (cc->coded_frame->key_frame)
+	  {
+		packet.flags |= PKT_FLAG_KEY;
+	  }
+	  packet.data = (uint8_t *) videoBuffer;
+	  packet.size = size;
+	}
+
+	state = av_interleaved_write_frame (fc, &packet);
 	if (state == 1)
 	{
-	  // According to doc-comments on av_write_frame(), this means
-	  // "end of stream wanted".  Not sure what action to take here, or
-	  // if the doc-comment is even valid.
 	  state = 0;
+	  close ();
 	}
   }
 }
