@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -159,6 +159,32 @@ void
 Image::detach ()
 {
   buffer = 0;
+}
+
+/**
+   @todo Deeper support would come from creating a format->roi() function
+   similar to format->attach().
+   @todo Deeper support would also come from adding a memory base pointer
+   in buffer separate from the Pointer object.  That way, the buffer could
+   hold on to memory even when the original image is destroyed, and yet
+   have a proper offset to the start of the ROI.
+ **/
+Image
+Image::roi (int left, int top, int right, int bottom)
+{
+  PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
+  if (! pbp) throw "ROI requires packed buffer";
+  left = max (0,          left);
+  top  = max (0,          top);
+  left = min (width  - 1, left);
+  top  = min (height - 1, top);
+  if (right  < left) right  = left;
+  if (bottom < top ) bottom = top;
+  if (right  >= width ) right  = width  - 1;
+  if (bottom >= height) bottom = height - 1;
+  Image result (buffer->pixel (left, top), right - left + 1, bottom - top + 1, *format);
+  ((PixelBufferPacked *) result.buffer)->stride = pbp->stride;
+  return result;
 }
 
 /**
