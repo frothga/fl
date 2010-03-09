@@ -1769,7 +1769,7 @@ namespace fl
 	{
 	  if (strideC == rows_)
 	  {
-		stream.write ((char *) i, rows_ * columns_);
+		stream.write ((char *) i, rows_ * columns_ * sizeof (T));
 	  }
 	  else
 	  {

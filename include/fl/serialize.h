@@ -68,8 +68,8 @@ namespace fl
   class Serializable
   {
 	Serializable ();  ///< A default constructor is mandatory.
-	virtual void read  (std::istream stream) = 0;
-	virtual void write (std::ostream stream) const = 0;
+	virtual void read  (std::istream & stream) = 0;
+	virtual void write (std::ostream & stream) const = 0;
   };
 
   typedef void * productCreate ();
@@ -84,6 +84,21 @@ namespace fl
 	productMappingIn  in;
 	productMappingOut out;
   };
+
+  static inline std::ostream & operator << (std::ostream & out, const productRegistry & data)
+  {
+	out << "in:";
+	for (productMappingIn::const_iterator it = data.in.begin (); it != data.in.end (); it++)
+	{
+	  out << std::endl << "  " << it->first << " --> " << (void *) it->second;
+	}
+	out << std::endl << "out:";
+	for (productMappingOut::const_iterator it = data.out.begin (); it != data.out.end (); it++)
+	{
+	  out << std::endl << "  " << it->first << " --> " << it->second;
+	}
+	return out;
+  }
 
   /**
 	 Manages the extraction of a polymorphic type from a stream.
