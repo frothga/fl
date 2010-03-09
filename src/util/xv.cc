@@ -25,10 +25,10 @@ main (int argc, char * argv[])
   try
   {
 	Parameters parms (argc, argv);
-	int x = parms.getInt ("x", -1);
-	int y = parms.getInt ("y", -1);
-	int w = parms.getInt ("w", -1);
-	int h = parms.getInt ("h", -1);
+	int x = parms.getInt ("x", 0);
+	int y = parms.getInt ("y", 0);
+	int w = parms.getInt ("w", 0);
+	int h = parms.getInt ("h", 0);
 
 	if (parms.fileNames.size () < 1)
 	{
@@ -67,6 +67,7 @@ main (int argc, char * argv[])
 	  ImageFile f (fileName);
 	  Image disp;
 	  f.read (disp, x, y, w, h);
+
 	  disp *= Rescale (disp);
 	  window.show (disp);
 	  window.waitForClick ();
