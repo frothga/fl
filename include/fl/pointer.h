@@ -25,10 +25,8 @@ for details.
 #include <ostream>
 
 
-namespace fl
-{
-# undef needFLmutexPointer
-# if defined (__GNUC__)  &&  (defined (__i386__)  ||  defined (__x86_64__))
+#undef needFLmutexPointer
+#if defined (__GNUC__)  &&  (defined (__i386__)  ||  defined (__x86_64__))
 
   static inline void
   atomicInc (int32_t & a)
@@ -53,7 +51,7 @@ namespace fl
 	return result;
   }
 
-# elif defined (_MSC_VER)  &&  defined (_M_IX86)  &&  ! defined (_M_X64)
+#elif defined (_MSC_VER)  &&  defined (_M_IX86)  &&  ! defined (_M_X64)
 
   static inline void
   atomicInc (int32_t & a)
@@ -81,14 +79,32 @@ namespace fl
 	return result;
   }
 
-# else  // Generic code
+#elif defined (_MSC_VER)  &&  defined (_M_X64)
+
+#  define _WINSOCKAPI_
+#  define NOMINMAX
+#  include <windows.h>
+
+  static inline void
+  atomicInc (int32_t & a)
+  {
+	InterlockedAdd (&a, 1);
+  }
+
+  static inline int32_t
+  atomicDec (int32_t & a)
+  {
+	return InterlockedAdd (&a, -1);
+  }
+
+#else  // Generic code
 
   // The simplest way to ensure atomicity is a single global mutex.  This isn't
   // very good for performance, so it is better to develop platform-specific
   // solutions.
 
-# include <pthread.h>
-# define needFLmutexPointer 1
+#  include <pthread.h>
+#  define needFLmutexPointer 1
 
   extern pthread_mutex_t mutexPointer;
 
@@ -109,8 +125,11 @@ namespace fl
 	return result;
   }
 
-# endif
+#endif
 
+
+namespace fl
+{
   /**
 	 Keeps track of a block of memory, which can be shared by multiple objects
 	 and multiple threads.  The block can either be managed by Pointer, or

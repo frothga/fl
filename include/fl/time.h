@@ -21,9 +21,9 @@ for details.
 #include <ostream>
 
 #if defined(WIN32) || defined(__CYGWIN__)
+#  define _WINSOCKAPI_
+#  define NOMINMAX
 #  include <windows.h>
-#  undef min
-#  undef max
 #else
 #  include <sys/time.h>
 #  include <unistd.h>

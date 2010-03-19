@@ -24,6 +24,8 @@ for details.
 #include <float.h>
 #include <algorithm>
 
+#undef small  // Somehow, this gets defined (as char) under MSVC x64
+
 
 namespace fl
 {

@@ -20,8 +20,10 @@ for details.
 
 extern "C"
 {
-  #include <jpeglib.h>
-  #include <jmorecfg.h>
+#  ifdef _MSC_VER
+#    define XMD_H   // Hack to trick jmorecfg.h into not messing with INT32
+#  endif
+#  include <jpeglib.h>
 }
 
 #include <strstream>
