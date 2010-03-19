@@ -101,7 +101,7 @@ ImageFileDelegatePNG::ImageFileDelegatePNG (istream * in, ostream * out, bool ow
 ImageFileDelegatePNG::~ImageFileDelegatePNG ()
 {
   // Assumes libpng handles null pointers gracefully.
-  if      (in)  png_destroy_read_struct  (&png, &info, png_infopp_NULL);
+  if      (in)  png_destroy_read_struct  (&png, &info, 0);
   else if (out) png_destroy_write_struct (&png, &info);
 
   free (palette);  // palette is never owned by libpng; palette is generally null
@@ -124,7 +124,7 @@ ImageFileDelegatePNG::read (Image & image, int x, int y, int width, int height)
   if (format == 0)
   {
 	int interlace;
-	png_get_IHDR (png, info, &totalWidth, &totalHeight, &depth, &colorFormat, &interlace, int_p_NULL, int_p_NULL);
+	png_get_IHDR (png, info, &totalWidth, &totalHeight, &depth, &colorFormat, &interlace, 0, 0);
 
 	switch (colorFormat)
 	{
