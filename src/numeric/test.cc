@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -26,14 +26,17 @@ using namespace std;
 using namespace fl;
 
 
-// Searchable class for testing numeric search methods
-// Expected result = 0.08241057  1.133037  2.343695
-// Expected residual = 0.090636
+/**
+   Searchable class for testing numeric search methods, translated from MINPACK.
+   Expected result = 0.08241058  1.133037  2.343695
+   Expected residual = 0.09063596
+**/
 template<class T>
 class Test : public SearchableSparse<T>
 {
 public:
-  Test ()
+  Test (T perturbation = -1)
+  : SearchableSparse<T> (perturbation)
   {
 	this->cover ();
   }
@@ -53,11 +56,7 @@ public:
 	{
 	  T t0 = i + 1;
 	  T t1 = 15 - i;
-	  T t2 = t0;
-	  if (i > 7)
-	  {
-		t2 = t1;
-	  }
+	  T t2 = i > 7 ? t1 : t0;
 	  result[i] = y[i] - (x[0] + t0 / (x[1] * t1 + x[2] * t2));
 	}
 	//cerr << ".";
@@ -67,7 +66,14 @@ public:
   virtual MatrixSparse<bool> interaction ()
   {
 	MatrixSparse<bool> result (15, 3);
-	result.clear (true);
+	// Can't use clear() for this, because MatrixSparse does not accept a nonzero value.
+	for (int i = 0; i < 15; i++)
+	{
+	  for (int j = 0; j < 3; j++)
+	  {
+		result.set (i, j, true);
+	  }
+	}
 
 	return result;
   }
@@ -77,15 +83,20 @@ template<class T>
 void
 testSearch ()
 {
-  T epsilon = sqrt (numeric_limits<T>::epsilon ());
+  Test<T> t;
+  T expectedResidual = 0.09063596;
 
   vector<Search<T> *> searches;
   searches.push_back (new AnnealingAdaptive<T>);
   searches.push_back (new LevenbergMarquardt<T>);
   searches.push_back (new LevenbergMarquardtSparseBK<T>);
 
-  Test<T> t;
-  Matrix<T> expected ("~[0.08241057 1.133037 2.343695]");
+  // The various search methods do not share the same capacity to solve the
+  // problem precisely.  Thus, we assign a different theshold for each one.
+  vector<T> epsilon;
+  epsilon.push_back (1e-2);  // AnnealingAdaptive
+  epsilon.push_back (1e-4);  // LevenbergMarquardt
+  epsilon.push_back (1e-4);  // LevenbergMarquardtSparseBK
 
   for (int i = 0; i < searches.size (); i++)
   {
@@ -96,10 +107,14 @@ testSearch ()
 
 	searches[i]->search (t, point);
 	cerr << endl;
-	double d = (point - expected).norm (2);
-	if (d > epsilon)
+
+	Vector<T> error;
+	t.value (point, error);
+	double e = error.norm (2);
+	double d = e - expectedResidual;
+	if (d > epsilon[i])
 	{
-	  cerr << "Result not close enough: " << d << " = " << point << " - " << expected << endl;
+	  cerr << "Residual too large: " << d << " = " << e << " - " << expectedResidual << endl;
 	  throw "Search fails";
 	}
   }
@@ -719,7 +734,7 @@ template<class T>
 void
 testAll ()
 {
-  //testSearch<T> ();  // search is broken, and appears to have been so for a while
+  testSearch<T> ();
   testOperator<T> ();
   testReshape<T> ();
   testStrided<T> ();
