@@ -102,21 +102,32 @@ add_library (flNumeric
   # Search
   ../../include/fl/search.h
   ../../include/fl/AnnealingAdaptive.tcc
-  ../../include/fl/LineSearch.tcc
+  ../../include/fl/ConjugateGradient.tcc
+  ../../include/fl/GradientDescent.tcc
   ../../include/fl/LevenbergMarquardt.tcc
   ../../include/fl/LevenbergMarquardtSparseBK.tcc
+  ../../include/fl/LineSearch.tcc
+  ../../include/fl/NewtonRaphson.tcc
   ../../include/fl/SearchableNumeric.tcc
   ../../include/fl/SearchableSparse.tcc
   #   Double
   AnnealingAdaptiveDouble.cc
+  ConjugateGradientDouble.cc
+  GradientDescentDouble.cc
   LevenbergMarquardtDouble.cc
   LevenbergMarquardtSparseBKDouble.cc
+  LineSearchDouble.cc
+  NewtonRaphsonDouble.cc
   SearchableNumericDouble.cc
   SearchableSparseDouble.cc
   #   Float
   AnnealingAdaptiveFloat.cc
+  ConjugateGradientFloat.cc
+  GradientDescentFloat.cc
   LevenbergMarquardtFloat.cc
   LevenbergMarquardtSparseBKFloat.cc
+  LineSearchFloat.cc
+  NewtonRaphsonFloat.cc
   SearchableNumericFloat.cc
   SearchableSparseFloat.cc
 

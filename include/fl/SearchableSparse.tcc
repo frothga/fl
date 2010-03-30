@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -94,6 +94,19 @@ namespace fl
 		}
 	  }
 	}
+  }
+
+  template<class T>
+  void
+  SearchableSparse<T>::gradient (const Vector<T> & point, Vector<T> & result)
+  {
+	Vector<T> y;
+	value (point, y);
+
+	MatrixSparse<T> J;
+	jacobian (point, J, &y);
+
+	result = ((T) 2) * J.transposeMultiply (y);
   }
 
   template<class T>

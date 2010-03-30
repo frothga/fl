@@ -85,36 +85,47 @@ testSearch ()
 {
   Test<T> t;
   T expectedResidual = 0.09063596;
+  Vector<T> expectedPoint ("[0.08241058  1.133037  2.343695]");
 
-  vector<Search<T> *> searches;
-  searches.push_back (new AnnealingAdaptive<T>);
-  searches.push_back (new LevenbergMarquardt<T>);
-  searches.push_back (new LevenbergMarquardtSparseBK<T>);
-
-  // The various search methods do not share the same capacity to solve the
-  // problem precisely.  Thus, we assign a different theshold for each one.
-  vector<T> epsilon;
-  epsilon.push_back (1e-2);  // AnnealingAdaptive
-  epsilon.push_back (1e-4);  // LevenbergMarquardt
-  epsilon.push_back (1e-4);  // LevenbergMarquardtSparseBK
-
-  for (int i = 0; i < searches.size (); i++)
+  struct SearchTest
   {
+	T           epsilon;
+	Search<T> * search;
+  };
+  SearchTest searches[] =
+  {
+	{1e-2, new AnnealingAdaptive<T>},
+	{1e-2, new ConjugateGradient<T>},
+	{1e-4, new GradientDescent<T>},
+	{1e-4, new LevenbergMarquardt<T>},
+	{1e-4, new LevenbergMarquardtSparseBK<T>},
+	{1e-4, new NewtonRaphson<T>},
+  };
+  int count = sizeof (searches) / sizeof (SearchTest);
+
+  for (int i = 0; i < count; i++)
+  {
+	T epsilon     = searches[i].epsilon;
+	Search<T> * s = searches[i].search;
+	cerr << typeid (*s).name () << endl;
+
 	Vector<T> point (3);
 	point[0] = 0;
 	point[1] = 1;
 	point[2] = 2;
 
-	searches[i]->search (t, point);
+	s->search (t, point);
+	delete s;  // We will never use it again, and we should release memory to be "proper".
 	cerr << endl;
 
 	Vector<T> error;
 	t.value (point, error);
 	double e = error.norm (2);
 	double d = e - expectedResidual;
-	if (d > epsilon[i])
+	if (d > epsilon)
 	{
 	  cerr << "Residual too large: " << d << " = " << e << " - " << expectedResidual << endl;
+	  cerr << "distance to true point = " << (point - expectedPoint).norm (2) << " = " << point << " - " << expectedPoint << endl;
 	  throw "Search fails";
 	}
   }
@@ -197,7 +208,6 @@ testOperator ()
 	  }
 	}
 #   endif
-
 
 	//   Transpose
 	result = ~A;
@@ -483,15 +493,26 @@ testNorm ()
 {
   T epsilon = sqrt (numeric_limits<T>::epsilon ());
 
-  // Create a matrix with easily calculated norms
-  Matrix<T> A (3, 3);
-  for (int i = 0; i < 9; i++) A[i] = i;
+  vector<MatrixAbstract<T> *> matrices;
+  matrices.push_back (new Matrix<T> ("[0 1 2; 3 4 5; 6 7 8]"));  // a matrix with easily calculated norms
+  matrices.push_back (new Vector<T> ("~[0 1 2 3 4 5 6 7 8]"));
+  matrices.push_back (new Matrix<T> (" [0 1 2 3 4 5 6 7 8]"));
+  matrices.push_back ((~ *matrices[0]).clone ());
+  matrices.push_back ((~ *matrices[1]).clone ());
+  matrices.push_back ((~ *matrices[2]).clone ());
 
-  if (     A.norm (0)        != 8                          ) throw "norm(0) unexpected value";
-  if (     A.norm (1)        != 36                         ) throw "norm(1) unexpected value";
-  if (abs (A.norm (1.5)       - 19.1877274154004) > epsilon) throw "norm(1.5) unexpected value";
-  if (abs (A.norm (2)         - 14.2828568570857) > epsilon) throw "norm(2) unexpected value";
-  if (     A.norm (INFINITY) != 8                          ) throw "norm(INFINITY) unexpected value";
+  for (int i = 0; i < matrices.size (); i++)
+  {
+	MatrixAbstract<T> * A = matrices[i];
+
+	if (     A->norm (0)        != 8                          ) throw "norm(0) unexpected value";
+	if (     A->norm (1)        != 36                         ) throw "norm(1) unexpected value";
+	if (abs (A->norm (1.5)       - 19.1877274154004) > epsilon) throw "norm(1.5) unexpected value";
+	if (abs (A->norm (2)         - 14.2828568570857) > epsilon) throw "norm(2) unexpected value";
+	if (     A->norm (INFINITY) != 8                          ) throw "norm(INFINITY) unexpected value";
+
+	delete A;
+  }
 
   cout << "norm passes" << endl;
 }

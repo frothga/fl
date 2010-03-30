@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -201,7 +201,7 @@ namespace fl
 
 	if (n == INFINITY)
 	{
-	  T result = (T) -INFINITY;
+	  T result = (T) 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		std::map<int,T> & C = (*data)[c];
@@ -234,7 +234,7 @@ namespace fl
 	}
 	else if (n == 1.0f)
 	{
-	  T result = 0;
+	  T result = (T) 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		std::map<int,T> & C = (*data)[c];
@@ -249,7 +249,7 @@ namespace fl
 	}
 	else if (n == 2.0f)
 	{
-	  T result = 0;
+	  T result = (T) 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		std::map<int,T> & C = (*data)[c];
@@ -264,7 +264,7 @@ namespace fl
 	}
 	else
 	{
-	  T result = 0;
+	  T result = (T) 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		std::map<int,T> & C = (*data)[c];
@@ -277,6 +277,61 @@ namespace fl
 	  }
 	  return (T) std::pow (result, (T) (1.0f / n));
 	}
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixSparse<T>::transposeMultiply (const MatrixAbstract<T> & B) const
+  {
+	int m = this->data->size ();
+	int n = B.columns ();
+	Matrix<T> * result = new Matrix<T> (m, n);
+
+	for (int c = 0; c < n; c++)
+	{
+	  for (int r = 0; r < m; r++)	
+	  {
+		register T temp = 0;
+		std::map<int,T> & C = (*this->data)[r];
+		typename std::map<int,T>::iterator i = C.begin ();
+		while (i != C.end ())
+		{
+		  temp += B(i->first,c) * i->second;
+		  i++;
+		}
+		(*result)(r,c) = temp;
+	  }
+	}
+
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixSparse<T>::operator * (const MatrixAbstract<T> & B) const
+  {
+	int w  = std::min ((int) this->data->size (), B.rows ());
+	int bw = B.columns ();
+
+	Matrix<T> * result = new Matrix<T> (this->rows_, bw);
+	result->clear ();
+
+	for (int c = 0; c < bw; c++)
+	{
+	  for (int k = 0; k < w; k++)
+	  {
+		T & b = B(k,c);
+		std::map<int,T> & C = (*this->data)[k];
+		typename std::map<int,T>::iterator i = C.begin ();
+		while (i != C.end ())
+		{
+		  (*result)(i->first,c) += i->second * b;
+		  i++;
+		}
+	  }
+	}
+
+	return result;
   }
 
   template<class T>

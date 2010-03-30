@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -394,47 +394,6 @@ namespace fl
 		  {
 			i = C.insert (i, std::make_pair (r, t));
 		  }
-		}
-	  }
-
-	  return result;
-	}
-
-	Vector<T> transposeMult (const Vector<T> & x) const
-	{
-	  int n = this->data->size ();
-	  Vector<T> result (n);
-
-	  for (int c = 0; c < n; c++)
-	  {
-		result[c] = 0;
-		std::map<int,T> & C = (*this->data)[c];
-		typename std::map<int,T>::iterator i = C.begin ();
-		while (i != C.end ())
-		{
-		  result[c] += x[i->first] * i->second;
-		  i++;
-		}
-	  }
-
-	  return result;
-	}
-
-	Vector<T> operator * (const Vector<T> & x) const
-	{
-	  int n = this->data->size ();
-
-	  Vector<T> result (this->rows_);
-	  result.clear ();
-
-	  for (int c = 0; c < n; c++)
-	  {
-		std::map<int,T> & C = (*this->data)[c];
-		typename std::map<int,T>::iterator i = C.begin ();
-		while (i != C.end ())
-		{
-		  result[i->first] += i->second * x[c];
-		  i++;
 		}
 	  }
 
@@ -896,7 +855,7 @@ namespace fl
 
 	// Compute and store in x the gauss-newton direction.
 	// ~fjac * fjac * x = ~fjac * fvec
-	Vector<T> Jf = fjac.transposeMult (fvec);
+	Vector<T> Jf = fjac.transposeMultiply (fvec);
 	SparseBK<T> JJ = fjac.transposeSquare ();
 	SparseBK<T> factoredJJ;
 	factoredJJ.copyFrom (JJ);

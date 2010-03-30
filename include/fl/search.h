@@ -4,6 +4,13 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+Copyright 2010 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -30,11 +37,11 @@ namespace fl
   {
   public:
 	virtual int  dimension () = 0;
-	virtual void value (const Vector<T> & point, Vector<T> & result) = 0;  ///< Returns the value of the function at a given point.  Must throw an exception if point is out of domain.
-	virtual void gradient (const Vector<T> & point, Vector<T> & result, const int index = 0) = 0;  ///< Return the first derivative vector for the function value addressed by index.  index is zero-based.  If this function has only one variable, ignore index.
-	virtual void jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue = NULL) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
+	virtual void value    (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Returns the value of the function at a given point.  Must throw an exception if point is out of domain.
+	virtual void gradient (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Treat this as a single-valued function and return the first derivative vector.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by hessian().
+	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
 	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL) = 0;  ///< Same as above, except omits all zero entries in Jacobian.
-	virtual void hessian (const Vector<T> & point, Matrix<T> & result, const int index = 0) = 0;  ///< Return the second derivative matrix for the function value addressed by index.  If this is a single-valued function, then ignore index.
+	virtual void hessian  (const Vector<T> & point, Matrix<T> &       result) = 0;  ///< Treat this as a single-valued function and return the second derivative matrix.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by gradient().
   };
 
   /**
@@ -51,10 +58,10 @@ namespace fl
   public:
 	SearchableNumeric (T perturbation = -1);
 
-	virtual void gradient (const Vector<T> & point, Vector<T> & result, const int index = 0);
-	virtual void jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue = NULL);
+	virtual void gradient (const Vector<T> & point, Vector<T> &       result);  ///< Uses sum of squares to reduce this to a single-valued function.
+	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);
 	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);
-	virtual void hessian (const Vector<T> & point, Matrix<T> & result, const int index = 0);
+	virtual void hessian  (const Vector<T> & point, Matrix<T> &       result);  ///< Uses sum of squares to reduce this to a single-valued function.
 
 	T perturbation;  ///< Amount to perturb a variable for finding any of the derivatives by finite differences.
   };
@@ -86,12 +93,32 @@ namespace fl
 	virtual MatrixSparse<bool> interaction () = 0;
 	virtual void cover ();  ///< Compute a structurally orthogonal cover of the Jacobian based on the interaction matrix.
 
-	virtual void jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue = NULL);  ///< Compute the Jacobian using the cover.
+	virtual void gradient (const Vector<T> & point, Vector<T> &       result);  ///< Compute gradient as 2 * ~jacobian * value.  In a sparse system, this should require fewer calls to value() than the direct method.
+	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);  ///< Compute the Jacobian using the cover.
 	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);  ///< Ditto, but omit zero entries.
 
 	// These two members represent the cover in a way that is easy to execute.
 	MatrixSparse<int> parameters;  ///< If parameters(i,j) == k, then compute Jacobian(i,k) during the jth call to the function (by perturbing the kth parameter).
 	std::vector< std::vector<int> > parms;  ///< The jth entry gives in compact form the parameters that need to be perturbed during the jth call.
+  };
+
+  /**
+	 Constricts an arbitrary Searchable to a single line.
+	 point is single-dimensional.  We only read or write the first element,
+	 and ignore all others.
+  **/
+  template<class T>
+  class SearchableConstriction : public SearchableNumeric<T>
+  {
+  public:
+	SearchableConstriction (Searchable<T> & searchable, const Vector<T> & a, const Vector<T> & b);
+
+	virtual int dimension ();
+	virtual void value (const Vector<T> & point, Vector<T> & value);
+
+	Searchable<T> & searchable;
+	const Vector<T> & a;
+	const Vector<T> & b;
   };
 
   /**
@@ -144,6 +171,46 @@ namespace fl
 	bool minimize;
 	int levels;
 	int patience;
+  };
+
+  template<class T>
+  class GradientDescent : public Search<T>
+  {
+  public:
+	GradientDescent (T toleranceX = -1, T updateRate = -0.01);
+
+	virtual void search (Searchable<T> & searchable, Vector<T> & point);
+
+	T toleranceX;
+	T updateRate;
+  };
+
+  template<class T>
+  class ConjugateGradient : public Search<T>
+  {
+  public:
+	ConjugateGradient (T toleranceX = -1, int restartIterations = 5, int maxIterations = -1);  ///< toleranceX < 0 means use sqrt (machine precision); maxIterations < 1 means use dimension of point
+
+	virtual void search (Searchable<T> & searchable, Vector<T> & point);
+
+	T toleranceX;
+	T toleranceA;  ///< Stop line search when the movement along the direction vector is less than this proportion of its length.
+	int restartIterations;
+	int maxIterations;
+  };
+
+  template<class T>
+  class NewtonRaphson : public Search<T>
+  {
+  public:
+	NewtonRaphson (int direction = -1, T toleranceX = -1, T updateRate = 1, int maxIterations = 200);
+
+	virtual void search (Searchable<T> & searchable, Vector<T> & point);
+
+	int direction;
+	T toleranceX;
+	T updateRate;
+	int maxIterations;
   };
 
   /**
