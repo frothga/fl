@@ -51,9 +51,12 @@ namespace fl
 	  Matrix<T> H;
 	  searchable.hessian (point, H);
 
-	  // TODO: It is inefficient to both invert H and take its eigenvalues as
-	  // separate operations.  Use a more clever numerical process here.
-	  Vector<T> delta = !H * g;
+	  // delta = !H * g; save eigenvalues for sign test
+	  Matrix<T> Z;
+	  Vector<T> L;
+	  syev (H, L, Z);
+	  Vector<T> delta = Z * (~Z * g / L);
+
 	  if (direction == 0)
 	  {
 		delta *= -updateRate;
@@ -64,17 +67,15 @@ namespace fl
 		// headed towards a local minimum or maximum, respectively.  For any
 		// other case (saddle point) we do nothing.
 		int sign = 0;
-		Vector<T> eigenvalues;
-		syev (H, eigenvalues);
 		int positive = 0;
 		int negative = 0;
-		for (int j = 0; j < eigenvalues.rows (); j++)
+		for (int j = 0; j < L.rows (); j++)
 		{
-		  if      (eigenvalues[j] > 0) positive++;
-		  else if (eigenvalues[j] < 0) negative++;
+		  if      (L[j] > 0) positive++;
+		  else if (L[j] < 0) negative++;
 		}
-		if (positive >  0  &&  negative == 0) sign =  1;
-		if (positive == 0  &&  negative >  0) sign = -1;
+		if (positive >  0  &&  negative == 0) sign =  1;  // positive semi-definite
+		if (positive == 0  &&  negative >  0) sign = -1;  // negative semi-definite
 
 		// Manipulate sign so we go in the right direction
 		if (sign) delta *= sign * direction * updateRate;

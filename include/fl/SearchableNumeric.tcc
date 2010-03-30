@@ -204,50 +204,6 @@ namespace fl
 	  point10[i] = point[i];
 	}
   }
-
-  /*
-  template<class T>
-  void
-  SearchableNumeric<T>::hessian (const Vector<T> & point, Matrix<T> & result)
-  {
-	T perturbation2 = std::sqrt (perturbation);  // because hessian takes second derivative, we need to keep denominator from getting too small
-
-	Vector<T> perturbedPoint;
-	perturbedPoint.copyFrom (point);
-
-	int n = point.rows ();
-	result.resize (n, n);
-
-	Vector<T> g0;
-	gradient (point, g0);
-
-	for (int i = 0; i < n; i++)
-	{
-	  Vector<T> g;
-
-	  T temp = point[i];
-	  T h = perturbation2 * std::fabs (temp);
-	  if (h == 0) h = perturbation2;
-	  perturbedPoint[i] += h;
-	  gradient (perturbedPoint, g);
-	  perturbedPoint[i] = temp;
-
-	  result.column (i) = (g - g0) / h;
-	}
-
-	// At this point, result is not necessarily symmetric.  We need to enforce
-	// symmetry so that client code can depend on that property.
-	for (int i = 0; i < n; i++)
-	{
-	  for (int j = i + 1; j < n; j++)
-	  {
-		T & a = result(i,j);
-		T & b = result(j,i);
-		a = b = (a + b) / (T) 2;
-	  }
-	}
-  }
-  */
 }
 
 
