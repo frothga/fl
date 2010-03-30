@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2008 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -22,6 +22,7 @@ for details.
 #include "fl/math.h"
 
 #include <float.h>
+#include <limits>
 
 
 namespace fl
@@ -33,16 +34,10 @@ namespace fl
   {
 	this->maxIterations = maxIterations;
 
-	if (toleranceF < 0)
-	{
-	  toleranceF = std::sqrt (epsilon);
-	}
+	if (toleranceF < (T) 0) toleranceF = std::sqrt (std::numeric_limits<T>::epsilon ());
 	this->toleranceF = toleranceF;
 
-	if (toleranceX < 0)
-	{
-	  toleranceX = std::sqrt (epsilon);
-	}
+	if (toleranceX < (T) 0) toleranceX = std::sqrt (std::numeric_limits<T>::epsilon ());
 	this->toleranceX = toleranceX;
   }
 
@@ -54,6 +49,7 @@ namespace fl
   LevenbergMarquardt<T>::search (Searchable<T> & searchable, Vector<T> & point)
   {
 	const T toleranceG = 0;
+	const T epsilon = std::numeric_limits<T>::epsilon ();
 
 	// Evaluate the function at the starting point and calculate its norm.
 	Vector<T> fvec;
@@ -317,8 +313,9 @@ namespace fl
   void
   LevenbergMarquardt<T>::qrfac (Matrix<T> & a, Vector<int> & ipvt, Vector<T> & rdiag, Vector<T> & acnorm)
   {
-	int m = a.rows ();
-	int n = a.columns ();
+	const T epsilon = std::numeric_limits<T>::epsilon ();
+	const int m = a.rows ();
+	const int n = a.columns ();
 	Vector<T> wa (n);
 
 	// Compute the initial column norms and initialize several arrays.
@@ -540,7 +537,8 @@ namespace fl
   void
   LevenbergMarquardt<T>::lmpar (Matrix<T> & r, const Vector<int> & ipvt, const Vector<T> & diag, const Vector<T> & qtb, T delta, T & par, Vector<T> & x)
   {
-	int n = r.columns ();
+	const T minimum = std::numeric_limits<T>::min ();
+	const int n = r.columns ();
 
 	Vector<T> sdiag (n);
 	Vector<T> wa1 (n);

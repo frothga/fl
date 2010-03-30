@@ -20,6 +20,4 @@ for details.
 using namespace fl;
 
 
-template <> const float LevenbergMarquardt<float>::epsilon = FLT_EPSILON;
-template <> const float LevenbergMarquardt<float>::minimum = FLT_MIN;
 template class LevenbergMarquardt<float>;

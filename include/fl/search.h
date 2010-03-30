@@ -228,8 +228,6 @@ namespace fl
 	void qrsolv (Matrix<T> & r, const Vector<int> & ipvt, const Vector<T> & diag, const Vector<T> & qtb, Vector<T> & x, Vector<T> & sdiag);
 	void lmpar (Matrix<T> & r, const Vector<int> & ipvt, const Vector<T> & diag, const Vector<T> & qtb, T delta, T & par, Vector<T> & x);
 
-	static const T epsilon;  ///< FLT_EPSILON or DBL_EPSILON
-	static const T minimum;  ///< FLT_MIN or DBL_MIN
 	T toleranceF;
 	T toleranceX;
 	int maxIterations;
@@ -246,8 +244,6 @@ namespace fl
 
 	virtual void search (Searchable<T> & searchable, Vector<T> & point);
 
-	static const T epsilon;  ///< FLT_EPSILON or DBL_EPSILON
-	static const T minimum;  ///< FLT_MIN or DBL_MIN
 	T toleranceF;
 	T toleranceX;
 	int maxIterations;

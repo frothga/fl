@@ -851,7 +851,8 @@ namespace fl
   static void
   lmpar (const SparseBK<T> & fjac, const Vector<T> & diag, const Vector<T> & fvec, const int maxPivot, T delta, T & par, Vector<T> & x)
   {
-	int n = fjac.columns ();
+	const T minimum = std::numeric_limits<T>::min ();
+	const int n = fjac.columns ();
 
 	// Compute and store in x the gauss-newton direction.
 	// ~fjac * fjac * x = ~fjac * fvec
@@ -900,7 +901,7 @@ std::cerr << "fp=" << fp << " " << dxnorm << " " << delta << std::endl;
 	T paru = gnorm / delta;
 	if (paru == (T) 0)
 	{
-	  paru = LevenbergMarquardtSparseBK<T>::minimum / std::min (delta, (T) 0.1);
+	  paru = minimum / std::min (delta, (T) 0.1);
 	}
 
 	// If the input par lies outside of the interval (parl,paru),
@@ -920,7 +921,7 @@ std::cerr << "fp=" << fp << " " << dxnorm << " " << delta << std::endl;
 	  // Evaluate the function at the current value of par.
 	  if (par == (T) 0)
 	  {
-		par = std::max (LevenbergMarquardtSparseBK<T>::minimum, (T) 0.001 * paru);
+		par = std::min (minimum, (T) 0.001 * paru);
 	  }
 	  factoredJJ.copyFrom (JJ);
 	  factoredJJ.addDiagonal (par, diag);
@@ -974,16 +975,10 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
   template<class T>
   LevenbergMarquardtSparseBK<T>::LevenbergMarquardtSparseBK (T toleranceF, T toleranceX, int maxIterations, int maxPivot)
   {
-	if (toleranceF < (T) 0)
-	{
-	  toleranceF = std::sqrt (epsilon);
-	}
+	if (toleranceF < (T) 0) toleranceF = std::sqrt (std::numeric_limits<T>::epsilon ());
 	this->toleranceF = toleranceF;
 
-	if (toleranceX < (T) 0)
-	{
-	  toleranceX = std::sqrt (epsilon);
-	}
+	if (toleranceX < (T) 0) toleranceX = std::sqrt (std::numeric_limits<T>::epsilon ());
 	this->toleranceX = toleranceX;
 
 	this->maxIterations = maxIterations;
@@ -998,6 +993,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
   LevenbergMarquardtSparseBK<T>::search (Searchable<T> & searchable, Vector<T> & point)
   {
 	const T toleranceG = (T) 0;
+	const T epsilon = std::numeric_limits<T>::epsilon ();
 
 	// Evaluate the function at the starting point and calculate its norm.
 	Vector<T> fvec;

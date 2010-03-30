@@ -20,6 +20,4 @@ for details.
 using namespace fl;
 
 
-template <> const double LevenbergMarquardtSparseBK<double>::epsilon = DBL_EPSILON;
-template <> const double LevenbergMarquardtSparseBK<double>::minimum = DBL_MIN;
 template class LevenbergMarquardtSparseBK<double>;
