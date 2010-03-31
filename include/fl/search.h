@@ -197,6 +197,7 @@ namespace fl
 	T toleranceA;  ///< Stop line search when the movement along the direction vector is less than this proportion of its length.
 	int restartIterations;
 	int maxIterations;
+	Vector<T> scales;  ///< Amount by which to scale (multiply) each element of gradient.  If not set or does not match dimension of gradient, then do not scale (or equivalently, scale all elements by 1).
   };
 
   template<class T>

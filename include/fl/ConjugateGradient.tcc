@@ -67,23 +67,27 @@ namespace fl
   void
   ConjugateGradient<T>::search (Searchable<T> & searchable, Vector<T> & point)
   {
-	int lastIteration = maxIterations > 0 ? maxIterations : point.rows ();
+	int iterations = maxIterations > 0 ? maxIterations : point.rows ();
 
 	Vector<T> d;
 	Vector<T> r;
+	Vector<T> s;
 	searchable.gradient (point, r);
 	r *= -1;
+	bool doScaling = scales.rows () == r.rows ();
+	if (doScaling) s = r & scales;
+	else           s = r;
+	d = s;
 
-	T delta = r.sumSquares ();
+	T beta = 0;
+	T delta = r.dot (d);
 	T thresholdX = delta * toleranceX * toleranceX;
 
 	//LineSearch<T> lineSearch;  // slightly fewer iterations
 	NewtonRaphson<T> lineSearch;  // slightly lower residual
 
-	for (int i = 0; i < lastIteration  &&  delta > thresholdX; i++)
+	for (int i = 0; i < iterations  &&  delta > thresholdX; i++)
 	{
-	  if (i % restartIterations == 0  ||  r.dot (d) <= 0) d = r;
-
 	  // Line search for optimal position along current direction
 	  SearchableConstriction<T> line (searchable, point, d);
 	  Vector<T> alpha (1);
@@ -96,8 +100,19 @@ namespace fl
 	  searchable.gradient (point, r);
 	  r *= -1;
 	  T deltaOld = delta;
-	  delta = r.sumSquares ();
-	  d = r + d * (delta / deltaOld);
+	  T deltaMid = r.dot (s);
+	  if (doScaling) s = r & scales;
+	  else           s = r;
+	  delta = r.dot (s);
+	  beta = (delta - deltaMid) / deltaOld;
+	  if ((i  &&  i % restartIterations == 0)  ||  beta <= 0)
+	  {
+		d = s;
+	  }
+	  else
+	  {
+		d = s + d * beta;
+	  }
 	}
   }
 }
