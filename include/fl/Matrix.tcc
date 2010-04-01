@@ -211,7 +211,7 @@ namespace fl
   {
 	int h = std::min (rows (), B.rows ());
 	register T result = (T) 0;
-	for (int r = 0; r < h; r++) result += (*this)(r,1) * B(r,1);
+	for (int r = 0; r < h; r++) result += (*this)(r,0) * B(r,0);
 	return result;
   }
 
@@ -1036,7 +1036,7 @@ namespace fl
 	if (B.classID () & MatrixStridedID)
 	{
 	  const MatrixStrided & M = (const MatrixStrided &) B;
-	  T * j = (T *) M.data + offset;
+	  T * j = (T *) M.data + M.offset;
 #     ifdef HAVE_BLAS
 	  result = fl::dot (n, i, strideR, j, M.strideR);
 #     else

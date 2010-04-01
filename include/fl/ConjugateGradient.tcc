@@ -97,6 +97,7 @@ namespace fl
 	  point += d * alpha[0];
 
 	  // Update direction
+	  Vector<T> r;  // Construct a new r to avoid aliasing with s.  s must remain distinct from r until after deltaMid is calculated.
 	  searchable.gradient (point, r);
 	  r *= -1;
 	  T deltaOld = delta;

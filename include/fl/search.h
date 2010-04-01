@@ -117,8 +117,8 @@ namespace fl
 	virtual void value (const Vector<T> & point, Vector<T> & value);
 
 	Searchable<T> & searchable;
-	const Vector<T> & a;
-	const Vector<T> & b;
+	Vector<T> a;
+	Vector<T> b;
   };
 
   /**

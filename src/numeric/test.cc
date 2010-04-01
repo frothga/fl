@@ -26,19 +26,32 @@ using namespace std;
 using namespace fl;
 
 
+template<class T>
+class TestFunction
+{
+public:
+  T         bestResidual;
+  Vector<T> bestPoint;
+  Vector<T> startPoint;
+  bool      isLineSearch;
+};
+
 /**
    Searchable class for testing numeric search methods, translated from MINPACK.
    Expected result = 0.08241058  1.133037  2.343695
    Expected residual = 0.09063596
 **/
 template<class T>
-class Test : public SearchableSparse<T>
+class MinpackTestFunction : public SearchableNumeric<T>, public TestFunction<T>
 {
 public:
-  Test (T perturbation = -1)
-  : SearchableSparse<T> (perturbation)
+  MinpackTestFunction (T perturbation = -1)
+  : SearchableNumeric<T> (perturbation)
   {
-	this->cover ();
+	TestFunction<T>::bestResidual = 0.09063596;
+	TestFunction<T>::bestPoint    = Vector<T> ("[0.08241058  1.133037  2.343695]");
+	TestFunction<T>::startPoint   = Vector<T> ("[0 1 2]");
+	TestFunction<T>::isLineSearch = false;
   }
 
   virtual int dimension ()
@@ -59,8 +72,41 @@ public:
 	  T t2 = i > 7 ? t1 : t0;
 	  result[i] = y[i] - (x[0] + t0 / (x[1] * t1 + x[2] * t2));
 	}
-	//cerr << ".";
-	cerr << result.norm (2) << endl;
+	cerr << ".";
+	//cerr << result.norm (2) << endl;
+  }
+};
+
+template<class T>
+class SparseTestFunction : public SearchableSparse<T>, public TestFunction<T>
+{
+public:
+  SparseTestFunction (T perturbation = -1)
+  : SearchableSparse<T> (perturbation)
+  {
+	TestFunction<T>::bestResidual = 0;
+	TestFunction<T>::bestPoint    = Vector<T> ("[0.08241058  1.133037  2.343695]");
+	TestFunction<T>::startPoint   = Vector<T> ("[0 1 2]");
+	TestFunction<T>::isLineSearch = false;
+
+	this->cover ();
+  }
+
+  virtual int dimension ()
+  {
+	return 15;
+  }
+
+  virtual void value (const Vector<T> & x, Vector<T> & result)
+  {
+	result.resize (15);
+	for (int i = 0; i < 15; i++)
+	{
+	  int j = i / 5;
+	  result[i] = pow (abs (x[j] - TestFunction<T>::bestPoint[j]), (T) (1.0 + i / 15));
+	}
+	cerr << ".";
+	//cerr << result.norm (2) << endl;
   }
 
   virtual MatrixSparse<bool> interaction ()
@@ -69,10 +115,8 @@ public:
 	// Can't use clear() for this, because MatrixSparse does not accept a nonzero value.
 	for (int i = 0; i < 15; i++)
 	{
-	  for (int j = 0; j < 3; j++)
-	  {
-		result.set (i, j, true);
-	  }
+	  int j = i / 5;
+	  result.set (i, j, true);
 	}
 
 	return result;
@@ -80,55 +124,85 @@ public:
 };
 
 template<class T>
+class ConstrictionTestFunction : public SearchableConstriction<T>, public TestFunction<T>
+{
+public:
+  ConstrictionTestFunction (Searchable<T> * searchable)
+  : SearchableConstriction<T> (*searchable, Vector<T> (), Vector<T> ())
+  {
+	TestFunction<T> * t = dynamic_cast<TestFunction<T> *> (searchable);
+	if (! t) throw "searchable is not a TestFunction";
+	SearchableConstriction<T>::a = t->bestPoint / 2;
+	SearchableConstriction<T>::b = t->bestPoint;
+
+	TestFunction<T>::bestResidual = t->bestResidual;
+	TestFunction<T>::bestPoint    = Vector<T> ("[0.5]");
+	TestFunction<T>::startPoint   = Vector<T> ("[0]");
+	TestFunction<T>::isLineSearch = true;
+  }
+};
+
+template<class T>
 void
 testSearch ()
 {
-  Test<T> t;
-  T expectedResidual = 0.09063596;
-  Vector<T> expectedPoint ("[0.08241058  1.133037  2.343695]");
+  vector<Searchable<T> *> searchables;
+  searchables.push_back (new MinpackTestFunction<T>);
+  searchables.push_back (new SparseTestFunction<T>);
+  searchables.push_back (new ConstrictionTestFunction<T> (searchables[0]));
 
   struct SearchTest
   {
 	T           epsilon;
+	bool        doLineSearch;
 	Search<T> * search;
   };
   SearchTest searches[] =
   {
-	{1e-2, new AnnealingAdaptive<T>},
-	{1e-2, new ConjugateGradient<T>},
-	{1e-4, new GradientDescent<T>},
-	{1e-4, new LevenbergMarquardt<T>},
-	{1e-4, new LevenbergMarquardtSparseBK<T>},
-	{1e-4, new NewtonRaphson<T>},
+	{1e-2, 0, new AnnealingAdaptive<T>},
+	{1e-2, 1, new ConjugateGradient<T>},
+	{1e-2, 1, new GradientDescent<T> (1e-4)},  // The default toleranceX for double is too tight.
+	{1e-4, 1, new LevenbergMarquardt<T>},
+	{1e-4, 1, new LevenbergMarquardtSparseBK<T>},
+	{1e-3, 1, new NewtonRaphson<T>},
   };
   int count = sizeof (searches) / sizeof (SearchTest);
 
-  for (int i = 0; i < count; i++)
+  for (int i = 0; i < searchables.size (); i++)
   {
-	T epsilon     = searches[i].epsilon;
-	Search<T> * s = searches[i].search;
-	cerr << typeid (*s).name () << endl;
+	Searchable<T> * function = searchables[i];
+	TestFunction<T> * t = dynamic_cast<TestFunction<T> *> (function);
 
-	Vector<T> point (3);
-	point[0] = 0;
-	point[1] = 1;
-	point[2] = 2;
-
-	s->search (t, point);
-	delete s;  // We will never use it again, and we should release memory to be "proper".
-	cerr << endl;
-
-	Vector<T> error;
-	t.value (point, error);
-	double e = error.norm (2);
-	double d = e - expectedResidual;
-	if (d > epsilon)
+	for (int j = 0; j < count; j++)
 	{
-	  cerr << "Residual too large: " << d << " = " << e << " - " << expectedResidual << endl;
-	  cerr << "distance to true point = " << (point - expectedPoint).norm (2) << " = " << point << " - " << expectedPoint << endl;
-	  throw "Search fails";
+	  T epsilon     = searches[j].epsilon;
+	  Search<T> * s = searches[j].search;
+	  cerr << typeid (*s).name () << " searching " << typeid (*function).name () << endl;
+	  if (t->isLineSearch  &&  ! searches[j].doLineSearch)
+	  {
+		cerr << "  skipping because can't do line search" << endl;
+		continue;
+	  }
+
+	  Vector<T> point;
+	  point.copyFrom (t->startPoint);
+
+	  s->search (*function, point);
+	  cerr << endl;
+
+	  Vector<T> error;
+	  function->value (point, error);
+	  double e = error.norm (2);
+	  double d = e - t->bestResidual;
+	  cerr << "distance to best residual = " << d << " = " << e << " - " << t->bestResidual << endl;
+	  cerr << "distance to best point    = " << (point - t->bestPoint).norm (2) << " = " << point << " - " << t->bestPoint << endl;
+	  if (d > epsilon) throw "Search fails";
 	}
   }
+
+  for (int i = 0; i < count; i++) delete searches[i].search;
+  for (int i = searchables.size () - 1; i >= 0; i--) delete searchables[i];
+
   cout << "Search passes" << endl;
 }
 

@@ -15,4 +15,5 @@ for details.
 using namespace fl;
 
 
+template class SearchableConstriction<double>;
 template class ConjugateGradient<double>;
