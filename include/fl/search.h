@@ -122,6 +122,28 @@ namespace fl
   };
 
   /**
+	 Interface that allows a Search to opportunistically move to a better
+	 position if one is detected during the construction of gradient, jacobian,
+	 or hessian.  A Searchable class that inherits this interface promises
+	 to initialize bestResidual to INFINITY, and to update both bestResidual
+	 and bestPoint each time value() is called.  bestPoint need not be valid
+	 until bestResidual is less than INFINITY.  The subclass should make no
+	 assumptions about how bestPoint is used.  In particular, it should
+	 always allocated a fresh block of memory each time it stores an updated
+	 value.
+
+	 Exactly what norm to use when comparing the results of value() is
+	 currently undefined.
+  **/
+  template<class T>
+  class SearchableGreedy
+  {
+  public:
+	T         bestResidual;
+	Vector<T> bestPoint;
+  };
+
+  /**
 	 Search tries to optimize the choice of "point" in the domain of a function
 	 by some criterion.  The exact criterion depends on the specific method.
 	 One possibility is to minimize the length of the functions value vector

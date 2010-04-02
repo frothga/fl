@@ -68,11 +68,18 @@ namespace fl
   ConjugateGradient<T>::search (Searchable<T> & searchable, Vector<T> & point)
   {
 	int iterations = maxIterations > 0 ? maxIterations : point.rows ();
+	SearchableGreedy<T> * greedy = dynamic_cast<SearchableGreedy<T> *> (&searchable);
+	T bestResidual = INFINITY;
 
 	Vector<T> d;
 	Vector<T> r;
 	Vector<T> s;
 	searchable.gradient (point, r);
+	if (greedy  &&  greedy->bestResidual < bestResidual)
+	{
+	  bestResidual = greedy->bestResidual;
+	  point        = greedy->bestPoint;
+	}
 	r *= -1;
 	bool doScaling = scales.rows () == r.rows ();
 	if (doScaling) s = r & scales;
@@ -94,11 +101,24 @@ namespace fl
 	  alpha[0] = 0;
 	  lineSearch.toleranceX = std::sqrt (toleranceA * toleranceA / d.sumSquares ());
 	  lineSearch.search (line, alpha);
-	  point += d * alpha[0];
+	  if (greedy  &&  greedy->bestResidual < bestResidual)
+	  {
+		bestResidual = greedy->bestResidual;
+		point        = greedy->bestPoint;
+	  }
+	  else
+	  {
+		point += d * alpha[0];
+	  }
 
 	  // Update direction
 	  Vector<T> r;  // Construct a new r to avoid aliasing with s.  s must remain distinct from r until after deltaMid is calculated.
 	  searchable.gradient (point, r);
+	  if (greedy  &&  greedy->bestResidual < bestResidual)
+	  {
+		bestResidual = greedy->bestResidual;
+		point        = greedy->bestPoint;
+	  }
 	  r *= -1;
 	  T deltaOld = delta;
 	  T deltaMid = r.dot (s);

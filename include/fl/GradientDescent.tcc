@@ -25,9 +25,10 @@ namespace fl
 
   /**
 	 @param toleranceX If less than 0, then use sqrt (machine precision).
-	 @param updateRate Proportion of gradient vector to add to position at each
+	 @param updateRate Proportion of gradient vector to add to position on first
 	 iteration.  If negative, then we will head towards a minimum.  If
-	 positive, we will head towards a maximum.  Default is -0.01.
+	 positive, we will head towards a maximum.  After first iteration, the
+	 step size automatically rescales, but the sign remains the same.
   **/
   template<class T>
   GradientDescent<T>::GradientDescent (T toleranceX, T updateRate)
@@ -41,12 +42,50 @@ namespace fl
   void
   GradientDescent<T>::search (Searchable<T> & searchable, Vector<T> & point)
   {
+	SearchableGreedy<T> * greedy = dynamic_cast<SearchableGreedy<T> *> (&searchable);
+	T bestResidual = INFINITY;
+
+	T stepSize = updateRate;
+	int gotBetter = 0;
 	while (true)
 	{
+	  // Find gradient
 	  Vector<T> gradient;
 	  searchable.gradient (point, gradient);
-	  point += gradient * updateRate;
-	  if (gradient.norm (2) < toleranceX) break;
+	  if (greedy  &&  greedy->bestResidual < bestResidual)
+	  {
+		bestResidual = greedy->bestResidual;
+		point        = greedy->bestPoint;
+	  }
+
+	  // Search for a better value
+	  while (true)
+	  {
+		Vector<T> newPoint = point + gradient * stepSize;
+		Vector<T> result;
+		searchable.value (newPoint, result);
+		T residual = result.norm (2);
+
+		if (residual < bestResidual)
+		{
+		  point = newPoint;
+		  bestResidual = residual;
+		  gotBetter++;
+		  break;
+		}
+		else
+		{
+		  stepSize /= 2;
+		  if (std::abs (stepSize) < toleranceX) return;
+		  gotBetter = 0;
+		}
+	  }
+	  if (gradient.norm (2) < toleranceX) return;
+	  if (gotBetter > 3)
+	  {
+		gotBetter = 0;
+		stepSize *= 2;
+	  }
 	}
   }
 }

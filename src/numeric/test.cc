@@ -30,28 +30,28 @@ template<class T>
 class TestFunction
 {
 public:
-  T         bestResidual;
-  Vector<T> bestPoint;
   Vector<T> startPoint;
+  Vector<T> endPoint;
+  T         endResidual;
   bool      isLineSearch;
 };
 
 /**
    Searchable class for testing numeric search methods, translated from MINPACK.
-   Expected result = 0.08241058  1.133037  2.343695
-   Expected residual = 0.09063596
 **/
 template<class T>
-class MinpackTestFunction : public SearchableNumeric<T>, public TestFunction<T>
+class MinpackTestFunction : public SearchableNumeric<T>, public TestFunction<T>, public SearchableGreedy<T>
 {
 public:
   MinpackTestFunction (T perturbation = -1)
   : SearchableNumeric<T> (perturbation)
   {
-	TestFunction<T>::bestResidual = 0.09063596;
-	TestFunction<T>::bestPoint    = Vector<T> ("[0.08241058  1.133037  2.343695]");
 	TestFunction<T>::startPoint   = Vector<T> ("[0 1 2]");
+	TestFunction<T>::endPoint     = Vector<T> ("[0.08241058  1.133037  2.343695]");
+	TestFunction<T>::endResidual  = 0.09063596;
 	TestFunction<T>::isLineSearch = false;
+
+	SearchableGreedy<T>::bestResidual = INFINITY;
   }
 
   virtual int dimension ()
@@ -72,8 +72,17 @@ public:
 	  T t2 = i > 7 ? t1 : t0;
 	  result[i] = y[i] - (x[0] + t0 / (x[1] * t1 + x[2] * t2));
 	}
+
+	// This is an example of how to properly implement the SearchableGreedy interface.
+	T residual = result.norm (2);
+	if (residual < SearchableGreedy<T>::bestResidual)
+	{
+	  SearchableGreedy<T>::bestResidual = residual;
+	  SearchableGreedy<T>::bestPoint.detach ();
+	  SearchableGreedy<T>::bestPoint.copyFrom (x);
+	}
+
 	cerr << ".";
-	//cerr << result.norm (2) << endl;
   }
 };
 
@@ -84,9 +93,9 @@ public:
   SparseTestFunction (T perturbation = -1)
   : SearchableSparse<T> (perturbation)
   {
-	TestFunction<T>::bestResidual = 0;
-	TestFunction<T>::bestPoint    = Vector<T> ("[0.08241058  1.133037  2.343695]");
 	TestFunction<T>::startPoint   = Vector<T> ("[0 1 2]");
+	TestFunction<T>::endPoint     = Vector<T> ("[0.08241058  1.133037  2.343695]");
+	TestFunction<T>::endResidual  = 0;
 	TestFunction<T>::isLineSearch = false;
 
 	this->cover ();
@@ -103,7 +112,7 @@ public:
 	for (int i = 0; i < 15; i++)
 	{
 	  int j = i / 5;
-	  result[i] = pow (abs (x[j] - TestFunction<T>::bestPoint[j]), (T) (1.0 + i / 15));
+	  result[i] = pow (abs (x[j] - TestFunction<T>::endPoint[j]), (T) (1.0 + i / 15));
 	}
 	cerr << ".";
 	//cerr << result.norm (2) << endl;
@@ -112,7 +121,6 @@ public:
   virtual MatrixSparse<bool> interaction ()
   {
 	MatrixSparse<bool> result (15, 3);
-	// Can't use clear() for this, because MatrixSparse does not accept a nonzero value.
 	for (int i = 0; i < 15; i++)
 	{
 	  int j = i / 5;
@@ -132,12 +140,12 @@ public:
   {
 	TestFunction<T> * t = dynamic_cast<TestFunction<T> *> (searchable);
 	if (! t) throw "searchable is not a TestFunction";
-	SearchableConstriction<T>::a = t->bestPoint / 2;
-	SearchableConstriction<T>::b = t->bestPoint;
+	SearchableConstriction<T>::a = t->endPoint / 2;
+	SearchableConstriction<T>::b = t->endPoint;
 
-	TestFunction<T>::bestResidual = t->bestResidual;
-	TestFunction<T>::bestPoint    = Vector<T> ("[0.5]");
 	TestFunction<T>::startPoint   = Vector<T> ("[0]");
+	TestFunction<T>::endPoint     = Vector<T> ("[0.5]");
+	TestFunction<T>::endResidual  = t->endResidual;
 	TestFunction<T>::isLineSearch = true;
   }
 };
@@ -159,7 +167,7 @@ testSearch ()
   };
   SearchTest searches[] =
   {
-	{1e-2, 0, new AnnealingAdaptive<T>},
+	{1e-2, 0, new AnnealingAdaptive<T>},  // Stochastic search along a single dimension doesn't seem to work so well.
 	{1e-2, 1, new ConjugateGradient<T>},
 	{1e-2, 1, new GradientDescent<T> (1e-4)},  // The default toleranceX for double is too tight.
 	{1e-4, 1, new LevenbergMarquardt<T>},
@@ -193,9 +201,9 @@ testSearch ()
 	  Vector<T> error;
 	  function->value (point, error);
 	  double e = error.norm (2);
-	  double d = e - t->bestResidual;
-	  cerr << "distance to best residual = " << d << " = " << e << " - " << t->bestResidual << endl;
-	  cerr << "distance to best point    = " << (point - t->bestPoint).norm (2) << " = " << point << " - " << t->bestPoint << endl;
+	  double d = e - t->endResidual;
+	  cerr << "distance to best residual = " << d << " = " << e << " - " << t->endResidual << endl;
+	  cerr << "distance to best point    = " << (point - t->endPoint).norm (2) << " = " << point << " - " << t->endPoint << endl;
 	  if (d > epsilon) throw "Search fails";
 	}
   }
