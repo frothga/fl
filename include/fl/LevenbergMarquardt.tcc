@@ -46,110 +46,95 @@ namespace fl
   **/
   template<class T>
   void
-  LevenbergMarquardt<T>::search (Searchable<T> & searchable, Vector<T> & point)
+  LevenbergMarquardt<T>::search (Searchable<T> & searchable, Vector<T> & x)
   {
 	const T toleranceG = 0;
 	const T epsilon = std::numeric_limits<T>::epsilon ();
 
-	// Evaluate the function at the starting point and calculate its norm.
-	Vector<T> fvec;
-	searchable.value (point, fvec);
+	// Evaluate the function at the starting x and calculate its norm.
+	Vector<T> y;
+	searchable.value (x, y);
 
-	int m = fvec.rows ();
-	int n = point.rows ();
+	int m = y.rows ();
+	int n = x.rows ();
 
-	Matrix<T> fjac (m, n);
-	Vector<T> diag (n);  // scales
+	Matrix<T> J (m, n);
+	Vector<T> scales (n);
 	T par = 0;  // levenberg-marquardt parameter
-	T fnorm = fvec.norm (2);
+	T ynorm = y.norm (2);
 	T xnorm;
 	T delta;
 
 	// outer loop
-	int iter = 0;
-	while (true)
+	for (int iteration = 0; iteration < maxIterations; iteration++)
 	{
-	  iter++;
-
 	  // calculate the jacobian matrix
-	  searchable.jacobian (point, fjac, &fvec);
+	  searchable.jacobian (x, J, &y);
 
 	  // compute the qr factorization of the jacobian.
-	  Vector<int> ipvt (n);
+	  Vector<int> pivots (n);
 	  Vector<T> rdiag (n);  // wa1
 	  Vector<T> jacobianNorms (n);  // wa2
-	  qrfac (fjac, ipvt, rdiag, jacobianNorms);
+	  qrfac (J, pivots, rdiag, jacobianNorms);
 
 	  // On the first iteration ...
-	  if (iter == 1)
+	  if (iteration == 0)
 	  {
 		// Scale according to the norms of the columns of the initial jacobian.
 		for (int j = 0; j < n; j++)
 		{
-		  diag[j] = jacobianNorms[j];
-		  if (diag[j] == 0)
+		  scales[j] = jacobianNorms[j];
+		  if (scales[j] == 0)
 		  {
-			diag[j] = 1;
+			scales[j] = 1;
 		  }
 		}
 
 		// Calculate the norm of the scaled x and initialize the step bound delta.
-		xnorm = 0;
-		for (int j = 0; j < n; j++)
-		{
-		  T temp = diag[j] * point[j];
-		  xnorm += temp * temp;
-		}
-		xnorm = std::sqrt (xnorm);
-
-		const T factor = 1;
-		delta = factor * xnorm;
-		if (delta == 0)
-		{
-		  delta = factor;
-		}
+		xnorm = (x & scales).norm (2);
+		delta = (xnorm * (T) 1) == (T) 0 ? (T) 1 : xnorm;  // Does the multiplication by 1 here make a difference?  This seems to be a test of floating-point representation.
 	  }
 
-	  // Form (q transpose)*fvec and store the first n components in qtf.
-	  // Fix fjac so it contains the diagonal of R rather than tau of Q
+	  // Form (q transpose)*y and store the first n components in qtf.
+	  // Fix J so it contains the diagonal of R rather than tau of Q
 	  Vector<T> qtf (n);
-	  Vector<T> tempFvec;
-	  tempFvec.copyFrom (fvec);
+	  Vector<T> tempY;
+	  tempY.copyFrom (y);
 	  for (int j = 0; j < n; j++)
 	  {
-		T tau = fjac(j,j);
+		T tau = J(j,j);
 		if (tau != 0)
 		{
 		  T sum = 0;
 		  for (int i = j; i < m; i++)
 		  {
-			sum += fjac(i,j) * tempFvec[i];
+			sum += J(i,j) * tempY[i];
 		  }
 		  sum /= -tau;
 		  for (int i = j; i < m; i++)
 		  {
-			tempFvec[i] += fjac(i,j) * sum;
+			tempY[i] += J(i,j) * sum;
 		  }
 		}
-		fjac(j,j) = rdiag[j];  // Replace tau_j with diagonal part of R
-		qtf[j] = tempFvec[j];
+		J(j,j) = rdiag[j];  // Replace tau_j with diagonal part of R
+		qtf[j] = tempY[j];
 	  }
 
 	  // compute the norm of the scaled gradient
 	  T gnorm = 0;
-	  if (fnorm != 0)
+	  if (ynorm != 0)
 	  {
 		for (int j = 0; j < n; j++)
 		{
-		  int l = ipvt[j];
+		  int l = pivots[j];
 		  if (jacobianNorms[l] != 0)
 		  {
 			T sum = 0;
 			for (int i = 0; i <= j; i++)
 			{
-			  sum += fjac(i,j) * qtf[i];  // This use of the factored fjac is equivalent to ~fjac * fvec using the original fjac.
+			  sum += J(i,j) * qtf[i];  // This use of the factored J is equivalent to ~J * y using the original J.  (That is, ~R * ~Q * y, where J = QR)
 			}
-			gnorm = std::max (gnorm, std::fabs (sum / (fnorm * jacobianNorms[l])));
+			gnorm = std::max (gnorm, std::fabs (sum / (ynorm * jacobianNorms[l])));  // infinity norm of g = ~J * y / |y|.
 		  }
 		}
 	  }
@@ -164,7 +149,7 @@ namespace fl
 	  // rescale if necessary
 	  for (int j = 0; j < n; j++)
 	  {
-		diag[j] = std::max (diag[j], jacobianNorms[j]);
+		scales[j] = std::max (scales[j], jacobianNorms[j]);
 	  }
 
 	  // beginning of the inner loop
@@ -173,72 +158,66 @@ namespace fl
 	  {
 		// determine the levenberg-marquardt parameter.
 		Vector<T> p (n);  // wa1
-		lmpar (fjac, ipvt, diag, qtf, delta, par, p);
+		lmpar (J, pivots, scales, qtf, delta, par, p);
 
 		// store the direction p and x + p. calculate the norm of p.
-		Vector<T> xp = point - p;  // p is actually negative
-		T pnorm = 0;
-		for (int j = 0; j < n; j++)
-		{
-		  T temp = diag[j] * p[j];
-		  pnorm += temp * temp;
-		}
-		pnorm = std::sqrt (pnorm);
+		Vector<T> xp = x - p;  // p is actually negative
+		T pnorm = (p & scales).norm (2);
 
 		// on the first iteration, adjust the initial step bound
-		if (iter == 1)
+		if (iteration == 0)
 		{
 		  delta = std::min (delta, pnorm);
 		}
 
 		// evaluate the function at x + p and calculate its norm
-		searchable.value (xp, tempFvec);
-		T fnorm1 = tempFvec.norm (2);
+		searchable.value (xp, tempY);
+		T ynorm1 = tempY.norm (2);
 
 		// compute the scaled actual reduction
-		T actred = -1;
-		if (fnorm1 / 10 < fnorm)
+		T reductionActual = -1;
+		if (ynorm1 / 10 < ynorm)
 		{
-		  T temp = fnorm1 / fnorm;
-		  actred = 1 - temp * temp;
+		  T temp = ynorm1 / ynorm;
+		  reductionActual = 1 - temp * temp;
 		}
 
 		// compute the scaled predicted reduction and the scaled directional derivative
-		Vector<T> fjacp (n);
-		fjacp.clear ();
+		Vector<T> Jp (n);
+		Jp.clear ();
 		for (int j = 0; j < n; j++)
 		{
-		  T pj = p[ipvt[j]];
+		  T pj = p[pivots[j]];
 		  for (int i = 0; i <= j; i++)
 		  {
-			fjacp[i] += fjac(i,j) * pj;  // equivalent to fjac * p using the original fjac, since all scale informtion is in the R part of the QR factorizatoion
+			Jp[i] += J(i,j) * pj;  // equivalent to J * p using the original J, since all scale informtion is in the R part of the QR factorizatoion
 		  }
 		}
-		T temp1 = fjacp.norm (2) / fnorm;
-		T temp2 = std::sqrt (par) * pnorm / fnorm;
-		T prered = temp1 * temp1 + 2 * temp2 * temp2;
+		T temp1 = Jp.norm (2) / ynorm;
+		T temp2 = std::sqrt (par) * pnorm / ynorm;
+		T reductionPredicted = temp1 * temp1 + 2 * temp2 * temp2;
 		T dirder = -(temp1 * temp1 + temp2 * temp2);
 
 		// compute the ratio of the actual to the predicted reduction
 		ratio = 0;
-		if (prered != 0)
+		if (reductionPredicted != 0)
 		{
-		  ratio = actred / prered;
+		  ratio = reductionActual / reductionPredicted;
 		}
 
 		// update the step bound
 		if (ratio <= 0.25)
 		{
 		  T update;
-		  if (actred >= 0)
+		  if (reductionActual >= 0)
 		  {
 			update = 0.5;
 		  }
 		  else
 		  {
-			update = dirder / (2 * dirder + actred);
+			update = dirder / (2 * dirder + reductionActual);
 		  }
-		  if (fnorm1 / 10 >= fnorm  ||  update < 0.1)
+		  if (ynorm1 / 10 >= ynorm  ||  update < 0.1)
 		  {
 			update = (T) 0.1;
 		  }
@@ -254,27 +233,18 @@ namespace fl
 		  }
 		}
 
-		// test for successful iteration.
-		if (ratio >= 0.0001)
+		if (ratio >= 0.0001)  // successful iteration.
 		{
-		  // successful iteration. update x, fvec, and their norms.
-		  point = xp;
-		  fvec = tempFvec;
-
-		  xnorm = 0;
-		  for (int j = 0; j < n; j++)
-		  {
-			T temp = diag[j] * point[j];
-			xnorm += temp * temp;
-		  }
-		  xnorm = std::sqrt (xnorm);
-
-		  fnorm = fnorm1;
+		  // update x, y, and their norms
+		  x     = xp;
+		  y     = tempY;
+		  xnorm = (x & scales).norm (2);
+		  ynorm = ynorm1;
 		}
 
 		// tests for convergence
-		if (   std::fabs (actred) <= toleranceF
-			&& prered <= toleranceF
+		if (   std::fabs (reductionActual) <= toleranceF
+			&& reductionPredicted <= toleranceF
 			&& ratio <= 2)
 		{
 		  // info = 1;
@@ -287,12 +257,8 @@ namespace fl
 		}
 
 		// tests for termination and stringent tolerances
-		if (iter > maxIterations)
-		{
-		  throw (int) 5;
-		}
-		if (   std::fabs (actred) <= epsilon
-			&& prered <= epsilon
+		if (   std::fabs (reductionActual) <= epsilon
+			&& reductionPredicted <= epsilon
 			&& ratio <= 2)
 		{
 		  throw (int) 6;
@@ -307,11 +273,13 @@ namespace fl
 		}
 	  }
 	}
+
+	throw (int) 5;  // exceeded maximum iterations
   }
 
   template<class T>
   void
-  LevenbergMarquardt<T>::qrfac (Matrix<T> & a, Vector<int> & ipvt, Vector<T> & rdiag, Vector<T> & acnorm)
+  LevenbergMarquardt<T>::qrfac (Matrix<T> & a, Vector<int> & pivots, Vector<T> & rdiag, Vector<T> & acnorm)
   {
 	const T epsilon = std::numeric_limits<T>::epsilon ();
 	const int m = a.rows ();
@@ -322,7 +290,7 @@ namespace fl
 	for(int j = 0; j < n; j++)
 	{
 	  wa[j] = rdiag[j] = acnorm[j] = a.column (j).norm (2);
-	  ipvt[j] = j;
+	  pivots[j] = j;
 	}
 
 	// Reduce a to r with householder transformations.
@@ -348,7 +316,7 @@ namespace fl
 		rdiag[kmax] = rdiag[j];
 		wa[kmax] = wa[j];
 
-		std::swap (ipvt[j], ipvt[kmax]);
+		std::swap (pivots[j], pivots[kmax]);
 	  }
 
 	  // Compute the householder transformation to reduce the
@@ -392,7 +360,7 @@ namespace fl
 
   template<class T>
   void
-  LevenbergMarquardt<T>::qrsolv (Matrix<T> & r, const Vector<int> & ipvt, const Vector<T> & diag, const Vector<T> & qtb, Vector<T> & x, Vector<T> & sdiag)
+  LevenbergMarquardt<T>::qrsolv (Matrix<T> & r, const Vector<int> & pivots, const Vector<T> & scales, const Vector<T> & qtb, Vector<T> & x, Vector<T> & sdiag)
   {
 	int n = r.columns ();
 	Vector<T> wa (n);
@@ -414,10 +382,10 @@ namespace fl
 	{
 	  // Prepare the row of d to be eliminated, locating the
 	  // diagonal element using p from the qr factorization.
-	  int l = ipvt[j];
-	  if (diag[l] != 0)
+	  int l = pivots[j];
+	  if (scales[l] != 0)
 	  {
-		sdiag[j] = diag[l];
+		sdiag[j] = scales[l];
 		for (int k = j + 1; k < n; k++)
 		{
 		  sdiag[k] = 0;
@@ -502,7 +470,7 @@ namespace fl
 	// Permute the components of z back to components of x.
 	for (int j = 0; j < n; j++)
 	{
-	  x[ipvt[j]] = wa[j];
+	  x[pivots[j]] = wa[j];
 	}
   }
 
@@ -535,14 +503,13 @@ namespace fl
   **/
   template<class T>
   void
-  LevenbergMarquardt<T>::lmpar (Matrix<T> & r, const Vector<int> & ipvt, const Vector<T> & diag, const Vector<T> & qtb, T delta, T & par, Vector<T> & x)
+  LevenbergMarquardt<T>::lmpar (Matrix<T> & r, const Vector<int> & pivots, const Vector<T> & scales, const Vector<T> & qtb, T delta, T & par, Vector<T> & x)
   {
 	const T minimum = std::numeric_limits<T>::min ();
 	const int n = r.columns ();
 
 	Vector<T> sdiag (n);
 	Vector<T> wa1 (n);
-	Vector<T> dx (n);
 
 	// Compute and store in x the gauss-newton direction. If the
 	// jacobian is rank-deficient, obtain a least squares solution.
@@ -563,7 +530,7 @@ namespace fl
 	  }
 	}
 	// solve for x by back-substitution in rx=qtb (which comes from qrx=b, which
-	// comes from ax=b, where a=fjac)
+	// comes from ax=b, where a=J)
 	for (int k = 0; k < nsing; k++)
 	{
 	  int j = (nsing - 1) - k;
@@ -575,16 +542,13 @@ namespace fl
 	}
 	for (int j = 0; j < n; j++)
 	{
-	  x[ipvt[j]] = wa1[j];
+	  x[pivots[j]] = wa1[j];
 	}
 
 	// Initialize the iteration counter.
 	// Evaluate the function at the origin, and test
 	// for acceptance of the gauss-newton direction.
-	for (int j = 0; j < n; j++)
-	{
-	  dx[j] = diag[j] * x[j];
-	}
+	Vector<T> dx = x & scales;
 	T dxnorm = dx.norm (2);
 	T fp = dxnorm - delta;
 	if (fp <= 0.1 * delta)
@@ -601,8 +565,8 @@ namespace fl
 	{
 	  for (int j = 0; j < n; j++)
 	  {
-		int l = ipvt[j];
-		wa1[j] = diag[l] * (dx[l] / dxnorm);
+		int l = pivots[j];
+		wa1[j] = scales[l] * (dx[l] / dxnorm);
 	  }
 	  // solve by back-substitution for b in rtb=x (where "x" = d*d*x and x is
 	  // normalized).  note that rt is lower triangular, and that back-sub
@@ -627,9 +591,9 @@ namespace fl
 	  T sum = 0;
 	  for (int i = 0; i <= j; i++)
 	  {
-		sum += r(i,j) * qtb[i];  // equivalent to ~fjac * fvec before factoriztion
+		sum += r(i,j) * qtb[i];  // equivalent to ~J * y before factoriztion
 	  }
-	  wa1[j] = sum / diag[ipvt[j]];
+	  wa1[j] = sum / scales[pivots[j]];
 	}
 
 	T gnorm = wa1.norm (2);
@@ -661,16 +625,12 @@ namespace fl
 	  T temp = std::sqrt (par);
 	  for (int j = 0; j < n; j++)
 	  {
-		wa1[j] = temp * diag[j];
+		wa1[j] = temp * scales[j];
 	  }
 
-	  qrsolv (r, ipvt, wa1, qtb, x, sdiag);
+	  qrsolv (r, pivots, wa1, qtb, x, sdiag);
 
-	  for (int j = 0; j < n; j++)
-	  {
-		dx[j] = diag[j] * x[j];
-	  }
-
+	  dx = x & scales;
 	  dxnorm = dx.norm (2);
 	  temp = fp;
 	  fp = dxnorm - delta;
@@ -688,8 +648,8 @@ namespace fl
 	  // Compute the newton correction.
 	  for (int j = 0; j < n; j++)
 	  {
-		int l = ipvt[j];
-		wa1[j] = diag[l] * (dx[l] / dxnorm);
+		int l = pivots[j];
+		wa1[j] = scales[l] * (dx[l] / dxnorm);
 	  }
 	  for (int j = 0; j < n; j++)
 	  {
