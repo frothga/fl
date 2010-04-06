@@ -170,7 +170,7 @@ testSearch ()
 	{1e-2, 0, new AnnealingAdaptive<T>},  // Stochastic search along a single dimension doesn't seem to work so well.
 	{1e-2, 1, new ConjugateGradient<T>},
 	{1e-2, 1, new GradientDescent<T> (1e-4)},  // The default toleranceX for double is too tight.
-	{1e-4, 1, new LevenbergMarquardt<T>},
+	{1e-6, 1, new LevenbergMarquardt<T>},
 	{1e-4, 1, new LevenbergMarquardtSparseBK<T>},
 	{1e-3, 1, new NewtonRaphson<T>},
   };

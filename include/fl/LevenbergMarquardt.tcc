@@ -21,6 +21,7 @@ for details.
 #include "fl/search.h"
 #include "fl/math.h"
 #include "fl/lapackproto.h"
+#include "fl/blasproto.h"
 
 #include <float.h>
 #include <limits>
@@ -267,119 +268,87 @@ namespace fl
   }
 
   /**
-	 @param r The QR-factored Jacobian.  Since Q has already been applied, we
-	 don't need it any more, so the lower-triangular part of r is free. for
-	 scratch space.
+	 qrsolv algorithm:
+	 A generalized least squares problem:  Solve the system
+	   Jx=y  and  dx=0,
+	 where Jp=QR.  Substitute x=pz to get
+	   Rz=~Qy  and  ~pdpz=0.
+
+	 @param J The QR-factored Jacobian.  Since Q has already been applied to
+	 y in Qy, we don't need it any more, so the lower-triangular part is free.
+	 @param S A matrix such that ~SS = ~p(~JJ+dd)p
   **/
   template<class T>
   void
-  LevenbergMarquardt<T>::qrsolv (Matrix<T> & r, const Vector<int> & pivots, const Vector<T> & scales, const Vector<T> & qtb, Vector<T> & x, Vector<T> & sdiag)
+  LevenbergMarquardt<T>::qrsolv (const Matrix<T> & J, const Vector<int> & pivots, const Vector<T> & d, const Vector<T> & Qy, Vector<T> & x, Matrix<T> & S)
   {
-	int n = r.columns ();
+	const int n = J.columns ();
 
-	// Copy r and (q transpose)*b to preserve input and initialize s.
-	// In particular, save the diagonal elements of r in x.
+	// Copy J and Qy to preserve input and initialize s.
+	// In particular, save the diagonal elements of J in x.
 	Vector<T> z;
-	z.copyFrom (qtb);
-
-	for (int j = 0; j < n; j++)
-	{
-	  for (int i = j + 1; i < n; i++)
-	  {
-		r(i,j) = r(j,i);
-	  }
-	  x[j] = r(j,j);
-	}
+	z.copyFrom (Qy);
+	S.copyFrom (J.region (0, 0, n-1, n-1));  // copies twice as many elements as necessary
 
 	// Eliminate the diagonal matrix d using a givens rotation.
+	Vector<T> sdiag (n);
 	for (int j = 0; j < n; j++)
 	{
 	  // Prepare the row of d to be eliminated, locating the
 	  // diagonal element using p from the qr factorization.
 	  int l = pivots[j] - 1;
-	  if (scales[l] != 0)
+	  if (d[l] != 0)
 	  {
-		sdiag[j] = scales[l];
-		for (int k = j + 1; k < n; k++)
-		{
-		  sdiag[k] = 0;
-		}
+		sdiag[j] = d[l];
+		sdiag.region (j+1).clear ();
 
-		// The transformations to eliminate the row of d
-		// modify only a single element of (q transpose)*b
-		// beyond the first n, which is initially zero.
-		T qtbpj = 0;
+		// The transformations to eliminate the row of d modify only a single
+		// element of Qy beyond the first n.  This element is is initially zero.
+		T extraElement = 0;
 		for (int k = j; k < n; k++)
 		{
-		  // Determine a givens rotation which eliminates the
-		  // appropriate element in the current row of d.
-		  if (sdiag[k] == 0)
-		  {
-			continue;
-		  }
+		  // Determine a givens rotation which eliminates the appropriate
+		  // element in the current row of d.
+		  if (sdiag[k] == 0) continue;
 		  T sin;
 		  T cos;
-		  if (std::fabs (r(k,k)) < std::fabs (sdiag[k]))
+		  if (std::fabs (S(k,k)) < std::fabs (sdiag[k]))
 		  {
-			T cotan = r(k,k) / sdiag[k];
+			T cotan = S(k,k) / sdiag[k];
 			sin = 0.5 / std::sqrt (0.25 + 0.25 * cotan * cotan);
 			cos = sin * cotan;
 		  }
 		  else
 		  {
-			T tan = sdiag[k] / r(k,k);
+			T tan = sdiag[k] / S(k,k);
 			cos = 0.5 / std::sqrt (0.25 + 0.25 * tan * tan);
 			sin = cos * tan;
 		  }
 
-		  // Compute the modified diagonal element of r and
-		  // the modified element of ((q transpose)*b,0).
-		  r(k,k) = cos * r(k,k) + sin * sdiag[k];
-		  T temp = cos * z[k] + sin * qtbpj;
-		  qtbpj = -sin * z[k] + cos * qtbpj;
+		  // Compute the modified diagonal element of S and the modified
+		  // extra element of Qy.
+		  S(k,k)       =  cos * S(k,k) + sin * sdiag[k];
+		  T temp       =  cos * z[k]   + sin * extraElement;
+		  extraElement = -sin * z[k]   + cos * extraElement;
 		  z[k] = temp;
 
-		  // Accumulate the tranformation in the row of s.
+		  // Accumulate the tranformation in the row of S.
 		  for (int i = k + 1; i < n; i++)
 		  {
-			T temp = cos * r(i,k) + sin * sdiag[i];
-			sdiag[i] = -sin * r(i,k) + cos * sdiag[i];
-			r(i,k) = temp;
+			T temp   =  cos * S(k,i) + sin * sdiag[i];
+			sdiag[i] = -sin * S(k,i) + cos * sdiag[i];
+			S(k,i)   = temp;
 		  }
 		}
 	  }
-
-	  // Store the diagonal element of s and restore
-	  // the corresponding diagonal element of r.
-	  sdiag[j] = r(j,j);
-	  r(j,j) = x[j];
 	}
 
-	// Solve the triangular system for z. if the system is
-	// singular, then obtain a least squares solution.
-	int nsing = n;
-	for (int j = 0; j < n; j++)
-	{
-	  if (sdiag[j] == 0  &&  nsing == n)
-	  {
-		nsing = j;
-	  }
-	  if (nsing < n)
-	  {
-		z[j] = 0;
-	  }
-	}
-
-	for (int k = 0; k < nsing; k++)
-	{
-	  int j = (nsing - 1) - k;
-	  T sum = 0;
-	  for (int i = j + 1; i < nsing; i++)
-	  {
-		sum += r(i,j) * z[i];
-	  }
-	  z[j] = (z[j] - sum) / sdiag[j];
-	}
+	// Solve the triangular system for z.  If the system is singular,
+	// then obtain a least squares solution.
+	int nsing;
+	for (nsing = 0; nsing < n; nsing++) if (sdiag[nsing] == 0) break;
+	if (nsing < n) z.region (nsing).clear ();
+	trsm ('L', 'U', 'T', 'N', nsing, 1, (T) 1, &S(0,0), S.strideC, &z[0], z.strideC);
 
 	// Permute the components of z back to components of x.
 	for (int j = 0; j < n; j++)
@@ -417,47 +386,23 @@ namespace fl
   **/
   template<class T>
   void
-  LevenbergMarquardt<T>::lmpar (Matrix<T> & r, const Vector<int> & pivots, const Vector<T> & scales, const Vector<T> & qtb, T delta, T & par, Vector<T> & x)
+  LevenbergMarquardt<T>::lmpar (const Matrix<T> & J, const Vector<int> & pivots, const Vector<T> & scales, const Vector<T> & Qy, T delta, T & par, Vector<T> & x)
   {
 	const T minimum = std::numeric_limits<T>::min ();
-	const int n = r.columns ();
+	const int n = J.columns ();
 
-	Vector<T> sdiag (n);
-	Vector<T> wa1 (n);
+	Matrix<T> S;
+	Vector<T> d (n);
 
-	// Compute and store in x the gauss-newton direction. If the
-	// jacobian is rank-deficient, obtain a least squares solution.
-	int nsing = n;
-	for (int j = 0; j < n; j++)
-	{
-	  if (r(j,j) == 0  &&  nsing == n)
-	  {
-		nsing = j;
-	  }
-	  if (nsing < n)
-	  {
-		wa1[j] = 0;
-	  }
-	  else
-	  {
-		wa1[j] = qtb[j];
-	  }
-	}
-	// solve for x by back-substitution in rx=qtb (which comes from qrx=b, which
-	// comes from ax=b, where a=J)
-	for (int k = 0; k < nsing; k++)
-	{
-	  int j = (nsing - 1) - k;
-	  T temp = wa1[j] /= r(j,j);
-	  for (int i = 0; i < j; i++)
-	  {
-		wa1[i] -= r(i,j) * temp;
-	  }
-	}
-	for (int j = 0; j < n; j++)
-	{
-	  x[pivots[j]-1] = wa1[j];
-	}
+	// Compute and store in x the gauss-newton direction. If the Jacobian is
+	// rank-deficient, obtain a least squares solution.
+	int nsing;  // index of the first zero diagonal of J.  If no such element exists, then nsing points to one past then end of the diagonal.
+	for (nsing = 0; nsing < n; nsing++) if (J(nsing,nsing) == 0) break;
+	d.region (0) = Qy.region (0, 0, nsing - 1, 0);
+	if (nsing < n) d.region (nsing).clear ();
+	//   Solve for x by back-substitution in Rx=~Qy (which comes from QRx=y, where J=QR).
+	trsm ('L', 'U', 'N', 'N', nsing, 1, (T) 1, &J(0,0), J.strideC, &d[0], d.strideC);
+	for (int j = 0; j < n; j++) x[pivots[j]-1] = d[j];
 
 	// Initialize the iteration counter.
 	// Evaluate the function at the origin, and test
@@ -479,38 +424,24 @@ namespace fl
 	{
 	  for (int j = 0; j < n; j++)
 	  {
-		int l = pivots[j]-1;
-		wa1[j] = scales[l] * (dx[l] / dxnorm);
-	  }
-	  // solve by back-substitution for b in rtb=x (where "x" = d*d*x and x is
-	  // normalized).  note that rt is lower triangular, and that back-sub
-	  // starts at top row rather than bottom
-	  for (int j = 0; j < n; j++)
-	  {
-		T sum = 0;
-		for (int i = 0; i < j; i++)
-		{
-		  sum += r(i,j) * wa1[i];
-		}
-		wa1[j] = (wa1[j] - sum) / r(j,j);
+		int l = pivots[j] - 1;
+		d[j] = scales[l] * (dx[l] / dxnorm);
 	  }
 
-	  T temp = wa1.norm (2);
-	  parl = ((fp / delta) / temp) / temp;
+	  // Solve by back-substitution for b in ~Rb=x (where "x" = d*d*x and x is
+	  // normalized).
+	  trsm ('L', 'U', 'T', 'N', n, 1, (T) 1, &J(0,0), J.strideC, &d[0], d.strideC);
+
+	  T temp = d.norm (2);
+	  parl = fp / delta / temp / temp;
 	}
 
 	// Calculate an upper bound, paru, for the zero of the function.
-	for (int j = 0; j < n; j++)
-	{
-	  T sum = 0;
-	  for (int i = 0; i <= j; i++)
-	  {
-		sum += r(i,j) * qtb[i];  // equivalent to ~J * y before factoriztion
-	  }
-	  wa1[j] = sum / scales[pivots[j]-1];
-	}
-
-	T gnorm = wa1.norm (2);
+	//   d = ~R~Qy, equivalent to ~J * y before factoriztion
+	d.copyFrom (Qy);
+	trmm ('L', 'U', 'T', 'N', n, 1, (T) 1, &J(0,0), J.strideC, &d[0], d.strideC);
+	for (int j = 0; j < n; j++) d[j] /= scales[pivots[j]-1];
+	T gnorm = d.norm (2);
 	T paru = gnorm / delta;
 	if (paru == 0)
 	{
@@ -532,21 +463,14 @@ namespace fl
 	  iter++;
 
 	  // Evaluate the function at the current value of par.
-	  if (par == (T) 0)
-	  {
-		par = std::max (minimum, (T) 0.001 * paru);
-	  }
-	  T temp = std::sqrt (par);
-	  for (int j = 0; j < n; j++)
-	  {
-		wa1[j] = temp * scales[j];
-	  }
+	  if (par == (T) 0) par = std::max (minimum, (T) 0.001 * paru);
+	  d = scales * std::sqrt (par);
 
-	  qrsolv (r, pivots, wa1, qtb, x, sdiag);
+	  qrsolv (J, pivots, d, Qy, x, S);
 
 	  dx = x & scales;
 	  dxnorm = dx.norm (2);
-	  temp = fp;
+	  T temp = fp;
 	  fp = dxnorm - delta;
 
 	  // If the function is small enough, accept the current value
@@ -559,23 +483,16 @@ namespace fl
 		return;
 	  }
 
-	  // Compute the newton correction.
+	  // Compute the Newton correction.
 	  for (int j = 0; j < n; j++)
 	  {
 		int l = pivots[j] - 1;
-		wa1[j] = scales[l] * (dx[l] / dxnorm);
+		d[j] = scales[l] * (dx[l] / dxnorm);
 	  }
-	  for (int j = 0; j < n; j++)
-	  {
-		temp = wa1[j] /= sdiag[j];
-		for (int i = j + 1; i < n; i++)
-		{
-		  wa1[i] -= r(i,j) * temp;
-		}
-	  }
+	  trsm ('L', 'U', 'T', 'N', n, 1, (T) 1, &S(0,0), S.strideC, &d[0], d.strideC);
 
-	  temp = wa1.norm (2);
-	  T parc = ((fp / delta) / temp) / temp;
+	  temp = d.norm (2);
+	  T parc = fp / delta / temp / temp;
 
 	  // Depending on the sign of the function, update parl or paru.
 	  if (fp > 0)

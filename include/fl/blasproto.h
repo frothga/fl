@@ -54,6 +54,30 @@ extern "C"
 			   double         x[],
 			   const int &    incx);
 
+  void dtrmm_ (const char &   side,
+			   const char &   uplo,
+			   const char &   transa,
+			   const char &   diag,
+			   const int &    m,
+			   const int &    n,
+			   const double & alpha,
+			   const double   a[],
+			   const int &    lda,
+			   double         b[],
+			   const int &    ldb);
+
+  void dtrsm_ (const char &   side,
+			   const char &   uplo,
+			   const char &   transa,
+			   const char &   diag,
+			   const int &    m,
+			   const int &    n,
+			   const double & alpha,
+			   const double   a[],
+			   const int &    lda,
+			   double         b[],
+			   const int &    ldb);
+
   void saxpy_ (const int &   n,
 			   const float & alpha,
 			   float         x[],
@@ -89,15 +113,44 @@ extern "C"
 			   const float & alpha,
 			   float         x[],
 			   const int &   incx);
+
+  void strmm_ (const char &  side,
+			   const char &  uplo,
+			   const char &  transa,
+			   const char &  diag,
+			   const int &   m,
+			   const int &   n,
+			   const float & alpha,
+			   const float   a[],
+			   const int &   lda,
+			   float         b[],
+			   const int &   ldb);
+
+  void strsm_ (const char &  side,
+			   const char &  uplo,
+			   const char &  transa,
+			   const char &  diag,
+			   const int &   m,
+			   const int &   n,
+			   const float & alpha,
+			   const float   a[],
+			   const int &   lda,
+			   float         b[],
+			   const int &   ldb);
 }
 
 namespace fl
 {
+  // These functions are used in templates with numeric types other than
+  // those covered by the BLAS.  IE: bool is not any of {float, double,
+  // complex<float>, complex<double>}.  It is simpler just to implement the
+  // routine here rather than check for acceptable numeric types in the
+  // templates that call it.
   // None of the generic implementations in this section fully immitate the
   // behavior of the real BLAS routines.  Specifically, they don't handle
   // negative increments correctly, and they don't early-out on certain
-  // combinations of parameters should produce no change to operands (for
-  // example, scaling by 1 or by 0 in certain circumstances).
+  // combinations of parameters that should produce no change to operands
+  // (for example, scaling by 1 or by 0 in certain circumstances).
 
   template<class T>
   inline void
@@ -346,6 +399,108 @@ namespace fl
 		const int &   incx)
   {
 	sscal_ (n, alpha, x, incx);
+  }
+
+  template<class T>
+  inline void
+  trsm (const char & side,
+		const char & uplo,
+		const char & transa,
+		const char & diag,
+		const int &  m,
+		const int &  n,
+		const T &    alpha,
+		const T      a[],
+		const int &  lda,
+		T            b[],
+		const int &  ldb)
+  {
+	throw "Generic trsm() not yet implemented.";
+  }
+
+  template<>
+  inline void
+  trsm (const char &   side,
+		const char &   uplo,
+		const char &   transa,
+		const char &   diag,
+		const int &    m,
+		const int &    n,
+		const double & alpha,
+		const double   a[],
+		const int &    lda,
+		double         b[],
+		const int &    ldb)
+  {
+	dtrsm_ (side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+  }
+
+  template<>
+  inline void
+  trsm (const char &  side,
+		const char &  uplo,
+		const char &  transa,
+		const char &  diag,
+		const int &   m,
+		const int &   n,
+		const float & alpha,
+		const float   a[],
+		const int &   lda,
+		float         b[],
+		const int &   ldb)
+  {
+	strsm_ (side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+  }
+
+  template<class T>
+  inline void
+  trmm (const char & side,
+		const char & uplo,
+		const char & transa,
+		const char & diag,
+		const int &  m,
+		const int &  n,
+		const T &    alpha,
+		const T      a[],
+		const int &  lda,
+		T            b[],
+		const int &  ldb)
+  {
+	throw "Generic trmm() not yet implemented.";
+  }
+
+  template<>
+  inline void
+  trmm (const char &   side,
+		const char &   uplo,
+		const char &   transa,
+		const char &   diag,
+		const int &    m,
+		const int &    n,
+		const double & alpha,
+		const double   a[],
+		const int &    lda,
+		double         b[],
+		const int &    ldb)
+  {
+	dtrmm_ (side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+  }
+
+  template<>
+  inline void
+  trmm (const char &  side,
+		const char &  uplo,
+		const char &  transa,
+		const char &  diag,
+		const int &   m,
+		const int &   n,
+		const float & alpha,
+		const float   a[],
+		const int &   lda,
+		float         b[],
+		const int &   ldb)
+  {
+	strmm_ (side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
   }
 }
 
