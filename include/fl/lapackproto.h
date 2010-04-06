@@ -62,6 +62,16 @@ extern "C"
 				const int &    lwork,
 				int &          info);
 
+  void dgeqp3_ (const int & m,
+				const int & n,
+				double      a[],
+				const int & lda,
+				int         jpvt[],
+				double      tau[],
+				double      work[],
+				const int & lwork,
+				int &       info);
+
   void dgesvd_ (const char & jobu,
 				const char & jobvt,
 				const int &  m,
@@ -91,6 +101,20 @@ extern "C"
 				double      work[],
 				const int & lwork,
 				int &       info);
+
+  void dormqr_ (const char & side,
+				const char & trans,
+				const int &  m,
+				const int &  n,
+				const int &  k,
+				double       a[],
+				const int &  lda,
+				double       tau[],
+				double       c[],
+				const int &  ldc,
+				double       work[],
+				const int &  lwork,
+				int &        info);
 
   void dspev_ (const char & jobz,
 			   const char & uplo,
@@ -180,6 +204,16 @@ extern "C"
 				const int &   lwork,
 				int &         info);
 
+  void sgeqp3_ (const int & m,
+				const int & n,
+				float       a[],
+				const int & lda,
+				int         jpvt[],
+				float       tau[],
+				float       work[],
+				const int & lwork,
+				int &       info);
+
   void sgesvd_ (const char & jobu,
 				const char & jobvt,
 				const int &  m,
@@ -209,6 +243,20 @@ extern "C"
 				float       work[],
 				const int & lwork,
 				int &       info);
+
+  void sormqr_ (const char & side,
+				const char & trans,
+				const int &  m,
+				const int &  n,
+				const int &  k,
+				float        a[],
+				const int &  lda,
+				float        tau[],
+				float        c[],
+				const int &  ldc,
+				float        work[],
+				const int &  lwork,
+				int &        info);
 
   void sspev_ (const char & jobz,
 			   const char & uplo,
@@ -359,6 +407,34 @@ namespace fl
   }
 
   inline void
+  geqp3 (const int & m,
+		 const int & n,
+		 double      a[],
+		 const int & lda,
+		 int         jpvt[],
+		 double      tau[],
+		 double      work[],
+		 const int & lwork,
+		 int &       info)
+  {
+	dgeqp3_ (m, n, a, lda, jpvt, tau, work, lwork, info);
+  }
+
+  inline void
+  geqp3 (const int & m,
+		 const int & n,
+		 float       a[],
+		 const int & lda,
+		 int         jpvt[],
+		 float       tau[],
+		 float       work[],
+		 const int & lwork,
+		 int &       info)
+  {
+	sgeqp3_ (m, n, a, lda, jpvt, tau, work, lwork, info);
+  }
+
+  inline void
   gesvd (const char & jobu,
 		 const char & jobvt,
 		 const int &  m,
@@ -452,6 +528,42 @@ namespace fl
 		  const int    n4 = -1)
   {
 	return ilaenv_ (ispec, name, opts, n1, n2, n3, n4, strlen (name), strlen (opts));
+  }
+
+  inline void
+  ormqr (const char & side,
+		 const char & trans,
+		 const int &  m,
+		 const int &  n,
+		 const int &  k,
+		 double       a[],
+		 const int &  lda,
+		 double       tau[],
+		 double       c[],
+		 const int &  ldc,
+		 double       work[],
+		 const int &  lwork,
+		 int &        info)
+  {
+	dormqr_ (side, trans, m, n, k, a, lda, tau, c, ldc, work, lwork, info);
+  }
+
+  inline void
+  ormqr (const char & side,
+		 const char & trans,
+		 const int &  m,
+		 const int &  n,
+		 const int &  k,
+		 float        a[],
+		 const int &  lda,
+		 float        tau[],
+		 float        c[],
+		 const int &  ldc,
+		 float        work[],
+		 const int &  lwork,
+		 int &        info)
+  {
+	sormqr_ (side, trans, m, n, k, a, lda, tau, c, ldc, work, lwork, info);
   }
 
   inline void

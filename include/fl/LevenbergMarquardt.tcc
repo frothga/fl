@@ -20,6 +20,7 @@ for details.
 
 #include "fl/search.h"
 #include "fl/math.h"
+#include "fl/lapackproto.h"
 
 #include <float.h>
 #include <limits>
@@ -57,25 +58,20 @@ namespace fl
 
 	int m = y.rows ();
 	int n = x.rows ();
+	int minmn = std::min (m, n);
 
-	Matrix<T> J (m, n);
 	Vector<T> scales (n);
 	T par = 0;  // levenberg-marquardt parameter
 	T ynorm = y.norm (2);
 	T xnorm;
 	T delta;
 
-	// outer loop
 	for (int iteration = 0; iteration < maxIterations; iteration++)
 	{
-	  // calculate the jacobian matrix
+	  Matrix<T> J;
 	  searchable.jacobian (x, J, &y);
-
-	  // compute the qr factorization of the jacobian.
-	  Vector<int> pivots (n);
-	  Vector<T> rdiag (n);  // wa1
-	  Vector<T> jacobianNorms (n);  // wa2
-	  qrfac (J, pivots, rdiag, jacobianNorms);
+	  Vector<T> jacobianNorms (n);
+	  for (int j = 0; j < n; j++) jacobianNorms[j] = J.column (j).norm (2);
 
 	  // On the first iteration ...
 	  if (iteration == 0)
@@ -84,10 +80,7 @@ namespace fl
 		for (int j = 0; j < n; j++)
 		{
 		  scales[j] = jacobianNorms[j];
-		  if (scales[j] == 0)
-		  {
-			scales[j] = 1;
-		  }
+		  if (scales[j] == 0) scales[j] = 1;
 		}
 
 		// Calculate the norm of the scaled x and initialize the step bound delta.
@@ -95,30 +88,33 @@ namespace fl
 		delta = (xnorm * (T) 1) == (T) 0 ? (T) 1 : xnorm;  // Does the multiplication by 1 here make a difference?  This seems to be a test of floating-point representation.
 	  }
 
-	  // Form (q transpose)*y and store the first n components in qtf.
-	  // Fix J so it contains the diagonal of R rather than tau of Q
-	  Vector<T> qtf (n);
-	  Vector<T> tempY;
-	  tempY.copyFrom (y);
-	  for (int j = 0; j < n; j++)
-	  {
-		T tau = J(j,j);
-		if (tau != 0)
-		{
-		  T sum = 0;
-		  for (int i = j; i < m; i++)
-		  {
-			sum += J(i,j) * tempY[i];
-		  }
-		  sum /= -tau;
-		  for (int i = j; i < m; i++)
-		  {
-			tempY[i] += J(i,j) * sum;
-		  }
-		}
-		J(j,j) = rdiag[j];  // Replace tau_j with diagonal part of R
-		qtf[j] = tempY[j];
-	  }
+	  // QR factorization of J
+	  Vector<int> pivots (n);
+	  pivots.clear ();
+	  Vector<T> tau (minmn);
+	  T optimalSize = 0;
+	  int lwork = -1;
+	  int info = 0;
+	  geqp3 (m, n, &J(0,0), J.strideC, &pivots[0], &tau[0], &optimalSize, lwork, info);
+	  if (info) throw info;
+	  lwork = (int) optimalSize;
+	  T * work = (T *) malloc (lwork * sizeof (T));
+	  geqp3 (m, n, &J(0,0), J.strideC, &pivots[0], &tau[0], work, lwork, info);
+	  free (work);
+	  if (info) throw info;
+
+	  // Compute first n elements of ~Q*y
+	  Vector<T> Qy;
+	  Qy.copyFrom (y);
+	  lwork = -1;
+	  ormqr ('L', 'T', m, 1, minmn, &J(0,0), J.strideC, &tau[0], &Qy[0], Qy.strideC, &optimalSize, lwork, info);
+	  if (info) throw info;
+	  lwork = (int) optimalSize;
+	  work = (T *) malloc (lwork * sizeof (T));
+	  ormqr ('L', 'T', m, 1, minmn, &J(0,0), J.strideC, &tau[0], &Qy[0], Qy.strideC, work, lwork, info);
+	  free (work);
+	  if (info) throw info;
+	  Qy.rows_ = n;
 
 	  // compute the norm of the scaled gradient
 	  T gnorm = 0;
@@ -126,15 +122,11 @@ namespace fl
 	  {
 		for (int j = 0; j < n; j++)
 		{
-		  int l = pivots[j];
-		  if (jacobianNorms[l] != 0)
+		  T jnorm = jacobianNorms[pivots[j]-1];  // pivots are 1-based
+		  if (jnorm != 0)
 		  {
-			T sum = 0;
-			for (int i = 0; i <= j; i++)
-			{
-			  sum += J(i,j) * qtf[i];  // This use of the factored J is equivalent to ~J * y using the original J.  (That is, ~R * ~Q * y, where J = QR)
-			}
-			gnorm = std::max (gnorm, std::fabs (sum / (ynorm * jacobianNorms[l])));  // infinity norm of g = ~J * y / |y|.
+			T temp = J.region (0, j, j, j).dot (Qy);  // equivalent to ~J * y using the original J.  (That is, ~R * ~Q * y, where J = QR)
+			gnorm = std::max (gnorm, std::fabs (temp / (ynorm * jnorm)));  // infinity norm of g = ~J * y / |y| with some additional scaling
 		  }
 		}
 	  }
@@ -157,8 +149,8 @@ namespace fl
 	  while (ratio < 0.0001)
 	  {
 		// determine the levenberg-marquardt parameter.
-		Vector<T> p (n);  // wa1
-		lmpar (J, pivots, scales, qtf, delta, par, p);
+		Vector<T> p (n);
+		lmpar (J, pivots, scales, Qy, delta, par, p);
 
 		// store the direction p and x + p. calculate the norm of p.
 		Vector<T> xp = x - p;  // p is actually negative
@@ -171,6 +163,7 @@ namespace fl
 		}
 
 		// evaluate the function at x + p and calculate its norm
+		Vector<T> tempY;
 		searchable.value (xp, tempY);
 		T ynorm1 = tempY.norm (2);
 
@@ -187,11 +180,7 @@ namespace fl
 		Jp.clear ();
 		for (int j = 0; j < n; j++)
 		{
-		  T pj = p[pivots[j]];
-		  for (int i = 0; i <= j; i++)
-		  {
-			Jp[i] += J(i,j) * pj;  // equivalent to J * p using the original J, since all scale informtion is in the R part of the QR factorizatoion
-		  }
+		  Jp += J.region (0, j, j, j) * p[pivots[j]-1];  // equivalent to J * p using the original J, since all scale informtion is in the R part of the QR factorizatoion
 		}
 		T temp1 = Jp.norm (2) / ynorm;
 		T temp2 = std::sqrt (par) * pnorm / ynorm;
@@ -277,96 +266,22 @@ namespace fl
 	throw (int) 5;  // exceeded maximum iterations
   }
 
-  template<class T>
-  void
-  LevenbergMarquardt<T>::qrfac (Matrix<T> & a, Vector<int> & pivots, Vector<T> & rdiag, Vector<T> & acnorm)
-  {
-	const T epsilon = std::numeric_limits<T>::epsilon ();
-	const int m = a.rows ();
-	const int n = a.columns ();
-	Vector<T> wa (n);
-
-	// Compute the initial column norms and initialize several arrays.
-	for(int j = 0; j < n; j++)
-	{
-	  wa[j] = rdiag[j] = acnorm[j] = a.column (j).norm (2);
-	  pivots[j] = j;
-	}
-
-	// Reduce a to r with householder transformations.
-	int minmn = std::min (m, n);
-	for (int j = 0; j < minmn; j++ )
-	{
-	  // Bring the column of largest norm into the pivot position.
-	  int kmax = j;
-	  for(int k = j + 1; k < n; k++)
-	  {
-		if (rdiag[k] > rdiag[kmax])
-		{
-		  kmax = k;
-		}
-	  }
-
-	  if (kmax != j)
-	  {
-		Vector<T> temp = a.column (j);
-		a.column (j) = a.column (kmax);
-		a.column (kmax) = temp;
-
-		rdiag[kmax] = rdiag[j];
-		wa[kmax] = wa[j];
-
-		std::swap (pivots[j], pivots[kmax]);
-	  }
-
-	  // Compute the householder transformation to reduce the
-	  // j-th column of a to a multiple of the j-th unit vector.
-	  MatrixRegion<T> jthColumn (a, j, j, m-1, j);  // Actually, lower portion of column
-	  T ajnorm = jthColumn.norm (2);
-	  if (ajnorm != 0)
-	  {
-		if (a(j,j) < 0)
-		{
-		  ajnorm = -ajnorm;
-		}
-
-		jthColumn /= ajnorm;
-		a(j,j) += 1;
-
-		// Apply the transformation to the remaining columns and update the norms.
-		//jp1 = j + 1;
-		for(int k = j + 1; k < n; k++)
-		{
-		  MatrixRegion<T> kthColumn (a, j, k, m-1, k);
-		  kthColumn -= jthColumn * (jthColumn.dot (kthColumn) / a(j,j));
-
-		  if(rdiag[k] != 0)
-		  {
-			T temp = a(j,k) / rdiag[k];
-			rdiag[k] *= std::sqrt (std::max ((T) 0, 1 - temp * temp));
-			temp = rdiag[k] / wa[k];
-			if (0.05 * temp * temp <= epsilon)
-			{
-			  rdiag[k] = MatrixRegion<T> (a, j+1, k, m-1, k).norm (2);
-			  wa[k] = rdiag[k];
-			}
-		  }
-		}
-	  }
-
-	  rdiag[j] = -ajnorm;
-	}
-  }
-
+  /**
+	 @param r The QR-factored Jacobian.  Since Q has already been applied, we
+	 don't need it any more, so the lower-triangular part of r is free. for
+	 scratch space.
+  **/
   template<class T>
   void
   LevenbergMarquardt<T>::qrsolv (Matrix<T> & r, const Vector<int> & pivots, const Vector<T> & scales, const Vector<T> & qtb, Vector<T> & x, Vector<T> & sdiag)
   {
 	int n = r.columns ();
-	Vector<T> wa (n);
 
 	// Copy r and (q transpose)*b to preserve input and initialize s.
 	// In particular, save the diagonal elements of r in x.
+	Vector<T> z;
+	z.copyFrom (qtb);
+
 	for (int j = 0; j < n; j++)
 	{
 	  for (int i = j + 1; i < n; i++)
@@ -374,7 +289,6 @@ namespace fl
 		r(i,j) = r(j,i);
 	  }
 	  x[j] = r(j,j);
-	  wa[j] = qtb[j];
 	}
 
 	// Eliminate the diagonal matrix d using a givens rotation.
@@ -382,7 +296,7 @@ namespace fl
 	{
 	  // Prepare the row of d to be eliminated, locating the
 	  // diagonal element using p from the qr factorization.
-	  int l = pivots[j];
+	  int l = pivots[j] - 1;
 	  if (scales[l] != 0)
 	  {
 		sdiag[j] = scales[l];
@@ -421,9 +335,9 @@ namespace fl
 		  // Compute the modified diagonal element of r and
 		  // the modified element of ((q transpose)*b,0).
 		  r(k,k) = cos * r(k,k) + sin * sdiag[k];
-		  T temp = cos * wa[k] + sin * qtbpj;
-		  qtbpj = -sin * wa[k] + cos * qtbpj;
-		  wa[k] = temp;
+		  T temp = cos * z[k] + sin * qtbpj;
+		  qtbpj = -sin * z[k] + cos * qtbpj;
+		  z[k] = temp;
 
 		  // Accumulate the tranformation in the row of s.
 		  for (int i = k + 1; i < n; i++)
@@ -452,7 +366,7 @@ namespace fl
 	  }
 	  if (nsing < n)
 	  {
-		wa[j] = 0;
+		z[j] = 0;
 	  }
 	}
 
@@ -462,15 +376,15 @@ namespace fl
 	  T sum = 0;
 	  for (int i = j + 1; i < nsing; i++)
 	  {
-		sum += r(i,j) * wa[i];
+		sum += r(i,j) * z[i];
 	  }
-	  wa[j] = (wa[j] - sum) / sdiag[j];
+	  z[j] = (z[j] - sum) / sdiag[j];
 	}
 
 	// Permute the components of z back to components of x.
 	for (int j = 0; j < n; j++)
 	{
-	  x[pivots[j]] = wa[j];
+	  x[pivots[j]-1] = z[j];
 	}
   }
 
@@ -542,7 +456,7 @@ namespace fl
 	}
 	for (int j = 0; j < n; j++)
 	{
-	  x[pivots[j]] = wa1[j];
+	  x[pivots[j]-1] = wa1[j];
 	}
 
 	// Initialize the iteration counter.
@@ -565,7 +479,7 @@ namespace fl
 	{
 	  for (int j = 0; j < n; j++)
 	  {
-		int l = pivots[j];
+		int l = pivots[j]-1;
 		wa1[j] = scales[l] * (dx[l] / dxnorm);
 	  }
 	  // solve by back-substitution for b in rtb=x (where "x" = d*d*x and x is
@@ -593,7 +507,7 @@ namespace fl
 	  {
 		sum += r(i,j) * qtb[i];  // equivalent to ~J * y before factoriztion
 	  }
-	  wa1[j] = sum / scales[pivots[j]];
+	  wa1[j] = sum / scales[pivots[j]-1];
 	}
 
 	T gnorm = wa1.norm (2);
@@ -648,7 +562,7 @@ namespace fl
 	  // Compute the newton correction.
 	  for (int j = 0; j < n; j++)
 	  {
-		int l = pivots[j];
+		int l = pivots[j] - 1;
 		wa1[j] = scales[l] * (dx[l] / dxnorm);
 	  }
 	  for (int j = 0; j < n; j++)
