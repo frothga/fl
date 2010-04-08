@@ -268,19 +268,28 @@ namespace fl
   }
 
   /**
-	 qrsolv algorithm:
-	 A generalized least squares problem:  Solve the system
-	   Jx=y  and  dx=0,
-	 where Jp=QR.  Substitute x=pz to get
-	   Rz=~Qy  and  ~pdpz=0.
-
+	 Updates the QR factorization of J to include an additional amount on the
+	 diagonal, and solves for x using the updated factorization.  On entry,
+	 J and pivots contain the initial QR factors: Jv=QR  (where "v" is pivots).
+	 This routine computs a new factorization SS' = v'(J'J+dd)v, and S is
+	 stored in the lower triangular part of J.  (Since v'(J'J+dd)v is
+	 symmetric positive semi-definite, SS' is both its Cholesky decomposition
+	 and its QR decomposition.)  The original diagonal of J is set aside in
+	 jdiag, so that it can be restored after the calling routine is finished
+	 with S.  Finally, this routine solves for x in
+	   v'(J'J+dd)vx=J'y
+	 which simplifies as follows
+	   SS'x=R'Q'y
+	   S'x=(!S'R')Q'y
+	 The code seems to apply the effect of matrix !S'R' on Q'y as it
+	 computes S, so at the end it simply solves S'x=z, where z contains the
+	 modified Q'y.
 	 @param J The QR-factored Jacobian.  Since Q has already been applied to
-	 y in Qy, we don't need it any more, so the lower-triangular part is free.
-	 @param S A matrix such that ~SS = ~p(~JJ+dd)p
+	 y in "Qy", we don't need it any more, so the lower-triangular part is free.
   **/
   template<class T>
   void
-  LevenbergMarquardt<T>::qrsolv (const Matrix<T> & J, const Vector<int> & pivots, const Vector<T> & d, const Vector<T> & Qy, Vector<T> & x, Matrix<T> & S)
+  LevenbergMarquardt<T>::qrsolv (Matrix<T> & J, const Vector<int> & pivots, const Vector<T> & d, const Vector<T> & Qy, Vector<T> & x, Vector<T> & jdiag)
   {
 	const int n = J.columns ();
 
@@ -288,10 +297,17 @@ namespace fl
 	// In particular, save the diagonal elements of J in x.
 	Vector<T> z;
 	z.copyFrom (Qy);
-	S.copyFrom (J.region (0, 0, n-1, n-1));  // copies twice as many elements as necessary
+	for (int j = 0; j < n; j++)
+	{
+	  for (int i = j + 1; i < n; i++)
+	  {
+		J(i,j) = J(j,i);
+	  }
+	  jdiag[j] = J(j,j);
+	}
+	Vector<T> stemp = x;  // Alias stemp to x to use its (currently free) storage space for computation.  x will be filled in with a meaningful value at the end of this function.
 
 	// Eliminate the diagonal matrix d using a givens rotation.
-	Vector<T> sdiag (n);
 	for (int j = 0; j < n; j++)
 	{
 	  // Prepare the row of d to be eliminated, locating the
@@ -299,35 +315,35 @@ namespace fl
 	  int l = pivots[j] - 1;
 	  if (d[l] != 0)
 	  {
-		sdiag[j] = d[l];
-		sdiag.region (j+1).clear ();
+		stemp[j] = d[l];
+		stemp.region (j+1).clear ();
 
 		// The transformations to eliminate the row of d modify only a single
-		// element of Qy beyond the first n.  This element is is initially zero.
+		// element of Qy beyond the first n.  This element is initially zero.
 		T extraElement = 0;
 		for (int k = j; k < n; k++)
 		{
 		  // Determine a givens rotation which eliminates the appropriate
 		  // element in the current row of d.
-		  if (sdiag[k] == 0) continue;
+		  if (stemp[k] == 0) continue;
 		  T sin;
 		  T cos;
-		  if (std::fabs (S(k,k)) < std::fabs (sdiag[k]))
+		  if (std::fabs (J(k,k)) < std::fabs (stemp[k]))
 		  {
-			T cotan = S(k,k) / sdiag[k];
+			T cotan = J(k,k) / stemp[k];
 			sin = 0.5 / std::sqrt (0.25 + 0.25 * cotan * cotan);
 			cos = sin * cotan;
 		  }
 		  else
 		  {
-			T tan = sdiag[k] / S(k,k);
+			T tan = stemp[k] / J(k,k);
 			cos = 0.5 / std::sqrt (0.25 + 0.25 * tan * tan);
 			sin = cos * tan;
 		  }
 
 		  // Compute the modified diagonal element of S and the modified
 		  // extra element of Qy.
-		  S(k,k)       =  cos * S(k,k) + sin * sdiag[k];
+		  J(k,k)       =  cos * J(k,k) + sin * stemp[k];
 		  T temp       =  cos * z[k]   + sin * extraElement;
 		  extraElement = -sin * z[k]   + cos * extraElement;
 		  z[k] = temp;
@@ -335,20 +351,20 @@ namespace fl
 		  // Accumulate the tranformation in the row of S.
 		  for (int i = k + 1; i < n; i++)
 		  {
-			T temp   =  cos * S(k,i) + sin * sdiag[i];
-			sdiag[i] = -sin * S(k,i) + cos * sdiag[i];
-			S(k,i)   = temp;
+			T temp   =  cos * J(i,k) + sin * stemp[i];
+			stemp[i] = -sin * J(i,k) + cos * stemp[i];
+			J(i,k)   = temp;
 		  }
 		}
 	  }
 	}
 
-	// Solve the triangular system for z.  If the system is singular,
+	// Solve the triangular system S'x=z.  If the system is singular,
 	// then obtain a least squares solution.
 	int nsing;
-	for (nsing = 0; nsing < n; nsing++) if (sdiag[nsing] == 0) break;
+	for (nsing = 0; nsing < n; nsing++) if (J(nsing,nsing) == 0) break;
 	if (nsing < n) z.region (nsing).clear ();
-	trsm ('L', 'U', 'T', 'N', nsing, 1, (T) 1, &S(0,0), S.strideC, &z[0], z.strideC);
+	trsm ('L', 'L', 'T', 'N', nsing, 1, (T) 1, &J(0,0), J.strideC, &z[0], z.strideC);
 
 	// Permute the components of z back to components of x.
 	for (int j = 0; j < n; j++)
@@ -361,37 +377,37 @@ namespace fl
 	 lmpar algorithm:
 
 	 A constrained lls problem:
-	   solve (~JJ + pDD)x = ~Jf
+	   solve (J'J + pDD)x = J'f
 	   such that |Dx| is pretty close to delta
 
 	 Start with p = 0 and determine x
-	   Solve for x in ~JJx = ~Jf
+	   Solve for x in J'Jx = J'f
 	   Early out if |Dx| is close to delta
 	 Determine min and max values for p
-	   J = QR  (so ~JJ = ~RR)
-	   solve for b in ~Rb = DDx / |Dx|
+	   J = QR  (so J'J = R'R)
+	   solve for b in R'b = DDx / |Dx|
 	   min = (|Dx| - delta) / (delta * |b|^2)
-	   max = |!D~Jf| / delta
+	   max = |!DJ'f| / delta
 	 Initialize p
 	   make sure it is in bounds
-	   if p is zero, p = |!D~Jf| / |Dx|
+	   if p is zero, p = |!DJ'f| / |Dx|
 	 Iterate
-	   solve for x in (~JJ + pDD)x = ~Jf
+	   solve for x in (J'J + pDD)x = J'f
+	     let (J'J + pDD) = QR (=SS' from qrsolv)
 	   end if |Dx| is close to delta
 	     or too many iterations
 		 or |Dx| is becoming smaller than delta when min == 0
-	   (~JJ + pDD) = QR
-	   solve for b in ~Rb = DDx / |Dx|
+	   solve for b in R'b = DDx / |Dx|  (that is, Sb = DDx / |Dx|)
 	   p += (|Dx| - delta) / (delta * |b|^2)
   **/
   template<class T>
   void
-  LevenbergMarquardt<T>::lmpar (const Matrix<T> & J, const Vector<int> & pivots, const Vector<T> & scales, const Vector<T> & Qy, T delta, T & par, Vector<T> & x)
+  LevenbergMarquardt<T>::lmpar (Matrix<T> & J, const Vector<int> & pivots, const Vector<T> & scales, const Vector<T> & Qy, T delta, T & par, Vector<T> & x)
   {
 	const T minimum = std::numeric_limits<T>::min ();
 	const int n = J.columns ();
 
-	Matrix<T> S;
+	Vector<T> jdiag (n);
 	Vector<T> d (n);
 
 	// Compute and store in x the gauss-newton direction. If the Jacobian is
@@ -400,7 +416,7 @@ namespace fl
 	for (nsing = 0; nsing < n; nsing++) if (J(nsing,nsing) == 0) break;
 	d.region (0) = Qy.region (0, 0, nsing - 1, 0);
 	if (nsing < n) d.region (nsing).clear ();
-	//   Solve for x by back-substitution in Rx=~Qy (which comes from QRx=y, where J=QR).
+	//   Solve for x by back-substitution in Rx=Q'y (which comes from QRx=y, where J=QR).
 	trsm ('L', 'U', 'N', 'N', nsing, 1, (T) 1, &J(0,0), J.strideC, &d[0], d.strideC);
 	for (int j = 0; j < n; j++) x[pivots[j]-1] = d[j];
 
@@ -428,7 +444,7 @@ namespace fl
 		d[j] = scales[l] * (dx[l] / dxnorm);
 	  }
 
-	  // Solve by back-substitution for b in ~Rb=x (where "x" = d*d*x and x is
+	  // Solve by back-substitution for b in R'b=x (where "x" = d*d*x and x is
 	  // normalized).
 	  trsm ('L', 'U', 'T', 'N', n, 1, (T) 1, &J(0,0), J.strideC, &d[0], d.strideC);
 
@@ -437,7 +453,7 @@ namespace fl
 	}
 
 	// Calculate an upper bound, paru, for the zero of the function.
-	//   d = ~R~Qy, equivalent to ~J * y before factoriztion
+	//   d = R'Q'y, equivalent to J'y before factoriztion
 	d.copyFrom (Qy);
 	trmm ('L', 'U', 'T', 'N', n, 1, (T) 1, &J(0,0), J.strideC, &d[0], d.strideC);
 	for (int j = 0; j < n; j++) d[j] /= scales[pivots[j]-1];
@@ -457,16 +473,16 @@ namespace fl
 	  par = gnorm / dxnorm;
 	}
 
-	int iter = 0;
+	int iteration = 0;
 	while (true)
 	{
-	  iter++;
+	  iteration++;
 
 	  // Evaluate the function at the current value of par.
 	  if (par == (T) 0) par = std::max (minimum, (T) 0.001 * paru);
 	  d = scales * std::sqrt (par);
 
-	  qrsolv (J, pivots, d, Qy, x, S);
+	  qrsolv (J, pivots, d, Qy, x, jdiag);
 
 	  dx = x & scales;
 	  dxnorm = dx.norm (2);
@@ -478,8 +494,9 @@ namespace fl
 	  // is zero or the number of iterations has reached 10.
 	  if (   std::fabs (fp) <= 0.1 * delta
 		  || (parl == 0  &&  fp <= temp  &&  temp < 0)
-		  || iter >= 10)
+		  || iteration >= 10)
 	  {
+		for (int j = 0; j < n; j++) J(j,j) = jdiag[j];  // Restore J's diagonal before returning.
 		return;
 	  }
 
@@ -489,7 +506,8 @@ namespace fl
 		int l = pivots[j] - 1;
 		d[j] = scales[l] * (dx[l] / dxnorm);
 	  }
-	  trsm ('L', 'U', 'T', 'N', n, 1, (T) 1, &S(0,0), S.strideC, &d[0], d.strideC);
+	  trsm ('L', 'L', 'N', 'N', n, 1, (T) 1, &J(0,0), J.strideC, &d[0], d.strideC);
+	  for (int j = 0; j < n; j++) J(j,j) = jdiag[j];  // Restore J's diagonal.
 
 	  temp = d.norm (2);
 	  T parc = fp / delta / temp / temp;

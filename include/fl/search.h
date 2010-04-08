@@ -247,8 +247,8 @@ namespace fl
 
 	virtual void search (Searchable<T> & searchable, Vector<T> & point);
 
-	void qrsolv (const Matrix<T> & J, const Vector<int> & pivots, const Vector<T> & d,      const Vector<T> & Qy, Vector<T> & x, Matrix<T> & S);
-	void lmpar  (const Matrix<T> & J, const Vector<int> & pivots, const Vector<T> & scales, const Vector<T> & Qy, T delta, T & par, Vector<T> & x);
+	void qrsolv (Matrix<T> & J, const Vector<int> & pivots, const Vector<T> & d,      const Vector<T> & Qy, Vector<T> & x, Vector<T> & jdiag);
+	void lmpar  (Matrix<T> & J, const Vector<int> & pivots, const Vector<T> & scales, const Vector<T> & Qy, T delta, T & par, Vector<T> & x);
 
 	T toleranceF;
 	T toleranceX;

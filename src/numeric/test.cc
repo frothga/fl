@@ -26,6 +26,20 @@ using namespace std;
 using namespace fl;
 
 
+inline Matrix<double>
+makeMatrix (const int m, const int n)
+{
+  Matrix<double> A (m, n);
+  for (int r = 0; r < m; r++)
+  {
+	for (int c = 0; c < n; c++)
+	{
+	  A(r,c) = randfb ();
+	}
+  }
+  return A;
+}
+
 template<class T>
 class TestFunction
 {
@@ -33,7 +47,6 @@ public:
   Vector<T> startPoint;
   Vector<T> endPoint;
   T         endResidual;
-  bool      isLineSearch;
 };
 
 /**
@@ -49,7 +62,6 @@ public:
 	TestFunction<T>::startPoint   = Vector<T> ("[0 1 2]");
 	TestFunction<T>::endPoint     = Vector<T> ("[0.08241058  1.133037  2.343695]");
 	TestFunction<T>::endResidual  = 0.09063596;
-	TestFunction<T>::isLineSearch = false;
 
 	SearchableGreedy<T>::bestResidual = INFINITY;
   }
@@ -86,6 +98,62 @@ public:
   }
 };
 
+/**
+   Each output element is a sum of polynomials of the given degree, one
+   polynomial per input element.  This problem can be made almost arbitrarily
+   hard, such that only an exhaustive search can find the true global minimum.
+   Gradient methods should be able to solve polynomials of degree 2 where
+   all the coefficients are positive, since there should be only a single
+   minimum.
+**/
+template<class T>
+class PolynomialTestFunction : public SearchableNumeric<T>, public TestFunction<T>
+{
+public:
+  PolynomialTestFunction (int rows = 15, int degree = 3, T perturbation = -1)
+  : rows (rows),
+	degree (degree),
+	SearchableNumeric<T> (perturbation)
+  {
+	TestFunction<T>::startPoint   = Vector<T> ("[10 10 10]");  // starting far away seems to help
+	TestFunction<T>::endPoint     = Vector<T> ("[1 2 3]");
+	TestFunction<T>::endResidual  = 0;  // by design, this problem can be solved exactly
+
+	A = makeMatrix (rows, (degree + 1) * TestFunction<T>::startPoint.rows ());
+	correctValue = f (TestFunction<T>::endPoint);
+  }
+
+  virtual int dimension ()
+  {
+	return rows;
+  }
+
+  virtual void value (const Vector<T> & x, Vector<T> & result)
+  {
+	result = f (x) - correctValue;
+	cerr << ".";
+  }
+
+  MatrixResult<T> f (const Vector<T> & x)
+  {
+	Vector<T> powers (A.columns ());
+	assert (A.columns () == x.rows () * (degree + 1));
+	for (int i = 0; i < x.rows (); i++)
+	{
+	  for (int p = 0; p <= degree; p++)
+	  {
+		powers[i * (degree + 1) + p] = pow (x[i], (T) p);
+	  }
+	}
+	return A * powers;
+  }
+
+  int rows;
+  int degree;
+  Matrix<T> A;
+  Vector<T> correctValue;
+};
+
 template<class T>
 class SparseTestFunction : public SearchableSparse<T>, public TestFunction<T>
 {
@@ -96,7 +164,6 @@ public:
 	TestFunction<T>::startPoint   = Vector<T> ("[0 1 2]");
 	TestFunction<T>::endPoint     = Vector<T> ("[0.08241058  1.133037  2.343695]");
 	TestFunction<T>::endResidual  = 0;
-	TestFunction<T>::isLineSearch = false;
 
 	this->cover ();
   }
@@ -146,7 +213,6 @@ public:
 	TestFunction<T>::startPoint   = Vector<T> ("[0]");
 	TestFunction<T>::endPoint     = Vector<T> ("[0.5]");
 	TestFunction<T>::endResidual  = t->endResidual;
-	TestFunction<T>::isLineSearch = true;
   }
 };
 
@@ -156,39 +222,46 @@ testSearch ()
 {
   vector<Searchable<T> *> searchables;
   searchables.push_back (new MinpackTestFunction<T>);
+  searchables.push_back (new PolynomialTestFunction<T>);
   searchables.push_back (new SparseTestFunction<T>);
   searchables.push_back (new ConstrictionTestFunction<T> (searchables[0]));
 
-  struct SearchTest
-  {
-	T           epsilon;
-	bool        doLineSearch;
-	Search<T> * search;
-  };
-  SearchTest searches[] =
-  {
-	{1e-2, 0, new AnnealingAdaptive<T>},  // Stochastic search along a single dimension doesn't seem to work so well.
-	{1e-2, 1, new ConjugateGradient<T>},
-	{1e-2, 1, new GradientDescent<T> (1e-4)},  // The default toleranceX for double is too tight.
-	{1e-6, 1, new LevenbergMarquardt<T>},
-	{1e-4, 1, new LevenbergMarquardtSparseBK<T>},
-	{1e-3, 1, new NewtonRaphson<T>},
-  };
-  int count = sizeof (searches) / sizeof (SearchTest);
+  vector <Search<T> *> searches;
+  searches.push_back (new AnnealingAdaptive<T>);  // Stochastic search along a single dimension doesn't seem to work so well.
+  searches.push_back (new ConjugateGradient<T>);
+  searches.push_back (new GradientDescent<T> (1e-4));  // The default toleranceX for double is too tight.
+  searches.push_back (new LevenbergMarquardt<T>);
+  searches.push_back (new LevenbergMarquardtSparseBK<T>);
+  searches.push_back (new NewtonRaphson<T>);
 
-  for (int i = 0; i < searchables.size (); i++)
+  const int m = searchables.size ();
+  const int n = searches.size ();
+  Matrix<T> epsilons (m, n);
+  epsilons.clear (INFINITY);  // by default, disable all tests; then enable them below
+  epsilons.column (0).clear (1e-2);  // AnnealingAdaptive
+  epsilons.column (1).clear (1e-2);  // ConjugateGradient
+  epsilons.column (2).clear (1e-2);  // GradientDescent
+  epsilons.column (3).clear (1e-6);  // LevenbergMarquardt
+  epsilons.column (4).clear (1e-6);  // LevenbergMarquardtBK
+  epsilons.column (5).clear (1e-3);  // NewtonRaphson
+  epsilons(3,0) = INFINITY;  // AnnealingAdaptive can't solve a line search
+  epsilons.row (1).clear (INFINITY);  // very few methods can solve PolynomialTestFunction ...
+  epsilons(1,3) = 1e-5;  // except LM
+  epsilons(1,4) = 1e-7;
+
+  for (int i = 0; i < m; i++)
   {
 	Searchable<T> * function = searchables[i];
 	TestFunction<T> * t = dynamic_cast<TestFunction<T> *> (function);
 
-	for (int j = 0; j < count; j++)
+	for (int j = 0; j < n; j++)
 	{
-	  T epsilon     = searches[j].epsilon;
-	  Search<T> * s = searches[j].search;
+	  T epsilon = epsilons(i,j);
+	  Search<T> * s = searches[j];
 	  cerr << typeid (*s).name () << " searching " << typeid (*function).name () << endl;
-	  if (t->isLineSearch  &&  ! searches[j].doLineSearch)
+	  if (isinf (epsilon))
 	  {
-		cerr << "  skipping because can't do line search" << endl;
+		cerr << "  skipping" << endl;
 		continue;
 	  }
 
@@ -208,25 +281,10 @@ testSearch ()
 	}
   }
 
-  for (int i = 0; i < count; i++) delete searches[i].search;
-  for (int i = searchables.size () - 1; i >= 0; i--) delete searchables[i];
+  for (int i = 0; i < n; i++) delete searches[i];
+  for (int i = m - 1; i >= 0; i--) delete searchables[i];
 
   cout << "Search passes" << endl;
-}
-
-
-inline Matrix<double>
-makeMatrix (const int m, const int n)
-{
-  Matrix<double> A (m, n);
-  for (int r = 0; r < m; r++)
-  {
-	for (int c = 0; c < n; c++)
-	{
-	  A(r,c) = randfb ();
-	}
-  }
-  return A;
 }
 
 template<class T>
