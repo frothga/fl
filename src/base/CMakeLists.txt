@@ -34,3 +34,8 @@ else (CMAKE_SIZEOF_VOID_P EQUAL 8)
     ARCHIVE DESTINATION lib
   )
 endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
+
+add_executable (testBase test.cc)
+target_link_libraries (testBase
+  flBase
+)
