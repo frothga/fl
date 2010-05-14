@@ -207,7 +207,7 @@ KLT::track (Point & point)
   int lowestLevel;
   if (PointInterest * p = dynamic_cast<PointInterest *> (&point))
   {
-	lowestLevel = (int) rint (log (p->scale / windowRadius) / log (pyramidRatio));
+	lowestLevel = (int) roundp (log (p->scale / windowRadius) / log (pyramidRatio));
 	lowestLevel = max (lowestLevel, 0);
 	lowestLevel = min (lowestLevel, highestLevel);
   }

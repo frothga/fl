@@ -23,6 +23,7 @@ for details.
 
 #include <float.h>
 #include <algorithm>
+#include <limits>
 
 #undef small  // Somehow, this gets defined (as char) under MSVC x64
 
