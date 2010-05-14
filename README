@@ -47,25 +47,24 @@ mswin
 	is included as a convenience for Windows users.
 
 	These libraries are built from unmodified source code, a feat which the
-	user may replicate using either MinGW or Cygwin with the -mno-cygwin flag.
-	The source code for the libraries is not included as it can be obtained
-	directly from their respective authors.
+	user may replicate by following the instructions in
+	"How to build support libraries.txt"
 
 
-Building under GNU systems
---------------------------
+Building under posix systems
+----------------------------
 
-Unlike the typical library distribution, this one has no configure script.
-Instead, you must edit the file Config to point to all the external
-dependencies.  Typically, it is sufficient to set the value for INSTALL_DIR.
-After you have edited Config to your satisfaction, run "make" or
-"make install" at the command line.
+Use CMake to generate a makefile and resolve external dependencies.
+After CMake is done, run "make" or "make install" at the command line.
 
 
 Building under Microsoft Visual Studio
 --------------------------------------
 
-Open the "fl.sln" solution file, and then build it.  :)  When building your
-application, you will need to add fl/include, mswin/include, fl/lib, and
-mswin/lib to the appropriate paths.  You will also need to explicitly
-reference the fl and mswin static libs.
+Use CMake to generate a VS project and resolve external dependencies.
+It should automatically locate any resources built and placed in the mswin
+directory of this project.  Once CMake is done, open the resulting solution
+file in VS and build it.  When using FL in your your own applications,
+you will need to add fl/include, mswin/include, fl/lib, and mswin/lib
+to the appropriate paths.  You will also need to explicitly reference the
+fl and mswin static libs.
