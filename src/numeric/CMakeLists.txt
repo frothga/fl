@@ -42,6 +42,10 @@ if (LAPACK_FOUND)
   )
 endif (LAPACK_FOUND)
 
+if (FFTW_FOUND)
+  set (maybeFourier FourierDouble.cc)
+endif (FFTW_FOUND)
+
 add_library (flNumeric
   ../../include/fl/math.h
   ../../include/fl/pi.h
@@ -98,6 +102,11 @@ add_library (flNumeric
   # Lapack bridge
   ${flNumericBLAS}
   ${flNumericLAPACK}
+
+  # FFTW bridge
+  ../../include/fl/fourier.h
+  ../../include/fl/Fourier.tcc
+  ${maybeFourier}
 
   # Search
   ../../include/fl/search.h

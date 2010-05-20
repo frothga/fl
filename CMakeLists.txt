@@ -77,6 +77,7 @@ find_package (Pthread)
 # The LAPACK package finder that comes with cmake seems to be broken, even when
 # Fortran is available.
 find_package (LAPACKnofortran)
+find_package (FFTW)
 find_package (TIFF)
 find_package (GTIF)
 find_package (JPEG)
@@ -96,6 +97,10 @@ endif (LAPACK_FOUND)
 if (BLAS_FOUND)
   add_definitions (-DHAVE_BLAS)
 endif (BLAS_FOUND)
+
+if (FFTW_FOUND)
+  add_definitions (-DHAVE_FFTW)
+endif (FFTW_FOUND)
 
 if (TIFF_FOUND)
   add_definitions (-DHAVE_TIFF)
