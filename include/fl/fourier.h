@@ -34,14 +34,13 @@ namespace fl
 	void dft (               const Matrix<T>                & input, Matrix<std::complex<T> > & output);
  	void dft (int kind,      const Matrix<T>                & input, Matrix<T>                & output);
 
- 	void dht  (const MatrixAbstract<T> & input, Matrix<T> & output);
+ 	void dht  (const Matrix<T> & input, Matrix<T> & output) {dft (FFTW_DHT,     input, output);}
+ 	void dct  (const Matrix<T> & input, Matrix<T> & output) {dft (FFTW_REDFT10, input, output);}
+ 	void idct (const Matrix<T> & input, Matrix<T> & output) {dft (FFTW_REDFT01, input, output);}
+ 	void dst  (const Matrix<T> & input, Matrix<T> & output) {dft (FFTW_RODFT10, input, output);}
+ 	void idst (const Matrix<T> & input, Matrix<T> & output) {dft (FFTW_RODFT01, input, output);}
 
- 	void dct  (const MatrixAbstract<T> & input, Matrix<T> & output);
- 	void idct (const MatrixAbstract<T> & input, Matrix<T> & output);
- 	void dst  (const MatrixAbstract<T> & input, Matrix<T> & output);
- 	void idst (const MatrixAbstract<T> & input, Matrix<T> & output);
-
-	bool destroyInput;  ///< Indicates that the input matrix can be overwritten by the process.
+	bool destroyInput;    ///< Indicates that the input matrix can be overwritten by the process.
 
 	// Cached plan (internal to implementation).
 	fftw_plan     cachedPlan;

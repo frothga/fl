@@ -90,11 +90,19 @@ namespace fl
 	  fftw_iodim dims[2];
 	  if (rank == 1)
 	  {
-		dims[0].n = std::max (Irows, Icols);
-		dims[0].is = 1;
+		if (Irows == 1)
+		{
+		  dims[0].n = Icols;
+		  dims[0].is = I.strideC;
+		}
+		else  // Icols == 1
+		{
+		  dims[0].n = Irows;
+		  dims[0].is = I.strideR;
+		}
 		dims[0].os = 1;
 	  }
-	  else
+	  else  // rank == 2
 	  {
 		dims[0].n  = Icols;
 		dims[0].is = I.strideC;
@@ -169,11 +177,19 @@ namespace fl
 	  fftw_iodim dims[2];
 	  if (rank == 1)
 	  {
-		dims[0].n = std::max (Irows, Icols);
-		dims[0].is = 1;
+		if (Irows == 1)
+		{
+		  dims[0].n = Icols;
+		  dims[0].is = I.strideC;
+		}
+		else  // Icols == 1
+		{
+		  dims[0].n = Irows;
+		  dims[0].is = I.strideR;
+		}
 		dims[0].os = 1;
 	  }
-	  else
+	  else  // rank == 2
 	  {
 		dims[0].n  = Icols;
 		dims[0].is = I.strideC;
@@ -249,11 +265,19 @@ namespace fl
 	  fftw_iodim dims[2];
 	  if (rank == 1)
 	  {
-		dims[0].n = std::max (Irows, Icols);
-		dims[0].is = 1;
+		if (Irows == 1)
+		{
+		  dims[0].n = Icols;
+		  dims[0].is = I.strideC;
+		}
+		else  // Icols == 1
+		{
+		  dims[0].n = Irows;
+		  dims[0].is = I.strideR;
+		}
 		dims[0].os = 1;
 	  }
-	  else
+	  else  // rank == 2
 	  {
 		dims[0].n  = Ocols;
 		dims[0].is = I.strideC;
@@ -284,6 +308,95 @@ namespace fl
 
 	// Run it
 	fftw_execute_dft_c2r (cachedPlan, (fftw_complex *) Idata, (double *) Odata);
+  }
+
+  template<class T>
+  void
+  Fourier<T>::dft (int kind, const Matrix<T> & I, Matrix<T> & O)
+  {
+	const int rows = I.rows ();
+	const int cols = I.columns ();
+
+	O.resize (rows, cols);
+
+	const char * Idata = (char *) I.data;
+	const char * Odata = (char *) O.data;
+	const bool inplace = Idata == Odata;
+	const int alignment = std::min (trailingZeros ((uint32_t) (ptrdiff_t) Idata), trailingZeros ((uint32_t) (ptrdiff_t) Odata));  // OK even under 64-bit, as we only care about the first few bit positions.
+
+	const unsigned int flags = FFTW_ESTIMATE | (destroyInput ? FFTW_DESTROY_INPUT : FFTW_PRESERVE_INPUT);
+
+	if (cachedPlan)
+	{
+	  // Check if plan matches current problem
+	  if (   cachedDirection  != 0   // none
+          || cachedKind       != kind
+          || cachedFlags      != flags
+          || cachedInRows     != rows
+          || cachedInColumns  != cols
+          || cachedInStrideR  != I.strideR
+          || cachedInStrideC  != I.strideC
+          || cachedInPlace    != inplace
+          || cachedAlignment  >  alignment)
+	  {
+		fftw_destroy_plan (cachedPlan);
+		cachedPlan = 0;
+	  }
+	}
+	if (! cachedPlan)
+	{
+	  // Create new plan
+	  fftw_r2r_kind kinds[2];
+	  kinds[0] = (fftw_r2r_kind) kind;
+	  const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
+	  fftw_iodim dims[2];
+	  if (rank == 1)
+	  {
+		if (rows == 1)
+		{
+		  dims[0].n = cols;
+		  dims[0].is = I.strideC;
+		}
+		else  // cols == 1
+		{
+		  dims[0].n = rows;
+		  dims[0].is = I.strideR;
+		}
+		dims[0].os = 1;
+	  }
+	  else  // rank == 2
+	  {
+		kinds[1] = (fftw_r2r_kind) kind;
+
+		dims[0].n  = cols;
+		dims[0].is = I.strideC;
+		dims[0].os = O.strideC;
+
+		dims[1].n  = rows;
+		dims[1].is = I.strideR;
+		dims[1].os = O.strideR;
+	  }
+	  cachedPlan = fftw_plan_guru_r2r
+	  (
+	    rank, dims,
+		0, 0,
+		(double *) Idata, (double *) Odata,
+		kinds, flags
+	  );
+	  cachedDirection = 0;   // none
+	  cachedKind      = kind;
+	  cachedFlags     = flags;
+	  cachedInRows    = rows;
+	  cachedInColumns = cols;
+	  cachedInStrideR = I.strideR;
+	  cachedInStrideC = I.strideC;
+	  cachedInPlace   = inplace;
+	  cachedAlignment = alignment;
+	}
+	if (! cachedPlan) throw "Fourier: Unable to generate a plan.";
+
+	// Run it
+	fftw_execute_r2r (cachedPlan, (double *) Idata, (double *) Odata);
   }
 }
 
