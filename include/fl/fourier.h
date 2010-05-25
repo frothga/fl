@@ -26,31 +26,30 @@ namespace fl
   class Fourier
   {
   public:
-	Fourier (bool destroyInput = true);
+	Fourier (bool normalize = false, bool destroyInput = true, bool sizeFromOutput = false);
 	~Fourier ();
 
-	void dft (int direction, const Matrix<std::complex<T> > & input, Matrix<std::complex<T> > & output);
-	void dft (               const Matrix<std::complex<T> > & input, Matrix<T>                & output);
-	void dft (               const Matrix<T>                & input, Matrix<std::complex<T> > & output);
- 	void dft (int kind,      const Matrix<T>                & input, Matrix<T>                & output);
+	void dft (int direction, const MatrixStrided<std::complex<T> > & input, MatrixStrided<std::complex<T> > & output);
+	void dft (               const MatrixStrided<std::complex<T> > & input, MatrixStrided<T>                & output);
+	void dft (               const MatrixStrided<T>                & input, MatrixStrided<std::complex<T> > & output);
+ 	void dft (int kind,      const MatrixStrided<T>                & input, MatrixStrided<T>                & output);
 
- 	void dht  (const Matrix<T> & input, Matrix<T> & output) {dft (FFTW_DHT,     input, output);}
- 	void dct  (const Matrix<T> & input, Matrix<T> & output) {dft (FFTW_REDFT10, input, output);}
- 	void idct (const Matrix<T> & input, Matrix<T> & output) {dft (FFTW_REDFT01, input, output);}
- 	void dst  (const Matrix<T> & input, Matrix<T> & output) {dft (FFTW_RODFT10, input, output);}
- 	void idst (const Matrix<T> & input, Matrix<T> & output) {dft (FFTW_RODFT01, input, output);}
+ 	void dht  (const MatrixStrided<T> & input, MatrixStrided<T> & output) {dft (FFTW_DHT,     input, output);}
+ 	void dct  (const MatrixStrided<T> & input, MatrixStrided<T> & output) {dft (FFTW_REDFT10, input, output);}
+ 	void idct (const MatrixStrided<T> & input, MatrixStrided<T> & output) {dft (FFTW_REDFT01, input, output);}
+ 	void dst  (const MatrixStrided<T> & input, MatrixStrided<T> & output) {dft (FFTW_RODFT10, input, output);}
+ 	void idst (const MatrixStrided<T> & input, MatrixStrided<T> & output) {dft (FFTW_RODFT01, input, output);}
 
+	bool normalize;       ///< Indicates to apply a balanced normalization so that round-trip transformations result in same values as original input.
 	bool destroyInput;    ///< Indicates that the input matrix can be overwritten by the process.
+	bool sizeFromOutput;  ///< Indicates to determine the logical size of the problem from the output matrix rather than the input matrix.
 
 	// Cached plan (internal to implementation).
 	fftw_plan     cachedPlan;
 	int           cachedDirection;
 	int           cachedKind;
 	unsigned int  cachedFlags;
-	int           cachedInRows;
-	int           cachedInColumns;
-	int           cachedInStrideR;
-	int           cachedInStrideC;
+	fftw_iodim    cachedDims[2];
 	int           cachedAlignment;
 	bool          cachedInPlace;
   };

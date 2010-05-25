@@ -38,8 +38,10 @@ namespace fl
   }
 
   template<class T>
-  Fourier<T>::Fourier (bool destroyInput)
-  : destroyInput (destroyInput)
+  Fourier<T>::Fourier (bool normalize, bool destroyInput, bool sizeFromOutput)
+  : normalize (normalize),
+	destroyInput (destroyInput),
+	sizeFromOutput (sizeFromOutput)
   {
 	cachedPlan = 0;
   }
@@ -52,12 +54,44 @@ namespace fl
 
   template<class T>
   void
-  Fourier<T>::dft (int direction, const Matrix<std::complex<T> > & I, Matrix<std::complex<T> > & O)
+  Fourier<T>::dft (int direction, const MatrixStrided<std::complex<T> > & I, MatrixStrided<std::complex<T> > & O)
   {
-	const int Irows = I.rows ();
-	const int Icols = I.columns ();
+	int rows;
+	int cols;
+	if (sizeFromOutput)
+	{
+	  rows = std::min (O.rows (),    I.rows ());
+	  cols = std::min (O.columns (), I.columns ());
+	}
+	else
+	{
+	  rows = I.rows ();
+	  cols = I.columns ();
+	}
+	if (O.rows () < rows  ||  O.columns () < cols) O.resize (rows, cols);
 
-	O.resize (Irows, Icols);  // always forces dense structure
+	const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
+	fftw_iodim dims[2];
+	if (rank == 1)
+	{
+	  dims[0].n  = rows * cols;
+	  dims[0].is = I.rows () == 1 ? I.strideC : I.strideR;
+	  dims[0].os = O.rows () == 1 ? O.strideC : O.strideR;
+
+	  dims[1].n  = 0;
+	  dims[1].is = 0;
+	  dims[1].os = 0;
+	}
+	else  // rank == 2
+	{
+	  dims[0].n  = cols;
+	  dims[0].is = I.strideC;
+	  dims[0].os = O.strideC;
+
+	  dims[1].n  = rows;
+	  dims[1].is = I.strideR;
+	  dims[1].os = O.strideR;
+	}
 
 	const char * Idata = (char *) I.data;
 	const char * Odata = (char *) O.data;
@@ -72,10 +106,12 @@ namespace fl
 	  if (   cachedDirection  != direction
           || cachedKind       != -1  // complex to complex
           || cachedFlags      != flags
-          || cachedInRows     != Irows
-          || cachedInColumns  != Icols
-          || cachedInStrideR  != I.strideR
-          || cachedInStrideC  != I.strideC
+          || cachedDims[0].n  != dims[0].n
+          || cachedDims[0].is != dims[0].is
+          || cachedDims[0].os != dims[0].os
+          || cachedDims[1].n  != dims[1].n
+          || cachedDims[1].is != dims[1].is
+          || cachedDims[1].os != dims[1].os
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
@@ -86,32 +122,6 @@ namespace fl
 	if (! cachedPlan)
 	{
 	  // Create new plan
-	  const int rank = (Irows == 1  ||  Icols == 1) ? 1 : 2;
-	  fftw_iodim dims[2];
-	  if (rank == 1)
-	  {
-		if (Irows == 1)
-		{
-		  dims[0].n = Icols;
-		  dims[0].is = I.strideC;
-		}
-		else  // Icols == 1
-		{
-		  dims[0].n = Irows;
-		  dims[0].is = I.strideR;
-		}
-		dims[0].os = 1;
-	  }
-	  else  // rank == 2
-	  {
-		dims[0].n  = Icols;
-		dims[0].is = I.strideC;
-		dims[0].os = O.strideC;
-
-		dims[1].n  = Irows;
-		dims[1].is = I.strideR;
-		dims[1].os = O.strideR;
-	  }
 	  cachedPlan = fftw_plan_guru_dft
 	  (
 	    rank, dims,
@@ -122,10 +132,8 @@ namespace fl
 	  cachedDirection = direction;
 	  cachedKind      = -1;  // complex to complex
 	  cachedFlags     = flags;
-	  cachedInRows    = Irows;
-	  cachedInColumns = Icols;
-	  cachedInStrideR = I.strideR;
-	  cachedInStrideC = I.strideC;
+	  cachedDims[0]   = dims[0];
+	  cachedDims[1]   = dims[1];
 	  cachedInPlace   = inplace;
 	  cachedAlignment = alignment;
 	}
@@ -133,18 +141,50 @@ namespace fl
 
 	// Run it
 	fftw_execute_dft (cachedPlan, (fftw_complex *) Idata, (fftw_complex *) Odata);
+	if (normalize) O /= sqrt (rows * cols);
   }
 
   template<class T>
   void
-  Fourier<T>::dft (const Matrix<T> & I, Matrix<std::complex<T> > & O)
+  Fourier<T>::dft (const MatrixStrided<T> & I, MatrixStrided<std::complex<T> > & O)
   {
-	const int Irows = I.rows ();
-	const int Icols = I.columns ();
-	const int Orows = Irows / 2 + 1;
-	const int Ocols = Icols;
+	int rows;
+	int cols;
+	if (sizeFromOutput)
+	{
+	  rows = (O.rows () - 1) * 2;
+	  cols =  O.columns ();
+	}
+	else
+	{
+	  rows = I.rows ();
+	  cols = I.columns ();
+	}
+	const int Orows = rows / 2 + 1;
+	if (O.rows () < Orows  ||  O.columns () < cols) O.resize (Orows, cols);
 
-	O.resize (Orows, Ocols);  // always forces dense structure
+	const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
+	fftw_iodim dims[2];
+	if (rank == 1)
+	{
+	  dims[0].n  = rows * cols;
+	  dims[0].is = I.rows () == 1 ? I.strideC : I.strideR;
+	  dims[0].os = O.rows () == 1 ? O.strideC : O.strideR;
+
+	  dims[1].n  = 0;
+	  dims[1].is = 0;
+	  dims[1].os = 0;
+	}
+	else  // rank == 2
+	{
+	  dims[0].n  = cols;
+	  dims[0].is = I.strideC;
+	  dims[0].os = O.strideC;
+
+	  dims[1].n  = rows;
+	  dims[1].is = I.strideR;
+	  dims[1].os = O.strideR;
+	}
 
 	const char * Idata = (char *) I.data;
 	const char * Odata = (char *) O.data;
@@ -159,10 +199,12 @@ namespace fl
 	  if (   cachedDirection  != -1   // forward
           || cachedKind       != -2   // mixed complex-real
           || cachedFlags      != flags
-          || cachedInRows     != Irows
-          || cachedInColumns  != Icols
-          || cachedInStrideR  != I.strideR
-          || cachedInStrideC  != I.strideC
+          || cachedDims[0].n  != dims[0].n
+          || cachedDims[0].is != dims[0].is
+          || cachedDims[0].os != dims[0].os
+          || cachedDims[1].n  != dims[1].n
+          || cachedDims[1].is != dims[1].is
+          || cachedDims[1].os != dims[1].os
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
@@ -173,32 +215,6 @@ namespace fl
 	if (! cachedPlan)
 	{
 	  // Create new plan
-	  const int rank = (Irows == 1  ||  Icols == 1) ? 1 : 2;
-	  fftw_iodim dims[2];
-	  if (rank == 1)
-	  {
-		if (Irows == 1)
-		{
-		  dims[0].n = Icols;
-		  dims[0].is = I.strideC;
-		}
-		else  // Icols == 1
-		{
-		  dims[0].n = Irows;
-		  dims[0].is = I.strideR;
-		}
-		dims[0].os = 1;
-	  }
-	  else  // rank == 2
-	  {
-		dims[0].n  = Icols;
-		dims[0].is = I.strideC;
-		dims[0].os = O.strideC;
-
-		dims[1].n  = Irows;
-		dims[1].is = I.strideR;
-		dims[1].os = O.strideR;
-	  }
 	  cachedPlan = fftw_plan_guru_dft_r2c
 	  (
 	    rank, dims,
@@ -209,10 +225,8 @@ namespace fl
 	  cachedDirection = -1;  // forward
 	  cachedKind      = -2;  // mixed complex-real
 	  cachedFlags     = flags;
-	  cachedInRows    = Irows;
-	  cachedInColumns = Icols;
-	  cachedInStrideR = I.strideR;
-	  cachedInStrideC = I.strideC;
+	  cachedDims[0]   = dims[0];
+	  cachedDims[1]   = dims[1];
 	  cachedInPlace   = inplace;
 	  cachedAlignment = alignment;
 	}
@@ -220,19 +234,49 @@ namespace fl
 
 	// Run it
 	fftw_execute_dft_r2c (cachedPlan, (double *) Idata, (fftw_complex *) Odata);
+	if (normalize) O /= sqrt (rows * cols);
   }
 
   template<class T>
   void
-  Fourier<T>::dft (const Matrix<std::complex<T> > & I, Matrix<T> & O)
+  Fourier<T>::dft (const MatrixStrided<std::complex<T> > & I, MatrixStrided<T> & O)
   {
-	const int Irows = I.rows ();
-	const int Icols = I.columns ();
-	int       Orows = (Irows - 1) * 2;  // If the original input size was odd, we lose the last row.  As a hint, O can be passed in with the original size.
-	const int Ocols = Icols;
+	int rows;
+	int cols;
+	if (sizeFromOutput)
+	{
+	  rows = O.rows ();
+	  cols = O.columns ();
+	}
+	else
+	{
+	  rows = (I.rows () - 1) * 2;
+	  cols =  I.columns ();
+	}
+	if (O.rows () < rows  ||  O.columns () < cols) O.resize (rows, cols);
 
-	if (O.rows () > Orows) Orows++;  // Assume that size was odd, and add back extra row that was lost in above calculation.
-	O.resize (Orows, Ocols);  // always forces dense structure
+	const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
+	fftw_iodim dims[2];
+	if (rank == 1)
+	{
+	  dims[0].n  = rows * cols;
+	  dims[0].is = I.rows () == 1 ? I.strideC : I.strideR;
+	  dims[0].os = O.rows () == 1 ? O.strideC : O.strideR;
+
+	  dims[1].n  = 0;
+	  dims[1].is = 0;
+	  dims[1].os = 0;
+	}
+	else  // rank == 2
+	{
+	  dims[0].n  = cols;
+	  dims[0].is = I.strideC;
+	  dims[0].os = O.strideC;
+
+	  dims[1].n  = rows;
+	  dims[1].is = I.strideR;
+	  dims[1].os = O.strideR;
+	}
 
 	const char * Idata = (char *) I.data;
 	const char * Odata = (char *) O.data;
@@ -247,10 +291,12 @@ namespace fl
 	  if (   cachedDirection  != 1  // reverse
           || cachedKind       != -2  // mixed complex-real
           || cachedFlags      != flags
-          || cachedInRows     != Irows
-          || cachedInColumns  != Icols
-          || cachedInStrideR  != I.strideR
-          || cachedInStrideC  != I.strideC
+          || cachedDims[0].n  != dims[0].n
+          || cachedDims[0].is != dims[0].is
+          || cachedDims[0].os != dims[0].os
+          || cachedDims[1].n  != dims[1].n
+          || cachedDims[1].is != dims[1].is
+          || cachedDims[1].os != dims[1].os
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
@@ -261,32 +307,6 @@ namespace fl
 	if (! cachedPlan)
 	{
 	  // Create new plan
-	  const int rank = (Irows == 1  ||  Icols == 1) ? 1 : 2;
-	  fftw_iodim dims[2];
-	  if (rank == 1)
-	  {
-		if (Irows == 1)
-		{
-		  dims[0].n = Icols;
-		  dims[0].is = I.strideC;
-		}
-		else  // Icols == 1
-		{
-		  dims[0].n = Irows;
-		  dims[0].is = I.strideR;
-		}
-		dims[0].os = 1;
-	  }
-	  else  // rank == 2
-	  {
-		dims[0].n  = Ocols;
-		dims[0].is = I.strideC;
-		dims[0].os = O.strideC;
-
-		dims[1].n  = Orows;
-		dims[1].is = I.strideR;
-		dims[1].os = O.strideR;
-	  }
 	  cachedPlan = fftw_plan_guru_dft_c2r
 	  (
 	    rank, dims,
@@ -297,10 +317,8 @@ namespace fl
 	  cachedDirection = 1;   // reverse
 	  cachedKind      = -2;  // mixed complex-real
 	  cachedFlags     = flags;
-	  cachedInRows    = Irows;
-	  cachedInColumns = Icols;
-	  cachedInStrideR = I.strideR;
-	  cachedInStrideC = I.strideC;
+	  cachedDims[0]   = dims[0];
+	  cachedDims[1]   = dims[1];
 	  cachedInPlace   = inplace;
 	  cachedAlignment = alignment;
 	}
@@ -308,16 +326,49 @@ namespace fl
 
 	// Run it
 	fftw_execute_dft_c2r (cachedPlan, (fftw_complex *) Idata, (double *) Odata);
+	if (normalize) O /= sqrt (rows * cols);
   }
 
   template<class T>
   void
-  Fourier<T>::dft (int kind, const Matrix<T> & I, Matrix<T> & O)
+  Fourier<T>::dft (int kind, const MatrixStrided<T> & I, MatrixStrided<T> & O)
   {
-	const int rows = I.rows ();
-	const int cols = I.columns ();
+	int rows;
+	int cols;
+	if (sizeFromOutput)
+	{
+	  rows = std::min (O.rows (),    I.rows ());
+	  cols = std::min (O.columns (), I.columns ());
+	}
+	else
+	{
+	  rows = I.rows ();
+	  cols = I.columns ();
+	}
+	if (O.rows () < rows  ||  O.columns () < cols) O.resize (rows, cols);
 
-	O.resize (rows, cols);
+	const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
+	fftw_iodim dims[2];
+	if (rank == 1)
+	{
+	  dims[0].n  = rows * cols;
+	  dims[0].is = I.rows () == 1 ? I.strideC : I.strideR;
+	  dims[0].os = O.rows () == 1 ? O.strideC : O.strideR;
+
+	  dims[1].n  = 0;
+	  dims[1].is = 0;
+	  dims[1].os = 0;
+	}
+	else  // rank == 2
+	{
+	  dims[0].n  = cols;
+	  dims[0].is = I.strideC;
+	  dims[0].os = O.strideC;
+
+	  dims[1].n  = rows;
+	  dims[1].is = I.strideR;
+	  dims[1].os = O.strideR;
+	}
 
 	const char * Idata = (char *) I.data;
 	const char * Odata = (char *) O.data;
@@ -332,10 +383,12 @@ namespace fl
 	  if (   cachedDirection  != 0   // none
           || cachedKind       != kind
           || cachedFlags      != flags
-          || cachedInRows     != rows
-          || cachedInColumns  != cols
-          || cachedInStrideR  != I.strideR
-          || cachedInStrideC  != I.strideC
+          || cachedDims[0].n  != dims[0].n
+          || cachedDims[0].is != dims[0].is
+          || cachedDims[0].os != dims[0].os
+          || cachedDims[1].n  != dims[1].n
+          || cachedDims[1].is != dims[1].is
+          || cachedDims[1].os != dims[1].os
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
@@ -348,34 +401,7 @@ namespace fl
 	  // Create new plan
 	  fftw_r2r_kind kinds[2];
 	  kinds[0] = (fftw_r2r_kind) kind;
-	  const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
-	  fftw_iodim dims[2];
-	  if (rank == 1)
-	  {
-		if (rows == 1)
-		{
-		  dims[0].n = cols;
-		  dims[0].is = I.strideC;
-		}
-		else  // cols == 1
-		{
-		  dims[0].n = rows;
-		  dims[0].is = I.strideR;
-		}
-		dims[0].os = 1;
-	  }
-	  else  // rank == 2
-	  {
-		kinds[1] = (fftw_r2r_kind) kind;
-
-		dims[0].n  = cols;
-		dims[0].is = I.strideC;
-		dims[0].os = O.strideC;
-
-		dims[1].n  = rows;
-		dims[1].is = I.strideR;
-		dims[1].os = O.strideR;
-	  }
+	  kinds[1] = (fftw_r2r_kind) kind;
 	  cachedPlan = fftw_plan_guru_r2r
 	  (
 	    rank, dims,
@@ -386,10 +412,8 @@ namespace fl
 	  cachedDirection = 0;   // none
 	  cachedKind      = kind;
 	  cachedFlags     = flags;
-	  cachedInRows    = rows;
-	  cachedInColumns = cols;
-	  cachedInStrideR = I.strideR;
-	  cachedInStrideC = I.strideC;
+	  cachedDims[0]   = dims[0];
+	  cachedDims[1]   = dims[1];
 	  cachedInPlace   = inplace;
 	  cachedAlignment = alignment;
 	}
@@ -397,6 +421,33 @@ namespace fl
 
 	// Run it
 	fftw_execute_r2r (cachedPlan, (double *) Idata, (double *) Odata);
+	if (normalize)
+	{
+	  T N;
+	  switch (kind)
+	  {
+		case FFTW_R2HC:
+		case FFTW_HC2R:
+		case FFTW_DHT:
+		  N = rows * cols;
+		  break;
+		case FFTW_REDFT00:
+		  N = 4 * (rows - 1) * (cols - 1);
+		  break;
+		case FFTW_RODFT00:
+		  N = 4 * (rows + 1) * (cols + 1);
+		  break;
+		case FFTW_REDFT10:
+		case FFTW_REDFT01:
+		case FFTW_REDFT11:
+		case FFTW_RODFT10:
+		case FFTW_RODFT01:
+		case FFTW_RODFT11:
+		  N = 4 * rows * cols;
+		  break;
+	  }
+	  O /= sqrt (N);
+	}
   }
 }
 
