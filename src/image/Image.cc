@@ -170,19 +170,17 @@ Image::detach ()
    have a proper offset to the start of the ROI.
  **/
 Image
-Image::roi (int left, int top, int right, int bottom)
+Image::roi (int fromX, int fromY, int width, int height)
 {
   PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
   if (! pbp) throw "ROI requires packed buffer";
-  left = max (0,          left);
-  top  = max (0,          top);
-  left = min (width  - 1, left);
-  top  = min (height - 1, top);
-  if (right  < left) right  = left;
-  if (bottom < top ) bottom = top;
-  if (right  >= width ) right  = width  - 1;
-  if (bottom >= height) bottom = height - 1;
-  Image result (buffer->pixel (left, top), right - left + 1, bottom - top + 1, *format);
+  fromX = max (0,                fromX);
+  fromY = max (0,                fromY);
+  fromX = min (this->width  - 1, fromX);
+  fromY = min (this->height - 1, fromY);
+  if (width  < 0) width  = this->width  - fromX;
+  if (height < 0) height = this->height - fromY;
+  Image result (buffer->pixel (fromX, fromY), width, height, *format);
   ((PixelBufferPacked *) result.buffer)->stride = pbp->stride;
   return result;
 }

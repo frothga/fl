@@ -60,7 +60,7 @@ namespace fl
 	void copyFrom (void * block, int width, int height, const PixelFormat & format);  ///< Copy from a non-Image source.  Determine size of buffer in bytes as width x height x depth.
 	void attach (void * block, int width, int height, const PixelFormat & format);  ///< Binds to an external block of memory.
 	void detach ();  ///< Set the state of this image as if it has no buffer.  Releases (but only frees if appropriate) any memory.
-	Image roi (int left, int top, int right, int bottom);  ///< Limited support for region-of-interest processing.  This image must have a packed buffer type, and must remain in existence as long as the returned image exists.  Coordinate parameters are inclusive, meaning that right and bottom edges will be contained within resulting ROI.
+	Image roi (int fromX = 0, int fromY = 0, int width = -1, int height = -1);  ///< Limited support for region-of-interest processing.  This image must have a packed buffer type, and must remain in existence as long as the returned image exists.  Parameters have similar semantics to bitblt().
 
 	void resize (int width, int height, bool preserve = false);
 	void bitblt (const Image & that, int toX = 0, int toY = 0, int fromX = 0, int fromY = 0, int width = -1, int height = -1);  ///< -1 for width or height means "maximum possible value"
