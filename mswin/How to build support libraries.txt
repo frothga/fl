@@ -40,9 +40,9 @@ As of this writing, MS does not provide stdint.h or inttypes.h.  Instead, there 
 
 FreeType
 --------
-Solution file is builds/win32/{latest vc}/freetype.sln.  Build the "LIB Release Multithreaded" configuration.
+Solution file is builds/win32/{latest vc}/freetype.sln.  For 64-bit, open the configuration manager and add the x64 platform.  Build the "LIB Release Multithreaded" configuration.
 
-Copy the library to mswin/lib or lib64, and rename:
+Copy the library to mswin/lib or lib64 and rename:
 
 	objs/win32/{latest vc}/freetype{version}.lib  --> freetype.lib
 
@@ -51,17 +51,17 @@ Copy the contents of the include directory into mswin/include.
 
 Pthreads-w32
 ------------
-32-bit:  Download and execute
+Download and execute
 
 	http://sourceware.org/pub/pthreads-win32/pthreads-w32-x-x-x-release.exe
 
-Open pthread.2/pthread.dsw and allow VS to convert it.  Select Release mode and compile.
+Open pthread.2/pthread.dsw and allow VS to convert it.  For 64-bit, open configuration manager and add the x64 platform.  Select Release mode and compile.
 
 Copy the library to mswin/lib or lib64 and rename:
 
 	pthread.2/pthreadVC2.lib  --> pthread.lib
 
-Copy the DLL to mswin/bin:
+Copy the DLL to mswin/bin or bin64:
 
 	pthread.2/pthreadVC2.dll
 
@@ -79,12 +79,10 @@ Alternately, you can copy the prebuilt version:
 
 Keep the version suffix in pthreadXXX.dll, since the lib creates a dependency on a DLL with that specific suffix in its name.
 
-64-bit:  Go to http://sourceforge.net/projects/mingw-w64 and look for pthreads-w32 in the downloads section.  Get and apply the patch.  Then build using Visual Studio.
-
 
 LAPACK and BLAS
 ---------------
-Prebuilt binaries are available from the CLAPACK project:http://www.netlib.org/clapack/LIB_WINDOWS/prebuilt_libraries_windows.html
+Prebuilt binaries are available from the CLAPACK project: http://www.netlib.org/clapack/LIB_WINDOWS/prebuilt_libraries_windows.html
 Use the Release nowrap versions.
 
 If you wish to build the libraries, follow the instructions given in http://www.netlib.org/clapack/readme.install.  In particular, follow the instructions for a non-wrapped Fortran interface to BLAS, rather than a CBLAS interface.
@@ -106,7 +104,7 @@ The following instructions are designed for a raw download of the 1998 version o
 	jconfig.vc  --> jconfig.h
 	makefile.vc --> makefile
 
-Start a Visual Studio Command Prompt and type:
+Start a Visual Studio Command Prompt (or x64 variant thereof) and type:
 
 	cd {mswin}/build/jpeg-6b
 	nmake clean all
@@ -130,11 +128,12 @@ Z
 Launch projects/visualc6/zlib.dsw
 This workspace file is out of date, but still converts successfully as of VS2008.
 
-Select "LIB Release" mode and build.
+For 64-bit build, open configuration manager and add the x64 platform.
+Select "LIB Release" mode and compile.
 
 Copy the library to mswin/lib or lib64 and rename:
 
-	Win32_LIB_Release/zlib.lib  --> z.lib
+	projects/visualc6/Win32_LIB_Release/zlib.lib  --> z.lib
 
 Copy the headers to mswin/include:
 
@@ -150,11 +149,11 @@ Modify nmake.opt by uncommenting the lines for JPEG and ZLIB support.  Point eac
 
 	JPEGDIR = {absolute path to mswin; may need quote marks}
 	JPEG_INCLUDE = -I$(JPEGDIR)/include
-	JPEG_LIB = $(JPEGDIR)/lib/jpeg.lib
+	JPEG_LIB = $(JPEGDIR)/{lib or lib64}/jpeg.lib
 
 	ZLIBDIR = {absolute path to mswin; may need quote marks}
 	ZLIB_INCLUDE = -I$(ZLIBDIR)/include
-	ZLIB_LIB = $(ZLIBDIR)/lib/z.lib
+	ZLIB_LIB = $(ZLIBDIR)/{lib or lib64}/z.lib
 
 Overwrite configuration with vc specific files:  (Note that the names are changed in newer versions of TIFF.  Instructions apply to version 3.8.2)
 
@@ -192,9 +191,12 @@ Edit makefile:
 
 	TIFF_DIR = ..\{tiff project directory}\libtiff
 	PREFIX = {absolute path to mswin directory; may need quotes}
+	BINDIR = $(PREFIX)\{bin or bin64}
+	LIBDIR = $(PREFIX)\{lib or lib64}
 
 Compile and install with nmake:
 
+	nmake clean
 	nmake devinstall
 
 Optionally, get rid of mswin/bin/geotiff.dll and mswin/lib/geotiff_i.lib
@@ -202,9 +204,9 @@ Optionally, get rid of mswin/bin/geotiff.dll and mswin/lib/geotiff_i.lib
 
 PNG
 ---
-Open projects/{most recent visualc version}/libpng.sln in Visual Studio.
+Open projects/{most recent visualc version}/libpng.sln in Visual Studio and allow to convert.
 
-Select "LIB Release" mode.
+Select "LIB Release" mode.  For 64-bit, open the configuration manager and add the x64 platform.
 
 Edit properties of the "libpng" project to set the correct path to the zlib project directory in "Additional Include Directories".
 
@@ -212,7 +214,8 @@ Build only the libpng project.  Either delete or disable other projects besides 
 
 Copy the library up to mswin/lib or lib64 and rename:
 
-	projects/{visualc x}/Win32_LIB_Release/libpng.lib  --> png.lib
+	projects/{visualc x}/x64/LIB Release/libpng.lib    --> png.lib   // x64 build
+or	projects/{visualc x}/Win32_LIB_Release/libpng.lib  --> png.lib   // Win32 build
 
 Copy the headers up to mswin/include:
 
@@ -226,7 +229,7 @@ Must be built using MinGW.  Building as shared libraries (DLLs) works better, be
 
 Download the latest code from http://ffmpeg.org, and extract it into c:/msys/ffmpeg.
 
-Start an MSYS session and type:
+Start an MSYS session and type the following...  (An easy way to do this is:  1) If in notepad, turn off word-wrap.  2) Copy a line.  3) Past into msys session using right-click menu on title bar.)
 
 	export PATH="/c/Program Files/Microsoft Visual Studio 9.0/VC/bin":"/c/Program Files/Microsoft Visual Studio 9.0/Common7/IDE":$PATH   // to make lib.exe available
 	cd /ffmpeg
@@ -238,24 +241,26 @@ Start an MSYS session and type:
 
 Substitute your chosen version of Visual Studio in the PATH setting above.
 
-Ignore error messages from configure about the missing "pr" command.  This comes from part of the script that writes out log messages, and its absence is not fatal.
+For 64-bit builds, substitute the following configure line:
+
+	./configure --prefix=/ffmpeg/encap --disable-ffmpeg --disable-ffplay --disable-ffserver --enable-memalign-hack --enable-shared --disable-static --cross-prefix=x86_64-w64-mingw32- --target-os=mingw32 --arch=x86_64
 
 Copy DLLs to mswin/bin:
 
-	/ffmpeg/encap/avcodec-{major version}.dll
-	/ffmpeg/encap/avdevice-{major version}.dll
-	/ffmpeg/encap/avformat-{major version}.dll
-	/ffmpeg/encap/avutil-{major version}.dll
-	/ffmpeg/encap/swscale-{major version}.dll
+	/ffmpeg/encap/bin/avcodec-{major version}.dll
+	/ffmpeg/encap/bin/avdevice-{major version}.dll
+	/ffmpeg/encap/bin/avformat-{major version}.dll
+	/ffmpeg/encap/bin/avutil-{major version}.dll
+	/ffmpeg/encap/bin/swscale-{major version}.dll
 
 where {major version} is the number before the first dot in a version string.  The major version is necessary, because this is what the import libraries are constructed to look for.  All other forms are simply copies of xxx-{major version}.dll.
 
 Copy import libaries to mswin/lib or lib64:
 
-	/ffmpeg/encap/avcodec.lib
-	/ffmpeg/encap/avdevice.lib
-	/ffmpeg/encap/avformat.lib
-	/ffmpeg/encap/avutil.lib
-	/ffmpeg/encap/swscale.lib
+	/ffmpeg/encap/bin/avcodec.lib
+	/ffmpeg/encap/bin/avdevice.lib
+	/ffmpeg/encap/bin/avformat.lib
+	/ffmpeg/encap/bin/avutil.lib
+	/ffmpeg/encap/bin/swscale.lib
 
 Copy /ffmpeg/encap/include to mswin/include.
