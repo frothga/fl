@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -14,18 +14,8 @@ for details.
 */
 
 
-#include <complex>
-/// A small cheat to make the basic norm() template work.
-namespace std
-{
-  inline complex<float>
-  max (const float & a, const complex<float> & b)
-  {
-	return complex<float> (max (a, b.real ()), 0);
-  }
-}
-
-#include "fl/Matrix.tcc"
+#define FL_BASIC_TYPE float
+#include "fl/MatrixComplex.tcc"
 #include "fl/serialize.h"
 
 

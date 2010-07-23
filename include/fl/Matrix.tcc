@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -126,7 +126,7 @@ namespace fl
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  if (std::abs ((*this)(r,c)) > 0) result++;
+		  if ((*this)(r,c) != (T) 0) result++;
 		}
 	  }
 	  return (T) result;
@@ -203,6 +203,13 @@ namespace fl
 		(*this) *= scalar;
 	  }
 	}
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixAbstract<T>::conj () const
+  {
+	return const_cast<MatrixAbstract<T> *> (this);
   }
 
   template<class T>
@@ -944,7 +951,7 @@ namespace fl
 		T * columnEnd = i + rows_ * strideR;
 		while (i != columnEnd)
 		{
-		  if (std::abs (*i) > 0) result++;
+		  if (*i != (T) 0) result++;
 		  i += strideR;
 		}
 		i += stepC;
@@ -1024,6 +1031,13 @@ namespace fl
 	  i += stepC;
 	}
 	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::conj () const
+  {
+	return const_cast<MatrixStrided<T> *> (this);
   }
 
   template<class T>
