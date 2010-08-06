@@ -1,7 +1,7 @@
 /*
 Author: Fred Rothganger
 
-Copyright 2008 Sandia Corporation.
+Copyright 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -13,6 +13,7 @@ for details.
 #define vector_sparse_h
 
 
+#include <assert.h>
 #include <vector>
 
 
@@ -47,10 +48,10 @@ namespace fl
 	 </ul>
 	 Assigning values (whether zero or non-zero) can change the structure
 	 of the sparse vector.  Therefore, the const versions of at() and
-	 operator[] will return a dummy object for (zero) elements that aren't
-	 stored, on the assumption that programmer intends merely to read it.
+	 operator[] will return a dummy object for any element that isn't stored
+	 (a zero), on the assumption that programmer intends merely to read it.
 	 The non-const versions will always allocate storage for an element if
-	 it isn't already, on the assumptiont that the programmer intends to
+	 it isn't already, on the assumption that the programmer intends to
 	 assign a non-zero value to the element.  This means the non-const
 	 versions can destroy sparsity if the programmer is not careful.  Similar
 	 rules apply to iterators.  None of these functions can maintain sparsity
@@ -165,7 +166,7 @@ namespace fl
 	  {
 		T * i = &data;
 		T * end = i + count;
-		while (i < end) ::new (i++) T ();  // Maybe this should be T(0) instead.
+		while (i < end) ::new (i++) T (0);  // Maybe this should be T(0) instead.
 	  }
 
 	  void destruct ()
@@ -502,7 +503,9 @@ namespace fl
 
 	reference operator [] (size_type index)
 	{
+	  //std::cerr << "non-const reference " << index << std::endl;
 	  int position = findContig (index);
+	  //std::cerr << "  position = " << position << std::endl;
 	  Contig * c;
 	  if (position < 0)
 	  {
@@ -513,30 +516,39 @@ namespace fl
 		  if (count > threshold)
 		  {
 			c = Contig::create (index, threshold);
+			c->construct ();
 			contigs.insert (contigs.begin (), c);
 		  }
 		  else
 		  {
-			contigs[0] = c->expand (index, count + c->count);
+			contigs[0] = c = c->expand (index, count + c->count);
 		  }
 		}
 		else
 		{
-		  c = Contig::create (index, threshold);
+		  int count = std::min (index + 1, threshold);
+		  c = Contig::create (index - count + 1, count);
+		  c->construct ();
 		  contigs.push_back (c);
 		}
 	  }
 	  else c = contigs[position];
+	  //std::cerr << "  c = " << c << std::endl;
 	  int last = c->index + c->count - 1;
 	  int d1 = index - last;
+	  //std::cerr << "  last, d1 = " << last << " " << d1 << std::endl;
 	  if (d1 > 0)
 	  {
 		if (position < contigs.size () - 1)
 		{
-		  Contig * c2 = contigs[position+1];
+		  typename std::vector<Contig *>::iterator it = contigs.begin () + (position + 1);
+		  Contig * c2 = *it;
 		  int d2 = c2->index - index;
 		  if (d1 > threshold  &&  d2 > threshold)
 		  {
+			c = Contig::create (index, threshold);
+			c->construct ();
+			contigs.insert (it, c);
 		  }
 		  else if (d1 < d2)
 		  {
@@ -547,9 +559,15 @@ namespace fl
 			contigs[position+1] = c = c2->expand (index, c2->index - index + c2->count);
 		  }
 		}
-		else
+		else if (d1 <= threshold)
 		{
 		  contigs[position] = c = c->expand (c->index, index - c->index + 1);
+		}
+		else  // d1 is more than threshold elements beyond last represented element
+		{
+		  c = Contig::create (index - threshold + 1, threshold);
+		  c->construct ();
+		  contigs.push_back (c);
 		}
 	  }
 	  return *(c->start () + (index - c->index));
