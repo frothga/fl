@@ -18,6 +18,8 @@ for details.
 #include "fl/video.h"
 #include "fl/parms.h"
 
+#include <stdio.h>
+
 
 using namespace std;
 using namespace fl;

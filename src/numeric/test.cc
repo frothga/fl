@@ -20,6 +20,7 @@ for details.
 
 #include <limits>
 #include <complex>
+#include <typeinfo>
 
 
 using namespace std;

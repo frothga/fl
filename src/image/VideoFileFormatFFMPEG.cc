@@ -27,6 +27,8 @@ extern "C"
 # include <libavformat/avformat.h>
 }
 
+#include <typeinfo>
+
 
 // For debugging only
 //#include "fl/slideshow.h"

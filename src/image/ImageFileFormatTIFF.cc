@@ -27,6 +27,7 @@ for details.
 #endif
 
 #include <strstream>
+#include <typeinfo>
 
 #include <errno.h>
 #include <fcntl.h>

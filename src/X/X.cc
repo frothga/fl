@@ -20,6 +20,7 @@ for details.
 #include <X11/Xos.h>
 
 #include <math.h>
+#include <stdio.h>
 #include <iostream>
 
 

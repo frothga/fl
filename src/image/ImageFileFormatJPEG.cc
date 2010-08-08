@@ -27,6 +27,7 @@ extern "C"
 }
 
 #include <strstream>
+#include <typeinfo>
 
 
 using namespace std;

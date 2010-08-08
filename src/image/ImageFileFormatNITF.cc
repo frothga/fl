@@ -17,6 +17,7 @@ for details.
 #include "fl/lapack.h"
 
 #include <stdio.h>
+#include <typeinfo>
 
 
 using namespace std;

@@ -19,6 +19,9 @@ for details.
 
 #include <iostream>
 #include <string>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 
 using namespace std;

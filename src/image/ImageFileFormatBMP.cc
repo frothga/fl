@@ -14,6 +14,8 @@ for details.
 #include "fl/string.h"
 #include "fl/endian.h"
 
+#include <typeinfo>
+
 #if BYTE_ORDER != LITTLE_ENDIAN
 #  warning This code only supports little-endian.  Big-endian would require a small amount of work to add.
 #endif

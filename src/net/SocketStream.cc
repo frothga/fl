@@ -18,6 +18,7 @@ for details.
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 
 // For debugging
