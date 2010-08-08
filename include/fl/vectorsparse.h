@@ -166,7 +166,7 @@ namespace fl
 	  {
 		T * i = &data;
 		T * end = i + count;
-		while (i < end) ::new (i++) T (0);  // Maybe this should be T(0) instead.
+		while (i < end) ::new (i++) T (0);
 	  }
 
 	  void destruct ()
@@ -544,11 +544,24 @@ namespace fl
 		  typename std::vector<Contig *>::iterator it = contigs.begin () + (position + 1);
 		  Contig * c2 = *it;
 		  int d2 = c2->index - index;
-		  if (d1 > threshold  &&  d2 > threshold)
+		  if (d1 > threshold  &&  d2 > threshold + 1)  // Add 1 to threshold for d2 so we don't create a contig that directly abuts the subsequent one.
 		  {
 			c = Contig::create (index, threshold);
 			c->construct ();
 			contigs.insert (it, c);
+		  }
+		  else if (d1 == 1  &&  d2 == 1)  // This element will join two contigs
+		  {
+			Contig * c1 = c;
+			int offset = c2->index - c1->index;
+			contigs[position] = c = Contig::create (c1->index, offset + c2->count);
+			T * start = c->start ();
+			memcpy (start,          c1->start (), c1->count * sizeof (T));
+			::new (start + c1->count) T (0);
+			memcpy (start + offset, c2->start (), c2->count * sizeof (T));
+			contigs.erase (it);  // get rid of c2
+			free (c1);
+			free (c2);
 		  }
 		  else if (d1 < d2)
 		  {
@@ -703,6 +716,9 @@ namespace fl
 	  std::swap (contigs, that.contigs);
 	}
 
+	void sparsify ()
+	{
+	}
 
 	// Support functions for Contig style storage
 

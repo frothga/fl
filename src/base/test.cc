@@ -33,14 +33,14 @@ integrity (vectorsparse<int> & v)
   }
 }
 
+const int maxElement = 1000;
+
 inline void
-testVectorsparseStructure (const int fillIn)
+generateRandomVector (vectorsparse<int> & test, vector<int> & truth, const int fillIn)
 {
-  const int maxElement = 1000;
   const int iterations = fillIn * maxElement;
-  cerr << "vectorsparse structural test; fillIn = " << fillIn << endl;
-  vectorsparse<int> test;
-  vector<int> truth (maxElement, 0);
+  truth.clear ();
+  truth.resize (maxElement, 0);
   for (int i = 0; i < iterations; i++)
   {
 	int index = rand () % maxElement;
@@ -58,6 +58,15 @@ testVectorsparseStructure (const int fillIn)
 	}
 	cerr << ".";
   }
+}
+
+inline void
+testVectorsparseStructure (const int fillIn)
+{
+  cerr << "vectorsparse structural test; fillIn = " << fillIn << endl;
+  vectorsparse<int> test;
+  vector<int> truth;
+  generateRandomVector (test, truth, fillIn);
   cerr << "  Done filling.  Starting integrity check." << endl;
   for (int i = 0; i < maxElement; i++)
   {
@@ -80,8 +89,24 @@ testVectorsparse ()
   testVectorsparseStructure (30);
 
   // copy constructor
+  {
+	vectorsparse<int> test;
+	vector<int> truth;
+	generateRandomVector (test, truth, 20);
+	vectorsparse<int> test2 (test);
+	for (int i = 0; i < maxElement; i++)
+	{
+	  int value = ((const vectorsparse<int> &) test2)[i];
+	  if (truth[i] != value)
+	  {
+		cerr << "  Unexpected element value: " << value << " at " << i << endl;
+		throw "vectorsparse fails";
+	  }
+	}
+  }
 
   // resize
+  
 
   // Test for const and non-const access
   //   Make some const accesses, and verify that no fill-in has occurred
