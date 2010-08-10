@@ -35,13 +35,19 @@ if (MSVC)
   set (SOCKET_LIBRARIES ws2_32)
 
   # Some includes are available by default under Unix but are not available
-  # under MSVC, so add the supplemental include directory pre-emtively.
+  # under MSVC, so add the supplemental include directory preemtively.
   include_directories (${PROJECT_SOURCE_DIR}/mswin/include)
 
   # Avoid linkage conflicts caused by using mswin libraries.
   if (NOT CMAKE_EXE_LINKER_FLAGS MATCHES libcmt)
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libcmt;libcmtd" CACHE STRING "linker flags" FORCE)
   endif (NOT CMAKE_EXE_LINKER_FLAGS MATCHES libcmt)
+
+  # Use multiple-processors to compile c/c++ code
+  if (NOT CMAKE_CXX_FLAGS MATCHES /MP)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP" CACHE STRING "C++ compiler flags" FORCE)
+    set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   /MP" CACHE STRING "C compiler flags"   FORCE)
+  endif (NOT CMAKE_CXX_FLAGS MATCHES /MP)
 
 else (MSVC)
 
