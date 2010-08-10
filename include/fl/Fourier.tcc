@@ -56,17 +56,12 @@ namespace fl
   void
   Fourier<T>::dft (int direction, const MatrixStrided<std::complex<T> > & I, MatrixStrided<std::complex<T> > & O)
   {
-	int rows;
-	int cols;
-	if (sizeFromOutput)
+	int rows = I.rows ();
+	int cols = I.columns ();
+	if (sizeFromOutput  &&  O.rows ()  &&  O.columns ())
 	{
-	  rows = std::min (O.rows (),    I.rows ());
-	  cols = std::min (O.columns (), I.columns ());
-	}
-	else
-	{
-	  rows = I.rows ();
-	  cols = I.columns ();
+	  rows = std::min (rows, O.rows ());
+	  cols = std::min (cols, O.columns ());
 	}
 	if (O.rows () < rows  ||  O.columns () < cols) O.resize (rows, cols);
 
@@ -141,24 +136,19 @@ namespace fl
 
 	// Run it
 	fftw_execute_dft (cachedPlan, (fftw_complex *) Idata, (fftw_complex *) Odata);
-	if (normalize) O /= sqrt (rows * cols);
+	if (normalize) O /= std::sqrt (rows * cols);
   }
 
   template<class T>
   void
   Fourier<T>::dft (const MatrixStrided<T> & I, MatrixStrided<std::complex<T> > & O)
   {
-	int rows;
-	int cols;
-	if (sizeFromOutput)
+	int rows = I.rows ();
+	int cols = I.columns ();
+	if (sizeFromOutput  &&  O.rows ()  &&  O.columns ())
 	{
-	  rows = (O.rows () - 1) * 2;
-	  cols =  O.columns ();
-	}
-	else
-	{
-	  rows = I.rows ();
-	  cols = I.columns ();
+	  rows = std::min (rows, (O.rows () - 1) * 2 + 1);
+	  cols = std::min (cols,  O.columns ());
 	}
 	const int Orows = rows / 2 + 1;
 	if (O.rows () < Orows  ||  O.columns () < cols) O.resize (Orows, cols);
@@ -234,33 +224,37 @@ namespace fl
 
 	// Run it
 	fftw_execute_dft_r2c (cachedPlan, (double *) Idata, (fftw_complex *) Odata);
-	if (normalize) O /= sqrt (rows * cols);
+	if (normalize) O /= std::sqrt (rows * cols);
   }
 
   template<class T>
   void
   Fourier<T>::dft (const MatrixStrided<std::complex<T> > & I, MatrixStrided<T> & O)
   {
-	int rows;
-	int cols;
-	if (sizeFromOutput)
+	int rows = (I.rows () - 1) * 2;
+	int cols =  I.columns ();
+	if (sizeFromOutput  &&  O.rows ()  &&  O.columns ())
 	{
-	  rows = O.rows ();
-	  cols = O.columns ();
-	}
-	else
-	{
-	  rows = (I.rows () - 1) * 2;
-	  cols =  I.columns ();
+	  // If O is larger than the largest odd-size, we always trim back to the
+	  // largest odd-size.  However, it might be more intuitive to base this
+	  // on the oddness/evenness of O.
+	  rows = std::min (rows + 1, O.rows ());
+	  cols = std::min (cols,     O.columns ());
 	}
 	if (O.rows () < rows  ||  O.columns () < cols) O.resize (rows, cols);
+
+	// No input-preserving transformation is available, so copy off data if
+	// destroyInput is false.
+	Matrix<std::complex<T> > W;
+	if (destroyInput) W = I;           // alias to I's memory
+	else              W.copyFrom (I);  // duplicate I's memory
 
 	const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
 	fftw_iodim dims[2];
 	if (rank == 1)
 	{
 	  dims[0].n  = rows * cols;
-	  dims[0].is = I.rows () == 1 ? I.strideC : I.strideR;
+	  dims[0].is = W.rows () == 1 ? W.strideC : W.strideR;
 	  dims[0].os = O.rows () == 1 ? O.strideC : O.strideR;
 
 	  dims[1].n  = 0;
@@ -270,20 +264,20 @@ namespace fl
 	else  // rank == 2
 	{
 	  dims[0].n  = cols;
-	  dims[0].is = I.strideC;
+	  dims[0].is = W.strideC;
 	  dims[0].os = O.strideC;
 
 	  dims[1].n  = rows;
-	  dims[1].is = I.strideR;
+	  dims[1].is = W.strideR;
 	  dims[1].os = O.strideR;
 	}
 
-	const char * Idata = (char *) I.data;
+	const char * Idata = (char *) W.data;
 	const char * Odata = (char *) O.data;
 	const bool inplace = Idata == Odata;
 	const int alignment = std::min (trailingZeros ((uint32_t) (ptrdiff_t) Idata), trailingZeros ((uint32_t) (ptrdiff_t) Odata));  // OK even under 64-bit, as we only care about the first few bit positions.
 
-	const unsigned int flags = FFTW_ESTIMATE | (destroyInput ? FFTW_DESTROY_INPUT : FFTW_PRESERVE_INPUT);
+	const unsigned int flags = FFTW_ESTIMATE | FFTW_DESTROY_INPUT;  // We have no choice but to destroy input.
 
 	if (cachedPlan)
 	{
@@ -326,24 +320,19 @@ namespace fl
 
 	// Run it
 	fftw_execute_dft_c2r (cachedPlan, (fftw_complex *) Idata, (double *) Odata);
-	if (normalize) O /= sqrt (rows * cols);
+	if (normalize) O /= std::sqrt (rows * cols);
   }
 
   template<class T>
   void
   Fourier<T>::dft (int kind, const MatrixStrided<T> & I, MatrixStrided<T> & O)
   {
-	int rows;
-	int cols;
-	if (sizeFromOutput)
+	int rows = I.rows ();
+	int cols = I.columns ();
+	if (sizeFromOutput  &&  O.rows ()  &&  O.columns ())
 	{
-	  rows = std::min (O.rows (),    I.rows ());
-	  cols = std::min (O.columns (), I.columns ());
-	}
-	else
-	{
-	  rows = I.rows ();
-	  cols = I.columns ();
+	  rows = std::min (rows, O.rows ());
+	  cols = std::min (cols, O.columns ());
 	}
 	if (O.rows () < rows  ||  O.columns () < cols) O.resize (rows, cols);
 
@@ -446,7 +435,7 @@ namespace fl
 		  N = 4 * rows * cols;
 		  break;
 	  }
-	  O /= sqrt (N);
+	  O /= std::sqrt (N);
 	}
   }
 }

@@ -26,7 +26,7 @@ namespace fl
   class Fourier
   {
   public:
-	Fourier (bool normalize = false, bool destroyInput = true, bool sizeFromOutput = false);
+	Fourier (bool normalize = true, bool destroyInput = false, bool sizeFromOutput = true);
 	~Fourier ();
 
 	void dft (int direction, const MatrixStrided<std::complex<T> > & input, MatrixStrided<std::complex<T> > & output);
