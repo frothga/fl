@@ -40,14 +40,16 @@ namespace fl
   {
 	int h = rows ();
 	int w = columns ();
+	Matrix<std::complex<FL_BASIC_TYPE> > * result = new Matrix<std::complex<FL_BASIC_TYPE> > (h, w);
+	std::complex<FL_BASIC_TYPE> * i = (std::complex<FL_BASIC_TYPE> *) result->data;
 	for (int c = 0; c < w; c++)
 	{
 	  for (int r = 0; r < h; r++)
 	  {
-		std::complex<FL_BASIC_TYPE> & e = (*this)(r,c);
-		e = std::conj (e);
+		*i++ = std::conj ((*this)(r,c));
 	  }
 	}
+	return result;
   }
 
   template<>
