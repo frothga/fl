@@ -1,3 +1,4 @@
+#define __STDC_LIMIT_MACROS
 #include <iostream>
 #include <fl/parms.h>
 #include <fl/vectorsparse.h>

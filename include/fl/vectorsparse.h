@@ -13,7 +13,10 @@ for details.
 #define vector_sparse_h
 
 
+#ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
+#endif
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
