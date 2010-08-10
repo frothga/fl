@@ -13,7 +13,11 @@ for details.
 #define vector_sparse_h
 
 
+#define __STDC_LIMIT_MACROS
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
 #include <vector>
 
 
@@ -80,8 +84,8 @@ namespace fl
 	typedef T &       reference;
 	typedef const T * const_pointer;
 	typedef const T & const_reference;
-	typedef int       size_type;
-	typedef int       difference_type;
+	typedef int32_t   size_type;
+	typedef int32_t   difference_type;
 
 
 	// Inner classes ----------------------------------------------------------
@@ -352,12 +356,14 @@ namespace fl
 	vectorsparse ()
 	{
 	  threshold = 20;
+	  lastIndex = -1;
 	}
 
 	/// Deep copy semantics.
 	vectorsparse (const vectorsparse & that)
 	{
 	  threshold = that.threshold;
+	  lastIndex = that.lastIndex;
 	  typename std::vector<Contig *>::const_iterator it = that.contigs.begin ();
 	  while (it < that.contigs.end ()) contigs.push_back ((*it++)->duplicate ());
 	}
@@ -417,65 +423,49 @@ namespace fl
 
 	bool empty () const
 	{
-	  return contigs.size () == 0;
+	  return lastIndex == -1;
 	}
 
 	size_type size () const
+	{
+	  return lastIndex + 1;
+	}
+
+	size_type max_size () const
+	{
+	  return INT32_MAX / sizeof (value_type);
+	}
+
+	/**
+	   Returns count that includes last represented element.  This violates
+	   the STL definition of vector::capacity(), because memory allocation
+	   may occur even if the index of an element falls within this range.
+	   However, an allocation will certainly occur for a non-const access
+	   to an element outside this range.
+	 **/
+	size_type capacity () const
 	{
 	  if (contigs.size () == 0) return 0;
 	  const Contig * last = contigs.back ();
 	  return last->index + last->count;
 	}
 
-	size_type max_size () const
-	{
-	  return INT_MAX / sizeof (value_type);
-	}
-
-	/**
-	   Returns same value as size().  This violates the STL definition of
-	   vector::capacity(), because memory allocation may occur even if the
-	   index of an element is less than size().  However, an allocation
-	   will definitely occur for a non-const access to an element with
-	   index >= capacity().
-	 **/
-	size_type capacity () const
-	{
-	  return size ();
-	}
-
-	/**
-	   Similar to std::vector::resize() with one major difference: This
-	   function will not extend the array with zero elements, only non-zero
-	   elements.  The size of the array continues to be defined by the last
-	   non-zero element, regardless of the size actually requested.
-	   Perhaps a better stategy might be to represent a zero element at
-	   the end of the array and allow various size related functions to be
-	   meaningful.  Another possiblity is store size itself as a member
-	   variable.
-	 **/
 	void resize (size_type n, const value_type & value = zero)
 	{
+	  n = std::max (n, 0);  // since size_type is currently signed, we must enforce non-negativity.
 	  size_type s = size ();
 	  if (n == s) return;
 	  if (n < s)
 	  {
-		size_type position = findContig (n);
+		size_type position = findContig (n - 1);
 		if (position < 0)
 		{
-		  clear ();
-		  return;
+		  position = 0;  // effectively, we will destroy all contigs
 		}
-		Contig * c = contigs[position];
-		if (c->index < n)
+		else
 		{
-		  if (c->index + c->count > n)
-		  {
-			// truncate c
-			size_type count = n - c->index;
-			contigs[position] = c->shrink (c->index, count);
-		  }
-		  position++;
+		  Contig * c = contigs[position];
+		  if (c->index < n) position++;  // don't destroy contig if it starts at or before the new lastIndex
 		}
 		typename std::vector<Contig *>::iterator it;
 		for (it = contigs.begin () + position; it < contigs.end (); it++)
@@ -487,10 +477,37 @@ namespace fl
 	  }
 	  else if (value != zero)  // and n > s
 	  {
-		// append n-s copies of default to end of last contig
+		// fill-in "value" from just after lastIndex up to (n-1)
+		// We can safely assume that the start index of the last contig is
+		// less than or equal to the lastIndex.  However, we cannot assume
+		// that the last contig contains the lastIndex, so it may be necessary
+		// to create a new contig.
 		Contig * lastContig = contigs.back ();
-		contigs[contigs.size () - 1] = lastContig->expand (lastContig->index, lastContig->count + n - s, value);
+		int last = lastContig->index + lastContig->count - 1;
+		if (lastIndex - last > threshold)  // need to create a new lastContig
+		{
+		  // We will not actually represent the current lastIndex, since it
+		  // is a zero element.  Instead, we will fill-in "value" starting
+		  // just after the current lastIndex.
+		  lastContig = Contig::create (lastIndex + 1, (n - 1) - lastIndex);
+		  contigs.push_back (lastContig);
+		  T * i   = lastContig->start ();
+		  T * end = i + lastContig->count;
+		  while (i < end) ::new (i++) T (value);
+		}
+		else  // just update current lastContig
+		{
+		  int needed = (n - 1) - last;
+		  if (needed > 0)  // need to extend lastContig
+		  {
+			contigs[contigs.size () - 1] = lastContig = lastContig->expand (lastContig->index, lastContig->count + needed, value);
+		  }
+		  T * i   = lastContig->start () + (lastIndex + 1 - lastContig->index);
+		  T * end = i + (last - lastIndex);  // because we actually start at lastIndex + 1, this range will include "last" rather than stopping just short of it
+		  while (i < end) *i++ = value;
+		}
 	  }
+	  lastIndex = n - 1;
 	}
 
 	/**
@@ -526,8 +543,7 @@ namespace fl
 		}
 		else
 		{
-		  int count = std::min (index + 1, threshold);
-		  c = Contig::create (index - count + 1, count);
+		  c = Contig::create (index, threshold);
 		  c->construct ();
 		  contigs.push_back (c);
 		}
@@ -578,11 +594,12 @@ namespace fl
 		}
 		else  // d1 is more than threshold elements beyond last represented element
 		{
-		  c = Contig::create (index - threshold + 1, threshold);
+		  c = Contig::create (index, threshold);
 		  c->construct ();
 		  contigs.push_back (c);
 		}
 	  }
+	  lastIndex = std::max (lastIndex, index);
 	  return *(c->start () + (index - c->index));
 	}
 
@@ -615,24 +632,25 @@ namespace fl
 	  return (*this)[0];
 	}
 
-	/// Returns the last represented element
 	reference back ()
 	{
-	  Contig * last = contigs.back ();
-	  return *(last->finish () - 1);
+	  return (*this)[lastIndex];
 	}
 
 	const_reference back () const
 	{
-	  return back ();
+	  return (*this)[lastIndex];
 	}
 
 	void push_back (const value_type & value)
 	{
-	  (*this)[size ()] = value;
+	  (*this)[lastIndex + 1] = value;
 	}
 
-	//void pop_back ();
+	void pop_back ()
+	{
+	  resize (lastIndex);
+	}
 
 	//iterator insert (iterator position, const value_type & value);
 	//void insert (iterator position, size_type count, const value_type & value);
@@ -713,11 +731,62 @@ namespace fl
 	void swap (vectorsparse & that)
 	{
 	  std::swap (threshold, that.threshold);
-	  std::swap (contigs, that.contigs);
+	  std::swap (lastIndex, that.lastIndex);
+	  std::swap (contigs,   that.contigs);
 	}
 
+	struct ContigRemap
+	{
+	  size_type index;
+	  size_type count;
+	  Contig *  contig;
+	};
+
+	/**
+	   Restore sparse structure.  Processes the storage contigs so that they
+	   follow these rules:
+	   <ul>
+	   <li>Each contig begins and ends with a non-zero element.
+	   <li>Within each contig, any sequence of zeros is shorter than
+	   threshold elements.
+	   <li>Between adjacent contigs, there are at least threshold zero elements.
+	   </ul>
+	**/
 	void sparsify ()
 	{
+	  throw "sparsify is not fully written yet";
+
+	  // Pass 1 -- Splits
+	  std::vector<ContigRemap> splits;
+	  splits.reserve (contigs.size ());
+	  typename std::vector<Contig *>::iterator it;
+	  for (it = contigs.begin; it < contigs.end (); it++)
+	  {
+		T * start        = (*it)->start ();
+		T * end          = (*it)->finish ();
+		T * i            = start;
+		T * firstNonzero = 0;
+		T * lastNonzero  = 0;
+		int zeroCount    = 0;
+		while (i < end)
+		{
+		  if (*i == zero)
+		  {
+			zeroCount++;
+			//if ()
+			{
+			}
+		  }
+		  else  // nonzero
+		  {
+			if (! firstNonzero) firstNonzero = i;
+			lastNonzero = i;
+			zeroCount = 0;
+		  }
+		}
+	  }
+
+	  // Pass 2 -- Merges
 	}
 
 	// Support functions for Contig style storage
@@ -763,6 +832,7 @@ namespace fl
 
 	static const T zero;  ///< A dummy value returned when an element is represented.  Also used for comparisons with "zero".  Assigned (T) 0 at construction time.
 	size_type threshold;  ///< The number of contiguous zero elements before a contig is split or joined, with 1 element of hysteresis.
+	size_type lastIndex;  ///< Index of nominal end of array.  Not necessarily the last represented element, or even a represented element at all.
 	std::vector<Contig *> contigs;  ///< List of active contigs.  Managed by a real STL vector!
   };
   template <class T> const T vectorsparse<T>::zero = (T) 0;
