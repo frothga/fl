@@ -15,7 +15,7 @@ option (BUILD_SHARED_LIBS "Generate shared rather than static libraries" OFF)
 
 # Prioritize /usr ahead of / when searching for libraries.  Work-around for
 # interaction between encap symbolic links and directory shadowing under Cygwin.
-set (CMAKE_PREFIX_PATH /usr)
+set (CMAKE_PREFIX_PATH /usr $ENV{MKL_HOME})
 
 set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 if (MSVC)
@@ -73,10 +73,10 @@ else (CMAKE_SYSTEM_NAME MATCHES Linux)
   set          (RT_LIBRARIES)
 endif (CMAKE_SYSTEM_NAME MATCHES Linux)
 
-find_package (Pthread)
+find_package (Threads)
 # The LAPACK package finder that comes with cmake seems to be broken, even when
 # Fortran is available.
-find_package (LAPACKnofortran)
+find_package (LAPACK)
 find_package (FFTW)
 find_package (TIFF)
 find_package (GTIF)
@@ -86,9 +86,9 @@ find_package (Freetype)
 find_package (X11)
 find_package (FFMPEG)
 
-if (Pthread_FOUND)
+if (CMAKE_USE_PTHREADS_INIT)
   add_definitions (-DHAVE_PTHREAD)
-endif (Pthread_FOUND)
+endif (CMAKE_USE_PTHREADS_INIT)
 
 if (LAPACK_FOUND)
   add_definitions (-DHAVE_LAPACK)
@@ -130,7 +130,10 @@ if (FFMPEG_FOUND)
   add_definitions (-DHAVE_FFMPEG)
 endif (FFMPEG_FOUND)
 
-include_directories (include)
+include_directories (
+  include
+  ${FFTW_INCLUDE_DIRS}
+)
 
 
 # Set destination for targets -------------------------------------------------

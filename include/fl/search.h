@@ -111,10 +111,10 @@ namespace fl
   class SearchableConstriction : public SearchableNumeric<T>
   {
   public:
-	SearchableConstriction (Searchable<T> & searchable, const Vector<T> & a, const Vector<T> & b);
+	SearchableConstriction (Searchable<T> & searchable, const Vector<T> & a, const Vector<T> & b) : searchable (searchable), a (a), b (b) {}
 
-	virtual int dimension ();
-	virtual void value (const Vector<T> & point, Vector<T> & value);
+	virtual int dimension () {return searchable.dimension ();}
+	virtual void value (const Vector<T> & point, Vector<T> & value) {return searchable.value (a + b * point[0], value);}
 
 	Searchable<T> & searchable;
 	Vector<T> a;

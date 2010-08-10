@@ -1316,16 +1316,23 @@ testInterest ()
 
   InterestMSER mser;
   InterestHarrisLaplacian hl;
-  InterestDOG dog;
   InterestHessian s;
+# ifdef HAVE_LAPACK
+  InterestDOG dog;
+# endif
 
   InterestPointSet points;
   mser.run (image, points);
   hl  .run (image, points);
-  dog .run (image, points);
   s   .run (image, points);
-
+# ifdef HAVE_LAPACK
+  dog .run (image, points);
   const int expected = 5808;
+# else
+  const int expected = 5687;
+  cout << "WARNING: InterestDOG not tested due to lack of LAPACK" << endl;
+# endif
+
   int count = points.size ();
   if (abs (count - expected) > 50)
   {
@@ -1563,7 +1570,7 @@ testBitblt ()
 
   cout << "Image::bitblt passes" << endl;
 # else
-  cout << "Image:bitblt not tested" << endl;
+  cout << "WARNING: Image::bitblt not tested due to lack of JPEG" << endl;
 # endif
 }
 

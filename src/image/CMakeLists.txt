@@ -35,6 +35,10 @@ if (X11_FOUND)
   set (flImageX flX ${X11_LIBRARIES})
 endif (X11_FOUND)
 
+if (LAPACK_FOUND)
+  set (maybeInterestDOG InterestDOG.cc)
+endif (LAPACK_FOUND)
+
 add_library (flImage
   # Base Image
   ../../include/fl/image.h
@@ -123,7 +127,7 @@ add_library (flImage
   InterestHarrisLaplacian.cc
   InterestLaplacian.cc
   InterestHessian.cc
-  InterestDOG.cc
+  ${maybeInterestDOG}
   InterestMSER.cc
 
   # Video
@@ -157,6 +161,7 @@ target_link_libraries (testImage
   ${FFMPEG_LIBRARIES}
   ${LAPACK_LIBRARIES}
   ${BLAS_LIBRARIES}
+  ${CMAKE_THREAD_LIBS_INIT}
   ${GCC_LIBRARIES}
   ${SOCKET_LIBRARIES}
   ${RT_LIBRARIES}

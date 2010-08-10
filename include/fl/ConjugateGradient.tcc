@@ -21,31 +21,6 @@ for details.
 
 namespace fl
 {
-  // class SearchableConstriction ---------------------------------------------
-
-  template<class T>
-  SearchableConstriction<T>::SearchableConstriction (Searchable<T> & searchable, const Vector<T> & a, const Vector<T> & b)
-  : searchable (searchable),
-	a (a),
-	b (b)
-  {
-  }
-
-  template<class T>
-  int
-  SearchableConstriction<T>::dimension ()
-  {
-	return searchable.dimension ();
-  }
-
-  template<class T>
-  void
-  SearchableConstriction<T>::value (const Vector<T> & point, Vector<T> & value)
-  {
-	searchable.value (a + b * point[0], value);
-  }
-
-
   // class ConjugateGradient --------------------------------------------------
 
   template<class T>

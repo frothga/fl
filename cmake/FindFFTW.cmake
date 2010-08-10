@@ -5,9 +5,15 @@
 #   FFTW_INCLUDE_DIRS  Directory containing the include files
 #   FFTW_LIBRARIES     Full path to library to link against
 
-find_path (FFTW_INCLUDE_DIRS fftw3.h)
+find_path (FFTW_INCLUDE_DIRS
+  NAMES fftw3.h
+  PATH_SUFFIXES fftw
+)
 
-find_library (FFTW_LIBRARIES fftw3)
+find_library (FFTW_LIBRARIES
+  NAMES fftw3 fftw2xf_intel
+  PATHS ENV FFTW_LIB
+)
 
 # handle the QUIETLY and REQUIRED arguments and set FFTW_FOUND to TRUE if 
 # all listed variables are TRUE

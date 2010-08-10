@@ -12,7 +12,7 @@ add_library (flNet
   SocketStream.cc
 )
 target_link_libraries (flNet
-  ${Pthread_LIBRARIES}
+  ${CMAKE_THREAD_LIBS_INIT}
   ${SOCKET_LIBRARIES}
 )
 
@@ -33,6 +33,6 @@ endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 add_executable (testNet test.cc)
 target_link_libraries (testNet
   flNet
-  ${Pthread_LIBRARIES}
+  ${CMAKE_THREAD_LIBS_INIT}
   ${SOCKET_LIBRARIES}
 )
