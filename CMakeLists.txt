@@ -1,5 +1,5 @@
 # Author: Fred Rothganger
-# Copyright 2009 Sandia Corporation.
+# Copyright 2009, 2010 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Leser General Public License.  See the file
@@ -174,9 +174,9 @@ add_subdirectory (src/base)
 add_subdirectory (src/net)
 add_subdirectory (src/numeric)
 add_subdirectory (src/image)
-if (X11_FOUND)
+if (X11_FOUND  OR  MSVC)
   add_subdirectory (src/X)
-endif (X11_FOUND)
+endif (X11_FOUND  OR  MSVC)
 if (NOT MSVC)
   add_subdirectory (src/util)
 endif (NOT MSVC)

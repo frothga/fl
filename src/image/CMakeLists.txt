@@ -1,5 +1,5 @@
 # Author: Fred Rothganger
-# Copyright 2009 Sandia Corporation.
+# Copyright 2009, 2010 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Leser General Public License.  See the file
@@ -31,9 +31,13 @@ if (FFMPEG_FOUND)
   )
 endif (FFMPEG_FOUND)
 
-if (X11_FOUND)
-  set (flImageX flX ${X11_LIBRARIES})
-endif (X11_FOUND)
+if (X11_FOUND  OR  MSVC)
+  set (flImageX
+    flX
+    ${X11_LIBRARIES}
+    ${Pthread_LIB}
+  )
+endif (X11_FOUND  OR  MSVC)
 
 add_library (flImage
   # Base Image

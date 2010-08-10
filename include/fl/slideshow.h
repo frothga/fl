@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005 Sandia Corporation.
+Copyright 2005, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -18,29 +18,52 @@ for details.
 #define slideshow_h
 
 
-#ifndef _MSC_VER
-#include "fl/X.h"
-#endif
-
 #include "fl/image.h"
 
 
-namespace fl
-{
 #ifdef _MSC_VER
 
+#  define WIN32_LEAN_AND_MEAN
+#  include <windows.h>
+#  undef min
+#  undef max
+#  include <pthread.h>
+
+namespace fl
+{
   class SlideShow
   {
   public:
-	SlideShow () {}
+	SlideShow ();
+	~SlideShow ();
 
-	void show (const Image & image, int centerX = 0, int centerY = 0) {}
-	void waitForClick () {}
-	void clear () {}
+	void show (const Image & image, int centerX = 0, int centerY = 0);
+	void waitForClick ();
+	void stopWaiting ();
+	void clear ();
+
+	//virtual bool processMessage (HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+
+	bool               stop;
+	pthread_t          messagePumpThread;
+	pthread_mutex_t    waitingMutex;
+	pthread_cond_t     waitingCondition;
+	HWND               window;
+
+	// Static functions that implement window class
+	static void *           messagePump (void * arg);
+	static LRESULT CALLBACK windowProcedure (HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+	static WNDCLASSEX windowClass;
+	static ATOM       windowClassID;
   };
+}
 
 #else
 
+#  include "fl/X.h"
+
+namespace fl
+{
   class SlideShow : public Window
   {
   public:
@@ -74,9 +97,9 @@ namespace fl
 	pthread_mutex_t    waitingMutex;
 	pthread_cond_t     waitingCondition;
   };
+}
 
 #endif
-}
 
 
 #endif
