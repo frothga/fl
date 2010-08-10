@@ -28,6 +28,7 @@ if (LAPACK_FOUND)
     flNumeric
     flBase
     ${LAPACK_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
     ${GCC_LIBRARIES}
   )
   install (TARGETS invert RUNTIME DESTINATION bin)
@@ -40,6 +41,7 @@ if (LAPACK_FOUND)
       flBase
       ${FFMPEG_LIBRARIES}
       ${LAPACK_LIBRARIES}
+      ${CMAKE_THREAD_LIBS_INIT}
       ${GCC_LIBRARIES}
       ${SOCKET_LIBRARIES}
       ${RT_LIBRARIES}
@@ -54,6 +56,7 @@ if (LAPACK_FOUND)
       ${FFMPEG_LIBRARIES}
       ${JPEG_LIBRARIES}
       ${LAPACK_LIBRARIES}
+      ${CMAKE_THREAD_LIBS_INIT}
       ${GCC_LIBRARIES}
       ${SOCKET_LIBRARIES}
       ${RT_LIBRARIES}
@@ -71,6 +74,7 @@ if (LAPACK_FOUND)
         ${JPEG_LIBRARIES}
         ${X11_LIBRARIES}
         ${LAPACK_LIBRARIES}
+        ${CMAKE_THREAD_LIBS_INIT}
         ${GCC_LIBRARIES}
         ${SOCKET_LIBRARIES}
         ${RT_LIBRARIES}
@@ -92,6 +96,7 @@ if (LAPACK_FOUND)
       ${JPEG_LIBRARIES}
       ${PNG_LIBRARIES}
       ${LAPACK_LIBRARIES}
+      ${CMAKE_THREAD_LIBS_INIT}
       ${GCC_LIBRARIES}
       ${RT_LIBRARIES}
     )

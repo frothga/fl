@@ -6,16 +6,17 @@
 # LICENSE for details.
 
 
+if (CMAKE_USE_PTHREADS_INIT)
+  set (maybeKMeansParallel KMeansParallel.cc)
+endif (CMAKE_USE_PTHREADS_INIT)
+
 if (BLAS_FOUND)
   set (flNumericBLAS
     ../../include/fl/blasproto.h
   )
 endif (BLAS_FOUND)
 
-if (Pthread_FOUND)
-  set (maybeKMeansParallel KMeansParallel.cc)
-endif (Pthread_FOUND)
-
+# Note that LAPACK_FOUND implies BLAS_FOUND
 if (LAPACK_FOUND)
   set (flNumericLAPACK
     ../../include/fl/lapack.h
@@ -39,6 +40,14 @@ if (LAPACK_FOUND)
     sspev.cc
     ssyev.cc
     ssygv.cc
+  )
+  set (maybeSearch
+    LevenbergMarquardtDouble.cc
+    LevenbergMarquardtFloat.cc
+    NewtonRaphsonDouble.cc
+    NewtonRaphsonFloat.cc
+    ConjugateGradientDouble.cc
+    ConjugateGradientFloat.cc
   )
 endif (LAPACK_FOUND)
 
@@ -119,24 +128,19 @@ add_library (flNumeric
   ../../include/fl/NewtonRaphson.tcc
   ../../include/fl/SearchableNumeric.tcc
   ../../include/fl/SearchableSparse.tcc
+  ${maybeSearch}
   #   Double
   AnnealingAdaptiveDouble.cc
-  ConjugateGradientDouble.cc
   GradientDescentDouble.cc
-  LevenbergMarquardtDouble.cc
   LevenbergMarquardtSparseBKDouble.cc
   LineSearchDouble.cc
-  NewtonRaphsonDouble.cc
   SearchableNumericDouble.cc
   SearchableSparseDouble.cc
   #   Float
   AnnealingAdaptiveFloat.cc
-  ConjugateGradientFloat.cc
   GradientDescentFloat.cc
-  LevenbergMarquardtFloat.cc
   LevenbergMarquardtSparseBKFloat.cc
   LineSearchFloat.cc
-  NewtonRaphsonFloat.cc
   SearchableNumericFloat.cc
   SearchableSparseFloat.cc
 
@@ -188,6 +192,7 @@ target_link_libraries (testNumeric
   flBase
   ${LAPACK_LIBRARIES}
   ${BLAS_LIBRARIES}
+  ${CMAKE_THREAD_LIBS_INIT}
   ${GCC_LIBRARIES}
   ${RT_LIBRARIES}
 )
