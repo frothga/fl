@@ -79,9 +79,9 @@ else (CMAKE_SYSTEM_NAME MATCHES Linux)
   set          (RT_LIBRARIES)
 endif (CMAKE_SYSTEM_NAME MATCHES Linux)
 
+# Preempt FindThreads to ensure that pthreads will be used under Windows
+find_library (CMAKE_THREAD_LIBS_INIT pthread)
 find_package (Threads)
-# The LAPACK package finder that comes with cmake seems to be broken, even when
-# Fortran is available.
 find_package (LAPACK)
 find_package (FFTW)
 find_package (TIFF)
@@ -106,6 +106,7 @@ endif (BLAS_FOUND)
 
 if (FFTW_FOUND)
   add_definitions (-DHAVE_FFTW)
+  include_directories (${FFTW_INCLUDE_DIRS})
 endif (FFTW_FOUND)
 
 if (TIFF_FOUND)
@@ -136,10 +137,7 @@ if (FFMPEG_FOUND)
   add_definitions (-DHAVE_FFMPEG)
 endif (FFMPEG_FOUND)
 
-include_directories (
-  include
-  ${FFTW_INCLUDE_DIRS}
-)
+include_directories (include)
 
 
 # Set destination for targets -------------------------------------------------

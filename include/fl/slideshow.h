@@ -40,9 +40,19 @@ namespace fl
 	void show (const Image & image, int centerX = 0, int centerY = 0);
 	void waitForClick ();
 	void stopWaiting ();
-	void clear ();
 
 	//virtual bool processMessage (HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+
+	HBITMAP            image;
+	pthread_mutex_t    mutexImage;
+
+	bool               modeDrag;  ///< Indicates that there was motion between button down and button up
+	int                lastX;  ///< Where the last button event occurred
+	int                lastY;
+	int                offsetX; ///< Position in image where window starts
+	int                offsetY;
+	int                width;   ///< Current size of window
+	int                height;
 
 	bool               stop;
 	pthread_t          messagePumpThread;

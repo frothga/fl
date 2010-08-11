@@ -35,7 +35,6 @@ if (X11_FOUND  OR  MSVC)
   set (flImageX
     flX
     ${X11_LIBRARIES}
-    ${Pthread_LIB}
   )
 endif (X11_FOUND  OR  MSVC)
 
