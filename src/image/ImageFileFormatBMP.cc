@@ -256,7 +256,7 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
 	// Assume an embedded JFIF, and pass to JPEG handler
 	ImageFileFormat * jpeg;
 	ImageFileFormat::find ("jpeg", jpeg);
-	if (jpeg) throw "BMP JPEG compression is unavailable";
+	if (! jpeg) throw "BMP JPEG compression is unavailable";
 	ImageFileDelegate * delegate = jpeg->open (*in);
 	delegate->read (image, ignorex, ignorey);
 	delete delegate;
