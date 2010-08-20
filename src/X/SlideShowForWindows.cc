@@ -82,13 +82,13 @@ SlideShow::show (const Image & image, int centerX, int centerY)
 	HDC windowDC = GetDC (window);
 	if (! windowDC) throw "Failed to get DC";
 
-	Image temp = image * BGRChar;
+	Image temp = image * BGRChar4;
 	BITMAPINFO bmi;
 	bmi.bmiHeader.biSize          = sizeof (bmi.bmiHeader);
 	bmi.bmiHeader.biWidth         =   image.width;
 	bmi.bmiHeader.biHeight        = - image.height;
 	bmi.bmiHeader.biPlanes        = 1;
-	bmi.bmiHeader.biBitCount      = 24;
+	bmi.bmiHeader.biBitCount      = 32;
 	bmi.bmiHeader.biCompression   = BI_RGB;
 	bmi.bmiHeader.biSizeImage     = 0;
 	bmi.bmiHeader.biXPelsPerMeter = 0;
@@ -125,6 +125,7 @@ SlideShow::show (const Image & image, int centerX, int centerY)
 
 	// Display window
 	ShowWindowAsync (window, SW_SHOWNORMAL);
+	UpdateWindow (window);
 }
 
 void
@@ -260,7 +261,7 @@ SlideShow::windowProcedure (HWND window, UINT message, WPARAM wParam, LPARAM lPa
 			if (! me->modeDrag) me->stopWaiting ();
 			break;
 		case WM_CLOSE:
-		case WM_KEYUP:
+		case WM_CHAR:
 			me->stopWaiting ();
 			break;
 		case WM_DESTROY:
