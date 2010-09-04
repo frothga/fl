@@ -71,6 +71,7 @@ void
 testTransform (Image & image)
 {
   CanvasImage ci (image);
+  ci.clear ();
   ci.drawFilledRectangle (Point (300, 200), Point (500, 300));
 
   // 8-dof
@@ -1168,6 +1169,7 @@ testDescriptorFilters ()
 
   Point target (320, 240);
   CanvasImage image (640, 480, GrayFloat);
+  image.clear ();
   image.drawCircle (target, 5);
 
   Vector<float> value = desc.value (image, target);
@@ -1255,8 +1257,7 @@ testDescriptors ()
 # endif
 }
 
-// IntensityAverage
-// IntensityDeviation
+// IntensityStatistics
 // IntensityHistogram
 void
 testIntensityFilters ()
@@ -1273,22 +1274,20 @@ testIntensityFilters ()
   }
 
   // Measure statistics and verify
-  IntensityAverage avg;
-  image * avg;
-  IntensityDeviation std (avg.average);
-  image * std;
-  IntensityHistogram hist (avg.minimum, avg.maximum, 20);
+  IntensityStatistics stats;
+  image * stats;
+  IntensityHistogram hist (stats.minimum, stats.maximum, 20);
   image * hist;
 
-  if (fabs (avg.average) > 0.01)
+  if (fabs (stats.average) > 0.01)
   {
-	cout << "average too far from zero " << avg.average << endl;
-	throw "IntensityAverage fails";
+	cout << "average too far from zero " << stats.average << endl;
+	throw "IntensityStatistics fails";
   }
-  if (fabs (std.deviation - 1.0f) > 0.01)
+  if (fabs (stats.deviation () - 1.0f) > 0.01)
   {
-	cout << "deviation too far from one " << std.deviation << endl;
-	throw "IntensityDeviation fails";
+	cout << "deviation too far from one " << stats.deviation () << endl;
+	throw "IntensityStatistics fails";
   }
   if (hist.counts[10] < 50000  ||  hist.counts[0] > 100)
   {
@@ -1297,7 +1296,7 @@ testIntensityFilters ()
 	throw "IntensityHistogram fails";
   }
 
-  cout << "IntensityAverage, IntensityDeviation and IntensityHistogram pass" << endl;
+  cout << "IntensityStatistics and IntensityHistogram pass" << endl;
 }
 
 // Gaussian1D

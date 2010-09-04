@@ -387,37 +387,25 @@ namespace fl
   };
 
   /**
-	 An information gathering filter.  Finds average of intensity values.
-	 Returns the image unaltered and stores the average in object's state.
+	 Finds standard deviation, average, minimum and maximum of intensity values.
+	 An information gathering filter.  Returns the image unaltered and stores
+	 the results in this object's state.
   **/
-  class IntensityAverage : public Filter
+  class IntensityStatistics : public Filter
   {
   public:
-	IntensityAverage (bool ignoreZeros = false);
+	IntensityStatistics (bool ignoreZeros = false);
 
 	virtual Image filter (const Image & image);
 
-	float average;  ///< Average intensity value.
-	float minimum;  ///< Smallest intensity value.
-	float maximum;  ///< Largest intensity value.
-	int count;      ///< Number of pixels included in average.
-	bool ignoreZeros;  ///< Don't include black pixels in count.
-  };
+	double deviation (double average = NAN);  ///< Computes standard deviation around given average.  If average is not specified, then uses actual average inensity in image.  This is a convenience function for accessing results.
 
-  /**
-	 An information gathering filter.  Finds standard deviation of intensity
-	 values based on a given average value.
-  **/
-  class IntensityDeviation : public Filter
-  {
-  public:
-	IntensityDeviation (float average, bool ignoreZeros = false);
-
-	virtual Image filter (const Image & image);
-
-	float average;  ///< The given value
-	float deviation;  ///< The computed value
-	bool ignoreZeros;  ///< Don't include black pixels in count for determining deviation.
+	double average;        ///< Average intensity value.
+	double averageSquare;  ///< Average of squared intensity value.
+	double minimum;        ///< Smallest intensity value.
+	double maximum;        ///< Largest intensity value.
+	int count;             ///< Number of pixels included in average.
+	bool ignoreZeros;      ///< Don't include black pixels in count.
   };
 
   /**

@@ -93,9 +93,9 @@ Stopwatch timer;
 	NonMaxSuppress nms (nmsSize);
 	filtered *= nms;
 
-	IntensityDeviation std (0, true);
-	filtered * std;
-	float threshold = max (0.0f, std.deviation * thresholdFactor);
+	IntensityStatistics stats (true);
+	filtered * stats;
+	float threshold = max (0.0, stats.deviation (0) * thresholdFactor);
 
 	for (int y = 0; y < filtered.height; y++)
 	{

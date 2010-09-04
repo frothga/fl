@@ -133,9 +133,9 @@ Stopwatch timer;
 	NonMaxSuppress nms (nmsSize);
 	filtered *= nms;
 
-	IntensityDeviation std (0, true);
-	filtered * std;
-	float threshold = max (0.0f, std.deviation * thresholdFactor);
+	IntensityStatistics stats (true);
+	filtered * stats;
+	float threshold = max (0.0, stats.deviation (0) * thresholdFactor);
 
 	// Hack for large scales
 	if (nms.count < 20)
@@ -150,7 +150,7 @@ Stopwatch timer;
 	{
 	  lastThreshold = threshold;
 	}
-cerr << " " << nms.count << " " << std.deviation << " " << threshold;
+cerr << " " << nms.count << " " << stats.deviation () << " " << threshold;
 
 int added = 0;
 	for (int y = 0; y < filtered.height; y++)
