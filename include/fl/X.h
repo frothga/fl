@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -77,14 +77,17 @@ namespace fl
 	Atom internAtom (const std::string & name, bool onlyIfExists = false);
 	void putBackEvent (XEvent & event);
 	void flush ();
+	void lock ();
+	void unlock ();
 
 	// Data
 	::Display * display;
 
 	bool                        done;
 	pthread_t                   pidMessagePump;
-	pthread_mutex_t             mutexCallback;
+	pthread_mutex_t             mutexCallback;  ///< Serializes access to callbacks collection
 	std::map<XID, fl::Window *> callbacks;
+	pthread_mutex_t             mutexDisplay;  ///< Serializes access to Xlib functions associated with this display
 
 	std::vector<fl::Screen *> screens;
 

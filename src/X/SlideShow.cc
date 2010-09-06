@@ -77,7 +77,9 @@ SlideShow::~SlideShow ()
   if (ximage)
   {
 	ximage->data = (char *) malloc (1);  // Will be freed immediately by XDestroyImage.
+	screen->display->lock ();
 	XDestroyImage (ximage);
+	screen->display->unlock ();
   }
   pthread_mutex_destroy (&mutexImage);
   pthread_cond_destroy (&waitingCondition);
@@ -246,7 +248,9 @@ SlideShow::show (const Image & image, int centerX, int centerY)
   if (ximage)
   {
 	ximage->data = (char *) malloc (1);  // Will be freed immediately by XDestroyImage.
+	screen->display->lock ();
 	XDestroyImage (ximage);
+	screen->display->unlock ();
 	ximage = NULL;
   }
   ximage = visual->createImage (image, this->image);
@@ -270,7 +274,7 @@ SlideShow::show (const Image & image, int centerX, int centerY)
 
   map ();  // In case we aren't already visible
   paint ();
-  XFlush (screen->display->display);
+  screen->display->flush ();
 }
 
 void

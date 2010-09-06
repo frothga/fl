@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -19,6 +19,7 @@ for details.
 #include <X11/Xutil.h>
 #include <X11/Xos.h>
 
+#include <sys/select.h>
 #include <math.h>
 #include <stdio.h>
 #include <iostream>
@@ -36,7 +37,6 @@ fl::Display::Display ()
 {
   display = 0;
 
-  XInitThreads ();
   XSetErrorHandler (errorHandler);
   XSetIOErrorHandler (ioErrorHandler);
 }
@@ -46,6 +46,10 @@ fl::Display::Display (const string & name)
   initialize (name);
 }
 
+/**
+   @todo May need a global mutexX to lock access to Xlib for calls to
+   XOpenDisplay() here and XCloseDisplay() in the destructor.
+ **/
 void
 fl::Display::initialize (const string & name)
 {
@@ -68,6 +72,8 @@ fl::Display::initialize (const string & name)
   pthread_mutex_init (&mutexCallback, &attrCallback);
   pthread_mutexattr_destroy (&attrCallback);
 
+  pthread_mutex_init (&mutexDisplay, 0);
+
   int count = ScreenCount (display);
   screens.resize (count, (fl::Screen *) NULL);
 
@@ -89,10 +95,13 @@ fl::Display::~Display ()
   if (display)
   {
 	done = true;
+	pthread_mutex_lock   (&mutexDisplay);
 	XSync (display, true);
+	pthread_mutex_unlock (&mutexDisplay);
 	pthread_join (pidMessagePump, NULL);
 
 	pthread_mutex_destroy (&mutexCallback);
+	pthread_mutex_destroy (&mutexDisplay);
 
 	vector<fl::Screen *>::iterator i;
 	for (i = screens.begin (); i < screens.end (); i++)
@@ -137,18 +146,35 @@ fl::Display::removeCallback (const fl::Window & window)
 void *
 fl::Display::messagePump (void * arg)
 {
-  fl::Display * display = (fl::Display *) arg;
+  fl::Display * me = (fl::Display *) arg;
 
   try
   {
-	XEvent event;
-	while (! display->done)
-    {
-	  XNextEvent (display->display, &event);
+	int fd = ConnectionNumber (me->display);
+	while (! me->done)
+	{
+	  pthread_mutex_lock (& me->mutexDisplay);
+	  if (XPending (me->display) == 0)
+	  {
+		pthread_mutex_unlock (& me->mutexDisplay);
 
-	  pthread_mutex_lock (& display->mutexCallback);
-	  map<XID, fl::Window *>::iterator i = display->callbacks.find (event.xany.window);
-	  if (i != display->callbacks.end ())
+		// Use select() to suspend until input is available
+		fd_set fds;
+		FD_ZERO (&fds);
+		FD_SET (fd, &fds);
+		struct timeval timeout;
+		timeout.tv_sec  = 0;
+		timeout.tv_usec = 100000;  // wait no more than 0.1s before checking if done flag is set
+		select (fd + 1, &fds, 0, 0, &timeout);
+		continue;
+	  }
+	  XEvent event;
+	  XNextEvent (me->display, &event);
+	  pthread_mutex_unlock (& me->mutexDisplay);
+
+	  pthread_mutex_lock (& me->mutexCallback);
+	  map<XID, fl::Window *>::iterator i = me->callbacks.find (event.xany.window);
+	  if (i != me->callbacks.end ())
 	  {
 		// By actually processing the event inside this critical section, we
 		// open the possibility of the lock being held for a long time.
@@ -157,7 +183,7 @@ fl::Display::messagePump (void * arg)
 		// function call.
 		i->second->processEvent (event);
 	  }
-	  pthread_mutex_unlock (& display->mutexCallback);
+	  pthread_mutex_unlock (& me->mutexCallback);
 	}
   }
   catch (char * error)
@@ -182,19 +208,38 @@ fl::Display::defaultScreen ()
 Atom
 fl::Display::internAtom (const std::string & name, bool onlyIfExists)
 {
-  return XInternAtom (display, name.c_str (), onlyIfExists);
+  pthread_mutex_lock   (&mutexDisplay);
+  Atom result = XInternAtom (display, name.c_str (), onlyIfExists);
+  pthread_mutex_unlock (&mutexDisplay);
+  return result;
 }
 
 void
 fl::Display::putBackEvent (XEvent & event)
 {
+  pthread_mutex_lock   (&mutexDisplay);
   XPutBackEvent (display, &event);
+  pthread_mutex_unlock (&mutexDisplay);
 }
 
 void
 fl::Display::flush ()
 {
+  pthread_mutex_lock   (&mutexDisplay);
   XFlush (display);
+  pthread_mutex_unlock (&mutexDisplay);
+}
+
+void
+fl::Display::lock ()
+{
+  pthread_mutex_lock (&mutexDisplay);
+}
+
+void
+fl::Display::unlock ()
+{
+  pthread_mutex_unlock (&mutexDisplay);
 }
 
 int
@@ -221,15 +266,16 @@ fl::Screen::Screen (fl::Display * display, int number)
 	display = fl::Display::getPrimary ();
   }
 
+  display->lock ();
   screen = ScreenOfDisplay (display->display, number);
+  root.id = RootWindowOfScreen (screen);
+  ::Visual * vp = DefaultVisualOfScreen (screen);
+  display->unlock ();
+
   this->number = number;
   this->display = display;
-
   root.screen = this;
-  root.id = RootWindowOfScreen (screen);
 
-  // Get default visual
-  ::Visual * vp = DefaultVisualOfScreen (screen);
   visual = new fl::Visual (*this, vp);
   visuals.insert (make_pair (visual->id, visual));
 }
@@ -252,13 +298,19 @@ fl::Screen::rootWindow () const
 unsigned long
 fl::Screen::blackPixel () const
 {
-  return BlackPixelOfScreen (screen);
+  display->lock ();
+  unsigned long result = BlackPixelOfScreen (screen);
+  display->unlock ();
+  return result;
 }
 
 int
 fl::Screen::defaultDepth () const
 {
-  return DefaultDepth (display->display, number);
+  display->lock ();
+  int result = DefaultDepth (display->display, number);
+  display->unlock ();
+  return result;
 }
 
 fl::Visual &
@@ -278,12 +330,14 @@ fl::Visual::Visual ()
 
 fl::Visual::Visual (fl::Screen & screen, ::Visual * visual)
 {
+  screen.display->lock ();
   XVisualInfo vinfo;
   vinfo.visualid = XVisualIDFromVisual (visual);
   int count = 0;
   XVisualInfo * vinfos = XGetVisualInfo (screen.display->display, VisualIDMask, &vinfo, &count);
   initialize (screen, vinfos);
   XFree (vinfos);
+  screen.display->unlock ();
 }
 
 void
@@ -312,6 +366,7 @@ fl::Visual::createImage (const Image & image, Image & formatted) const
   formatted = image * *format;
   PixelBufferPacked * pbp = (PixelBufferPacked *) formatted.buffer;
   char * buffer = pbp ? (char *) pbp->memory : 0;
+  screen->display->lock ();
   XImage * result = XCreateImage
   (
     screen->display->display,
@@ -324,6 +379,7 @@ fl::Visual::createImage (const Image & image, Image & formatted) const
 	(int) (format->depth * 8),
 	0
   );
+  screen->display->unlock ();
 
   // Should hook in a replacement delete routine in the image structure to
   // prevent the buffer attached to "formatted" from being destroyed.
@@ -347,7 +403,9 @@ void
 fl::Drawable::getGeometry (int & x, int & y, int & width, int & height, int & border, int & depth) const
 {
   ::Window root;
+  screen->display->lock ();
   XGetGeometry (screen->display->display, id, &root, &x, &y, (unsigned int *) &width, (unsigned int *) &height, (unsigned int *) &border, (unsigned int *) &depth);
+  screen->display->unlock ();
 }
 
 void
@@ -355,7 +413,9 @@ fl::Drawable::getSize (int & width, int & height) const
 {
   int barf;
   ::Window root;
+  screen->display->lock ();
   XGetGeometry (screen->display->display, id, &root, &barf, &barf, (unsigned int *) &width, (unsigned int *) &height, (unsigned int *) &barf, (unsigned int *) &barf);
+  screen->display->unlock ();
 }
 
 void
@@ -372,6 +432,7 @@ fl::Drawable::putImage (const fl::GC & gc, const XImage * image, int toX, int to
   width = min (width, image->width - fromX);
   height = min (height, image->height - fromY);
   if (width <= 0  ||  height <= 0) return;  // no point in putting an image with no extent
+  screen->display->lock ();
   XPutImage
   (
     screen->display->display,
@@ -382,6 +443,7 @@ fl::Drawable::putImage (const fl::GC & gc, const XImage * image, int toX, int to
 	toX, toY,
 	width, height
   );
+  screen->display->unlock ();
 }
 
 Image
@@ -392,7 +454,9 @@ fl::Drawable::getImage (int x, int y, int width, int height) const
 	getSize (width, height);
   }
 
+  screen->display->lock ();
   XImage * image = XGetImage (screen->display->display, id, x, y, width, height, ~ ((unsigned long) 0), ZPixmap);
+  screen->display->unlock ();
 
   int d = (int) ceil (image->depth / 8.0);
   if (d == 3)
@@ -403,7 +467,9 @@ fl::Drawable::getImage (int x, int y, int width, int height) const
 
   Image temp ((unsigned char *) image->data, image->width, image->height, format);
   Image result = temp * RGBAChar;  // since alpha channel == 0, should be that RGBAChar != format, so buffer will be duplicated
+  screen->display->lock ();
   XDestroyImage (image);
+  screen->display->unlock ();
 
   return result;
 }
@@ -425,6 +491,7 @@ fl::Drawable::copyArea (const fl::GC & gc, const fl::Drawable & source, int toX,
   }
   width  = min (width,  sourceWidth  - fromX);
   height = min (height, sourceHeight - fromY);
+  screen->display->lock ();
   XCopyArea
   (
     screen->display->display,
@@ -434,6 +501,7 @@ fl::Drawable::copyArea (const fl::GC & gc, const fl::Drawable & source, int toX,
 	width, height,
 	toX, toY
   );
+  screen->display->unlock ();
 }
 
 
@@ -459,6 +527,8 @@ fl::Window::Window (fl::Window & parent, int width, int height, int x, int y)
 {
   screen = parent.screen;
 
+  unsigned long black = screen->blackPixel ();
+  screen->display->lock ();
   id = XCreateSimpleWindow
   (
     screen->display->display,
@@ -466,15 +536,18 @@ fl::Window::Window (fl::Window & parent, int width, int height, int x, int y)
 	x, y,
 	width, height,
 	0,	
-	screen->blackPixel (),
-	screen->blackPixel ()
+	black,
+	black
   );
+  screen->display->unlock ();
 }
 
 fl::Window::Window (fl::Screen & screen, int width, int height, int x, int y)
 {
   this->screen = &screen;
 
+  unsigned long black = screen.blackPixel ();
+  screen.display->lock ();
   id = XCreateSimpleWindow
   (
     screen.display->display,
@@ -482,9 +555,10 @@ fl::Window::Window (fl::Screen & screen, int width, int height, int x, int y)
 	x, y,
 	width, height,
 	0,	
-	screen.blackPixel (),
-	screen.blackPixel ()
+	black,
+	black
   );
+  screen.display->unlock ();
 }
 
 fl::Window::~Window ()
@@ -493,56 +567,72 @@ fl::Window::~Window ()
 
   // Because we have already unregistered the callback, we will not receive
   // the DestroyNotify message.
+  screen->display->lock ();
   XDestroyWindow (screen->display->display, id);
+  screen->display->unlock ();
 }
 
 void
 fl::Window::selectInput (long eventMask)
 {
   fl::Display * display = screen->display;
+  screen->display->lock ();
   XSelectInput (display->display, id, eventMask);
+  screen->display->unlock ();
   display->addCallback (*this);
 }
 
 void
 fl::Window::map ()
 {
+  screen->display->lock ();
   XMapWindow (screen->display->display, id);
+  screen->display->unlock ();
 }
 
 void
 fl::Window::unmap ()
 {
+  screen->display->lock ();
   XUnmapWindow (screen->display->display, id);
+  screen->display->unlock ();
 }
 
 void
 fl::Window::resize (int width, int height)
 {
+  screen->display->lock ();
   XResizeWindow (screen->display->display, id, width, height);
+  screen->display->unlock ();
 }
 
 void
 fl::Window::setColormap (fl::Colormap & colormap)
 {
+  screen->display->lock ();
   XSetWindowColormap
   (
     screen->display->display,
 	id,
 	colormap.id
   );
+  screen->display->unlock ();
 }
 
 void
 fl::Window::setWMProtocols (const vector<Atom> & protocols)
 {
+  screen->display->lock ();
   XSetWMProtocols (screen->display->display, id, (Atom *) & protocols[0], protocols.size ());
+  screen->display->unlock ();
 }
 
 void
 fl::Window::setWMName (const std::string name)
 {
+  screen->display->lock ();
   XStoreName (screen->display->display, id, name.c_str ());
+  screen->display->unlock ();
   // Should use XSetWMName, but this is simpler.  Only needed for non-ASCII
   // encodings, so may be appropriate for the function prototype...
   // setWMName (const std::wstring name)
@@ -551,32 +641,45 @@ fl::Window::setWMName (const std::string name)
 void
 fl::Window::clear (int x, int y, int width, int height, bool exposures)
 {
+  screen->display->lock ();
   XClearArea (screen->display->display, id, x, y, width, height, exposures);
+  screen->display->unlock ();
 }
 
 void
 fl::Window::changeProperty (Atom property, Atom type, int mode, const std::string value)
 {
+  screen->display->lock ();
   XChangeProperty (screen->display->display, id, property, type, 8, mode, (const unsigned char *) value.c_str (), value.size ());
+  screen->display->unlock ();
 }
 
 bool
 fl::Window::checkTypedEvent (XEvent & event, int eventType)
 {
-  return XCheckTypedWindowEvent (screen->display->display, id, eventType, &event);
+  screen->display->lock ();
+  bool result = XCheckTypedWindowEvent (screen->display->display, id, eventType, &event);
+  screen->display->unlock ();
+  return result;
 }
 
 bool
 fl::Window::checkIfEvent (XEvent & event, EventPredicate & predicate)
 {
-  return XCheckIfEvent (screen->display->display, &event, &predicate.predicate, (XPointer) &predicate);
+  screen->display->lock ();
+  bool result = XCheckIfEvent (screen->display->display, &event, &predicate.predicate, (XPointer) &predicate);
+  screen->display->unlock ();
+  return result;
 }
 
 bool
 fl::Window::sendEvent (XEvent & event, unsigned long eventMask, bool propogate)
 {
   event.xany.window = id;
-  return XSendEvent (screen->display->display, id, propogate, eventMask, &event);
+  screen->display->lock ();
+  bool result = XSendEvent (screen->display->display, id, propogate, eventMask, &event);
+  screen->display->unlock ();
+  return result;
 }
 
 bool
@@ -595,6 +698,7 @@ fl::Window::processEvent (XEvent & event)
 fl::Colormap::Colormap (fl::Visual & visual, int alloc)
 {
   screen = visual.screen;
+  screen->display->lock ();
   id = XCreateColormap
   (
 	screen->display->display,
@@ -602,11 +706,14 @@ fl::Colormap::Colormap (fl::Visual & visual, int alloc)
 	visual.visual,
 	alloc
   );
+  screen->display->unlock ();
 }
 
 fl::Colormap::~Colormap ()
 {
+  screen->display->lock ();
   XFreeColormap (screen->display->display, id);
+  screen->display->unlock ();
 }
 
 
@@ -622,6 +729,7 @@ fl::GC::GC (fl::Screen * screen, ::GC gc, bool shouldFree)
 fl::GC::GC (fl::Screen & screen, unsigned long valuemask, XGCValues * values)
 {
   this->screen = &screen;
+  screen.display->lock ();
   gc = XCreateGC
   (
     screen.display->display,
@@ -629,6 +737,7 @@ fl::GC::GC (fl::Screen & screen, unsigned long valuemask, XGCValues * values)
 	valuemask,
 	values
   );
+  screen.display->unlock ();
   shouldFree = true;
 }
 
@@ -636,6 +745,8 @@ fl::GC::~GC ()
 {
   if (shouldFree)
   {
+	screen->display->lock ();
 	XFreeGC (screen->display->display, gc);
+	screen->display->unlock ();
   }
 }
