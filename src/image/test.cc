@@ -34,6 +34,8 @@ using namespace std;
 using namespace fl;
 
 
+string dataDir;  ///< Path to working directory where test.jpg resides and where output will go
+
 void
 testAbsoluteValue (Image & image)
 {
@@ -263,7 +265,7 @@ const int   thresholdLumaClipped   = 3;
 const int   thresholdChromaClipped = 4;
 const int   thresholdLumaAccessor  = 2;  // higher because errors in YUV<->RGB conversion get magnified by gray conversion
 
-extern void reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight);
+extern void reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight, int pad = 0);
 
 void
 testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::PixelFormat * targetFormat)
@@ -282,8 +284,8 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	int skew = 13;  // 16 works, but doesn't test hard enough
 	if (PixelBufferPacked * pbp = (PixelBufferPacked *) fromImage.buffer)
 	{
-	  // The advantage of reshapeBuffer() is that we can specify the stide directly in bytes...
-	  reshapeBuffer (pbp->memory, pbp->stride, pbp->stride + skew, fromImage.height);
+	  // The advantage of reshapeBuffer() is that we can specify the stride directly in bytes...
+	  reshapeBuffer (pbp->memory, pbp->stride, pbp->stride + skew, fromImage.height, pbp->depth == 3 ? 1 : 0);
 	  pbp->stride += skew;
 	}
 	else
@@ -941,7 +943,7 @@ testPixelFormat ()
   formats.push_back ( R8G8B8A0);
   formats.push_back ( R9G9B9A5);
 
-  Image test ("test.jpg");
+  Image test (dataDir + "test.jpg");
 
   Stopwatch timer;
   for (int i = 0; i < formats.size (); i++)
@@ -1007,8 +1009,7 @@ testConvolutionDiscrete1D ()
   kernels.push_back (&evenKernel);
 
   vector<Image *> images;
-  Image test ("test.jpg");
-  //Image test ("mars.jpg");
+  Image test (dataDir + "test.jpg");
   Image onebigger (*test.format);
   Image same (*test.format);
   Image onesmaller (*test.format);
@@ -1019,6 +1020,7 @@ testConvolutionDiscrete1D ()
   same.      bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width,     evenKernel.width    );
   onesmaller.bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width - 1, evenKernel.width - 1);
   twosmaller.bitblt (test, 0, 0, test.width / 2, test.height / 2, evenKernel.width - 2, evenKernel.width - 2);
+  one       .clear ();
   images.push_back (&test);
   images.push_back (&onebigger);
   images.push_back (&same);
@@ -1310,7 +1312,7 @@ void
 testInterest ()
 {
 # ifdef HAVE_JPEG
-  Image image ("test.jpg");
+  Image image (dataDir + "test.jpg");
   image *= GrayChar;
 
   InterestMSER mser;
@@ -1369,10 +1371,10 @@ testVideo ()
   VideoFileFormatFFMPEG::use ();
 
   {
-	VideoOut vout ("test.mpg");
+	VideoOut vout (dataDir + "test.mpg");
 	Image image (320, 240, RGBAChar);
 	image.timestamp = NAN;  // force auto-generation of PTS
-	for (unsigned int i = 128; i < 255; i++)
+	for (unsigned int i = 128; i < 256; i++)
 	{
 	  if (! vout.good ())
 	  {
@@ -1384,9 +1386,9 @@ testVideo ()
 	}
   }
 
-  VideoIn vin ("test.mpg");
+  VideoIn vin (dataDir + "test.mpg");
   int i;
-  for (i = 128; i < 255; i++)
+  for (i = 128; i < 256; i++)
   {
 	Image image;
 	vin >> image;
@@ -1409,6 +1411,7 @@ testVideo ()
 	  }
 	}
   }
+  cerr << "i = " << i << endl;
   if (i < 250)
   {
 	cout << "didn't read enough frames " << i << endl;
@@ -1550,7 +1553,7 @@ void
 testBitblt ()
 {
 # ifdef HAVE_JPEG
-  Image test ("test.jpg");
+  Image test (dataDir + "test.jpg");
 
   PointerPoly<fl::PixelFormat> GrayBits = new PixelFormatGrayBits (1);
 
@@ -1585,7 +1588,7 @@ testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f)
   KLT klt (windowRadius, searchRadius, scaleRatio);
   srand (1);
 
-  Image test ("test.jpg");  // Only big enough to test searchRadius < 28.  Note: for some weird reason, the position of the KLT constructor in this code makes a difference (including on performance).  Loading mars.jpg causes this program to crash under Cygwin unless the KLT constructore comes first.
+  Image test (dataDir + "test.jpg");  // Only big enough to test searchRadius < 28.  Note: for some weird reason, the position of the KLT constructor in this code makes a difference (including on performance).  Loading mars.jpg causes this program to crash under Cygwin unless the KLT constructore comes first.
   test *= GrayFloat;
 
   Image image0 (GrayFloat);
@@ -1664,6 +1667,12 @@ main (int argc, char * argv[])
 #   ifdef HAVE_JPEG
 	ImageFileFormatJPEG::use ();
 #   endif
+
+	if (argc >= 2)
+	{
+	  dataDir = argv[1];
+	  dataDir += "/";
+	}
 
 	testPixelFormat ();
 	testAbsoluteValue ();

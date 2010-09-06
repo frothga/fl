@@ -4016,6 +4016,10 @@ PixelFormatRGBChar::fromRGBAChar (const Image & image, Image & result) const
 unsigned int
 PixelFormatRGBChar::getRGBA  (void * pixel) const
 {
+  // Note: This code will overrun the end of a buffer unless the allocation
+  // is padded by 1 byte.  For efficiency's sake, we rely on the code
+  // that allocates the buffer to do this for us, rather than doing extra
+  // work to prevent the end-case.
 # if BYTE_ORDER == LITTLE_ENDIAN
   return bswap (*((unsigned int *) pixel)) | 0xFF;
 # else

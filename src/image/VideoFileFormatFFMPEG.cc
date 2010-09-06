@@ -574,7 +574,7 @@ VideoOutFileFFMPEG::open (const std::string & fileName, const std::string & form
 
   // Select container format
   const char * formatAddress = formatName.size () ? formatName.c_str () : 0;
-  fc->oformat = guess_format
+  fc->oformat = av_guess_format
   (
     formatAddress,
 	fileName.c_str (),
@@ -664,41 +664,15 @@ VideoOutFileFFMPEG::open (const std::string & fileName, const std::string & form
 void
 VideoOutFileFFMPEG::close ()
 {
-  if (! needHeader)  // A header was written, and probably some frames as well, so file needs to be closed out properly.
+  if (! needHeader  &&  fc  &&  ! state)  // A header was written, and probably some frames as well, so file needs to be closed out properly.
   {
-	if (codec)
-	{
-	  // Flush codec (ie: push out any B frames).
-	  videoBuffer.grow (FF_MIN_BUFFER_SIZE);
-	  int bufferSize = videoBuffer.size ();
-	  while (state == 0)
-	  {
-		int size = avcodec_encode_video (stream->codec, (uint8_t *) videoBuffer, bufferSize, 0);
-		if (size <= 0) break;
-
-		AVPacket packet;
-		av_init_packet (&packet);
-		packet.pts = stream->codec->coded_frame->pts;
-		if (stream->codec->coded_frame->key_frame)
-		{
-		  packet.flags |= PKT_FLAG_KEY;
-		}
-		packet.stream_index = stream->index;
-		packet.data = videoBuffer;
-		packet.size = size;
-		state = av_interleaved_write_frame (fc, &packet);
-	  }
-	}
-
-	if (fc  &&  ! state)
-	{
-	  av_write_trailer (fc);  // Clears private data used by avformat.  Private data is not allocated until av_write_header(), so this is balanced.
-	}
+	av_write_trailer (fc);  // Clears private data used by avformat.  Private data is not allocated until av_write_header(), so this is balanced.
   }
 
   if (codec)
   {
 	avcodec_close (stream->codec);
+	av_free (stream->codec);
 	codec = 0;
   }
 
@@ -710,6 +684,7 @@ VideoOutFileFFMPEG::close ()
 
   if (fc)
   {
+	av_metadata_free (&fc->metadata);
 	if (! (fc->oformat->flags & AVFMT_NOFILE)) url_fclose (fc->pb);
 	av_free (fc);
 	fc = 0;

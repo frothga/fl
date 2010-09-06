@@ -516,7 +516,7 @@ InterestMSER::run (const Image & image, InterestPointSet & result)
   }
 
   // Destroy structures
-  delete nodes;
+  delete [] nodes;
   clear (&roots);
   clear (&subsumed);
   clear (&deleted);

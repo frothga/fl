@@ -36,6 +36,8 @@ namespace fl
   class Searchable
   {
   public:
+	virtual ~Searchable () {}
+
 	virtual int  dimension () = 0;
 	virtual void value    (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Returns the value of the function at a given point.  Must throw an exception if point is out of domain.
 	virtual void gradient (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Treat this as a single-valued function and return the first derivative vector.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by hessian().
@@ -154,6 +156,8 @@ namespace fl
   class Search
   {
   public:
+	virtual ~Search () {}
+
 	virtual void search (Searchable<T> & searchable, Vector<T> & point) = 0;  ///< Finds the point that optimizes the search crierion.  "point" must be initialized to a reasonable starting place.
   };
 

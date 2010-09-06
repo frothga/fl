@@ -280,13 +280,13 @@ KLT::track (const Point & point0, const int level, Point & point1)
 	throw 4;
   }
 
-  const int xl = min ((int) floorf (point0.x),         windowRadius);
-  const int xh = min ((int) floorf (lastH - point0.x), windowRadius);
-  const int yl = min ((int) floorf (point0.y),         windowRadius);
-  const int yh = min ((int) floorf (lastV - point0.y), windowRadius);
+  const int xl = min ((int) floorf (               point0.x), windowRadius);
+  const int xh = min ((int) floorf (lastH - 1e-5 - point0.x), windowRadius);
+  const int yl = min ((int) floorf (               point0.y), windowRadius);
+  const int yh = min ((int) floorf (lastV - 1e-5 - point0.y), windowRadius);
   lastH -= xh;
   lastV -= yh;
-  const int width = xh + xl + 1;
+  const int width  = xh + xl + 1;
   const int height = yh + yl + 1;
   const int pixels = width * height;
 

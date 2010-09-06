@@ -26,7 +26,7 @@ using namespace std;
    \param newStride Desired width of one row in bytes.
  **/
 void
-reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight)
+reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight, int pad = 0)
 {
   int oldHeight = memory.size ();
   if (oldHeight <= 0)
@@ -46,7 +46,7 @@ reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight)
 	{
 	  Pointer temp (memory);
 	  memory.detach ();
-	  memory.grow (newStride * newHeight);
+	  memory.grow (newStride * newHeight + pad);
 	  int count = newStride * copyHeight;
 	  memcpy (memory.memory, temp.memory, count);
 	  assert (count >= 0  &&  count < memory.size ());
@@ -57,7 +57,7 @@ reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight)
   {
 	Pointer temp (memory);
 	memory.detach ();
-	memory.grow (newStride * newHeight);
+	memory.grow (newStride * newHeight + pad);
 	memory.clear ();
 
 	unsigned char * target = (unsigned char *) memory;
@@ -144,11 +144,11 @@ PixelBufferPacked::resize (int width, int height, const PixelFormat & format, bo
   {
 	depth  = (int) format.depth;
 	stride = width * depth;
-	memory.grow (stride * height);
+	memory.grow (stride * height + (depth == 3 ? 1 : 0));
 	return;
   }
 
-  reshapeBuffer (memory, stride, width * depth, height);
+  reshapeBuffer (memory, stride, width * depth, height, depth == 3 ? 1 : 0);
   stride = width * depth;
 }
 
