@@ -52,7 +52,10 @@ if (LAPACK_FOUND)
 endif (LAPACK_FOUND)
 
 if (FFTW_FOUND)
-  set (maybeFourier FourierDouble.cc)
+  set (maybeFourier
+    FourierDouble.cc
+    FourierFloat.cc
+  )
 endif (FFTW_FOUND)
 
 add_library (flNumeric
