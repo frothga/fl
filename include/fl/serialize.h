@@ -195,10 +195,19 @@ namespace fl
 	{
 	  std::string typeidName = typeid (D).name ();
 
+	  // Remove any old mapping
+	  productMappingOut::iterator outEntry = Factory<B>::registry.out.find (typeidName);
+	  if (outEntry != Factory<B>::registry.out.end ())
+	  {
+		productMappingIn::iterator inEntry = Factory<B>::registry.in.find (outEntry->second);
+		if (inEntry != Factory<B>::registry.in.end ()) Factory<B>::registry.in.erase (inEntry);
+		Factory<B>::registry.out.erase (outEntry);
+	  }
+
+	  std::string uniqueName;
 	  if (name.size ())
 	  {
-		Factory<B>::registry.in.insert  (make_pair (name,       &create));
-		Factory<B>::registry.out.insert (make_pair (typeidName, name));
+		uniqueName = name;
 	  }
 	  else
 	  {
@@ -206,16 +215,17 @@ namespace fl
 		// inefficient, but given that the number classes registered is
 		// generally much less than 100, and that this is a one-time
 		// process, the cost doesn't matter too much.
-		char uniqueName[32];
+		char temp[32];
 		for (int i = 0; ; i++)
 		{
-		  sprintf (uniqueName, "%i", i);
-		  if (Factory<B>::registry.in.find (uniqueName) == Factory<B>::registry.in.end ()) break;
+		  sprintf (temp, "%i", i);
+		  if (Factory<B>::registry.in.find (temp) == Factory<B>::registry.in.end ()) break;
 		}
-
-		Factory<B>::registry.in.insert  (make_pair (uniqueName, &create));
-		Factory<B>::registry.out.insert (make_pair (typeidName, uniqueName));
+		uniqueName = temp;
 	  }
+
+	  Factory<B>::registry.in.insert  (make_pair (uniqueName, &create));
+	  Factory<B>::registry.out.insert (make_pair (typeidName, uniqueName));
 	}
   };
 }
