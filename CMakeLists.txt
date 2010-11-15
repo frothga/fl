@@ -82,7 +82,16 @@ endif (CMAKE_SYSTEM_NAME MATCHES Linux)
 # Preempt FindThreads to ensure that pthreads will be used under Windows
 find_library (CMAKE_THREAD_LIBS_INIT pthread)
 find_package (Threads)
-find_package (LAPACK)
+
+get_property (LANGUAGES GLOBAL PROPERTY ENABLED_LANGUAGES)
+if (LANGUAGES MATCHES Fortran)
+  # Standard package finders, which depend on availability of Fortran...
+  find_package (LAPACK)
+else (LANGUAGES MATCHES Fortran)
+  # ...but Fortran really isn't necessary for finding these packages.
+  find_package (LAPACKnofortran)
+endif (LANGUAGES MATCHES Fortran)
+
 find_package (FFTW)
 find_package (TIFF)
 find_package (GTIF)
