@@ -49,6 +49,7 @@ namespace fl
 	Vector<T> d;
 	Vector<T> r;
 	Vector<T> s;
+	searchable.dimension (point);
 	searchable.gradient (point, r);
 	if (greedy  &&  greedy->bestResidual < bestResidual)
 	{
@@ -70,6 +71,9 @@ namespace fl
 
 	for (int i = 0; i < iterations  &&  delta > thresholdX; i++)
 	{
+	  // The line search below will issue at least one call to dimension(),
+	  // so we don't need an explicit one at the top of this loop.
+
 	  // Line search for optimal position along current direction
 	  SearchableConstriction<T> line (searchable, point, d);
 	  Vector<T> alpha (1);

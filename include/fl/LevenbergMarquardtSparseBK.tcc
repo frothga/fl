@@ -768,111 +768,27 @@ namespace fl
 	}
   }
 
-  /**
-	 Calculate Euclidean norm.  Secial method from MINPACK to handle wide
-	 range of magnitudes.
-  **/
-  template<class T>
-  static T
-  enorm (Vector<T> & x)
-  {
-	const T rdwarf = (T) 3.834e-20;  // rdwarf^2 must not underflow in float type T
-	const T rgiant = (T) 1.304e19;  // rgiant^2 must not overflow in float type T
-	const T agiant = rgiant / x.rows ();
-
-	T large = 0;
-	T intermediate = 0;
-	T small = 0;
-	T largeMax = 0;
-	T smallMax = 0;
-
-	for (int i = 0; i < x.rows (); i++)
-	{
-	  T xabs = std::fabs (x[i]);
-	  if (xabs <= rdwarf)
-	  {
-		// sum for small components.
-		if (xabs > smallMax)
-		{
-		  T t = smallMax / xabs;
-		  small = (T) 1.0 + small * t * t;
-		  smallMax = xabs;
-		}
-		else if (xabs != (T) 0)
-		{
-		  T t = xabs / smallMax;
-		  small += t * t;
-		}
-	  }
-	  else if (xabs < agiant)
-	  {
-		// sum for intermediate components.
-		intermediate += xabs * xabs;
-	  }
-	  else
-	  {
-		// sum for large components.
-		if (xabs > largeMax)
-		{
-		  T t = largeMax / xabs;
-		  large = (T) 1.0 + large * t * t;
-		  largeMax = xabs;
-		}
-		else
-		{
-		  T t = xabs / largeMax;
-		  large += t * t;
-		}
-	  }
-	}
-
-	// calculation of norm.
-	if (large != (T) 0)
-	{
-	  return largeMax * std::sqrt (large + (intermediate / largeMax) / largeMax);
-	}
-	else if (intermediate != (T) 0)
-	{
-	  if (intermediate >= smallMax)
-	  {
-		return std::sqrt (intermediate * ((T) 1.0 + (smallMax / intermediate) * (smallMax * small)));
-	  }
-	  else
-	  {
-		return std::sqrt (smallMax * ((intermediate / smallMax) + (smallMax * small)));
-	  }
-	}
-	else
-	{
-	  return smallMax * std::sqrt (small);
-	}
-  }
-
   template<class T>
   static void
-  lmpar (const SparseBK<T> & fjac, const Vector<T> & diag, const Vector<T> & fvec, const int maxPivot, T delta, T & par, Vector<T> & x)
+  lmpar (const SparseBK<T> & J, const Vector<T> & scales, const Vector<T> & y, const int maxPivot, T delta, T & par, Vector<T> & x)
   {
 	const T minimum = std::numeric_limits<T>::min ();
-	const int n = fjac.columns ();
+	const int n = J.columns ();
 
 	// Compute and store in x the gauss-newton direction.
-	// ~fjac * fjac * x = ~fjac * fvec
-	Vector<T> Jf = fjac.transposeMultiply (fvec);
-	SparseBK<T> JJ = fjac.transposeSquare ();
+	// ~J * J * x = ~J * y
+	Vector<T> Jy = J.transposeMultiply (y);
+	SparseBK<T> JJ = J.transposeSquare ();
 	SparseBK<T> factoredJJ;
 	factoredJJ.copyFrom (JJ);
-	Vector<int> ipvt;
-	factorize (maxPivot, factoredJJ, ipvt);
-	solve (factoredJJ, ipvt, x, Jf);
+	Vector<int> pivots;
+	factorize (maxPivot, factoredJJ, pivots);
+	solve (factoredJJ, pivots, x, Jy);
 
 	// Evaluate the function at the origin, and test
 	// for acceptance of the gauss-newton direction.
-	Vector<T> dx (n);
-	for (int j = 0; j < n; j++)
-	{
-	  dx[j] = diag[j] * x[j];
-	}
-	T dxnorm = enorm (dx);
+	Vector<T> dx = x & scales;
+	T dxnorm = dx.norm (2);
 	T fp = dxnorm - delta;
 std::cerr << "fp=" << fp << " " << dxnorm << " " << delta << std::endl;
 	if (fp <= (T) 0.1 * delta)
@@ -884,20 +800,13 @@ std::cerr << "fp=" << fp << " " << dxnorm << " " << delta << std::endl;
 	// The jacobian is required to have full rank, so the newton
 	// step provides a lower bound, parl, for the zero of
 	// the function.
-	Vector<T> wa1 (n);
-	for (int j = 0; j < n; j++)
-	{
-	  wa1[j] = diag[j] * dx[j] / dxnorm;
-	}
+	Vector<T> wa1 = dx & scales / dxnorm;
 	Vector<T> wa2;
-	solve (factoredJJ, ipvt, wa2, wa1);
+	solve (factoredJJ, pivots, wa2, wa1);
 	T parl = std::max ((T) 0, fp / (delta * wa1.dot (wa2)));
 
 	// Calculate an upper bound, paru, for the zero of the function.
-	for (int j = 0; j < n; j++)
-	{
-	  wa1[j] = Jf[j] / diag[j];
-	}
+	wa1 = Jy / scales;
 	T gnorm = wa1.norm (2);
 	T paru = gnorm / delta;
 	if (paru == (T) 0)
@@ -925,14 +834,11 @@ std::cerr << "fp=" << fp << " " << dxnorm << " " << delta << std::endl;
 		par = std::min (minimum, (T) 0.001 * paru);
 	  }
 	  factoredJJ.copyFrom (JJ);
-	  factoredJJ.addDiagonal (par, diag);
-	  factorize (maxPivot, factoredJJ, ipvt);
-	  solve (factoredJJ, ipvt, x, Jf);
+	  factoredJJ.addDiagonal (par, scales);
+	  factorize (maxPivot, factoredJJ, pivots);
+	  solve (factoredJJ, pivots, x, Jy);
 
-	  for (int j = 0; j < n; j++)
-	  {
-		dx[j] = diag[j] * x[j];
-	  }
+	  dx = x & scales;
 	  dxnorm = dx.norm (2);
 	  T oldFp = fp;
 	  fp = dxnorm - delta;
@@ -949,11 +855,8 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 	  }
 
 	  // Compute the newton correction.
-	  for (int j = 0; j < n; j++)
-	  {
-		wa1[j] = diag[j] * dx[j] / dxnorm;
-	  }
-	  solve (factoredJJ, ipvt, wa2, wa1);
+	  wa1 = dx & scales / dxnorm;
+	  solve (factoredJJ, pivots, wa2, wa1);
 	  T parc = fp / (delta * wa1.dot (wa2));
 
 	  // Depending on the sign of the function, update parl or paru.
@@ -991,81 +894,61 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
   **/
   template<class T>
   void
-  LevenbergMarquardtSparseBK<T>::search (Searchable<T> & searchable, Vector<T> & point)
+  LevenbergMarquardtSparseBK<T>::search (Searchable<T> & searchable, Vector<T> & x)
   {
 	const T toleranceG = (T) 0;
 	const T epsilon = std::numeric_limits<T>::epsilon ();
 
-	// Evaluate the function at the starting point and calculate its norm.
-	Vector<T> fvec;
-	searchable.value (point, fvec);
-
-	int m = fvec.rows ();
-	int n = point.rows ();
-
-	SparseBK<T> fjac (m, n);
-	Vector<T> diag (n);  // scales
+	// Variables that persist between iterations
+	Vector<T> y;
+	int oldm = -1;
+	const int n = x.rows ();
+	Vector<T> scales (n);
 	T par = (T) 0;  // levenberg-marquardt parameter
-	T fnorm = fvec.norm (2);
+	T ynorm;
 	T xnorm;
 	T delta;
 
-	// outer loop
-	int iter = 0;
-	while (true)
+	for (int iteration = 0; iteration < maxIterations; iteration++)
 	{
-	  iter++;
-
-	  // calculate the jacobian matrix
-	  searchable.jacobian (point, fjac, &fvec);
-
-	  // compute the qr factorization of the jacobian.
-	  Vector<T> jacobianNorms (n);
-	  for (int j = 0; j < n; j++)
+	  const int m = searchable.dimension (x);
+	  if (m != oldm)  // dimension has changed, so get fresh value of y
 	  {
-		jacobianNorms[j] = fjac.norm2 (j);
+		searchable.value (x, y);
+		ynorm = y.norm (2);
+		oldm = m;
 	  }
 
+	  SparseBK<T> J (m, n);
+	  searchable.jacobian (x, J, &y);
+	  Vector<T> jacobianNorms (n);
+	  for (int j = 0; j < n; j++) jacobianNorms[j] = J.norm2 (j);
+
 	  // On the first iteration ...
-	  if (iter == 1)
+	  if (iteration == 0)
 	  {
 		// Scale according to the norms of the columns of the initial jacobian.
 		for (int j = 0; j < n; j++)
 		{
-		  diag[j] = jacobianNorms[j];
-		  if (diag[j] == (T) 0)
-		  {
-			diag[j] = (T) 1;
-		  }
+		  scales[j] = jacobianNorms[j];
+		  if (scales[j] == (T) 0) scales[j] = (T) 1;
 		}
 
 		// Calculate the norm of the scaled x and initialize the step bound delta.
-		xnorm = (T) 0;
-		for (int j = 0; j < n; j++)
-		{
-		  T temp = diag[j] * point[j];
-		  xnorm += temp * temp;
-		}
-		xnorm = std::sqrt (xnorm);
-
-		const T factor = (T) 1;
-		delta = factor * xnorm;
-		if (delta == (T) 0)
-		{
-		  delta = factor;
-		}
+		xnorm = (x & scales).norm (2);
+		delta = (xnorm * (T) 1) == (T) 0 ? (T) 1 : xnorm;  // Does the multiplication by 1 here make a difference?  This seems to be a test of floating-point representation.
 	  }
 
 	  // compute the norm of the scaled gradient
 	  T gnorm = (T) 0;
-	  if (fnorm != (T) 0)
+	  if (ynorm != (T) 0)
 	  {
 		for (int j = 0; j < n; j++)
 		{
 		  if (jacobianNorms[j] != (T) 0)
 		  {
-			T value = fjac.dot (j, m - 1, fvec);
-			gnorm = std::max (gnorm, std::fabs (value / (fnorm * jacobianNorms[j])));
+			T temp = J.dot (j, m - 1, y);
+			gnorm = std::max (gnorm, std::fabs (temp / (ynorm * jacobianNorms[j])));
 		  }
 		}
 	  }
@@ -1080,7 +963,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 	  // rescale if necessary
 	  for (int j = 0; j < n; j++)
 	  {
-		diag[j] = std::max (diag[j], jacobianNorms[j]);
+		scales[j] = std::max (scales[j], jacobianNorms[j]);
 	  }
 
 	  // beginning of the inner loop
@@ -1088,65 +971,59 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 	  while (ratio < (T) 0.0001)
 	  {
 		// determine the levenberg-marquardt parameter.
-		Vector<T> p (n);  // wa1
-		lmpar (fjac, diag, fvec, maxPivot, delta, par, p);
+		Vector<T> p (n);
+		lmpar (J, scales, y, maxPivot, delta, par, p);
 
 		// store the direction p and x + p. calculate the norm of p.
-		Vector<T> xp = point - p;  // p is actually negative
-		T pnorm = 0;
-		for (int j = 0; j < n; j++)
-		{
-		  T temp = diag[j] * p[j];
-		  pnorm += temp * temp;
-		}
-		pnorm = std::sqrt (pnorm);
+		Vector<T> xp = x - p;  // p is actually negative
+		T pnorm = (p & scales).norm (2);
 
 		// on the first iteration, adjust the initial step bound
-		if (iter == 1)
+		if (iteration == 0)
 		{
 		  delta = std::min (delta, pnorm);
 		}
 
 		// evaluate the function at x + p and calculate its norm
-		Vector<T> tempFvec;
-		searchable.value (xp, tempFvec);
-		T fnorm1 = tempFvec.norm (2);
+		Vector<T> tempY;
+		searchable.value (xp, tempY);
+		T ynorm1 = tempY.norm (2);
 
 		// compute the scaled actual reduction
-		T actred = (T) -1;
-		if (fnorm1 / 10 < fnorm)
+		T reductionActual = (T) -1;
+		if (ynorm1 / 10 < ynorm)
 		{
-		  T temp = fnorm1 / fnorm;
-		  actred = (T) 1 - temp * temp;
+		  T temp = ynorm1 / ynorm;
+		  reductionActual = 1 - temp * temp;
 		}
-std::cerr << "actred=" << actred << " " << fnorm1 << " " << fnorm << std::endl;
+std::cerr << "reductionActual=" << reductionActual << " " << ynorm1 << " " << ynorm << std::endl;
 
 		// compute the scaled predicted reduction and the scaled directional derivative
-		T temp1 = (fjac * p).norm (2) / fnorm;
-		T temp2 = std::sqrt (par) * pnorm / fnorm;
-		T prered = temp1 * temp1 + (T) 2 * temp2 * temp2;
+		T temp1 = (J * p).norm (2) / ynorm;
+		T temp2 = std::sqrt (par) * pnorm / ynorm;
+		T reductionPredicted = temp1 * temp1 + 2 * temp2 * temp2;
 		T dirder = -(temp1 * temp1 + temp2 * temp2);
 
 		// compute the ratio of the actual to the predicted reduction
 		ratio = (T) 0;
-		if (prered != (T) 0)
+		if (reductionPredicted != (T) 0)
 		{
-		  ratio = actred / prered;
+		  ratio = reductionActual / reductionPredicted;
 		}
 
 		// update the step bound
 		if (ratio <= (T) 0.25)
 		{
 		  T update;
-		  if (actred >= (T) 0)
+		  if (reductionActual >= (T) 0)
 		  {
 			update = (T) 0.5;
 		  }
 		  else
 		  {
-			update = dirder / ((T) 2 * dirder + actred);
+			update = dirder / (2 * dirder + reductionActual);
 		  }
-		  if (fnorm1 / 10 >= fnorm  ||  update < (T) 0.1)
+		  if (ynorm1 / 10 >= ynorm  ||  update < (T) 0.1)
 		  {
 			update = (T) 0.1;
 		  }
@@ -1162,29 +1039,20 @@ std::cerr << "actred=" << actred << " " << fnorm1 << " " << fnorm << std::endl;
 		  }
 		}
 
-		// test for successful iteration.
-		if (ratio >= (T) 0.0001)
+		if (ratio >= (T) 0.0001)  // successful iteration.
 		{
-		  // successful iteration. update x, fvec, and their norms.
-		  point = xp;
-		  fvec = tempFvec;
-
-		  xnorm = 0;
-		  for (int j = 0; j < n; j++)
-		  {
-			T temp = diag[j] * point[j];
-			xnorm += temp * temp;
-		  }
-		  xnorm = std::sqrt (xnorm);
-
-		  fnorm = fnorm1;
+		  // update x, y, and their norms
+		  x     = xp;
+		  y     = tempY;
+		  xnorm = (x & scales).norm (2);
+		  ynorm = ynorm1;
 		}
 std::cerr << "ratio=" << ratio << std::endl;
 
 		// tests for convergence
-		if (   std::fabs (actred) <= toleranceF
-			&& prered <= toleranceF
-			&& ratio <= 2)
+		if (   std::fabs (reductionActual) <= toleranceF
+			&& reductionPredicted <= toleranceF
+			&& ratio <= (T) 2)
 		{
 		  // info = 1;
 		  return;
@@ -1196,13 +1064,9 @@ std::cerr << "ratio=" << ratio << std::endl;
 		}
 
 		// tests for termination and stringent tolerances
-		if (iter > maxIterations)
-		{
-		  throw (int) 5;
-		}
-		if (   std::fabs (actred) <= epsilon
-			&& prered <= epsilon
-			&& ratio <= 2)
+		if (   std::fabs (reductionActual) <= epsilon
+			&& reductionPredicted <= epsilon
+			&& ratio <= (T) 2)
 		{
 		  throw (int) 6;
 		}
@@ -1216,6 +1080,8 @@ std::cerr << "ratio=" << ratio << std::endl;
 		}
 	  }
 	}
+
+	throw (int) 5;  // exceeded maximum iterations
   }
 }
 

@@ -49,6 +49,8 @@ namespace fl
 	int gotBetter = 0;
 	while (true)
 	{
+	  searchable.dimension (point);
+
 	  // Find gradient
 	  Vector<T> gradient;
 	  searchable.gradient (point, gradient);

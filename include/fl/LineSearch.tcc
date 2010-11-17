@@ -1,7 +1,7 @@
 /*
 Author: Fred Rothganger
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -74,6 +74,7 @@ namespace fl
 	for (int j = 0; j < 3; j++)
 	{
 	  point[0] = xs[j];
+	  searchable.dimension (point);
 	  searchable.value (point, value);
 	  T y = value.norm (2);
 	  ys[j] = y;
@@ -195,6 +196,7 @@ namespace fl
 	  }
 
 	  point[0] = x;
+	  searchable.dimension (point);
 	  searchable.value (point, value);
 	  T y = value.norm (2);
 	  xs.insert (xs.begin () + it, x);

@@ -38,12 +38,20 @@ namespace fl
   public:
 	virtual ~Searchable () {}
 
-	virtual int  dimension () = 0;
-	virtual void value    (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Returns the value of the function at a given point.  Must throw an exception if point is out of domain.
-	virtual void gradient (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Treat this as a single-valued function and return the first derivative vector.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by hessian().
-	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
-	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL) = 0;  ///< Same as above, except omits all zero entries in Jacobian.
-	virtual void hessian  (const Vector<T> & point, Matrix<T> &       result) = 0;  ///< Treat this as a single-valued function and return the second derivative matrix.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by gradient().
+	/**
+	   Determine the number of elements in the result of value(), and
+	   configure this object accordingly.  A Search will call this function
+	   once at the beginning, before the first call to one of {value(),
+	   gradient(), jacobian(), hessian()}.  After that, this object must
+	   keep the same size unless it receives another call to dimension(),
+	   at which point it may reconfigure itself.
+	**/
+	virtual int  dimension (const Vector<T> & point) = 0;
+	virtual void value     (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Returns the value of the function at a given point.  Must throw an exception if point is out of domain.
+	virtual void gradient  (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Treat this as a single-valued function and return the first derivative vector.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by hessian().
+	virtual void jacobian  (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
+	virtual void jacobian  (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL) = 0;  ///< Same as above, except omits all zero entries in Jacobian.
+	virtual void hessian   (const Vector<T> & point, Matrix<T> &       result) = 0;  ///< Treat this as a single-valued function and return the second derivative matrix.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by gradient().
   };
 
   /**
@@ -78,13 +86,7 @@ namespace fl
   class SearchableSparse : public SearchableNumeric<T>
   {
   public:
-	/**
-	   This constructor does *not* call cover().  However, cover() or its
-	   equivalent must be called before the object is ready for use.  The
-	   programmer is welcome to write a constructor in the derived class that
-	   does call cover().  :)
-	**/
-	SearchableSparse (T perturbation = -1) : SearchableNumeric<T> (perturbation) {}
+	SearchableSparse (T perturbation = -1);
 
 	/**
 	   The matrix returned by interaction encodes the sparsity structure of the
@@ -93,13 +95,14 @@ namespace fl
 	   row of the Jacobian).
 	**/
 	virtual MatrixSparse<bool> interaction () = 0;
-	virtual void cover ();  ///< Compute a structurally orthogonal cover of the Jacobian based on the interaction matrix.
+	virtual void cover ();  ///< Compute a structurally orthogonal cover of the Jacobian based on the interaction matrix.  Called automatically by jacobian() whenever the current cover is stale.
 
 	virtual void gradient (const Vector<T> & point, Vector<T> &       result);  ///< Compute gradient as 2 * ~jacobian * value.  In a sparse system, this should require fewer calls to value() than the direct method.
 	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);  ///< Compute the Jacobian using the cover.
 	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);  ///< Ditto, but omit zero entries.
 
 	// These two members represent the cover in a way that is easy to execute.
+	int coveredDimension;  ///< The size of the result of value() in force when the last call to cover() ocurred.  If -1, then cover() has not yet been called.
 	MatrixSparse<int> parameters;  ///< If parameters(i,j) == k, then compute Jacobian(i,k) during the jth call to the function (by perturbing the kth parameter).
 	std::vector< std::vector<int> > parms;  ///< The jth entry gives in compact form the parameters that need to be perturbed during the jth call.
   };
@@ -115,8 +118,8 @@ namespace fl
   public:
 	SearchableConstriction (Searchable<T> & searchable, const Vector<T> & a, const Vector<T> & b) : searchable (searchable), a (a), b (b) {}
 
-	virtual int dimension () {return searchable.dimension ();}
-	virtual void value (const Vector<T> & point, Vector<T> & value) {return searchable.value (a + b * point[0], value);}
+	virtual int  dimension (const Vector<T> & point)                    {return searchable.dimension (point);}
+	virtual void value     (const Vector<T> & point, Vector<T> & value) {searchable.value (a + b * point[0], value);}
 
 	Searchable<T> & searchable;
 	Vector<T> a;

@@ -67,7 +67,7 @@ public:
 	SearchableGreedy<T>::bestResidual = INFINITY;
   }
 
-  virtual int dimension ()
+  virtual int dimension (const Vector<T> & x)
   {
 	return 15;
   }
@@ -124,7 +124,7 @@ public:
 	correctValue = f (TestFunction<T>::endPoint);
   }
 
-  virtual int dimension ()
+  virtual int dimension (const Vector<T> & x)
   {
 	return rows;
   }
@@ -165,11 +165,9 @@ public:
 	TestFunction<T>::startPoint   = Vector<T> ("[0 1 2]");
 	TestFunction<T>::endPoint     = Vector<T> ("[0.08241058  1.133037  2.343695]");
 	TestFunction<T>::endResidual  = 0;
-
-	this->cover ();
   }
 
-  virtual int dimension ()
+  virtual int dimension (const Vector<T> & x)
   {
 	return 15;
   }

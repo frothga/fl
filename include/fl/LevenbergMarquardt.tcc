@@ -50,25 +50,31 @@ namespace fl
   void
   LevenbergMarquardt<T>::search (Searchable<T> & searchable, Vector<T> & x)
   {
-	const T toleranceG = 0;
+	const T toleranceG = (T) 0;
 	const T epsilon = std::numeric_limits<T>::epsilon ();
 
-	// Evaluate the function at the starting x and calculate its norm.
+	// Variables that persist between iterations
 	Vector<T> y;
-	searchable.value (x, y);
-
-	int m = y.rows ();
-	int n = x.rows ();
-	int minmn = std::min (m, n);
-
+	int oldm = -1;
+	const int n = x.rows ();
 	Vector<T> scales (n);
-	T par = 0;  // levenberg-marquardt parameter
-	T ynorm = y.norm (2);
+	T par = (T) 0;  // levenberg-marquardt parameter
+	T ynorm;
 	T xnorm;
 	T delta;
 
 	for (int iteration = 0; iteration < maxIterations; iteration++)
 	{
+	  const int m     = searchable.dimension (x);  // dimension may change once per LM iteration
+	  const int minmn = std::min (m, n);
+
+	  if (m != oldm)  // dimension has changed, so get fresh value of y
+	  {
+		searchable.value (x, y);
+		ynorm = y.norm (2);
+		oldm = m;
+	  }
+
 	  Matrix<T> J;
 	  searchable.jacobian (x, J, &y);
 	  Vector<T> jacobianNorms (n);
@@ -81,7 +87,7 @@ namespace fl
 		for (int j = 0; j < n; j++)
 		{
 		  scales[j] = jacobianNorms[j];
-		  if (scales[j] == 0) scales[j] = 1;
+		  if (scales[j] == (T) 0) scales[j] = (T) 1;
 		}
 
 		// Calculate the norm of the scaled x and initialize the step bound delta.
@@ -93,7 +99,7 @@ namespace fl
 	  Vector<int> pivots (n);
 	  pivots.clear ();
 	  Vector<T> tau (minmn);
-	  T optimalSize = 0;
+	  T optimalSize = (T) 0;
 	  int lwork = -1;
 	  int info = 0;
 	  geqp3 (m, n, &J(0,0), J.strideC, &pivots[0], &tau[0], &optimalSize, lwork, info);
@@ -118,13 +124,13 @@ namespace fl
 	  Qy.rows_ = n;
 
 	  // compute the norm of the scaled gradient
-	  T gnorm = 0;
-	  if (ynorm != 0)
+	  T gnorm = (T) 0;
+	  if (ynorm != (T) 0)
 	  {
 		for (int j = 0; j < n; j++)
 		{
 		  T jnorm = jacobianNorms[pivots[j]-1];  // pivots are 1-based
-		  if (jnorm != 0)
+		  if (jnorm != (T) 0)
 		  {
 			T temp = J.region (0, j, j, j).dot (Qy);  // equivalent to ~J * y using the original J.  (That is, ~R * ~Q * y, where J = QR)
 			gnorm = std::max (gnorm, std::fabs (temp / (ynorm * jnorm)));  // infinity norm of g = ~J * y / |y| with some additional scaling
@@ -146,8 +152,8 @@ namespace fl
 	  }
 
 	  // beginning of the inner loop
-	  T ratio = 0;
-	  while (ratio < 0.0001)
+	  T ratio = (T) 0;
+	  while (ratio < (T) 0.0001)
 	  {
 		// determine the levenberg-marquardt parameter.
 		Vector<T> p (n);
@@ -169,7 +175,7 @@ namespace fl
 		T ynorm1 = tempY.norm (2);
 
 		// compute the scaled actual reduction
-		T reductionActual = -1;
+		T reductionActual = (T) -1;
 		if (ynorm1 / 10 < ynorm)
 		{
 		  T temp = ynorm1 / ynorm;
@@ -189,25 +195,25 @@ namespace fl
 		T dirder = -(temp1 * temp1 + temp2 * temp2);
 
 		// compute the ratio of the actual to the predicted reduction
-		ratio = 0;
-		if (reductionPredicted != 0)
+		ratio = (T) 0;
+		if (reductionPredicted != (T) 0)
 		{
 		  ratio = reductionActual / reductionPredicted;
 		}
 
 		// update the step bound
-		if (ratio <= 0.25)
+		if (ratio <= (T) 0.25)
 		{
 		  T update;
-		  if (reductionActual >= 0)
+		  if (reductionActual >= (T) 0)
 		  {
-			update = 0.5;
+			update = (T) 0.5;
 		  }
 		  else
 		  {
 			update = dirder / (2 * dirder + reductionActual);
 		  }
-		  if (ynorm1 / 10 >= ynorm  ||  update < 0.1)
+		  if (ynorm1 / 10 >= ynorm  ||  update < (T) 0.1)
 		  {
 			update = (T) 0.1;
 		  }
@@ -216,14 +222,14 @@ namespace fl
 		}
 		else
 		{
-		  if (par == 0  ||  ratio >= 0.75)
+		  if (par == (T) 0  ||  ratio >= (T) 0.75)
 		  {
 			delta = pnorm * 2;
 			par /= 2;
 		  }
 		}
 
-		if (ratio >= 0.0001)  // successful iteration.
+		if (ratio >= (T) 0.0001)  // successful iteration.
 		{
 		  // update x, y, and their norms
 		  x     = xp;
@@ -235,7 +241,7 @@ namespace fl
 		// tests for convergence
 		if (   std::fabs (reductionActual) <= toleranceF
 			&& reductionPredicted <= toleranceF
-			&& ratio <= 2)
+			&& ratio <= (T) 2)
 		{
 		  // info = 1;
 		  return;
@@ -249,7 +255,7 @@ namespace fl
 		// tests for termination and stringent tolerances
 		if (   std::fabs (reductionActual) <= epsilon
 			&& reductionPredicted <= epsilon
-			&& ratio <= 2)
+			&& ratio <= (T) 2)
 		{
 		  throw (int) 6;
 		}

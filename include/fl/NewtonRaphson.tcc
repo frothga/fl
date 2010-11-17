@@ -45,6 +45,8 @@ namespace fl
   {
 	for (int i = 0; i < maxIterations; i++)
 	{
+	  searchable.dimension (point);
+
 	  Vector<T> g;
 	  searchable.gradient (point, g);
 

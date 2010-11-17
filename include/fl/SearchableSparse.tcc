@@ -26,14 +26,24 @@ for details.
 namespace fl
 {
   // class SearchableSparse ---------------------------------------------------
+
+  template<class T>
+  SearchableSparse<T>::SearchableSparse (T perturbation)
+  : SearchableNumeric<T> (perturbation)
+  {
+	coveredDimension = -1;
+  }
+
   template<class T>
   void
   SearchableSparse<T>::cover ()
   {
 	MatrixSparse<bool> interaction = this->interaction ();
 
-	const int m = this->dimension ();  // == interaction.rows ()
+	const int m = interaction.rows ();
 	const int n = interaction.columns ();
+
+	coveredDimension = m;
 
 	parameters.resize (0, 0);
 	parms.clear ();
@@ -113,12 +123,6 @@ namespace fl
   void
   SearchableSparse<T>::jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue)
   {
-	const int m = this->dimension ();
-	const int n = point.rows ();
-
-	result.resize (m, n);
-	result.clear ();
-
 	Vector<T> oldValue;
 	if (currentValue)
 	{
@@ -128,6 +132,14 @@ namespace fl
 	{
 	  value (point, oldValue);
 	}
+
+	const int m = oldValue.rows ();
+	const int n = point.rows ();
+
+	if (m != coveredDimension) cover ();
+
+	result.resize (m, n);
+	result.clear ();
 
 	Vector<T> column (m);
 	Vector<T> p (n);
@@ -166,12 +178,6 @@ namespace fl
   void
   SearchableSparse<T>::jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue)
   {
-	const int m = this->dimension ();
-	const int n = point.rows ();
-
-	result.resize (m, n);
-	result.clear ();
-
 	Vector<T> oldValue;
 	if (currentValue)
 	{
@@ -181,6 +187,14 @@ namespace fl
 	{
 	  value (point, oldValue);
 	}
+
+	const int m = oldValue.rows ();
+	const int n = point.rows ();
+
+	if (m != coveredDimension) cover ();
+
+	result.resize (m, n);
+	result.clear ();
 
 	Vector<T> column (m);
 	Vector<T> p (n);

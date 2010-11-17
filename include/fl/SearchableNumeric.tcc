@@ -72,11 +72,6 @@ namespace fl
 	Vector<T> perturbedPoint;
 	perturbedPoint.copyFrom (point);
 
-	int m = this->dimension ();
-	int n = point.rows ();
-
-	result.resize (m, n);
-
 	Vector<T> oldValue;
 	if (currentValue)
 	{
@@ -86,6 +81,11 @@ namespace fl
 	{
 	  value (point, oldValue);
 	}
+
+	int m = oldValue.rows ();
+	int n = point.rows ();
+
+	result.resize (m, n);
 
 	Vector<T> column (m);
 	for (int i = 0; i < n; i++)
@@ -108,11 +108,6 @@ namespace fl
 	Vector<T> perturbedPoint;
 	perturbedPoint.copyFrom (point);
 
-	int m = this->dimension ();
-	int n = point.rows ();
-
-	result.resize (m, n);
-
 	Vector<T> oldValue;
 	if (currentValue)
 	{
@@ -122,6 +117,11 @@ namespace fl
 	{
 	  value (point, oldValue);
 	}
+
+	int m = oldValue.rows ();
+	int n = point.rows ();
+
+	result.resize (m, n);
 
 	Vector<T> column (m);
 	for (int i = 0; i < n; i++)
