@@ -24,9 +24,10 @@ install (TARGETS striputf8 RUNTIME DESTINATION bin)
 if (LAPACK_FOUND)
   add_executable (invert invert.cc)
   target_link_libraries (invert
-    flImage
     flNumeric
+    flNet
     flBase
+    ${FFTW_LIBRARIES}
     ${LAPACK_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
     ${GCC_LIBRARIES}
@@ -38,8 +39,14 @@ if (LAPACK_FOUND)
     target_link_libraries (psnr
       flImage
       flNumeric
+      flNet
       flBase
       ${FFMPEG_LIBRARIES}
+      ${TIFF_LIBRARIES}
+      ${GTIF_LIBRARIES}
+      ${PNG_LIBRARIES}
+      ${JPEG_LIBRARIES}
+      ${FFTW_LIBRARIES}
       ${LAPACK_LIBRARIES}
       ${CMAKE_THREAD_LIBS_INIT}
       ${GCC_LIBRARIES}
@@ -52,9 +59,14 @@ if (LAPACK_FOUND)
     target_link_libraries (thumb
       flImage
       flNumeric
+      flNet
       flBase
       ${FFMPEG_LIBRARIES}
+      ${TIFF_LIBRARIES}
+      ${GTIF_LIBRARIES}
+      ${PNG_LIBRARIES}
       ${JPEG_LIBRARIES}
+      ${FFTW_LIBRARIES}
       ${LAPACK_LIBRARIES}
       ${CMAKE_THREAD_LIBS_INIT}
       ${GCC_LIBRARIES}
@@ -69,10 +81,16 @@ if (LAPACK_FOUND)
         flX
         flImage
         flNumeric
+        flNet
         flBase
         ${FFMPEG_LIBRARIES}
+        ${TIFF_LIBRARIES}
+        ${GTIF_LIBRARIES}
+        ${PNG_LIBRARIES}
         ${JPEG_LIBRARIES}
+        ${FFTW_LIBRARIES}
         ${X11_LIBRARIES}
+        ${OPENGL_LIBRARIES}
         ${LAPACK_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
         ${GCC_LIBRARIES}
@@ -89,12 +107,16 @@ if (LAPACK_FOUND)
       flX
       flImage
       flNumeric
+      flNet
       flBase
+      ${FFMPEG_LIBRARIES}
       ${X11_LIBRARIES}
+      ${OPENGL_LIBRARIES}
       ${GTIF_LIBRARIES}
       ${TIFF_LIBRARIES}
       ${JPEG_LIBRARIES}
       ${PNG_LIBRARIES}
+      ${FFTW_LIBRARIES}
       ${LAPACK_LIBRARIES}
       ${CMAKE_THREAD_LIBS_INIT}
       ${GCC_LIBRARIES}

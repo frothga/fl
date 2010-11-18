@@ -35,6 +35,7 @@ if (X11_FOUND  OR  MSVC)
   set (flImageX
     flX
     ${X11_LIBRARIES}
+    ${OPENGL_LIBRARIES}
   )
 endif (X11_FOUND  OR  MSVC)
 
@@ -157,10 +158,15 @@ target_link_libraries (testImage
   ${flImageX}
   flImage
   flNumeric
+  flNet
   flBase
   ${FREETYPE_LIBRARIES}
+  ${PNG_LIBRARIES}
+  ${GTIF_LIBRARIES}
+  ${TIFF_LIBRARIES}
   ${JPEG_LIBRARIES}
   ${FFMPEG_LIBRARIES}
+  ${FFTW_LIBRARIES}
   ${LAPACK_LIBRARIES}
   ${BLAS_LIBRARIES}
   ${CMAKE_THREAD_LIBS_INIT}

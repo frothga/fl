@@ -192,7 +192,9 @@ endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 add_executable (testNumeric test.cc)
 target_link_libraries (testNumeric
   flNumeric
+  flNet
   flBase
+  ${FFTW_LIBRARIES}
   ${LAPACK_LIBRARIES}
   ${BLAS_LIBRARIES}
   ${CMAKE_THREAD_LIBS_INIT}

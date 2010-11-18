@@ -99,6 +99,7 @@ find_package (JPEG)
 find_package (PNG)
 find_package (Freetype)
 find_package (X11)
+find_package (OpenGL)
 find_package (FFMPEG)
 
 if (CMAKE_USE_PTHREADS_INIT)
