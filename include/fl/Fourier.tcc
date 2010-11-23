@@ -25,7 +25,7 @@ namespace fl
 	 That page states at the top that individual code fragments such as this
 	 one are in the public domain.
   **/
-  inline int
+  static inline int
   trailingZeros (const uint32_t & a)
   {
 	static const int Mod37BitPosition[] = // map a bit value mod 37 to its position
@@ -49,7 +49,7 @@ namespace fl
   template<class T>
   Fourier<T>::~Fourier ()
   {
-	if (cachedPlan) fftw_destroy_plan (cachedPlan);
+	if (cachedPlan) destroy_plan (cachedPlan);
   }
 
   template<class T>
@@ -66,7 +66,7 @@ namespace fl
 	if (O.rows () < rows  ||  O.columns () < cols) O.resize (rows, cols);
 
 	const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
-	fftw_iodim dims[2];
+	typename traitsFFTW<T>::iodim dims[2];
 	if (rank == 1)
 	{
 	  dims[0].n  = rows * cols;
@@ -110,18 +110,18 @@ namespace fl
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
-		fftw_destroy_plan (cachedPlan);
+		destroy_plan (cachedPlan);
 		cachedPlan = 0;
 	  }
 	}
 	if (! cachedPlan)
 	{
 	  // Create new plan
-	  cachedPlan = fftw_plan_guru_dft
+	  cachedPlan = plan
 	  (
-	    rank, dims,
+		rank, dims,
 		0, 0,
-		(fftw_complex *) Idata, (fftw_complex *) Odata,
+		(typename traitsFFTW<T>::complex *) Idata, (typename traitsFFTW<T>::complex *) Odata,
 		direction, flags
 	  );
 	  cachedDirection = direction;
@@ -135,7 +135,7 @@ namespace fl
 	if (! cachedPlan) throw "Fourier: Unable to generate a plan.";
 
 	// Run it
-	fftw_execute_dft (cachedPlan, (fftw_complex *) Idata, (fftw_complex *) Odata);
+	execute (cachedPlan, (typename traitsFFTW<T>::complex *) Idata, (typename traitsFFTW<T>::complex *) Odata);
 	if (normalize) O /= std::sqrt (rows * cols);
   }
 
@@ -154,7 +154,7 @@ namespace fl
 	if (O.rows () < Orows  ||  O.columns () < cols) O.resize (Orows, cols);
 
 	const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
-	fftw_iodim dims[2];
+	typename traitsFFTW<T>::iodim dims[2];
 	if (rank == 1)
 	{
 	  dims[0].n  = rows * cols;
@@ -198,18 +198,18 @@ namespace fl
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
-		fftw_destroy_plan (cachedPlan);
+		destroy_plan (cachedPlan);
 		cachedPlan = 0;
 	  }
 	}
 	if (! cachedPlan)
 	{
 	  // Create new plan
-	  cachedPlan = fftw_plan_guru_dft_r2c
+	  cachedPlan = plan
 	  (
-	    rank, dims,
+		rank, dims,
 		0, 0,
-		(double *) Idata, (fftw_complex *) Odata,
+		(T *) Idata, (typename traitsFFTW<T>::complex *) Odata,
 		flags
 	  );
 	  cachedDirection = -1;  // forward
@@ -223,7 +223,7 @@ namespace fl
 	if (! cachedPlan) throw "Fourier: Unable to generate a plan.";
 
 	// Run it
-	fftw_execute_dft_r2c (cachedPlan, (double *) Idata, (fftw_complex *) Odata);
+	execute (cachedPlan, (T *) Idata, (typename traitsFFTW<T>::complex *) Odata);
 	if (normalize) O /= std::sqrt (rows * cols);
   }
 
@@ -250,7 +250,7 @@ namespace fl
 	else              W.copyFrom (I);  // duplicate I's memory
 
 	const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
-	fftw_iodim dims[2];
+	typename traitsFFTW<T>::iodim dims[2];
 	if (rank == 1)
 	{
 	  dims[0].n  = rows * cols;
@@ -294,18 +294,18 @@ namespace fl
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
-		fftw_destroy_plan (cachedPlan);
+		destroy_plan (cachedPlan);
 		cachedPlan = 0;
 	  }
 	}
 	if (! cachedPlan)
 	{
 	  // Create new plan
-	  cachedPlan = fftw_plan_guru_dft_c2r
+	  cachedPlan = plan
 	  (
 	    rank, dims,
 		0, 0,
-		(fftw_complex *) Idata, (double *) Odata,
+		(typename traitsFFTW<T>::complex *) Idata, (T *) Odata,
 		flags
 	  );
 	  cachedDirection = 1;   // reverse
@@ -319,7 +319,7 @@ namespace fl
 	if (! cachedPlan) throw "Fourier: Unable to generate a plan.";
 
 	// Run it
-	fftw_execute_dft_c2r (cachedPlan, (fftw_complex *) Idata, (double *) Odata);
+	execute (cachedPlan, (typename traitsFFTW<T>::complex *) Idata, (T *) Odata);
 	if (normalize) O /= std::sqrt (rows * cols);
   }
 
@@ -337,7 +337,7 @@ namespace fl
 	if (O.rows () < rows  ||  O.columns () < cols) O.resize (rows, cols);
 
 	const int rank = (rows == 1  ||  cols == 1) ? 1 : 2;
-	fftw_iodim dims[2];
+	typename traitsFFTW<T>::iodim dims[2];
 	if (rank == 1)
 	{
 	  dims[0].n  = rows * cols;
@@ -381,7 +381,7 @@ namespace fl
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
-		fftw_destroy_plan (cachedPlan);
+		destroy_plan (cachedPlan);
 		cachedPlan = 0;
 	  }
 	}
@@ -391,11 +391,11 @@ namespace fl
 	  fftw_r2r_kind kinds[2];
 	  kinds[0] = (fftw_r2r_kind) kind;
 	  kinds[1] = (fftw_r2r_kind) kind;
-	  cachedPlan = fftw_plan_guru_r2r
+	  cachedPlan = plan
 	  (
 	    rank, dims,
 		0, 0,
-		(double *) Idata, (double *) Odata,
+		(T *) Idata, (T *) Odata,
 		kinds, flags
 	  );
 	  cachedDirection = 0;   // none
@@ -409,7 +409,7 @@ namespace fl
 	if (! cachedPlan) throw "Fourier: Unable to generate a plan.";
 
 	// Run it
-	fftw_execute_r2r (cachedPlan, (double *) Idata, (double *) Odata);
+	execute (cachedPlan, (T *) Idata, (T *) Odata);
 	if (normalize)
 	{
 	  T N;

@@ -14,10 +14,9 @@ for details.
 
 
 #include "fl/matrix.h"
+#include "fl/fftwproto.h"
 
 #include <complex>
-
-#include <fftw3.h>
 
 
 namespace fl
@@ -45,13 +44,13 @@ namespace fl
 	bool sizeFromOutput;  ///< Indicates to determine the logical size of the problem from the output matrix rather than the input matrix.
 
 	// Cached plan (internal to implementation).
-	fftw_plan     cachedPlan;
-	int           cachedDirection;
-	int           cachedKind;
-	unsigned int  cachedFlags;
-	fftw_iodim    cachedDims[2];
-	int           cachedAlignment;
-	bool          cachedInPlace;
+	typename traitsFFTW<T>::plan  cachedPlan;
+	int                           cachedDirection;
+	int                           cachedKind;
+	unsigned int                  cachedFlags;
+	typename traitsFFTW<T>::iodim cachedDims[2];
+	int                           cachedAlignment;
+	bool                          cachedInPlace;
   };
 }
 
