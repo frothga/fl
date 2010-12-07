@@ -456,10 +456,7 @@ namespace fl
 	{
 	  if (memory)
 	  {
-		if (--(memory->refcount) == 0)
-		{
-		  delete memory;
-		}
+		if (atomicDec (memory->refcount) == 0) delete memory;
 		memory = 0;
 	  }
 	}
@@ -467,7 +464,7 @@ namespace fl
 	struct RefcountBlock
 	{
 	  T object;
-	  int refcount;
+	  int32_t refcount;
 	};
 	RefcountBlock * memory;
 
@@ -478,10 +475,7 @@ namespace fl
 	void attach (RefcountBlock * that)
 	{
 	  memory = that;
-	  if (memory)
-	  {
-		memory->refcount++;
-	  }
+	  if (memory) atomicInc (memory->refcount);
 	}
   };
 
@@ -498,7 +492,7 @@ namespace fl
   {
   public:
 	ReferenceCounted () {PointerPolyReferenceCount = 0;}
-	mutable int PointerPolyReferenceCount;  ///< The number of PointerPolys that are attached to this instance.
+	mutable int32_t PointerPolyReferenceCount;  ///< The number of PointerPolys that are attached to this instance.
   };
   
 
@@ -618,10 +612,7 @@ namespace fl
 	{
 	  assert (memory == 0);
 	  memory = that;
-	  if (memory)
-	  {
-		memory->PointerPolyReferenceCount++;
-	  }
+	  if (memory) atomicInc (memory->PointerPolyReferenceCount);
 	}
 
 	void detach ()
@@ -629,10 +620,7 @@ namespace fl
 	  if (memory)
 	  {
 		assert (memory->PointerPolyReferenceCount > 0);
-		if (--(memory->PointerPolyReferenceCount) == 0)
-		{
-		  delete memory;
-		}
+		if (atomicDec (memory->PointerPolyReferenceCount) == 0) delete memory;
 		memory = 0;
 	  }
 	}
