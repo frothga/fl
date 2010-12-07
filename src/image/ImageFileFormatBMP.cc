@@ -294,11 +294,30 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
   if (compression == 0  ||  compression == 3)  // BI_RGB, BI_BITFIELDS
   {
 	if (pixelsSize  &&  pixelsSize != stride * height) cerr << "WARNING: Pixel block size is inconsistent" << endl;
-	in->read ((char *) buffer, stride * height);
+	if (topDown)
+	{
+	  in->read ((char *) buffer, stride * height);
+	}
+	else
+	{
+	  uint8_t * start = buffer;
+	  buffer += stride * (height - 1);
+	  while (buffer >= start)
+	  {
+		in->read ((char *) buffer, stride);
+		buffer -= stride;
+	  }
+	}
   }
   else if (compression == 1)  // BI_RLE8
   {
-	uint8_t * end = buffer + stride * height;
+	uint8_t * start = buffer;
+	uint8_t * end   = buffer + stride * height;
+	if (! topDown)
+	{
+	  buffer += stride * (height - 1);
+	  stride *= -1;
+	}
 	uint8_t * row = buffer;
 	bool done = false;
 	while (! done)
@@ -307,7 +326,7 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
 	  if (count)
 	  {
 		uint8_t value = in->get ();
-		if (buffer >= end  ||  in->bad ())
+		if (buffer < start  ||  buffer >= end  ||  in->bad ())
 		{
 		  done = true;
 		  break;
@@ -334,7 +353,7 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
 			break;
 		  }
 		  default:  // all codes >= 3 are absolute counts
-			if (buffer >= end  ||  in->bad ())
+			if (buffer < start  ||  buffer >= end  ||  in->bad ())
 			{
 			  done = true;
 			  break;
@@ -348,7 +367,13 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
   else  // compression == 2 == BI_RLE4
   {
 	uint8_t mask = 0xF0;  // big-endian order: first pixel is in high nibble
-	uint8_t * end = buffer + stride * height;
+	uint8_t * start = buffer;
+	uint8_t * end   = buffer + stride * height;
+	if (! topDown)
+	{
+	  buffer += stride * (height - 1);
+	  stride *= -1;
+	}
 	uint8_t * row = buffer;
 	bool done = false;
 	while (! done)
@@ -357,7 +382,7 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
 	  if (count)
 	  {
 		uint8_t value = in->get ();
-		if (buffer >= end  ||  in->bad ())
+		if (buffer < start  ||  buffer >= end  ||  in->bad ())
 		{
 		  done = true;
 		  break;
@@ -409,7 +434,7 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
 		  default:  // all codes >= 3 are literal sequences
 		  {
 			uint8_t value;
-			if (buffer >= end  ||  in->bad ())
+			if (buffer < start  ||  buffer >= end  ||  in->bad ())
 			{
 			  done = true;
 			  break;
@@ -444,6 +469,8 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
 	  }
 	}
   }
+
+  topDown = true;  // If image was bottom-up, all three cases above reordered while reading.
 }
 
 void
