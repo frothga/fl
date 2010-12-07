@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,7 +16,6 @@ for details.
 
 #include "fl/descriptor.h"
 #include "fl/canvas.h"
-#include "fl/pi.h"
 
 
 using namespace fl;
@@ -153,7 +152,7 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
 		float dx = I_x(x,y);
 		float dy = I_y(x,y);
 		float angle = atan2 (dy, dx);
-		int bin = (int) ((angle + PI) * bins / (2 * PI));
+		int bin = (int) ((angle + M_PI) * bins / TWOPI);
 		bin = min (bin, bins - 1);  // Technically, these two lines should not be necessary.  They compensate for numerical jitter.
 		bin = max (bin, 0);
 		float weight = sqrtf (dx * dx + dy * dy) * expf (- (cx * cx + cy * cy) / sigma2);
@@ -192,7 +191,7 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
 	if (h1 > h0  &&  h1 > h2  &&  h1 >= threshold)
 	{
 	  float peak = 0.5f * (h0 - h2) / (h0 - 2.0f * h1 + h2);
-	  angles.insert (make_pair (h1, (i + 0.5f + peak) * 2 * PI / bins - PI));
+	  angles.insert (make_pair (h1, (i + 0.5f + peak) * TWOPI / bins - M_PI));
 	}
   }
   delete [] histogram;

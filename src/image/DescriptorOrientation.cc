@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005 Sandia Corporation.
+Copyright 2005, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -97,7 +97,7 @@ DescriptorOrientation::patch (const Vector<float> & value)
 {
   int patchSize = 2 * supportPixel + 1;
   double filterScale = supportPixel / kernelSize;
-  GaussianDerivativeFirst G (0, filterScale, -1, value[0] + PI);
+  GaussianDerivativeFirst G (0, filterScale, -1, value[0] + M_PI);
   killRadius (supportPixel + 1, G);
   Transform t (1, 1);
   t.setPeg (G.width / 2, G.height / 2, patchSize, patchSize);

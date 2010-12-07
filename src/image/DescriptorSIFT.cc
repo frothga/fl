@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,7 +16,6 @@ for details.
 
 #include "fl/descriptor.h"
 #include "fl/canvas.h"
-#include "fl/pi.h"
 #include "fl/color.h"
 
 
@@ -278,7 +277,7 @@ DescriptorSIFT::patch (Canvas * canvas, const Vector<float> & value, int size)
   float * length = & value[0];
   Point center;
   Point tip;
-  bool nosign = fabs (angleRange - PI) < 1e-6;
+  bool nosign = fabs (angleRange - M_PI) < 1e-6;
   for (int y = 0; y < width; y++)
   {
 	center.y = (y + 0.5f) * size;

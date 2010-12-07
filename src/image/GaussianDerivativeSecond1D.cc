@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/convolve.h"
-#include "fl/pi.h"
 
 
 using namespace std;
@@ -28,7 +27,7 @@ GaussianDerivativeSecond1D::GaussianDerivativeSecond1D (double sigma, const Bord
 : ConvolutionDiscrete1D (mode, GrayDouble, direction)
 {
   double sigma2 = sigma * sigma;
-  double C = 1.0 / (sqrt (2.0 * PI) * sigma * sigma2);
+  double C = 1.0 / (sqrt (TWOPI) * sigma * sigma2);
 
   int h = (int) roundp (Gaussian2D::cutoff * sigma);
   resize (2 * h + 1, 1);

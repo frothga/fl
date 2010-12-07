@@ -18,15 +18,27 @@ for details.
 #define fl_math_h
 
 
+#ifdef _MSC_VER
+#  define _USE_MATH_DEFINES
+#endif
+
 #include <cmath>
 #include <limits.h>
 #include <stdint.h>
 
 #ifdef _MSC_VER
-# include <float.h>
-# undef min
-# undef max
+#  include <float.h>
+#  undef min
+#  undef max
 #endif
+
+#ifndef M_PI
+#  define M_PI     3.1415926535897932384626433832795029
+#  define M_PIf    3.1415926535897932384626433832795029f
+#endif
+
+#define TWOPI  6.283185307179586476925286766559
+#define TWOPIf 6.283185307179586476925286766559f
 
 
 namespace std
@@ -171,6 +183,28 @@ namespace fl
   roundp (double a)
   {
 	return floor (a + 0.5);
+  }
+
+  inline double
+  mod2pi (double a)
+  {
+	a = fmod (a, TWOPI);
+	if (a < 0)
+	{
+	  a += TWOPI;
+	}
+	return a;
+  }
+
+  inline float
+  mod2pi (float a)
+  {
+	a = fmodf (a, TWOPIf);
+	if (a < 0)
+	{
+	  a += TWOPIf;
+	}
+	return a;
   }
 }
 

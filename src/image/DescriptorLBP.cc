@@ -16,7 +16,6 @@ for details.
 
 #include "fl/descriptor.h"
 #include "fl/canvas.h"
-#include "fl/pi.h"
 
 // for debugging
 #include "fl/time.h"
@@ -53,7 +52,7 @@ DescriptorLBP::initialize ()
   for (int i = 0; i < P; i++)
   {
 	Interpolate & t = interpolates[i];
-	float angle = i * 2 * PI / P;
+	float angle = i * TWOPIf / P;
 	float xf = R * cosf (angle);
 	float yf = R * sinf (angle);
 	t.xl = (int) floorf (xf);

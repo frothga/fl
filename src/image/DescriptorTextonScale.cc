@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/descriptor.h"
-#include "fl/pi.h"
 
 // For debugging only
 //#include "fl/slideshow.h"
@@ -64,7 +63,7 @@ DescriptorTextonScale::initialize ()
 	filters.push_back (d);
 	for (int j = 0; j < angles; j++)
 	{
-	  float angle = (PI / angles) * j;
+	  float angle = (M_PI / angles) * j;
 	  GaussianDerivativeSecond e (1, 1, enlongation * sigma, sigma, angle);
 	  e *= Normalize ();
 	  filters.push_back (e);

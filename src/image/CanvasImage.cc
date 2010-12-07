@@ -43,13 +43,13 @@ static inline void
 flipX (float & angle)
 {
   // Act as if circle has been flipped along vertical axis
-  if (angle < PI)
+  if (angle < M_PI)
   {
-	angle = PI - angle;
+	angle = M_PI - angle;
   }
   else
   {
-	angle = 3 * PI - angle;
+	angle = 3 * M_PI - angle;
   }
 }
 
@@ -57,7 +57,7 @@ static inline void
 flipY (float & angle)
 {
   // Act as if circle has been flipped along horizontal axis
-  angle = 2 * PI - angle;
+  angle = TWOPIf - angle;
 }
 
 static inline bool
@@ -65,7 +65,7 @@ inRange (float angle, const float & startAngle, const float & endAngle)
 {
   while (angle < startAngle)
   {
-	angle += (float) (2 * PI);
+	angle += TWOPIf;
   }
   return angle <= endAngle;
 }
@@ -640,7 +640,7 @@ CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & 
   endAngle   = mod2pi (endAngle);
   if (endAngle <= startAngle)
   {
-	endAngle += (float) (2 * PI);
+	endAngle += TWOPIf;
   }
 
   // Determine where to switch from tracking x-axis to tracking y-axis
@@ -660,19 +660,19 @@ CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & 
 	  p.y = tcenter.y + rot(1,0) * i + rot(1,1) * yt;
 	  pen (p, color);
 	}
-	if (inRange (PI - angle, startAngle, endAngle))
+	if (inRange (M_PI - angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x - rot(0,0) * i + rot(0,1) * yt;
 	  p.y = tcenter.y - rot(1,0) * i + rot(1,1) * yt;
 	  pen (p, color);
 	}
-	if (inRange (PI + angle, startAngle, endAngle))
+	if (inRange (M_PI + angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x - rot(0,0) * i - rot(0,1) * yt;
 	  p.y = tcenter.y - rot(1,0) * i - rot(1,1) * yt;
 	  pen (p, color);
 	}
-	if (inRange (2 * PI - angle, startAngle, endAngle))
+	if (inRange (TWOPI - angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x + rot(0,0) * i - rot(0,1) * yt;
 	  p.y = tcenter.y + rot(1,0) * i - rot(1,1) * yt;
@@ -690,19 +690,19 @@ CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & 
 	  p.y = tcenter.y + rot(1,0) * xt + rot(1,1) * j;
 	  pen (p, color);
 	}
-	if (inRange (PI - angle, startAngle, endAngle))
+	if (inRange (M_PI - angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x - rot(0,0) * xt + rot(0,1) * j;
 	  p.y = tcenter.y - rot(1,0) * xt + rot(1,1) * j;
 	  pen (p, color);
 	}
-	if (inRange (PI + angle, startAngle, endAngle))
+	if (inRange (M_PI + angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x - rot(0,0) * xt - rot(0,1) * j;
 	  p.y = tcenter.y - rot(1,0) * xt - rot(1,1) * j;
 	  pen (p, color);
 	}
-	if (inRange (2 * PI - angle, startAngle, endAngle))
+	if (inRange (TWOPI - angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x + rot(0,0) * xt - rot(0,1) * j;
 	  p.y = tcenter.y + rot(1,0) * xt - rot(1,1) * j;

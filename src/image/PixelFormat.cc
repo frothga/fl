@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/image.h"
-#include "fl/pi.h"
 #include "fl/math.h"
 #include "fl/endian.h"
 
@@ -5221,7 +5220,7 @@ PixelFormatHLSFloat::setRGBA (void * pixel, float values[]) const
 	// Hue
 	float x =  -0.5f * values[0] -   0.5f * values[1] + values[2];
 	float y = root32 * values[0] - root32 * values[1];
-	h = atan2f (y, x) / (2 * PI) - onethird;
+	h = atan2f (y, x) / TWOPIf - onethird;
 	if (h < 0)
 	{
 	  h += 1.0f;

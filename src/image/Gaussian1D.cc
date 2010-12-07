@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/convolve.h"
-#include "fl/pi.h"
 
 
 using namespace std;
@@ -28,7 +27,7 @@ Gaussian1D::Gaussian1D (double sigma, const BorderMode mode, const PixelFormat &
 : ConvolutionDiscrete1D (mode, GrayDouble, direction)
 {
   double sigma2 = sigma * sigma;
-  double C = 1.0 / (sqrt (2.0 * PI) * sigma);
+  double C = 1.0 / (sqrt (TWOPI) * sigma);
 
   int h = (int) roundp (Gaussian2D::cutoff * sigma);
   resize (2 * h + 1, 1);

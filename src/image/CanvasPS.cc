@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005 Sandia Corporation.
+Copyright 2005, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -144,8 +144,8 @@ CanvasPS::drawPolygon (const std::vector<Point> & points, unsigned int color)
 void
 CanvasPS::drawCircle (const Point & center, float radius, unsigned int color, float startAngle, float endAngle)
 {
-  startAngle *= (float) (180 / PI);
-  endAngle   *= (float) (180 / PI);
+  startAngle *= (float) (180 / M_PI);
+  endAngle   *= (float) (180 / M_PI);
 
   psf << "np" << endl;
   psf << center.x << " " << center.y << " " << radius << " " << startAngle << " " << endAngle << " arc" << endl;
@@ -175,8 +175,8 @@ CanvasPS::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & sha
   }
   float angle = atan2 (rot(1,0), rot(0,0));
 
-  startAngle *= (float) (180 / PI);
-  endAngle   *= (float) (180 / PI);
+  startAngle *= (float) (180 / M_PI);
+  endAngle   *= (float) (180 / M_PI);
 
   psf << "np" << endl;
   psf << "cm" << endl;

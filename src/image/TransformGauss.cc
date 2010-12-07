@@ -15,11 +15,7 @@ for details.
 
 
 #include "fl/convolve.h"
-#include "fl/pi.h"
 #include "fl/color.h"
-
-#include <float.h>
-
 
 // For debugging
 //#include "fl/slideshow.h"
@@ -42,7 +38,7 @@ TransformGauss::prepareG ()
 {
   const double sigma2 = sigma * sigma;
   const double stepsPerZ = 6;  // Number of substeps per standard deviation
-  const double C = 1.0 / (2.0 * PI * sigma2);
+  const double C = 1.0 / (TWOPI * sigma2);
 
   // Calculate size and shape of Gaussian
   MatrixFixed<double,2,2> S = IA.region (0, 0, 1, 1) * ~IA.region (0, 0, 1, 1) * sigma2;

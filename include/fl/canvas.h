@@ -21,7 +21,6 @@ for details.
 #include "fl/point.h"
 #include "fl/matrix.h"
 #include "fl/image.h"
-#include "fl/pi.h"
 #include "fl/color.h"
 
 #include <vector>
@@ -53,8 +52,8 @@ namespace fl
 	virtual void drawParallelogram (const Matrix<double> & S, float radius = 1.0f, unsigned int color = WHITE);  ///< S projects a unit square centered at the origin into the image.  radius scales up the unit square.
 	virtual void drawParallelogram (const PointAffine & p, float radius = 1.0f, unsigned int color = WHITE);  ///< Determines an S based on the shape and position of p, then calls drawParallelogram (S, ...).
 	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = WHITE);
-	virtual void drawCircle (const Point & center, float radius, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI);
-	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1.0f, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
+	virtual void drawCircle (const Point & center, float radius, unsigned int color = WHITE, float startAngle = 0, float endAngle = TWOPIf);
+	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1.0f, unsigned int color = WHITE, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
 	virtual void drawEllipse (const Matrix<double> & S, float radius = 1.0f, unsigned int color = WHITE);  ///< S projects a unit circle centered at the origin into the image.  radius scales up the unit circle.  This is a convenience function for marking affine-adapted patches.
 	virtual void drawMSER (const PointMSER & p, const Image & image, unsigned int colorFill = GRAY50, unsigned int colorBorder = WHITE);
 	virtual void drawText (const std::string & text, const Point & point, unsigned int color = WHITE, float angle = 0);
@@ -87,7 +86,7 @@ namespace fl
 	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
 	virtual void drawFilledPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
 	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = WHITE);
-	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, unsigned int color = WHITE, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
+	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, unsigned int color = WHITE, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);
 	virtual void drawMSER (const PointMSER & p, const Image & image, unsigned int colorFill = GRAY50, unsigned int colorBorder = WHITE);
 	virtual void drawText (const std::string & text, const Point & point, unsigned int color = WHITE, float angle = 0);
 
@@ -132,8 +131,8 @@ namespace fl
 	virtual void drawPoint (const Point & p, unsigned int color = BLACK);
 	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = BLACK);
 	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = BLACK);
-	virtual void drawCircle (const Point & center, float radius, unsigned int color = BLACK, float startAngle = 0, float endAngle = 2 * PI);
-	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, unsigned int color = BLACK, float startAngle = 0, float endAngle = 2 * PI, bool inverse = false);
+	virtual void drawCircle (const Point & center, float radius, unsigned int color = BLACK, float startAngle = 0, float endAngle = TWOPIf);
+	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, unsigned int color = BLACK, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);
 	virtual void drawImage (const Image & image, Point & p, float width = -1, float height = -1);
 
 	virtual void setTranslation (float x, float y);

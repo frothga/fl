@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/convolve.h"
-#include "fl/pi.h"
 
 
 using namespace std;
@@ -32,7 +31,7 @@ GaussianDerivativeFirst::GaussianDerivativeFirst (int xy, double sigmaX, double 
 	sigmaY = sigmaX;
   }
 
-  const double C = 1.0 / (2 * PI * sigmaX * sigmaY);
+  const double C = 1.0 / (TWOPI * sigmaX * sigmaY);
   int half = (int) roundp (Gaussian2D::cutoff * max (sigmaX, sigmaY));
   int size = 2 * half + 1;
 

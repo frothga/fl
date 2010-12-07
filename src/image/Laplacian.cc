@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/convolve.h"
-#include "fl/pi.h"
 
 
 using namespace std;
@@ -39,7 +38,7 @@ Laplacian::Laplacian (double sigma, const BorderMode mode, const PixelFormat & f
 
   double sigma2 = sigma * sigma;
   double sigma4 = sigma2 * sigma2;
-  double C = 1.0 / (2.0 * PI * sigma2);
+  double C = 1.0 / (TWOPI * sigma2);
   for (int row = 0; row < size; row++)
   {
 	for (int column = 0; column < size; column++)

@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/convolve.h"
-#include "fl/pi.h"
 
 // for debugging only
 #include "fl/time.h"

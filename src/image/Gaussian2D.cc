@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/convolve.h"
-#include "fl/pi.h"
 
 
 using namespace std;
@@ -31,7 +30,7 @@ Gaussian2D::Gaussian2D (double sigma, const BorderMode mode, const PixelFormat &
 {
   const double sigma2 = sigma * sigma;
 
-  const double C = 1.0 / (2 * PI * sigma2);
+  const double C = 1.0 / (TWOPI * sigma2);
   int h = (int) roundp (cutoff * sigma);  // "half" = distance from middle until cell values become insignificant
   int s = 2 * h + 1;  // "size" of kernel
 

@@ -60,7 +60,6 @@ endif (FFTW_FOUND)
 
 add_library (flNumeric
   ../../include/fl/math.h
-  ../../include/fl/pi.h
   zroots.cc
 
   # Metrics, Distances, Measures, etc.

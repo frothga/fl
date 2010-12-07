@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -16,7 +16,6 @@ for details.
 
 #include "fl/cluster.h"
 #include "fl/lapack.h"
-#include "fl/pi.h"
 #include "fl/random.h"
 #include "fl/time.h"
 
@@ -81,7 +80,7 @@ ClusterGauss::prepareInverse ()
 		eigenverse (i, j) = eigenvectors (j, i) / s;
 	  }
 	}
-	d *= 2.0 * PI * eigenvalues[i];
+	d *= TWOPIf * eigenvalues[i];
 	int ts;  // "temp scale"
 	d = frexp (d, &ts);
 	scale += ts;
