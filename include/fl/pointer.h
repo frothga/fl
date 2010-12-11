@@ -51,35 +51,7 @@ for details.
 	return result;
   }
 
-#elif defined (_MSC_VER)  &&  defined (_M_IX86)  &&  ! defined (_M_X64)
-
-  static inline void
-  atomicInc (int32_t & a)
-  {
-	__asm
-	{
-	  mov       eax, a
-	  mov       ebx, 1
-	  lock xadd [eax], ebx
-	}
-  }
-
-  static inline int32_t
-  atomicDec (int32_t & a)
-  {
-	int32_t result;
-	__asm
-	{
-	  mov       eax, a
-	  mov       ebx, -1
-	  lock xadd [eax], ebx
-	  sub       ebx, 1
-	  mov       result, ebx
-	}
-	return result;
-  }
-
-#elif defined (_MSC_VER)  &&  defined (_M_X64)
+#elif defined (_MSC_VER)
 
 #  define _WINSOCKAPI_
 #  define NOMINMAX
@@ -88,13 +60,13 @@ for details.
   static inline void
   atomicInc (int32_t & a)
   {
-	InterlockedAdd (&a, 1);
+	InterlockedIncrement ((volatile long *) &a);
   }
 
   static inline int32_t
   atomicDec (int32_t & a)
   {
-	return InterlockedAdd (&a, -1);
+	return InterlockedDecrement ((volatile long *) &a);
   }
 
 #else  // Generic code
@@ -319,7 +291,7 @@ namespace fl
 
   protected:
 	/**
-	   This method is protected because it assumes that we aren't responsible
+	   This method is protected because it assumes that we are not responsible
 	   for our memory.  We must guarantee that we don't own memory when this
 	   method is called.  This is true just after a call to detach, as well
 	   as a few other situations.
@@ -399,6 +371,7 @@ namespace fl
 	  detach ();
 	}
 
+	/// @todo Should this function be made thread safe?
 	void initialize ()
 	{
 	  if (! memory)
@@ -433,7 +406,7 @@ namespace fl
 	  }
 	}
 
-	int refcount () const
+	int32_t refcount () const
 	{
 	  if (memory)
 	  {
@@ -556,7 +529,7 @@ namespace fl
 	  return *this;
 	}
 
-	int refcount () const
+	int32_t refcount () const
 	{
 	  if (memory)
 	  {
