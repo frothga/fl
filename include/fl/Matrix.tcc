@@ -1997,7 +1997,7 @@ namespace fl
 	 has a number of rows different than its stride, then this function
 	 will move data in memory to provide contiguous access to elements.
 
-	 @param avoidCopy If the new size is no larger in each dimension than
+	 @param inPlace If the new size is no larger in each dimension than
 	 the old size, you can avoid copying the elements by setting this flag.
 	 The consequence is that the values in the new matrix will not follow
 	 the columnwise unwind behavior, but will simply be a block out of the
