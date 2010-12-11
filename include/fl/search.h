@@ -134,7 +134,7 @@ namespace fl
 	 and bestPoint each time value() is called.  bestPoint need not be valid
 	 until bestResidual is less than INFINITY.  The subclass should make no
 	 assumptions about how bestPoint is used.  In particular, it should
-	 always allocated a fresh block of memory each time it stores an updated
+	 always allocate a fresh block of memory each time it stores an updated
 	 value.
 
 	 Exactly what norm to use when comparing the results of value() is
@@ -144,6 +144,18 @@ namespace fl
   class SearchableGreedy
   {
   public:
+	SearchableGreedy () {bestResidual = INFINITY;}
+
+	void update (T residual, const Vector<T> & point)
+	{
+	  if (residual < bestResidual)
+	  {
+		bestResidual = residual;
+		bestPoint.detach ();
+		bestPoint.copyFrom (point);
+	  }
+	}
+
 	T         bestResidual;
 	Vector<T> bestPoint;
   };
