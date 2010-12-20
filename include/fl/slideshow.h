@@ -54,7 +54,6 @@ namespace fl
 	int                width;   ///< Current size of window
 	int                height;
 
-	bool               stop;
 	pthread_t          messagePumpThread;
 	pthread_mutex_t    waitingMutex;
 	pthread_cond_t     waitingCondition;

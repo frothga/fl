@@ -64,7 +64,7 @@ SlideShow::SlideShow ()
 
 SlideShow::~SlideShow ()
 {
-	stop = true;
+	PostMessage (window, WM_DESTROY, 0, 0);  // Induce a PostQuitMessage() within the message pump, creating a WM_QUIT that causes the message pump to exit.
 	void * result;
 	pthread_join (messagePumpThread, &result);
 
@@ -125,6 +125,7 @@ SlideShow::show (const Image & image, int centerX, int centerY)
 
 	// Display window
 	ShowWindowAsync (window, SW_SHOWNORMAL);
+	InvalidateRect (window, 0, 0);
 	UpdateWindow (window);
 }
 
@@ -173,9 +174,8 @@ SlideShow::messagePump (void * arg)
 	SetWindowLongPtr (me->window, 0, (LONG_PTR) me);
 
 	// Message pump
-	me->stop = false;
 	MSG message;
-	while (! me->stop  &&  GetMessage (&message, 0, 0, 0))
+	while (GetMessage (&message, 0, 0, 0))
 	{
 		TranslateMessage (&message);
 		DispatchMessage (&message);
