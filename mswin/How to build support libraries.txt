@@ -28,7 +28,7 @@ One of these packages (FFMPEG) can only be built under MinGW + MSYS.  First inst
 
 MinGW 32-bit: To prepare the MinGW compiler, go to http://sourceforge.net/projects/mingw/files, download the latest installer, and place it in c:\mingw32\setup.  Accept the default "current" package.
 
-MinGW 64-bit: Currently, the 64-bit calling conventions used by GCC differ from those used by the MS toolchain, so the 64-bit libraries built by MinGW don't work in MS compiled programs.  Here are instructions to set up 64-bit MinGW, in case this is ever resolved...  Download from http://sourceforge.net/projects/mingw-w64.  Install in c:\mingw64, and add it to the path as described above.
+MinGW 64-bit: Download from http://sourceforge.net/projects/mingw-w64/files.  Install in c:\mingw64, and add it to the path as described above.
 
 To prepare the MSYS environment, go to http://sourceforge.net/projects/mingw/files and download/run the latest MSYS Base System installer program.  Install in c:\msys.
 
@@ -51,33 +51,28 @@ Copy the contents of the include directory into mswin/include.
 
 Pthreads-w32
 ------------
-Download and execute
+The original source for pthreads-w32 may be found at http://sourceware.org/pthreads-win32.  However, the site does not seem to be actively maintained, and more current code is available than is posted on the site.  The best way to get the most recent CVS code and some needed patches is to download from the MinGW-w64 project site: http://sourceforge.net/projects/mingw-w64/files/External%20binary%20packages%20%28Win64%20hosted%29/pthreads/pthreads-20100604.zip
+or more recent.
 
-	http://sourceware.org/pub/pthreads-win32/pthreads-w32-x-x-x-release.exe
+Expand the zip file, go into the "source" directory, and either run the unix shell script "prep_pthreads" or expand pthreads-win32.tar.gz and apply pthreads-w64sup.patch.
 
-Open pthread.2/pthread.dsw and allow VS to convert it.  For 64-bit, open configuration manager and add the x64 platform.  Select Release mode and compile.
+In the resulting "pthreads" directory, open pthread.dsw and allow VS to convert it.  You may need to convert the line endings in pthread.dsp for VS to accept it.  For 64-bit, open configuration manager and add the x64 platform.  Select Release mode and compile.
 
 Copy the library to mswin/lib or lib64 and rename:
 
-	pthread.2/pthreadVC2.lib  --> pthread.lib
+	pthreadVC2.lib  --> pthread.lib
 
 Copy the DLL to mswin/bin or bin64:
 
-	pthread.2/pthreadVC2.dll
+	pthreadVC2.dll
+
+Keep the version suffix in pthreadXXX.dll, since the lib creates a dependency on a DLL with that specific suffix in its name.  You may want to customize the project to compile in a suffix that distinguishes 32 versus 64 bit.
 
 Copy headers to mswin/include:
 
-	pthread.2/pthread.h
-	pthread.2/sched.h
-	pthread.2/semaphore.h
-
-Alternately, you can copy the prebuilt version:
-
-	Pre-built.2/include/*
-	Pre-built.2/lib/pthreadVC2.dll
-	Pre-built.2/lib/pthreadVC2.lib
-
-Keep the version suffix in pthreadXXX.dll, since the lib creates a dependency on a DLL with that specific suffix in its name.
+	pthread.h
+	sched.h
+	semaphore.h
 
 
 LAPACK and BLAS
