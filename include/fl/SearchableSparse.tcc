@@ -108,10 +108,11 @@ namespace fl
 
   template<class T>
   void
-  SearchableSparse<T>::gradient (const Vector<T> & point, Vector<T> & result)
+  SearchableSparse<T>::gradient (const Vector<T> & point, Vector<T> & result, const Vector<T> * currentValue)
   {
 	Vector<T> y;
-	value (point, y);
+	if (currentValue) y = *currentValue;
+	else              value (point, y);
 
 	MatrixSparse<T> J;
 	jacobian (point, J, &y);

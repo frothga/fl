@@ -48,10 +48,10 @@ namespace fl
 	**/
 	virtual int  dimension (const Vector<T> & point) = 0;
 	virtual void value     (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Returns the value of the function at a given point.  Must throw an exception if point is out of domain.
-	virtual void gradient  (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Treat this as a single-valued function and return the first derivative vector.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by hessian().
+	virtual void gradient  (const Vector<T> & point, Vector<T> &       result, const Vector<T> * currentValue = NULL) = 0;  ///< Treat this as a single-valued function and return the first derivative vector.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by hessian().
 	virtual void jacobian  (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
 	virtual void jacobian  (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL) = 0;  ///< Same as above, except omits all zero entries in Jacobian.
-	virtual void hessian   (const Vector<T> & point, Matrix<T> &       result) = 0;  ///< Treat this as a single-valued function and return the second derivative matrix.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by gradient().
+	virtual void hessian   (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL) = 0;  ///< Treat this as a single-valued function and return the second derivative matrix.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by gradient().
   };
 
   /**
@@ -68,10 +68,10 @@ namespace fl
   public:
 	SearchableNumeric (T perturbation = -1);
 
-	virtual void gradient (const Vector<T> & point, Vector<T> &       result);  ///< Uses sum of squares to reduce this to a single-valued function.
+	virtual void gradient (const Vector<T> & point, Vector<T> &       result, const Vector<T> * currentValue = NULL);  ///< Uses sum of squares to reduce this to a single-valued function.
 	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);
 	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);
-	virtual void hessian  (const Vector<T> & point, Matrix<T> &       result);  ///< Uses sum of squares to reduce this to a single-valued function.
+	virtual void hessian  (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);  ///< Uses sum of squares to reduce this to a single-valued function.
 
 	T perturbation;  ///< Amount to perturb a variable for finding any of the derivatives by finite differences.
   };
@@ -97,7 +97,7 @@ namespace fl
 	virtual MatrixSparse<bool> interaction () = 0;
 	virtual void cover ();  ///< Compute a structurally orthogonal cover of the Jacobian based on the interaction matrix.  Called automatically by jacobian() whenever the current cover is stale.
 
-	virtual void gradient (const Vector<T> & point, Vector<T> &       result);  ///< Compute gradient as 2 * ~jacobian * value.  In a sparse system, this should require fewer calls to value() than the direct method.
+	virtual void gradient (const Vector<T> & point, Vector<T> &       result, const Vector<T> * currentValue = NULL);  ///< Compute gradient as 2 * ~jacobian * value.  In a sparse system, this should require fewer calls to value() than the direct method.
 	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);  ///< Compute the Jacobian using the cover.
 	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);  ///< Ditto, but omit zero entries.
 
@@ -218,12 +218,13 @@ namespace fl
   class GradientDescent : public Search<T>
   {
   public:
-	GradientDescent (T toleranceX = -1, T updateRate = -0.01);
+	GradientDescent (T toleranceX = -1, T updateRate = -0.01, int patience = 3);
 
 	virtual void search (Searchable<T> & searchable, Vector<T> & point);
 
 	T toleranceX;
 	T updateRate;
+	int patience;
   };
 
   template<class T>

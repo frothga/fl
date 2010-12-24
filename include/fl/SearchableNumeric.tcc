@@ -37,7 +37,7 @@ namespace fl
 
   template<class T>
   void
-  SearchableNumeric<T>::gradient (const Vector<T> & point, Vector<T> & result)
+  SearchableNumeric<T>::gradient (const Vector<T> & point, Vector<T> & result, const Vector<T> * currentValue)
   {
 	Vector<T> perturbedPoint;
 	perturbedPoint.copyFrom (point);
@@ -46,11 +46,18 @@ namespace fl
 
 	result.resize (n);
 
+	T v0;
 	Vector<T> v;
-	value (point, v);
-	T v0 = v.sumSquares ();
+	if (currentValue)
+	{
+	  v0 = currentValue->sumSquares ();
+	}
+	else
+	{
+	  value (point, v);
+	  v0 = v.sumSquares ();
+	}
 
-	Vector<T> newValue;
 	for (int i = 0; i < n; i++)
 	{
 	  T temp = point[i];
@@ -142,7 +149,7 @@ namespace fl
 
   template<class T>
   void
-  SearchableNumeric<T>::hessian (const Vector<T> & point, Matrix<T> & result)
+  SearchableNumeric<T>::hessian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue)
   {
 	T perturbation2 = std::sqrt (perturbation);  // because hessian takes second derivative, we need to keep denominator from getting too small
 
@@ -162,9 +169,17 @@ namespace fl
 	  if (delta == 0) delta = perturbation2;
 	}
 
+	T v00;
 	Vector<T> v;
-	value (point00, v);
-	T v00 = v.sumSquares ();
+	if (currentValue)
+	{
+	  v00 = currentValue->sumSquares ();
+	}
+	else
+	{
+	  value (point00, v);
+	  v00 = v.sumSquares ();
+	}
 
 	for (int i = 0; i < n; i++)
 	{

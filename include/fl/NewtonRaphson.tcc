@@ -43,15 +43,27 @@ namespace fl
   void
   NewtonRaphson<T>::search (Searchable<T> & searchable, Vector<T> & point)
   {
+	SearchableGreedy<T> * greedy = dynamic_cast<SearchableGreedy<T> *> (&searchable);
+	T bestResidual = INFINITY;
+
 	for (int i = 0; i < maxIterations; i++)
 	{
 	  searchable.dimension (point);
 
+	  Vector<T> v;
+	  searchable.value (point, v);
+
 	  Vector<T> g;
-	  searchable.gradient (point, g);
+	  searchable.gradient (point, g, &v);
 
 	  Matrix<T> H;
-	  searchable.hessian (point, H);
+	  searchable.hessian (point, H, &v);
+
+	  if (greedy  &&  greedy->bestResidual < bestResidual)
+	  {
+		bestResidual = greedy->bestResidual;
+		point        = greedy->bestPoint;
+	  }
 
 	  // delta = !H * g; save eigenvalues for sign test
 	  Matrix<T> Z;

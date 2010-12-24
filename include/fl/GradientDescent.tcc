@@ -31,8 +31,9 @@ namespace fl
 	 step size automatically rescales, but the sign remains the same.
   **/
   template<class T>
-  GradientDescent<T>::GradientDescent (T toleranceX, T updateRate)
-  : updateRate (updateRate)
+  GradientDescent<T>::GradientDescent (T toleranceX, T updateRate, int patience)
+  : updateRate (updateRate),
+	patience (patience)
   {
 	if (toleranceX < (T) 0) toleranceX = std::sqrt (std::numeric_limits<T>::epsilon ());
 	this->toleranceX = toleranceX;
@@ -47,13 +48,16 @@ namespace fl
 
 	T stepSize = updateRate;
 	int gotBetter = 0;
+	Vector<T> value;
 	while (true)
 	{
 	  searchable.dimension (point);
 
+	  if (value.rows () == 0) searchable.value (point, value);
+
 	  // Find gradient
 	  Vector<T> gradient;
-	  searchable.gradient (point, gradient);
+	  searchable.gradient (point, gradient, &value);
 	  if (greedy  &&  greedy->bestResidual < bestResidual)
 	  {
 		bestResidual = greedy->bestResidual;
@@ -64,9 +68,8 @@ namespace fl
 	  while (true)
 	  {
 		Vector<T> newPoint = point + gradient * stepSize;
-		Vector<T> result;
-		searchable.value (newPoint, result);
-		T residual = result.norm (2);
+		searchable.value (newPoint, value);
+		T residual = value.norm (2);
 
 		if (residual < bestResidual)
 		{
@@ -83,7 +86,7 @@ namespace fl
 		}
 	  }
 	  if (gradient.norm (2) < toleranceX) return;
-	  if (gotBetter > 3)
+	  if (gotBetter >= patience)
 	  {
 		gotBetter = 0;
 		stepSize *= 2;

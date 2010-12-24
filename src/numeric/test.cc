@@ -86,14 +86,7 @@ public:
 	  result[i] = y[i] - (x[0] + t0 / (x[1] * t1 + x[2] * t2));
 	}
 
-	// This is an example of how to properly implement the SearchableGreedy interface.
-	T residual = result.norm (2);
-	if (residual < SearchableGreedy<T>::bestResidual)
-	{
-	  SearchableGreedy<T>::bestResidual = residual;
-	  SearchableGreedy<T>::bestPoint.detach ();
-	  SearchableGreedy<T>::bestPoint.copyFrom (x);
-	}
+	update (result.norm (2), x);
 
 	cerr << ".";
   }
@@ -225,7 +218,7 @@ testSearch ()
   searchables.push_back (new SparseTestFunction<T>);
   searchables.push_back (new ConstrictionTestFunction<T> (searchables[0]));
 
-  vector <Search<T> *> searches;
+  vector<Search<T> *> searches;
   searches.push_back (new AnnealingAdaptive<T>);  // Stochastic search along a single dimension doesn't seem to work so well.
   searches.push_back (new GradientDescent<T> (1e-4));  // The default toleranceX for double is too tight.
   searches.push_back (new LevenbergMarquardtSparseBK<T>);
@@ -261,6 +254,7 @@ testSearch ()
   {
 	Searchable<T> * function = searchables[i];
 	TestFunction<T> * t = dynamic_cast<TestFunction<T> *> (function);
+	SearchableGreedy<T> * greedy = dynamic_cast<SearchableGreedy<T> *> (function);
 
 	for (int j = 0; j < n; j++)
 	{
@@ -272,6 +266,8 @@ testSearch ()
 		cerr << "  skipping" << endl;
 		continue;
 	  }
+
+	  if (greedy) greedy->bestResidual = INFINITY;
 
 	  Vector<T> point;
 	  point.copyFrom (t->startPoint);
