@@ -49,7 +49,12 @@ namespace fl
   template<class T>
   Fourier<T>::~Fourier ()
   {
-	if (cachedPlan) destroy_plan (cachedPlan);
+	if (cachedPlan)
+	{
+	  pthread_mutex_lock   (&mutexPlan);
+	  destroy_plan (cachedPlan);
+	  pthread_mutex_unlock (&mutexPlan);
+	}
   }
 
   template<class T>
@@ -110,13 +115,16 @@ namespace fl
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
+		pthread_mutex_lock   (&mutexPlan);
 		destroy_plan (cachedPlan);
+		pthread_mutex_unlock (&mutexPlan);
 		cachedPlan = 0;
 	  }
 	}
 	if (! cachedPlan)
 	{
 	  // Create new plan
+	  pthread_mutex_lock   (&mutexPlan);
 	  cachedPlan = plan
 	  (
 		rank, dims,
@@ -124,6 +132,7 @@ namespace fl
 		(typename traitsFFTW<T>::complex *) Idata, (typename traitsFFTW<T>::complex *) Odata,
 		direction, flags
 	  );
+	  pthread_mutex_unlock (&mutexPlan);
 	  cachedDirection = direction;
 	  cachedKind      = -1;  // complex to complex
 	  cachedFlags     = flags;
@@ -198,13 +207,16 @@ namespace fl
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
+		pthread_mutex_lock   (&mutexPlan);
 		destroy_plan (cachedPlan);
+		pthread_mutex_unlock (&mutexPlan);
 		cachedPlan = 0;
 	  }
 	}
 	if (! cachedPlan)
 	{
 	  // Create new plan
+	  pthread_mutex_lock   (&mutexPlan);
 	  cachedPlan = plan
 	  (
 		rank, dims,
@@ -212,6 +224,7 @@ namespace fl
 		(T *) Idata, (typename traitsFFTW<T>::complex *) Odata,
 		flags
 	  );
+	  pthread_mutex_unlock (&mutexPlan);
 	  cachedDirection = -1;  // forward
 	  cachedKind      = -2;  // mixed complex-real
 	  cachedFlags     = flags;
@@ -294,13 +307,16 @@ namespace fl
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
+		pthread_mutex_lock   (&mutexPlan);
 		destroy_plan (cachedPlan);
+		pthread_mutex_unlock (&mutexPlan);
 		cachedPlan = 0;
 	  }
 	}
 	if (! cachedPlan)
 	{
 	  // Create new plan
+	  pthread_mutex_lock   (&mutexPlan);
 	  cachedPlan = plan
 	  (
 	    rank, dims,
@@ -308,6 +324,7 @@ namespace fl
 		(typename traitsFFTW<T>::complex *) Idata, (T *) Odata,
 		flags
 	  );
+	  pthread_mutex_unlock (&mutexPlan);
 	  cachedDirection = 1;   // reverse
 	  cachedKind      = -2;  // mixed complex-real
 	  cachedFlags     = flags;
@@ -381,7 +398,9 @@ namespace fl
           || cachedInPlace    != inplace
           || cachedAlignment  >  alignment)
 	  {
+		pthread_mutex_lock   (&mutexPlan);
 		destroy_plan (cachedPlan);
+		pthread_mutex_unlock (&mutexPlan);
 		cachedPlan = 0;
 	  }
 	}
@@ -391,6 +410,7 @@ namespace fl
 	  fftw_r2r_kind kinds[2];
 	  kinds[0] = (fftw_r2r_kind) kind;
 	  kinds[1] = (fftw_r2r_kind) kind;
+	  pthread_mutex_lock   (&mutexPlan);
 	  cachedPlan = plan
 	  (
 	    rank, dims,
@@ -398,6 +418,7 @@ namespace fl
 		(T *) Idata, (T *) Odata,
 		kinds, flags
 	  );
+	  pthread_mutex_unlock (&mutexPlan);
 	  cachedDirection = 0;   // none
 	  cachedKind      = kind;
 	  cachedFlags     = flags;

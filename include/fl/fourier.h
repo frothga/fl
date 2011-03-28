@@ -17,6 +17,7 @@ for details.
 #include "fl/fftwproto.h"
 
 #include <complex>
+#include <pthread.h>
 
 
 namespace fl
@@ -44,6 +45,7 @@ namespace fl
 	bool sizeFromOutput;  ///< Indicates to determine the logical size of the problem from the output matrix rather than the input matrix.
 
 	// Cached plan (internal to implementation).
+	static pthread_mutex_t        mutexPlan;
 	typename traitsFFTW<T>::plan  cachedPlan;
 	int                           cachedDirection;
 	int                           cachedKind;
@@ -52,6 +54,7 @@ namespace fl
 	int                           cachedAlignment;
 	bool                          cachedInPlace;
   };
+  template<class T> pthread_mutex_t Fourier<T>::mutexPlan = PTHREAD_MUTEX_INITIALIZER;
 }
 
 
