@@ -675,8 +675,9 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
   {
 	if (fi->field_type == TIFF_ASCII)
 	{
+	  uint16 count;
 	  char * v;
-	  if (TIFFGetFieldDefaulted (tif, fi->field_tag, &v)) value = v;
+	  if (TIFFGetFieldDefaulted (tif, fi->field_tag, &count, &v)) value = v;
 	}
 	else
 	{
