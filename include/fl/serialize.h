@@ -164,17 +164,22 @@ namespace fl
 	  return result;
 	}
 
-	static void write (std::ostream & stream, const B & data)
+	static const char * classID (const B & data)
 	{
 	  std::string name = typeid (data).name ();
 	  productMappingOut::iterator entry = registry.out.find (name);
 	  if (entry == registry.out.end ())
 	  {
-		std::string error = "Attempt to write unregistered class: ";
+		std::string error = "Attempt to use unregistered class: ";
 		error += name;
 		throw error.c_str ();
 	  }
-	  stream << entry->second << std::endl;
+	  return entry->second.c_str ();
+	}
+
+	static void write (std::ostream & stream, const B & data)
+	{
+	  stream << classID (data) << std::endl;
 	  data.write (stream);  // Since "data" is a reference, this should call write() on the derived class rather than the base class.
 	}
 
