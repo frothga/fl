@@ -112,6 +112,9 @@ ImageFileDelegateTIFF::ImageFileDelegateTIFF (istream * in, ostream * out, bool 
 	throw "Unable to open file.";
   }
 
+  TIFFSetWarningHandler (0);  // suppress warning messagse
+  //TIFFSetErrorHandler (0);  // don't suppress error messages
+
 # ifdef HAVE_GEOTIFF
   gtif = GTIFNew (tif);
 # endif
@@ -248,7 +251,6 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 #           error This endian is not currently handled.
 #         endif
 
-		  cerr << "palette " << bitsPerSample << endl;
 		  format = new PixelFormatPalette (reds, greens, blues, sizeof (uint16), bitsPerSample);
 		  break;
 		}
