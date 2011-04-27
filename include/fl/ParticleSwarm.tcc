@@ -34,7 +34,7 @@ namespace fl
 	T epsilon = std::numeric_limits<T>::epsilon ();
 	if (this->toleranceF == 0) this->toleranceF = std::sqrt (epsilon);
 	maxIterations = 200;
-	minRandom = epsilon;
+	minRandom = 1e-6;
 	attractionGlobal = 1;
 	attractionLocal = 1;
 	constriction = 1;
@@ -46,8 +46,7 @@ namespace fl
   void
   ParticleSwarm<T>::search (Searchable<T> & searchable, Vector<T> & point)
   {
-	const T epsilon   = std::numeric_limits<T>::epsilon ();
-	const T minSlope  = std::sqrt (epsilon);
+	const T minSlope  = 1e-3;
 	const T direction = toleranceF < 0 ? (T) -1 : (T) 1;
 
 	SearchableGreedy<T> * greedy = dynamic_cast<SearchableGreedy<T> *> (&searchable);
@@ -97,16 +96,10 @@ namespace fl
 	T w = inertia;
 	for (int iteration = 0; iteration < maxIterations; iteration++)
 	{
-	  std::cerr << "=============================================" << std::endl;
-	  std::cerr << iteration << std::endl;
-	  std::cerr << "best = " << bestParticle->bestValue << " " << bestParticle->bestPosition << std::endl;
 	  searchable.dimension (bestParticle->bestPosition);
 
 	  for (int i = 0; i < count; i++)
 	  {
-		std::cerr << "  ----------------------------------------------" << std::endl;
-		std::cerr << "  " << i << std::endl;
-
 		Particle & p = particles[i];
 
 		Vector<T> vl = p            .bestPosition - p.position;
@@ -129,11 +122,6 @@ namespace fl
 		p.position += p.velocity;
 		searchable.value (p.position, value);
 		p.value = value.norm (2) * direction;
-
-		//std::cerr << "    normR    = " << normR << std::endl;
-		std::cerr << "    position = " << p.position << std::endl;
-		std::cerr << "    velocity = " << p.velocity << std::endl;
-		std::cerr << "    value    = " << p.value << std::endl;
 
 		if (p.value < p.bestValue)
 		{

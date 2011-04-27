@@ -212,6 +212,10 @@ template<class T>
 void
 testSearch ()
 {
+  int seed = 0;  //time (0);
+  srand (seed);
+  cerr << "random seed for testSearch is " << seed << endl;
+
   vector<Searchable<T> *> searchables;
   searchables.push_back (new MinpackTestFunction<T>);
   searchables.push_back (new PolynomialTestFunction<T>);
@@ -246,6 +250,7 @@ testSearch ()
   epsilons.column (6).clear (1e-2);  // ConjugateGradient
 # endif
   epsilons(3,0) = INFINITY;  // AnnealingAdaptive can't solve a line search
+  epsilons(3,3) = INFINITY;  // neither can ParticleSwarm
   epsilons.row (1).clear (INFINITY);  // very few methods can solve PolynomialTestFunction ...
   epsilons(1,2) = 1e-7;               // except LM
 # ifdef HAVE_LAPACK
@@ -270,6 +275,7 @@ testSearch ()
 	  }
 
 	  if (greedy) greedy->bestResidual = INFINITY;
+	  srand (seed);
 
 	  Vector<T> point;
 	  point.copyFrom (t->startPoint);
