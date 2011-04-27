@@ -31,11 +31,13 @@ namespace fl
 	toleranceF (toleranceF),
 	patience (patience)
   {
-	if (this->toleranceF == 0) this->toleranceF = std::sqrt (std::numeric_limits<T>::epsilon ());
+	T epsilon = std::numeric_limits<T>::epsilon ();
+	if (this->toleranceF == 0) this->toleranceF = std::sqrt (epsilon);
 	maxIterations = 200;
-	attractionGlobal = 2;
-	attractionLocal = 2;
-	constriction = 0.8;
+	minRandom = epsilon;
+	attractionGlobal = 1;
+	attractionLocal = 1;
+	constriction = 1;
 	inertia = 1;
 	decayRate = 1;
   }
@@ -107,15 +109,28 @@ namespace fl
 
 		Particle & p = particles[i];
 
-		p.velocity = constriction
-		             * (  w                           * p.velocity
-		                + randf () * attractionGlobal * (bestParticle->bestPosition - p.position)
-		                + randf () * attractionLocal  * (p            .bestPosition - p.position));
+		Vector<T> vl = p            .bestPosition - p.position;
+		Vector<T> vg = bestParticle->bestPosition - p.position;
+		T normL = vl.norm (2);
+		T normG = vg.norm (2);
+		T maxVelocity = constriction * std::max (normL, normG);
+		maxVelocity = std::max (maxVelocity, minRandom);
+		normL *= attractionLocal;
+		normG *= attractionGlobal;
+		T normR = std::max (normL, normG);
+		normR = std::max (normR, minRandom);
+		vl.normalize (normL);
+		vg.normalize (normG);
+		p.velocity = w * p.velocity + vl + vg;
+		for (int j = 0; j < dimension; j++) p.velocity[j] += randfb () * normR;
+		T normP = p.velocity.norm (2);
+		if (normP > maxVelocity) p.velocity.normalize (maxVelocity);
 
 		p.position += p.velocity;
 		searchable.value (p.position, value);
 		p.value = value.norm (2) * direction;
 
+		//std::cerr << "    normR    = " << normR << std::endl;
 		std::cerr << "    position = " << p.position << std::endl;
 		std::cerr << "    velocity = " << p.velocity << std::endl;
 		std::cerr << "    value    = " << p.value << std::endl;

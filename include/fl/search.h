@@ -236,9 +236,10 @@ namespace fl
 	T toleranceF;
 	int patience;
 	int maxIterations;
-	T attractionGlobal;
-	T attractionLocal;
-	T constriction;  ///< Overall scaling of velocity update.  Should be in (0,1).
+	T minRandom;  ///< Smallest amount of random motion to introduce in any given cycle.
+	T attractionGlobal;  ///< How far to move along the vector towards the global best position.
+	T attractionLocal;  ///< How far to move along the vector towards a given particle's best position.
+	T constriction;  ///< Maximum size of velocity update, as a portion of distance to the local or global optimum, whichever is farther.
 	T inertia;  ///< Portion of previous velocity to include in next velocity.
 	T decayRate;  ///< Multiply inertia by this amount during each iteration.
 
