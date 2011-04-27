@@ -80,8 +80,8 @@ namespace fl
 	  p.velocity.resize (dimension);
 	  for (int d = 0; d < dimension; d++)
 	  {
-		p.position[d] += scales[d] * randGaussian ();
-		p.velocity[d]  = scales[d] * randGaussian () / (T) 2;
+		p.position[d] += scales[d] * randfb ();
+		p.velocity[d]  = scales[d] * randfb () / (T) 2;
 	  }
 	  p.bestPosition.copyFrom (p.position);
 
