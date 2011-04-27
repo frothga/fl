@@ -128,6 +128,7 @@ add_library (flNumeric
   ../../include/fl/LevenbergMarquardtSparseBK.tcc
   ../../include/fl/LineSearch.tcc
   ../../include/fl/NewtonRaphson.tcc
+  ../../include/fl/ParticleSwarm.tcc
   ../../include/fl/SearchableNumeric.tcc
   ../../include/fl/SearchableSparse.tcc
   ${maybeSearch}
@@ -136,6 +137,7 @@ add_library (flNumeric
   GradientDescentDouble.cc
   LevenbergMarquardtSparseBKDouble.cc
   LineSearchDouble.cc
+  ParticleSwarmDouble.cc
   SearchableNumericDouble.cc
   SearchableSparseDouble.cc
   #   Float
@@ -143,6 +145,7 @@ add_library (flNumeric
   GradientDescentFloat.cc
   LevenbergMarquardtSparseBKFloat.cc
   LineSearchFloat.cc
+  ParticleSwarmFloat.cc
   SearchableNumericFloat.cc
   SearchableSparseFloat.cc
 

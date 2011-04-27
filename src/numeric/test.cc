@@ -222,6 +222,7 @@ testSearch ()
   searches.push_back (new AnnealingAdaptive<T>);  // Stochastic search along a single dimension doesn't seem to work so well.
   searches.push_back (new GradientDescent<T> (1e-4));  // The default toleranceX for double is too tight.
   searches.push_back (new LevenbergMarquardtSparseBK<T>);
+  searches.push_back (new ParticleSwarm<T>);
 # ifdef HAVE_LAPACK
   searches.push_back (new LevenbergMarquardt<T>);
   searches.push_back (new NewtonRaphson<T>);
@@ -238,16 +239,17 @@ testSearch ()
   epsilons.column (0).clear (1e-2);  // AnnealingAdaptive
   epsilons.column (1).clear (1e-2);  // GradientDescent
   epsilons.column (2).clear (1e-6);  // LevenbergMarquardtBK
+  epsilons.column (3).clear (1e-2);  // ParticleSwarm
 # ifdef HAVE_LAPACK
-  epsilons.column (3).clear (1e-6);  // LevenbergMarquardt
-  epsilons.column (4).clear (1e-3);  // NewtonRaphson
-  epsilons.column (5).clear (1e-2);  // ConjugateGradient
+  epsilons.column (4).clear (1e-6);  // LevenbergMarquardt
+  epsilons.column (5).clear (1e-3);  // NewtonRaphson
+  epsilons.column (6).clear (1e-2);  // ConjugateGradient
 # endif
   epsilons(3,0) = INFINITY;  // AnnealingAdaptive can't solve a line search
   epsilons.row (1).clear (INFINITY);  // very few methods can solve PolynomialTestFunction ...
   epsilons(1,2) = 1e-7;               // except LM
 # ifdef HAVE_LAPACK
-  epsilons(1,3) = 1e-5;
+  epsilons(1,4) = 1e-5;
 # endif
 
   for (int i = 0; i < m; i++)

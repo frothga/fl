@@ -215,6 +215,45 @@ namespace fl
   };
 
   template<class T>
+  class ParticleSwarm : public Search<T>
+  {
+  public:
+	/**
+	   @param toleranceF Indicates an acceptable value for the searchable
+	   (termination condition), and also indicates whether to minimize or
+	   maximize.  If positive, then minimize.  If negative, then maximize.
+	   Basically, the negative value indicates to flip the sign of the
+	   searchable's value.  Since the optimizer always seeks a number
+	   smaller than toleranceF, this effectively changes the problem into
+	   a maximization.  A value of zero means minimize, and use a default
+	   threshold.
+	**/
+	ParticleSwarm (int particleCount = -1, T toleranceF = 0, int patience = 10);
+
+	virtual void search (Searchable<T> & searchable, Vector<T> & point);
+
+	int particleCount;
+	T toleranceF;
+	int patience;
+	int maxIterations;
+	T attractionGlobal;
+	T attractionLocal;
+	T constriction;  ///< Overall scaling of velocity update.  Should be in (0,1).
+	T inertia;  ///< Portion of previous velocity to include in next velocity.
+	T decayRate;  ///< Multiply inertia by this amount during each iteration.
+
+	class Particle
+	{
+	public:
+	  T         value;
+	  Vector<T> position;
+	  Vector<T> velocity;
+	  T         bestValue;
+	  Vector<T> bestPosition;
+	};
+  };
+
+  template<class T>
   class GradientDescent : public Search<T>
   {
   public:
