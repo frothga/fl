@@ -592,5 +592,67 @@ R2XYZ (const fl::Matrix<double> & R)
   return E;
 }
 
+/**
+   Decompose the upper-left 2x2 or 3x3 portion of an affine transformation
+   into its component flip, scaling, skew and rotation.
+**/
+template<class T>
+inline void
+Decompose (const fl::MatrixAbstract<T> & A, T & flip, fl::Vector<T> & scale, fl::Matrix<T> & skew, fl::Matrix<T> & rotation)
+{
+  int r = A.rows ();
+  int c = A.columns ();
+  if (r != c  ||  r < 2  ||  r > 3) throw "Decompose only supports 2x2 and 3x3 matrices.";
+
+  // Find determinant
+  T det;
+  if (r == 2)
+  {
+	det = A(0,0) * A(1,1) - A(0,1) * A(1,0);
+  }
+  else
+  {
+	const T & a = A(0,0);
+	const T & b = A(0,1);
+	const T & c = A(0,2);
+	const T & d = A(1,0);
+	const T & e = A(1,1);
+	const T & f = A(1,2);
+	const T & g = A(2,0);
+	const T & h = A(2,1);
+	const T & i = A(2,2);
+	det = a * e * i + b * f * g + c * d * h - a * f * h - b * d * i - c * e * g;
+  }
+  if (std::abs (det) < std::numeric_limits<T>::epsilon ()) throw "Decompose: matrix is nearly singular";
+
+  fl::Matrix<T> U;
+  fl::Matrix<T> D;
+  fl::Matrix<T> VT;
+  gesvd (A / det, U, D, VT);
+
+  if (det < 0)
+  {
+	flip = -1;
+	det *= -1;
+  }
+  else flip = 1;
+
+  rotation = U * VT;
+
+  skew = U * fl::MatrixDiagonal<T> (D) * ~U;
+
+  scale.resize (r);
+  scale[0] = skew(0,0);
+  scale[1] = skew(1,1);
+  skew.row (0) /= scale[0];
+  skew.row (1) /= scale[1];
+  if (r == 3)
+  {
+	scale[2] = skew(2,2);
+	skew.row (2) /= scale[2];
+  }
+  scale *= det;
+}
+
 
 #endif
