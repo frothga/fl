@@ -17,7 +17,7 @@ for details.
 #include "fl/lapack.h"
 #include "fl/lapackproto.h"
 
-#include <float.h>
+#include <limits>
 
 
 namespace fl
@@ -775,7 +775,7 @@ namespace fl
 	{
 	  if (epsilon < 0)
 	  {
-		epsilon = FLT_EPSILON;
+		epsilon = std::numeric_limits<T>::epsilon ();
 	  }
 	  tolerance = std::max (A.rows (), A.columns ()) * D[0] * epsilon;
 	}
@@ -809,7 +809,7 @@ namespace fl
 	{
 	  if (epsilon < 0)
 	  {
-		epsilon = FLT_EPSILON;
+		epsilon = std::numeric_limits<T>::epsilon ();
 	  }
 	  threshold = std::max (A.rows (), A.columns ()) * S[0] * epsilon;
 	}
