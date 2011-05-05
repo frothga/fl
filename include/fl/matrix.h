@@ -95,9 +95,9 @@ namespace fl
 	/**
 	   Copy data from another matrix.
 	   @param deep Indicates that all levels of associated data must be
-	   duplicated.  There are some excpetions to this for views.
+	   duplicated.  There are some exceptions to this for views.
 	   If false, then the copy is equivalent to operator =.
-	   Generally this is a shallow copy, but each class is free to determine
+	   Generally that is a shallow copy, but each class is free to determine
 	   semantics, and those semantics may vary depending on the class of the
 	   source matrix.
 	**/

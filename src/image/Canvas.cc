@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -81,20 +81,32 @@ Canvas::drawFilledPolygon (const std::vector<Point> & points, unsigned int color
 void
 Canvas::drawParallelogram (const Matrix<double> & S, float radius, unsigned int color)
 {
-  Point tl (-radius,  radius);
-  Point tr ( radius,  radius);
-  Point bl (-radius, -radius);
-  Point br ( radius, -radius);
+  Vector<double> tl (3);
+  tl[0] = -radius;
+  tl[1] =  radius;
+  tl[2] =  1;
+  Vector<double> tr (3);
+  tr[0] =  radius;
+  tr[1] =  radius;
+  tr[2] =  1;
+  Vector<double> bl (3);
+  bl[0] = -radius;
+  bl[1] = -radius;
+  bl[2] =  1;
+  Vector<double> br (3);
+  br[0] =  radius;
+  br[1] = -radius;
+  br[2] =  1;
 
-  tl = S * tl;
-  tr = S * tr;
-  bl = S * bl;
-  br = S * br;
+  Point ptl = S * tl;
+  Point ptr = S * tr;
+  Point pbl = S * bl;
+  Point pbr = S * br;
 
-  drawSegment (tl, tr, color);
-  drawSegment (tr, br, color);
-  drawSegment (br, bl, color);
-  drawSegment (bl, tl, color);
+  drawSegment (ptl, ptr, color);
+  drawSegment (ptr, pbr, color);
+  drawSegment (pbr, pbl, color);
+  drawSegment (pbl, ptl, color);
 }
 
 void

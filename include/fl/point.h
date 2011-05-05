@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -52,8 +52,14 @@ namespace fl
 
 	virtual MatrixAbstract<float> * clone (bool deep = false) const;
 
-	virtual float & operator () (const int row, const int column) const;
-	virtual float & operator [] (const int row) const;
+	virtual float & operator () (const int row, const int column) const
+	{
+	  return const_cast<float &> ((&x)[row]);
+	}
+	virtual float & operator [] (const int row) const
+	{
+	  return const_cast<float &> ((&x)[row]);
+	}
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual void resize (const int rows, const int columns = 1);  ///< We only have one size.  This will throw an exception if (rows * columns) != 2.
@@ -61,13 +67,14 @@ namespace fl
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
 
+	virtual MatrixResult<float> homogeneous () const;
+
 	float distance (const Point & that) const;  ///< Euclidean distance between two points
 	float angle (const Point & that) const;  ///< Determines angle of vector (that - this)
 	float angle () const;  ///< Determines angle of vector from origin to this point.
 
 	float x;
 	float y;
-	static float one;
   };
 
   class PointInterest : public Point
@@ -140,49 +147,6 @@ namespace fl
 	unsigned char threshold;  ///< gray-level value
 	bool sign;  ///< true means threshold is upper bound on intensity (ie: this is an MSER+); false means lower bound (MSER-)
   };
-
-
-  // Inlines for class Point --------------------------------------------------
-
-  template<class T>
-  inline MatrixResult<float>
-  operator * (const MatrixAbstract<T> & M, const Point & p)
-  {
-	Point * result = new Point;
-	result->x = M(0,0) * p.x + M(0,1) * p.y;
-	result->y = M(1,0) * p.x + M(1,1) * p.y;
-	if (M.columns () >= 3)
-	{
-	  result->x += M(0,2);
-	  result->y += M(1,2);
-	}
-	return result;
-  }
-
-  template<class T>
-  inline MatrixResult<float>
-  operator * (const MatrixStrided<T> & M, const Point & p)
-  {
-	Point * result = new Point;
-	result->x = M(0,0) * p.x + M(0,1) * p.y;
-	result->y = M(1,0) * p.x + M(1,1) * p.y;
-	if (M.columns () >= 3)
-	{
-	  result->x += M(0,2);
-	  result->y += M(1,2);
-	}
-	return result;
-  }
-
-  template<class T>
-  inline MatrixResult<float>
-  operator * (const MatrixFixed<T,2,2> & M, const Point & p)
-  {
-	Point * result = new Point;
-	result->x = M.data[0][0] * p.x + M.data[1][0] * p.y;
-	result->y = M.data[0][1] * p.x + M.data[1][1] * p.y;
-	return result;
-  }
 }
 
 

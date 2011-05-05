@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005 Sandia Corporation.
+Copyright 2005, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -22,8 +22,6 @@ using namespace fl;
 
 
 // class Point ----------------------------------------------------------------
-
-float Point::one = 1;
 
 Point::Point ()
 {
@@ -46,24 +44,6 @@ MatrixAbstract<float> *
 Point::clone (bool deep) const
 {
   return new Point (x, y);
-}
-
-float &
-Point::operator () (const int row, const int column) const
-{
-  if (row == 0) return const_cast<float &> (x);
-  if (row == 1) return const_cast<float &> (y);
-  one = 1;
-  return one;
-}
-
-float &
-Point::operator [] (const int row) const
-{
-  if (row == 0) return const_cast<float &> (x);
-  if (row == 1) return const_cast<float &> (y);
-  one = 1;
-  return one;
 }
 
 int
@@ -99,6 +79,16 @@ Point::write (std::ostream & stream) const
 {
   stream.write ((char *) &x, sizeof (x));
   stream.write ((char *) &y, sizeof (y));
+}
+
+MatrixResult<float>
+Point::homogeneous () const
+{
+  Vector<float> * result = new Vector<float> (3);
+  (*result)[0] = x;
+  (*result)[1] = y;
+  (*result)[2] = 1;
+  return result;
 }
 
 float
@@ -221,7 +211,7 @@ PointAffine::rectification () const
   Matrix<double> A (3, 3);
   MatrixRegion<double> M (A, 0, 0, 1, 1);
   M = ! this->A / scale;
-  A.region (0, 2, 1, 2) = ((M * (*this)) *= -1);
+  A.region (0, 2, 1, 2) = ((M * Vector<double> (*this)) *= -1);
   A(2,0) = 0;
   A(2,1) = 0;
   A(2,2) = 1;
