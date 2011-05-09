@@ -29,7 +29,7 @@ Point::Point ()
   y = 0;
 }
 
-Point::Point (float x, float y)
+Point::Point (double x, double y)
 {
   this->x = x;
   this->y = y;
@@ -40,7 +40,7 @@ Point::Point (std::istream & stream)
   read (stream);
 }
 
-MatrixAbstract<float> *
+MatrixAbstract<double> *
 Point::clone (bool deep) const
 {
   return new Point (x, y);
@@ -81,36 +81,36 @@ Point::write (std::ostream & stream) const
   stream.write ((char *) &y, sizeof (y));
 }
 
-MatrixResult<float>
+MatrixResult<double>
 Point::homogeneous () const
 {
-  Vector<float> * result = new Vector<float> (3);
+  Vector<double> * result = new Vector<double> (3);
   (*result)[0] = x;
   (*result)[1] = y;
   (*result)[2] = 1;
   return result;
 }
 
-float
+double
 Point::distance (const Point & that) const
 {
-  float dx = that.x - x;
-  float dy = that.y - y;
-  return sqrtf (dx * dx + dy * dy);
+  double dx = that.x - x;
+  double dy = that.y - y;
+  return sqrt (dx * dx + dy * dy);
 }
 
-float
+double
 Point::angle (const Point & that) const
 {
-  float dx = that.x - x;
-  float dy = that.y - y;
-  return atan2f (dy, dx);
+  double dx = that.x - x;
+  double dy = that.y - y;
+  return atan2 (dy, dx);
 }
 
-float
+double
 Point::angle () const
 {
-  return atan2f (y, x);
+  return atan2 (y, x);
 }
 
 

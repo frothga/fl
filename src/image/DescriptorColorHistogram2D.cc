@@ -197,10 +197,10 @@ DescriptorColorHistogram2D::value (const Image & image, const PointAffine & poin
   Point pbl = S * bl;
   Point pbr = S * br;
 
-  sourceL = (int) floorf (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0f));
-  sourceR = (int) ceilf  (min (max (ptl.x, ptr.x, pbl.x, pbr.x), image.width - 1.0f));
-  sourceT = (int) floorf (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0f));
-  sourceB = (int) ceilf  (min (max (ptl.y, ptr.y, pbl.y, pbr.y), image.height - 1.0f));
+  sourceL = (int) floor (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0));
+  sourceR = (int) ceil  (min (max (ptl.x, ptr.x, pbl.x, pbr.x), image.width - 1.0));
+  sourceT = (int) floor (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0));
+  sourceB = (int) ceil  (min (max (ptl.y, ptr.y, pbl.y, pbr.y), image.height - 1.0));
 
   // Gather color values into histogram
   clear ();

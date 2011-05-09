@@ -212,10 +212,10 @@ DescriptorTextonScale::value (const Image & image, const PointAffine & point)
   Point pbl = S * bl;
   Point pbr = S * br;
 
-  int sourceL = (int) roundp (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0f));
-  int sourceR = (int) roundp (min (max (ptl.x, ptr.x, pbl.x, pbr.x), image.width - 1.0f));
-  int sourceT = (int) roundp (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0f));
-  int sourceB = (int) roundp (min (max (ptl.y, ptr.y, pbl.y, pbr.y), image.height - 1.0f));
+  int sourceL = (int) roundp (max (min (ptl.x, ptr.x, pbl.x, pbr.x), 0.0));
+  int sourceR = (int) roundp (min (max (ptl.x, ptr.x, pbl.x, pbr.x), image.width - 1.0));
+  int sourceT = (int) roundp (max (min (ptl.y, ptr.y, pbl.y, pbr.y), 0.0));
+  int sourceB = (int) roundp (min (max (ptl.y, ptr.y, pbl.y, pbr.y), image.height - 1.0));
 
   // Gather statistics on filter responses
 

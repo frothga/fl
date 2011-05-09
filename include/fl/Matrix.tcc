@@ -839,11 +839,11 @@ namespace fl
   void
   MatrixStrided<T>::copyFrom (const MatrixAbstract<T> & that, bool deep)
   {
+	T * i = (T *) data + offset;
 	if (that.classID () & MatrixStridedID)
 	{
 	  const MatrixStrided & M = (const MatrixStrided &) (that);
 	  resize (M.rows_, M.columns_);
-	  T * i = (T *)   data +   offset;
 	  T * j = (T *) M.data + M.offset;
 	  T * end = i + columns_ * strideC;
 	  const int istepC =   strideC - rows_ *   strideR;
@@ -866,7 +866,6 @@ namespace fl
 	  int h = that.rows ();
 	  int w = that.columns ();
 	  resize (h, w);
-	  T * i = (T *) data;
 	  const int stepC = strideC - rows_ * strideR;
 	  for (int c = 0; c < w; c++)
 	  {

@@ -37,11 +37,11 @@ namespace fl
 	 it makes more difficult is determining the edges and center of an
 	 image, usually one-time calculations.
   **/
-  class Point : public MatrixAbstract<float>
+  class Point : public MatrixAbstract<double>
   {
   public:
 	Point ();
-	Point (float x, float y);
+	Point (double x, double y);
 	template<class T>
 	Point (const MatrixAbstract<T> & A)
 	{
@@ -50,15 +50,15 @@ namespace fl
 	}
 	Point (std::istream & stream);
 
-	virtual MatrixAbstract<float> * clone (bool deep = false) const;
+	virtual MatrixAbstract<double> * clone (bool deep = false) const;
 
-	virtual float & operator () (const int row, const int column) const
+	virtual double & operator () (const int row, const int column) const
 	{
-	  return const_cast<float &> ((&x)[row]);
+	  return const_cast<double &> ((&x)[row]);
 	}
-	virtual float & operator [] (const int row) const
+	virtual double & operator [] (const int row) const
 	{
-	  return const_cast<float &> ((&x)[row]);
+	  return const_cast<double &> ((&x)[row]);
 	}
 	virtual int rows () const;
 	virtual int columns () const;
@@ -67,14 +67,14 @@ namespace fl
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
 
-	virtual MatrixResult<float> homogeneous () const;
+	virtual MatrixResult<double> homogeneous () const;
 
-	float distance (const Point & that) const;  ///< Euclidean distance between two points
-	float angle (const Point & that) const;  ///< Determines angle of vector (that - this)
-	float angle () const;  ///< Determines angle of vector from origin to this point.
+	double distance (const Point & that) const;  ///< Euclidean distance between two points
+	double angle (const Point & that) const;  ///< Determines angle of vector (that - this)
+	double angle () const;  ///< Determines angle of vector from origin to this point.
 
-	float x;
-	float y;
+	double x;
+	double y;
   };
 
   class PointInterest : public Point
