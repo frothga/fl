@@ -207,9 +207,16 @@ namespace fl
 
   template<class T>
   MatrixResult<T>
-  MatrixAbstract<T>::conj () const
+  MatrixAbstract<T>::visit (T (*function) (const T &)) const
   {
-	return const_cast<MatrixAbstract<T> *> (this);
+	return MatrixStrided<T> (*this).visit (function);
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixAbstract<T>::visit (T (*function) (const T)) const
+  {
+	return MatrixStrided<T> (*this).visit (function);
   }
 
   template<class T>
@@ -1034,9 +1041,48 @@ namespace fl
 
   template<class T>
   MatrixResult<T>
-  MatrixStrided<T>::conj () const
+  MatrixStrided<T>::visit (T (*function) (const T &)) const
   {
-	return const_cast<MatrixStrided<T> *> (this);
+	Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	const int step = strideC - rows_ * strideR;
+	T * r   = (T *) result->data;
+	T * a   = (T *) data + offset;
+	T * end = a + strideC * columns_;
+	while (a != end)
+	{
+	  T * columnEnd = a + rows_ * strideR;
+	  while (a != columnEnd)
+	  {
+		*r++ = (*function) (*a);
+		a += strideR;
+	  }
+	  a += step;
+	}
+
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixStrided<T>::visit (T (*function) (const T)) const
+  {
+	Matrix<T> * result = new Matrix<T> (rows_, columns_);
+	const int step = strideC - rows_ * strideR;
+	T * r   = (T *) result->data;
+	T * a   = (T *) data + offset;
+	T * end = a + strideC * columns_;
+	while (a != end)
+	{
+	  T * columnEnd = a + rows_ * strideR;
+	  while (a != columnEnd)
+	  {
+		*r++ = (*function) (*a);
+		a += strideR;
+	  }
+	  a += step;
+	}
+
+	return result;
   }
 
   template<class T>

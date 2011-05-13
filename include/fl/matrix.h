@@ -118,7 +118,8 @@ namespace fl
 	virtual T norm (float n) const;  ///< Generalized Frobenius norm: (sum_elements (element^n))^(1/n).  Effectively: INFINITY is max, 1 is sum, 2 is standard Frobenius norm.  n==0 is technically undefined, but we treat is as the count of non-zero elements.
 	virtual T sumSquares () const;  ///< Similar to norm(2), but without taking the square root.
 	virtual void normalize (const T scalar = 1.0);  ///< View matrix as vector and adjust so norm (2) == scalar.
-	virtual MatrixResult<T> conj () const;  ///< Return the complex conjugate of each element in this matrix.  Will not modify this matrix, but may return an alias to it if the complex conjugate is the same as the original values.
+	virtual MatrixResult<T> visit (T (*function) (const T &)) const;  ///< Apply function() to each of our elements, and return the results in a new Matrix of equal size.
+	virtual MatrixResult<T> visit (T (*function) (const T)) const;  ///< Apply function() to each of our elements, and return the results in a new Matrix of equal size.
 	virtual T dot (const MatrixAbstract & B) const;  ///< Return the dot product of the first columns of the respective matrices.
 	virtual void identity (const T scalar = 1.0);  ///< Set main diagonal to scalar and everything else to zero.
 	virtual MatrixResult<T> row (const int r) const;  ///< Returns a view row r.  The matrix is oriented "horizontal".
@@ -262,7 +263,8 @@ namespace fl
 	virtual T norm (float n) const                                           {return result->norm (n);}
 	virtual T sumSquares () const                                            {return result->sumSquares ();}
 	virtual void normalize (const T scalar = 1.0)                            {       result->normalize (scalar);}
-	virtual MatrixResult<T> conj () const                                    {return result->conj ();}
+	virtual MatrixResult<T> visit (T (*function) (const T &)) const          {return result->visit (function);}
+	virtual MatrixResult<T> visit (T (*function) (const T)) const            {return result->visit (function);}
 	virtual T dot (const MatrixAbstract<T> & B) const                        {return result->dot (B);}
 	virtual void identity (const T scalar = 1.0)                             {       result->identity (scalar);}
 	virtual MatrixResult<T> row (const int r) const                          {return result->row (r);}
@@ -369,7 +371,8 @@ namespace fl
 	virtual void clear (const T scalar = (T) 0);
 	virtual T norm (float n) const;
 	virtual T sumSquares () const;
-	virtual MatrixResult<T> conj () const;
+	virtual MatrixResult<T> visit (T (*function) (const T &)) const;
+	virtual MatrixResult<T> visit (T (*function) (const T)) const;
 	virtual T dot (const MatrixAbstract<T> & B) const;
 	virtual MatrixResult<T> transposeSquare () const;  ///< Computes the upper triangular part of the symmetric matrix (~this * this).
 	virtual MatrixResult<T> row (const int r) const;

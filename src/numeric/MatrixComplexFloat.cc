@@ -14,8 +14,18 @@ for details.
 */
 
 
-#define FL_BASIC_TYPE float
-#include "fl/MatrixComplex.tcc"
+#include <complex>
+/// A small cheat to make the basic norm() template work.
+namespace std
+{
+  inline complex<float>
+  max (const float & a, const complex<float> & b)
+  {
+	return complex<float> (max (a, b.real ()), 0);
+  }
+}
+
+#include "fl/Matrix.tcc"
 #include "fl/serialize.h"
 
 
