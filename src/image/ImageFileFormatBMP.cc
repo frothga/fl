@@ -36,15 +36,42 @@ public:
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
-  virtual void get (const std::string & name, int & value);
-  virtual void set (const std::string & name, int value);
+  virtual void get (const string & name, string & value);
+  virtual void get (const string & name, int & value);
+  virtual void get (const string & name, double & value);
+  virtual void get (const string & name, Matrix<double> & value);
+
+  virtual void set (const string & name, const string & value);
+  virtual void set (const string & name, int value);
+  virtual void set (const string & name, double value);
+  virtual void set (const string & name, const Matrix<double> & value);
 
   istream * in;
   ostream * out;
   bool ownStream;
 
   bool topDown;
+
   uint32_t * palette;
+  uint32_t fileSize;
+  uint32_t pixelsOffset;
+  uint32_t dibSize;
+  int32_t  width;
+  int32_t  height;
+  uint16_t planes;
+  uint16_t bitdepth;
+  uint32_t compression;
+  uint32_t pixelsSize;
+  uint32_t colors;
+  uint32_t redMask;
+  uint32_t greenMask;
+  uint32_t blueMask;
+  uint32_t alphaMask;
+  uint32_t colorSpace;
+  uint32_t profileOffset;
+  uint32_t profileSize;
+  uint32_t count;  // bytes read so far
+  uint32_t paletteEntrySize;
 };
 
 ImageFileDelegateBMP::ImageFileDelegateBMP (istream * in, ostream * out, bool ownStream)
@@ -55,49 +82,29 @@ ImageFileDelegateBMP::ImageFileDelegateBMP (istream * in, ostream * out, bool ow
 
   topDown = true;  // Assumed format for most memory blocks held by this library.
   palette = 0;
-}
 
-ImageFileDelegateBMP::~ImageFileDelegateBMP ()
-{
-  if (ownStream)
-  {
-	if (in) delete in;
-	if (out) delete out;
-  }
-
-  if (palette) free (palette);
-}
-
-void
-ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorewidth, int ignoreheight)
-{
-  if (! in) throw "ImageFileDelegateBMP not open for reading";
-
-  // Perform a single linear read of data.  Avoid random access, so BMPs can
-  // be read off a one-way stream.
-
-
-  // Extract header information
+  // Extract header information if we are in input mode.
+  if (! in) return;
 
   //   This could be done by defining a struct and reading it in one shot.
   //   However, the approach used here avoids alignment issues.
-  uint32_t fileSize      = 0;
-  uint32_t pixelsOffset  = 0;
-  uint32_t dibSize       = 0;
-  int32_t  width         = 0;
-  int32_t  height        = 0;
-  uint16_t planes        = 0;
-  uint16_t bitdepth      = 0;
-  uint32_t compression   = 0;
-  uint32_t pixelsSize    = 0;
-  uint32_t colors        = 0;
-  uint32_t redMask       = 0;
-  uint32_t greenMask     = 0;
-  uint32_t blueMask      = 0;
-  uint32_t alphaMask     = 0;
-  uint32_t colorSpace    = 0;
-  uint32_t profileOffset = 0;
-  uint32_t profileSize   = 0;
+  fileSize      = 0;
+  pixelsOffset  = 0;
+  dibSize       = 0;
+  width         = 0;
+  height        = 0;
+  planes        = 0;
+  bitdepth      = 0;
+  compression   = 0;
+  pixelsSize    = 0;
+  colors        = 0;
+  redMask       = 0;
+  greenMask     = 0;
+  blueMask      = 0;
+  alphaMask     = 0;
+  colorSpace    = 0;
+  profileOffset = 0;
+  profileSize   = 0;
 
   in->ignore (2);  // magic string
   in->read ((char *) &fileSize,     sizeof (fileSize));
@@ -162,7 +169,7 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
 	  in->ignore (dibSize - 124);
 	}
   }
-  uint32_t count = 14 + dibSize;  // bytes read so far
+  count = 14 + dibSize;
 
   // Analyze header info, and adjust appropriate fields
   if (planes != 1) throw "Invalid number of planes";
@@ -176,12 +183,29 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
 	topDown = false;
   }
   if (colors == 0  &&  bitdepth < 16) colors = 0x1 << bitdepth;  // 2^bitdepth
-  uint32_t paletteEntrySize = dibSize == 12 ? 3 : 4;
+  paletteEntrySize = dibSize == 12 ? 3 : 4;
   if (dibSize == 40  &&  compression == 3  &&  colors != 3)
   {
 	if (colors != 0) cerr << "WARNING: Illegal size of color palette for BI_BITFIELDS mode: " << colors << endl;
 	colors = 3;
   }
+}
+
+ImageFileDelegateBMP::~ImageFileDelegateBMP ()
+{
+  if (ownStream)
+  {
+	if (in) delete in;
+	if (out) delete out;
+  }
+
+  if (palette) free (palette);
+}
+
+void
+ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorewidth, int ignoreheight)
+{
+  if (! in) throw "ImageFileDelegateBMP not open for reading";
 
   // Read palette
   if (colors)
@@ -640,15 +664,86 @@ ImageFileDelegateBMP::write (const Image & image, int ignorex, int ignorey)
 }
 
 void
-ImageFileDelegateBMP::get (const std::string & name, int & value)
+ImageFileDelegateBMP::get (const string & name, string & value)
 {
-  if (name == "topdown") value = topDown;
+  Matrix<double> v;
+  get (name, v);
+  if (v.rows () > 0  &&  v.columns () > 0)
+  {
+	char buffer[100];
+	sprintf (buffer, "%f", v(0,0));
+	value = buffer;
+  }
 }
 
 void
-ImageFileDelegateBMP::set (const std::string & name, int value)
+ImageFileDelegateBMP::get (const string & name, int & value)
 {
-  if (name == "topdown") topDown = value;
+  Matrix<double> v;
+  get (name, v);
+  if (v.rows () > 0  &&  v.columns () > 0)
+  {
+	value = (int) roundp (v(0,0));
+  }
+}
+
+void
+ImageFileDelegateBMP::get (const string & name, double & value)
+{
+  Matrix<double> v;
+  get (name, v);
+  if (v.rows () > 0  &&  v.columns () > 0)
+  {
+	value = v(0,0);
+  }
+}
+
+void
+ImageFileDelegateBMP::get (const string & name, Matrix<double> & value)
+{
+  if (name == "topdown")
+  {
+	value.resize (1, 1);
+	value(0,0) = topDown;
+  }
+  else if (name == "width")
+  {
+	value.resize (1, 1);
+	value(0,0) = width;
+  }
+  else if (name == "height")
+  {
+	value.resize (1, 1);
+	value(0,0) = height;
+  }
+}
+
+void
+ImageFileDelegateBMP::set (const string & name, const string & value)
+{
+  set (name, atof (value.c_str ()));
+}
+
+void
+ImageFileDelegateBMP::set (const string & name, int value)
+{
+  Matrix<double> v (1, 1);
+  v(0,0) = value;
+  set (name, v);
+}
+
+void
+ImageFileDelegateBMP::set (const string & name, double value)
+{
+  Matrix<double> v (1, 1);
+  v(0,0) = value;
+  set (name, v);
+}
+
+void
+ImageFileDelegateBMP::set (const string & name, const Matrix<double> & value)
+{
+  if (name == "topdown") topDown = value(0,0);
 }
 
 
