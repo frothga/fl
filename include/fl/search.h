@@ -190,12 +190,10 @@ namespace fl
   class LineSearch : public Search<T>
   {
   public:
-	LineSearch (T lo = (T) -INFINITY, T hi = (T) INFINITY, T toleranceF = (T) -1, T toleranceX = (T) -1);  ///< Search is limited to the range [lo, hi].
+	LineSearch (T toleranceF = (T) -1, T toleranceX = (T) -1);
 
 	virtual void search (Searchable<T> & searchable, Vector<T> & point);
 
-	T lo;  ///< Lower bound of search
-	T hi;  ///< Upper bound of search
 	T toleranceF;
 	T toleranceX;
 	int maxIterations;

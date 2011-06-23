@@ -24,8 +24,7 @@ namespace fl
   // class LineSearch --------------------------------------------------
 
   template<class T>
-  LineSearch<T>::LineSearch (T lo, T hi, T toleranceF, T toleranceX)
-  : lo (lo), hi (hi)
+  LineSearch<T>::LineSearch (T toleranceF, T toleranceX)
   {
 	if (toleranceF < (T) 0) toleranceF = std::sqrt (std::numeric_limits<T>::epsilon ());
 	if (toleranceX < (T) 0) toleranceX = std::sqrt (std::numeric_limits<T>::epsilon ());
@@ -45,27 +44,14 @@ namespace fl
   void
   LineSearch<T>::search (Searchable<T> & searchable, Vector<T> & point)
   {
-	if (point.rows () == 0)
-	{
-	  point.resize (1);
-	  if (lo == (T) -INFINITY)
-	  {
-		if (hi == (T) INFINITY) point[0] = 0;
-		else                    point[0] = std::min ((T) 0, hi - 1);
-	  }
-	  else
-	  {
-		if (hi == (T) INFINITY) point[0] = std::max ((T) 0, lo + 1);
-		else                    point[0] = (lo + hi) / 2;
-	  }
-	}
+	if (point.rows () == 0) throw "Line search requires a point with at least one element.";
 
 	std::vector<T> xs (3);
 	std::vector<T> ys (3);
 
-	xs[0] = lo == (T) -INFINITY ? point[0] - (T) 1.0 : lo;
+	xs[0] = point[0] - (T) 1.0;
 	xs[1] = point[0];
-	xs[2] = hi == (T)  INFINITY ? point[0] + (T) 1.0 : hi;
+	xs[2] = point[0] + (T) 1.0;
 
 	Vector<T> value;
 
@@ -99,29 +85,13 @@ namespace fl
 	  int it;  // position at which to insert next (x,y) pair
 	  if (i == 0)
 	  {
-		if (lo == (T) -INFINITY)
-		{
-		  x = xs[i] - (xs[i+1] - xs[i]) * 2;
-		  it = 0;
-		}
-		else
-		{
-		  x = (xs[i] + xs[i+1]) / 2;
-		  it = 1;
-		}
+		x = xs[i] - (xs[i+1] - xs[i]) * 2;
+		it = 0;
 	  }
 	  else if (i == xs.size () - 1)
 	  {
-		if (hi == (T) INFINITY)
-		{
-		  x = xs[i] + (xs[i] - xs[i-1]) * 2;
-		  it = i + 1;
-		}
-		else
-		{
-		  x = (xs[i] + xs[i-1]) / 2;
-		  it = i;
-		}
+		x = xs[i] + (xs[i] - xs[i-1]) * 2;
+		it = i + 1;
 	  }
 	  else
 	  {
