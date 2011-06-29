@@ -603,6 +603,13 @@ namespace fl
 	const int rows = A.rows ();
 	const int columns = A.columns ();
 
+	// The code below assumes a non-empty matrix, so early out if it is empty.
+	if (rows == 0  ||  columns == 0)
+	{
+	  stream << "[]";
+	  return stream;
+	}
+
 	std::string line = columns > 1 ? "[" : "~[";
 	int r = 0;
 	while (true)
