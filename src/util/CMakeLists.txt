@@ -27,10 +27,7 @@ if (LAPACK_FOUND)
     flNumeric
     flNet
     flBase
-    ${FFTW_LIBRARIES}
-    ${LAPACK_LIBRARIES}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${GCC_LIBRARIES}
+    ${FL_LIBRARIES}
   )
   install (TARGETS invert RUNTIME DESTINATION bin)
 
@@ -41,17 +38,7 @@ if (LAPACK_FOUND)
       flNumeric
       flNet
       flBase
-      ${FFMPEG_LIBRARIES}
-      ${TIFF_LIBRARIES}
-      ${GTIF_LIBRARIES}
-      ${PNG_LIBRARIES}
-      ${JPEG_LIBRARIES}
-      ${FFTW_LIBRARIES}
-      ${LAPACK_LIBRARIES}
-      ${CMAKE_THREAD_LIBS_INIT}
-      ${GCC_LIBRARIES}
-      ${SOCKET_LIBRARIES}
-      ${RT_LIBRARIES}
+      ${FL_LIBRARIES}
     )
     install (TARGETS psnr RUNTIME DESTINATION bin)
 
@@ -61,17 +48,7 @@ if (LAPACK_FOUND)
       flNumeric
       flNet
       flBase
-      ${FFMPEG_LIBRARIES}
-      ${TIFF_LIBRARIES}
-      ${GTIF_LIBRARIES}
-      ${PNG_LIBRARIES}
-      ${JPEG_LIBRARIES}
-      ${FFTW_LIBRARIES}
-      ${LAPACK_LIBRARIES}
-      ${CMAKE_THREAD_LIBS_INIT}
-      ${GCC_LIBRARIES}
-      ${SOCKET_LIBRARIES}
-      ${RT_LIBRARIES}
+      ${FL_LIBRARIES}
     )
     install (TARGETS thumb RUNTIME DESTINATION bin)
 
@@ -83,19 +60,7 @@ if (LAPACK_FOUND)
         flNumeric
         flNet
         flBase
-        ${FFMPEG_LIBRARIES}
-        ${TIFF_LIBRARIES}
-        ${GTIF_LIBRARIES}
-        ${PNG_LIBRARIES}
-        ${JPEG_LIBRARIES}
-        ${FFTW_LIBRARIES}
-        ${X11_LIBRARIES}
-        ${OPENGL_LIBRARIES}
-        ${LAPACK_LIBRARIES}
-        ${CMAKE_THREAD_LIBS_INIT}
-        ${GCC_LIBRARIES}
-        ${SOCKET_LIBRARIES}
-        ${RT_LIBRARIES}
+        ${FL_LIBRARIES}
       )
       install (TARGETS vread RUNTIME DESTINATION bin)
     endif (X11_FOUND  AND  JPEG_FOUND)
@@ -109,18 +74,7 @@ if (LAPACK_FOUND)
       flNumeric
       flNet
       flBase
-      ${FFMPEG_LIBRARIES}
-      ${X11_LIBRARIES}
-      ${OPENGL_LIBRARIES}
-      ${GTIF_LIBRARIES}
-      ${TIFF_LIBRARIES}
-      ${JPEG_LIBRARIES}
-      ${PNG_LIBRARIES}
-      ${FFTW_LIBRARIES}
-      ${LAPACK_LIBRARIES}
-      ${CMAKE_THREAD_LIBS_INIT}
-      ${GCC_LIBRARIES}
-      ${RT_LIBRARIES}
+      ${FL_LIBRARIES}
     )
     install (TARGETS xv RUNTIME DESTINATION bin)
   endif (X11_FOUND)

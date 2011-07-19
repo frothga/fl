@@ -32,11 +32,7 @@ if (FFMPEG_FOUND)
 endif (FFMPEG_FOUND)
 
 if (X11_FOUND  OR  MSVC)
-  set (flImageX
-    flX
-    ${X11_LIBRARIES}
-    ${OPENGL_LIBRARIES}
-  )
+  set (flImageX flX)
 endif (X11_FOUND  OR  MSVC)
 
 if (LAPACK_FOUND)
@@ -160,17 +156,5 @@ target_link_libraries (testImage
   flNumeric
   flNet
   flBase
-  ${FREETYPE_LIBRARIES}
-  ${PNG_LIBRARIES}
-  ${GTIF_LIBRARIES}
-  ${TIFF_LIBRARIES}
-  ${JPEG_LIBRARIES}
-  ${FFMPEG_LIBRARIES}
-  ${FFTW_LIBRARIES}
-  ${LAPACK_LIBRARIES}
-  ${BLAS_LIBRARIES}
-  ${CMAKE_THREAD_LIBS_INIT}
-  ${GCC_LIBRARIES}
-  ${SOCKET_LIBRARIES}
-  ${RT_LIBRARIES}
+  ${FL_LIBRARIES}
 )

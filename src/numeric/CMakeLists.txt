@@ -196,10 +196,5 @@ target_link_libraries (testNumeric
   flNumeric
   flNet
   flBase
-  ${FFTW_LIBRARIES}
-  ${LAPACK_LIBRARIES}
-  ${BLAS_LIBRARIES}
-  ${CMAKE_THREAD_LIBS_INIT}
-  ${GCC_LIBRARIES}
-  ${RT_LIBRARIES}
+  ${FL_LIBRARIES}
 )
