@@ -11,7 +11,7 @@ cmake_minimum_required (VERSION 2.6)
 option (BUILD_SHARED_LIBS "Generate shared rather than static libraries" OFF)
 
 
-set (CMAKE_MODULE_PATH cmake)
+set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 find_package (FL)
 
 include_directories (${FL_INCLUDE_DIRS})

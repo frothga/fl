@@ -12,7 +12,7 @@
 # LICENSE for details.
 
 
-set (FL_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
+set (FL_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/.. CACHE PATH "Base directory containing FL installation.  This would be the directory that contains bin, lib, include, etc., for FL.")
 set (CMAKE_PREFIX_PATH ${FL_ROOT_DIR})
 
 find_path (FL_INCLUDE_DIRS fl/image.h)
