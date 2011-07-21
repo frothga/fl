@@ -19,6 +19,7 @@ for details.
 #include "fl/math.h"
 #include "fl/lapack.h"
 #include "fl/binary.h"
+#include "fl/slideshow.h"
 
 #include <tiffio.h>
 #ifdef HAVE_GEOTIFF
@@ -341,11 +342,11 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		  if (! blockBuffer)
 		  {
 			block.resize (blockWidth, blockHeight);
-			if (PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer)
+			if (PixelBufferPacked * buffer = (PixelBufferPacked *) block.buffer)
 			{
 			  blockBuffer = (tdata_t) buffer->memory;
 			}
-			else if (PixelBufferGroups * buffer = (PixelBufferGroups *) image.buffer)
+			else if (PixelBufferGroups * buffer = (PixelBufferGroups *) block.buffer)
 			{
 			  blockBuffer = (tdata_t) buffer->memory;
 			}
@@ -384,11 +385,11 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		if (! blockBuffer)
 		{
 		  block.resize (imageWidth, rowsPerStrip);
-		  if (PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer)
+		  if (PixelBufferPacked * buffer = (PixelBufferPacked *) block.buffer)
 		  {
 			blockBuffer = (tdata_t) buffer->memory;
 		  }
-		  else if (PixelBufferGroups * buffer = (PixelBufferGroups *) image.buffer)
+		  else if (PixelBufferGroups * buffer = (PixelBufferGroups *) block.buffer)
 		  {
 			blockBuffer = (tdata_t) buffer->memory;
 		  }
@@ -576,7 +577,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 	  TIFFSetField (tif, TIFFTAG_TILELENGTH, blockHeight);
 	}
 
-	int blockStride = blockWidth * (int) format->depth;
+	int blockStride = (int) roundp (blockWidth * format->depth);
 	tsize_t blockSize = blockHeight * blockStride;
 
 	for (int iy = 0; iy < height;)  // input y: position in given image
@@ -637,7 +638,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 	  TIFFSetField (tif, TIFFTAG_ROWSPERSTRIP, rowsPerStrip);
 	}
 
-	int blockStride = imageWidth * (int) format->depth;
+	int blockStride = (int) roundp (imageWidth * format->depth);
 
 	for (int iy = 0; iy < height;)
 	{
