@@ -174,7 +174,7 @@ namespace fl
 	 Returns the pseudoinverse of an arbitrary matrix.
   **/
   template<class T>
-  Matrix<T> pinv (const MatrixAbstract<T> & A, T tolerance = -1, T epsilon = -1);
+  Matrix<T> pinv (const MatrixAbstract<T> & A, T tolerance = (T) -1, T epsilon = (T) -1);
 
   /**
 	 Compute the determinant of a square matrix.
@@ -186,7 +186,7 @@ namespace fl
 	 Estimate the rank of an arbitrary matrix using SVD.
   **/
   template<class T>
-  int rank (const MatrixAbstract<T> & A, T threshold = -1, T epsilon = -1);
+  int rank (const MatrixAbstract<T> & A, T threshold = (T) -1, T epsilon = (T) -1);
 
   /**
 	 Generic implementation of fixed size matrix inversion.
