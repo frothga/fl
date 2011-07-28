@@ -33,7 +33,7 @@ target_link_libraries (flX
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
   install (TARGETS flX
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION bin64
     LIBRARY DESTINATION lib64
     ARCHIVE DESTINATION lib64
   )

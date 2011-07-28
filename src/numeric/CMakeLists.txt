@@ -180,7 +180,7 @@ target_link_libraries (flNumeric
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
   install (TARGETS flNumeric
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION bin64
     LIBRARY DESTINATION lib64
     ARCHIVE DESTINATION lib64
   )

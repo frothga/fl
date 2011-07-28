@@ -17,7 +17,7 @@ target_link_libraries (flNet
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
   install (TARGETS flNet
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION bin64
     LIBRARY DESTINATION lib64
     ARCHIVE DESTINATION lib64
   )
