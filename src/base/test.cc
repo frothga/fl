@@ -37,29 +37,29 @@ testParameters (int argc, char * argv[])
   cout << "Parameters class passes" << endl;
 }
 
+class A
+{
+public:
+  A () {}
+  virtual void read (istream & stream) {}
+  virtual void write (ostream & stream) const {}
+};
+
+class B : public A
+{
+public:
+  B () {}
+};
+
+class C : public A
+{
+public:
+  C () {}
+};
+
 void
 testSerialize ()
 {
-  class A
-  {
-  public:
-	A () {}
-	virtual void read (istream & stream) {}
-	virtual void write (ostream & stream) const {}
-  };
-
-  class B : public A
-  {
-  public:
-	B () {}
-  };
-
-  class C : public A
-  {
-  public:
-	C () {}
-  };
-
   Product<A, A>::add ("a");
   Product<A, B>::add ("b");
   Product<A, C>::add ("c");
