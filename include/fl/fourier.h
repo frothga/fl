@@ -19,11 +19,22 @@ for details.
 #include <complex>
 #include <pthread.h>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNumeric_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
   template<class T>
-  class Fourier
+  class SHARED Fourier
   {
   public:
 	Fourier (bool normalize = true, bool destroyInput = false, bool sizeFromOutput = true);

@@ -3,7 +3,7 @@ Author: Fred Rothganger
 Created 02/06/2005
 
 
-Copyright 2005 Sandia Corporation.
+Copyright 2005, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -20,6 +20,17 @@ for details.
 #include <map>
 #include <ostream>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flImage_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
@@ -28,7 +39,7 @@ namespace fl
 	 pyramid.  This avoids adding more metadata to the Image class itself
 	 that is only used in this limited context.
    **/
-  class PyramidImage : public Image
+  class SHARED PyramidImage : public Image
   {
   public:
 	PyramidImage (const Image & that, float scale = 0.5f);
@@ -66,7 +77,7 @@ namespace fl
 	 restriction should be relaxed, once we work out a good interface for
 	 seeking images.
    **/
-  class Pyramid
+  class SHARED Pyramid
   {
   public:
 	~Pyramid ();
@@ -91,7 +102,7 @@ namespace fl
 	 with each id.  Within that pyramid, the images are sorted by
 	 scale.
    **/
-  class ImageCache
+  class SHARED ImageCache
   {
   public:
 	ImageCache ();

@@ -4,7 +4,7 @@ Created 01/30/2006 to provide a general interface for measuring distances
 in R^n, and to help separate numeric and image libraries.
 
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -20,6 +20,17 @@ for details.
 
 #include <iostream>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNumeric_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
@@ -32,7 +43,7 @@ namespace fl
 	 <li>Triangle inequality: d(a,c) <= d(a,b) + d(b,c)
 	 </ol>
    **/
-  class Metric
+  class SHARED Metric
   {
   public:
 	virtual ~Metric ();  ///< Establishes that destructor is virtual, but doesn't do anything else.

@@ -20,6 +20,17 @@ for details.
 
 #include "fl/image.h"
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flImage_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
@@ -39,7 +50,7 @@ namespace fl
 	 stream (in the usual OS sense), the Video class would wrap the data source
 	 as well.
   **/
-  class VideoIn
+  class SHARED VideoIn
   {
   public:
 	VideoIn (const std::string & fileName);
@@ -60,7 +71,7 @@ namespace fl
   /**
 	 Video output stream.
   **/
-  class VideoOut
+  class SHARED VideoOut
   {
   public:
 	VideoOut (const std::string & fileName, const std::string & formatName = "", const std::string & codecName = "");
@@ -76,7 +87,7 @@ namespace fl
   /**
 	 Interface for accessing a video file.  Video class uses this as a delegate.
   **/
-  class VideoInFile
+  class SHARED VideoInFile
   {
   public:
 	virtual ~VideoInFile ();
@@ -89,7 +100,7 @@ namespace fl
 	virtual void get (const std::string & name, double & value) = 0;  ///< Retrieve values of stream attributes (such as duration in seconds).
   };
 
-  class VideoOutFile
+  class SHARED VideoOutFile
   {
   public:
 	virtual ~VideoOutFile ();
@@ -99,7 +110,7 @@ namespace fl
 	virtual void set (const std::string & name, double value) = 0;
   };
 
-  class VideoFileFormat
+  class SHARED VideoFileFormat
   {
   public:
 	virtual ~VideoFileFormat ();
@@ -122,7 +133,7 @@ namespace fl
   // This could also be broken up into several classes to allow less of the
   // codecs or formats to be imported from the FFMPEG library.
 
-  class VideoFileFormatFFMPEG : public VideoFileFormat
+  class SHARED VideoFileFormatFFMPEG : public VideoFileFormat
   {
   public:
 	VideoFileFormatFFMPEG ();

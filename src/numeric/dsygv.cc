@@ -16,5 +16,5 @@ for details.
 
 namespace fl
 {
-  template void sygv (const MatrixAbstract<double> & A, const MatrixAbstract<double> & B, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool destroyA, bool destroyB);
+  template SHARED void sygv (const MatrixAbstract<double> & A, const MatrixAbstract<double> & B, Matrix<double> & eigenvalues, Matrix<double> & eigenvectors, bool destroyA, bool destroyB);
 }

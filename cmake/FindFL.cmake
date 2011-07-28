@@ -13,6 +13,11 @@
 
 
 set (FL_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/.. CACHE PATH "Base directory containing FL installation.  This would be the directory that contains bin, lib, include, etc., for FL.")
+
+if    (CMAKE_CL_64)
+  set_property (GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS TRUE)
+endif (CMAKE_CL_64)
+
 set (CMAKE_PREFIX_PATH ${FL_ROOT_DIR})
 
 find_path (FL_INCLUDE_DIRS fl/image.h)
@@ -24,26 +29,27 @@ find_library (FL_BASE    flBase)
 find_library (FL_NET     flNet)
 
 set (FL_LIBRARIES)
+if (NOT FL_BUILD)
+  if    (FL_X)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${FL_X})
+  endif (FL_X)
 
-if    (FL_X)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${FL_X})
-endif (FL_X)
+  if    (FL_IMAGE)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${FL_IMAGE})
+  endif (FL_IMAGE)
 
-if    (FL_IMAGE)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${FL_IMAGE})
-endif (FL_IMAGE)
+  if    (FL_NUMERIC)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${FL_NUMERIC})
+  endif (FL_NUMERIC)
 
-if    (FL_NUMERIC)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${FL_NUMERIC})
-endif (FL_NUMERIC)
+  if    (FL_BASE)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${FL_BASE})
+  endif (FL_BASE)
 
-if    (FL_BASE)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${FL_BASE})
-endif (FL_BASE)
-
-if    (FL_NET)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${FL_NET})
-endif (FL_NET)
+  if    (FL_NET)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${FL_NET})
+  endif (FL_NET)
+endif (NOT FL_BUILD)
 
 
 # handle the QUIETLY and REQUIRED arguments
@@ -80,6 +86,10 @@ if (MSVC)
   if    (NOT CMAKE_EXE_LINKER_FLAGS MATCHES libcmt)
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libcmt;libcmtd" CACHE STRING "linker flags" FORCE)
   endif (NOT CMAKE_EXE_LINKER_FLAGS MATCHES libcmt)
+
+  if    (NOT CMAKE_SHARED_LINKER_FLAGS MATCHES libcmt)
+    set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:libcmt;libcmtd" CACHE STRING "linker flags" FORCE)
+  endif (NOT CMAKE_SHARED_LINKER_FLAGS MATCHES libcmt)
 
   # Use multiple-processors to compile c/c++ code
   if    (NOT CMAKE_CXX_FLAGS MATCHES /MP)
@@ -142,7 +152,7 @@ set (FL_LIBRARIES ${FL_LIBRARIES}
   ${PNG_LIBRARIES}
   ${Freetype_LIBRARIES}
   ${X11_LIBRARIES}
-  ${OpenGL_LIBRARIES}
+  ${OPENGL_LIBRARIES}
   ${FFMPEG_LIBRARIES}
   ${CMAKE_THREAD_LIBS_INIT}
   ${GCC_LIBRARIES}

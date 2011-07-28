@@ -31,7 +31,7 @@ namespace fl
 	 less efficient but allows A to be reused in other calculations.
   **/
   template<class T>
-  void syev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
+  SHARED void syev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
 
   /**
 	 Compute eigenvalues and eigenvectors for symmetric matrix stored in
@@ -41,7 +41,7 @@ namespace fl
 	 in other calculations.
   **/
   template<class T>
-  void syev (const MatrixPacked<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
+  SHARED void syev (const MatrixPacked<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
 
   /**
 	 Compute eigenvalues (only) for symmetric matrix.
@@ -50,7 +50,7 @@ namespace fl
 	 but allows A to be reused in other calculations.
   **/
   template<class T>
-  void syev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, bool destroyA = false);
+  SHARED void syev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, bool destroyA = false);
 
   /**
 	 Symmetric generalized eigenvalue problem: A*x = lambda*B*x.
@@ -64,7 +64,7 @@ namespace fl
 	 and A is dense.
    **/
   template<class T>
-  void sygv (const MatrixAbstract<T> & A, const MatrixAbstract<T> & B, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false, bool destroyB = false);
+  SHARED void sygv (const MatrixAbstract<T> & A, const MatrixAbstract<T> & B, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false, bool destroyB = false);
 
   /**
 	 Compute eigenvalues and right eigenvectors for general (non-symmetric)
@@ -75,7 +75,7 @@ namespace fl
 	 but allows A to be reused in other calculations.
   **/
   template<class T>
-  void geev (const MatrixAbstract<T> & A, Matrix<std::complex<T> > & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
+  SHARED void geev (const MatrixAbstract<T> & A, Matrix<std::complex<T> > & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
 
   /**
 	 Compute eigenvalues and right eigenvectors for general (non-symmetric)
@@ -85,7 +85,7 @@ namespace fl
 	 but allows A to be reused in other calculations.
   **/
   template<class T>
-  void geev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
+  SHARED void geev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
 
   /**
 	 Compute eigenvalues only for general (non-symmetric) matrix.
@@ -94,7 +94,7 @@ namespace fl
 	 but allows A to be reused in other calculations.
   **/
   template<class T>
-  void geev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, bool destroyA = false);
+  SHARED void geev (const MatrixAbstract<T> & A, Matrix<T> & eigenvalues, bool destroyA = false);
 
   /**
 	 Solve least squares problem using SVD via QR.
@@ -119,7 +119,7 @@ namespace fl
 	 B is a dense Matrix.  The default is for B to be copied.
   **/
   template<class T>
-  void gelss (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & B, T * residual = 0, bool destroyA = false, bool destroyB = false);
+  SHARED void gelss (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & B, T * residual = 0, bool destroyA = false, bool destroyB = false);
 
   /**
 	 Solve least squares problem using divide and conquer.  LAPACK
@@ -145,7 +145,7 @@ namespace fl
 	 B is a dense Matrix.  The default is for B to be copied.
   **/
   template<class T>
-  void gelsd (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & b, T * residual = 0, bool destroyA = false, bool destroyB = false);
+  SHARED void gelsd (const MatrixAbstract<T> & A, Matrix<T> & x, const MatrixAbstract<T> & b, T * residual = 0, bool destroyA = false, bool destroyB = false);
 
   /**
 	 Singular value decomposition on a general matrix.
@@ -156,7 +156,7 @@ namespace fl
 	 but allows A to be reused in other calculations.
    **/
   template<class T>
-  void gesvd (const MatrixAbstract<T> & A, Matrix<T> & U, Matrix<T> & S, Matrix<T> & VT, char jobu = 'S', char jobvt = 'S', bool destroyA = false);
+  SHARED void gesvd (const MatrixAbstract<T> & A, Matrix<T> & U, Matrix<T> & S, Matrix<T> & VT, char jobu = 'S', char jobvt = 'S', bool destroyA = false);
 
   /**
 	 Convenience function to avoid specifying job modes for gesvd().
@@ -174,19 +174,19 @@ namespace fl
 	 Returns the pseudoinverse of an arbitrary matrix.
   **/
   template<class T>
-  Matrix<T> pinv (const MatrixAbstract<T> & A, T tolerance = (T) -1, T epsilon = (T) -1);
+  SHARED Matrix<T> pinv (const MatrixAbstract<T> & A, T tolerance = (T) -1, T epsilon = (T) -1);
 
   /**
 	 Compute the determinant of a square matrix.
    **/
   template<class T>
-  T det (const MatrixAbstract<T> & A);
+  SHARED T det (const MatrixAbstract<T> & A);
 
   /**
 	 Estimate the rank of an arbitrary matrix using SVD.
   **/
   template<class T>
-  int rank (const MatrixAbstract<T> & A, T threshold = (T) -1, T epsilon = (T) -1);
+  SHARED int rank (const MatrixAbstract<T> & A, T threshold = (T) -1, T epsilon = (T) -1);
 
   /**
 	 Generic implementation of fixed size matrix inversion.

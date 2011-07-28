@@ -20,7 +20,7 @@ for details.
 namespace fl
 {
   template class MatrixFixed<double,2,2>;
-  template MatrixFixed<double,2,2> operator ! (const MatrixFixed<double,2,2> & A);
-  template void geev (const MatrixFixed<double,2,2> & A, Matrix<double> & eigenvalues);
-  template void geev (const MatrixFixed<double,2,2> & A, Matrix<std::complex<double> > & eigenvalues);
+  template SHARED MatrixFixed<double,2,2> operator ! (const MatrixFixed<double,2,2> & A);
+  template SHARED void geev (const MatrixFixed<double,2,2> & A, Matrix<double> & eigenvalues);
+  template SHARED void geev (const MatrixFixed<double,2,2> & A, Matrix<std::complex<double> > & eigenvalues);
 }

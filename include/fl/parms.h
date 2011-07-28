@@ -15,6 +15,17 @@ for details.
 #include <string>
 #include <vector>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flBase_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
@@ -23,7 +34,7 @@ namespace fl
 	 may be a prefix of another.  Stores values as human readable strings.
 	 Several convenience functions parse the value into different formats.
   **/
-  class Parameters
+  class SHARED Parameters
   {
   public:
 	Parameters ();

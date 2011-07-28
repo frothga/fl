@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -28,6 +28,17 @@ for details.
 #include <iostream>
 #include <vector>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flImage_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
@@ -37,7 +48,7 @@ namespace fl
 	 A Metric that returns a value in [0,1] and that may preprocess the
 	 two input vectors to normalize them in some way.
   **/
-  class Comparison : public Metric
+  class SHARED Comparison : public Metric
   {
   public:
 	Comparison ();
@@ -56,7 +67,7 @@ namespace fl
 	 Handles comparisons between feature vectors that are composed of several
 	 smaller feature vectors from various descriptors.
    **/
-  class ComparisonCombo : public Comparison
+  class SHARED ComparisonCombo : public Comparison
   {
   public:
 	ComparisonCombo ();
@@ -89,7 +100,7 @@ namespace fl
 	 * Affinely map [-1,1] onto [0,1].
 	 * Let probability = absolute value of correlation
   **/
-  class NormalizedCorrelation : public Comparison
+  class SHARED NormalizedCorrelation : public Comparison
   {
   public:
 	NormalizedCorrelation (bool subtractMean = true);
@@ -109,7 +120,7 @@ namespace fl
 	 Maps zero distance to 0 and infinite (or alternately, maximum) distance to
 	 1.
   **/
-  class MetricEuclidean : public Comparison
+  class SHARED MetricEuclidean : public Comparison
   {
   public:
 	MetricEuclidean (float upperBound = INFINITY);
@@ -128,7 +139,7 @@ namespace fl
 	 "similarity" as the ratio of the smaller entry to the larger entry.
 	 Scales count by the number entries in one of the histograms.
    **/
-  class HistogramIntersection : public Comparison
+  class SHARED HistogramIntersection : public Comparison
   {
   public:
 	HistogramIntersection () {}
@@ -140,7 +151,7 @@ namespace fl
 	 Sum up the measure 1 - (a - b)^2 / (a + b) over all the elements of the
 	 two vectors.
    **/
-  class ChiSquared : public Comparison
+  class SHARED ChiSquared : public Comparison
   {
   public:
 	ChiSquared () {}
@@ -153,7 +164,7 @@ namespace fl
 
   // Descriptor ---------------------------------------------------------------
 
-  class Descriptor
+  class SHARED Descriptor
   {
   public:
 	Descriptor ();
@@ -176,7 +187,7 @@ namespace fl
 	 Applies several descriptors to a patch at once and returns the
 	 concatenation of all their feature vectors.
    **/
-  class DescriptorCombo : public Descriptor
+  class SHARED DescriptorCombo : public Descriptor
   {
   public:
 	DescriptorCombo ();
@@ -202,7 +213,7 @@ namespace fl
   /**
 	 Finds characteristic scale of point.
   **/
-  class DescriptorScale : public Descriptor
+  class SHARED DescriptorScale : public Descriptor
   {
   public:
 	DescriptorScale (float firstScale = 1, float lastScale = 25, int interQuanta = 40, float quantum = 2);  ///< quantum is most meaningful as a prime number; 2 means "doubling" or "octaves"
@@ -221,7 +232,7 @@ namespace fl
 	 Finds characteristic angle of point using a pair of large
 	 derivative-of-Gaussian kernels.
    **/
-  class DescriptorOrientation : public Descriptor
+  class SHARED DescriptorOrientation : public Descriptor
   {
   public:
 	DescriptorOrientation (float supportRadial = 6.0f, int supportPixel = 32, float kernelSize = 2.5f);
@@ -243,7 +254,7 @@ namespace fl
 	 Finds characteristic angle of point using a histogram of gradient
 	 directions.  Follows David Lowe's approach.
    **/
-  class DescriptorOrientationHistogram : public Descriptor
+  class SHARED DescriptorOrientationHistogram : public Descriptor
   {
   public:
 	DescriptorOrientationHistogram (float supportRadial = 4.5f, int supportPixel = 16, float kernelSize = 2.5f, int bins = 36);
@@ -282,7 +293,7 @@ namespace fl
 	 the descriptiveness of the graylevel texture.  You can control the
 	 scale level by manipulating the ratio of supportRadial to supportPixel.
    **/
-  class DescriptorContrast : public Descriptor
+  class SHARED DescriptorContrast : public Descriptor
   {
   public:
 	DescriptorContrast (float supportRadial = 6.0f, int supportPixel = 32);
@@ -297,7 +308,7 @@ namespace fl
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel.
   };
 
-  class DescriptorFilters : public Descriptor
+  class SHARED DescriptorFilters : public Descriptor
   {
   public:
 	DescriptorFilters ();
@@ -317,14 +328,14 @@ namespace fl
 	int patchHeight;
   };
 
-  class DescriptorFiltersTexton : public DescriptorFilters
+  class SHARED DescriptorFiltersTexton : public DescriptorFilters
   {
   public:
 	DescriptorFiltersTexton (int angles = 6, int scales = 4, float firstScale = -1, float scaleStep = -1);
 	DescriptorFiltersTexton (std::istream & stream) : DescriptorFilters (stream) {}
   };
 
-  class DescriptorPatch : public Descriptor
+  class SHARED DescriptorPatch : public Descriptor
   {
   public:
 	DescriptorPatch (int width = 10, float supportRadial = 4.2);
@@ -340,7 +351,7 @@ namespace fl
 	int width;
   };
 
-  class DescriptorSchmidScale : public Descriptor
+  class SHARED DescriptorSchmidScale : public Descriptor
   {
   public:
 	DescriptorSchmidScale (float sigma = 1.0);
@@ -366,7 +377,7 @@ namespace fl
 	ConvolutionDiscrete2D Gyyy;
   };
 
-  class DescriptorSchmid : public Descriptor
+  class SHARED DescriptorSchmid : public Descriptor
   {
   public:
 	DescriptorSchmid (int scaleCount = 8, float scaleStep = -1);
@@ -385,7 +396,7 @@ namespace fl
 	std::vector<DescriptorSchmidScale *> descriptors;
   };
 
-  class DescriptorSpin : public Descriptor
+  class SHARED DescriptorSpin : public Descriptor
   {
   public:
 	DescriptorSpin (int binsRadial = 5, int binsIntensity = 6, float supportRadial = 3, float supportIntensity = 3);
@@ -406,7 +417,7 @@ namespace fl
 	 Implements David Lowe's SIFT descriptor.
 	 Note on supportRadial: supportRadial * point.scale gives pixel distance from center to edge of bins when they overlay the image.  The pixel diameter of one bin is 2 * supportRadial * point.scale / width.
   **/
-  class DescriptorSIFT : public Descriptor
+  class SHARED DescriptorSIFT : public Descriptor
   {
   public:
 	DescriptorSIFT (int width = 4, int angles = 8);
@@ -448,7 +459,7 @@ namespace fl
 	 Form a 2D color histogram of the UV components in a YUV patch.
 	 Note on dimension: it is the total number of true entries in valid.
   **/
-  class DescriptorColorHistogram2D : public Descriptor
+  class SHARED DescriptorColorHistogram2D : public Descriptor
   {
   public:
 	DescriptorColorHistogram2D (int width = 5, float supportRadial = 4.2f);
@@ -478,7 +489,7 @@ namespace fl
 	 If the need arises to use other color spaces, this class could be
 	 generalized.
   **/
-  class DescriptorColorHistogram3D : public Descriptor
+  class SHARED DescriptorColorHistogram3D : public Descriptor
   {
   public:
 	DescriptorColorHistogram3D (int width = 5, int height = -1, float supportRadial = 4.2f);  ///< height == -1 means use value of width
@@ -510,7 +521,7 @@ namespace fl
 	 The bank is replicated at several scale levels, and this descriptor
 	 chooses the appropriate scale level for each individual pixel.
    **/
-  class DescriptorTextonScale : public Descriptor
+  class SHARED DescriptorTextonScale : public Descriptor
   {
   public:
 	DescriptorTextonScale (int angles = 4, float firstScale = 1.0f, float lastScale = 4.0f, int extraSteps = 3);
@@ -552,7 +563,7 @@ namespace fl
 	 "miscellaneous".  Finally, histogram the LBP values over the specified
 	 region.
   **/
-  class DescriptorLBP : public Descriptor
+  class SHARED DescriptorLBP : public Descriptor
   {
   public:
 	DescriptorLBP (int P = 8, float R = 1.0f, float supportRadial = 4.2f, int supportPixel = 32);

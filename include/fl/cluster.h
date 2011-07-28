@@ -24,6 +24,19 @@ for details.
 
 #include <iostream>
 #include <vector>
+
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNumeric_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
+
 #ifdef HAVE_PTHREAD
 #  include <pthread.h>
 #endif
@@ -33,7 +46,7 @@ namespace fl
 {
   // Generic clustering interface ---------------------------------------------
 
-  class ClusterMethod
+  class SHARED ClusterMethod
   {
   public:
 	virtual void          run (const std::vector< Vector<float> > & data) = 0;  ///< Peform clustering on collection of points.
@@ -54,7 +67,7 @@ namespace fl
 
   // Soft K-means -------------------------------------------------------------
 
-  class ClusterGauss
+  class SHARED ClusterGauss
   {
   public:
 	ClusterGauss (Vector<float> & center, float alpha = 1.0);
@@ -76,7 +89,7 @@ namespace fl
 	float det;  ///< preprocessed multiplier that goes in front of probability expression.  Includes determinant of the covariance matrix.
   };
 
-  class KMeans : public ClusterMethod
+  class SHARED KMeans : public ClusterMethod
   {
   public:
 	KMeans (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");  ///< clusterFileName refers to target file for new clustering data, which is very likely to be different from input file.
@@ -111,7 +124,7 @@ namespace fl
   };
 
 # ifdef HAVE_PTHREAD
-  class KMeansParallel : public KMeans, public Listener
+  class SHARED KMeansParallel : public KMeans, public Listener
   {
   public:
 	KMeansParallel (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");
@@ -152,7 +165,7 @@ namespace fl
 
   // Kohonen map --------------------------------------------------------------
 
-  class ClusterCosine
+  class SHARED ClusterCosine
   {
   public:
 	ClusterCosine (int dimension);
@@ -168,7 +181,7 @@ namespace fl
 	Vector<float> center;
   };
 
-  class Kohonen : public ClusterMethod
+  class SHARED Kohonen : public ClusterMethod
   {
   public:
 	Kohonen (int width, float sigma = 1.0, float learningRate = 0.1, float decayRate = 0.5);
@@ -192,7 +205,7 @@ namespace fl
 
   // Agglomerative clustering -------------------------------------------------
 
-  class ClusterAgglomerative
+  class SHARED ClusterAgglomerative
   {
   public:
 	ClusterAgglomerative (const Vector<float> & center, int count = 1);
@@ -206,7 +219,7 @@ namespace fl
 	int count;  ///< Number of data represented by this cluster.
   };
 
-  class Agglomerate : public ClusterMethod
+  class SHARED Agglomerate : public ClusterMethod
   {
   public:
 	Agglomerate (Metric * comparison, float distanceLimit, int minClusters = 1);

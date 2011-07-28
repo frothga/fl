@@ -265,8 +265,6 @@ const int   thresholdLumaClipped   = 3;
 const int   thresholdChromaClipped = 4;
 const int   thresholdLumaAccessor  = 2;  // higher because errors in YUV<->RGB conversion get magnified by gray conversion
 
-extern void reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight, int pad = 0);
-
 void
 testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::PixelFormat * targetFormat)
 {

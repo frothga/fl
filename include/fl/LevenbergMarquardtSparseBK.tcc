@@ -25,6 +25,18 @@ for details.
 #include <algorithm>
 #include <limits>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNumeric_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
+
 #undef small  // Somehow, this gets defined (as char) under MSVC x64
 
 
@@ -33,7 +45,7 @@ namespace fl
   // class SparseBK -----------------------------------------------------------
 
   template<class T>
-  class SparseBK : public MatrixSparse<T>
+  class SHARED SparseBK : public MatrixSparse<T>
   {
   public:
 	SparseBK () : MatrixSparse<T> () {}

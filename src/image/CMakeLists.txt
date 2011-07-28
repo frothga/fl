@@ -81,6 +81,7 @@ add_library (flImage
   Gaussian1D.cc
   GaussianDerivative1D.cc
   GaussianDerivativeSecond1D.cc
+  ConvolutionRecursive.cc
   FilterHarris.cc
   FilterHarrisEigen.cc
   FilterHessian.cc
@@ -133,6 +134,11 @@ add_library (flImage
   ../../include/fl/track.h
   KLT.cc
   ${flImageFFMPEG}
+)
+target_link_libraries (flImage
+  flNumeric
+  flBase
+  ${FL_LIBRARIES}
 )
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)

@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/convolve.h"
-#include "fl/pi.h"
 
 
 using namespace std;
@@ -214,7 +213,7 @@ GaussianRecursive1D::GaussianRecursive1D (double sigma, const Direction directio
   n33m = n33p - d33p * n00p;
   n44m =      - d44p * n00p;
 
-  scale = 1 / (sqrt (2 * PI) * sigma);
+  scale = 1 / (sqrt (TWOPI) * sigma);
 }
 
 
@@ -243,7 +242,7 @@ GaussianDerivativeRecursive1D::GaussianDerivativeRecursive1D (double sigma, cons
   n33m = -(n33p - d33p * n00p);
   n44m =          d44p * n00p;
 
-  scale = -1 / (sqrt (2 * PI) * sigma * sigma);
+  scale = -1 / (sqrt (TWOPI) * sigma * sigma);
 }
 
 
@@ -272,5 +271,5 @@ GaussianDerivativeSecondRecursive1D::GaussianDerivativeSecondRecursive1D (double
   n33m = n33p - d33p * n00p;
   n44m =      - d44p * n00p;
 
-  scale = 1 / (sqrt (2 * PI) * sigma * sigma * sigma);
+  scale = 1 / (sqrt (TWOPI) * sigma * sigma * sigma);
 }

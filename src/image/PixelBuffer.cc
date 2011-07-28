@@ -26,7 +26,7 @@ using namespace std;
    \param newStride Desired width of one row in bytes.
  **/
 void
-reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight, int pad = 0)
+fl::reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight, int pad)
 {
   int oldHeight = memory.size ();
   if (oldHeight <= 0)
@@ -415,4 +415,15 @@ PixelBufferGroups::operator == (const PixelBuffer & that) const
          && pixels == p->pixels
          && bytes  == p->bytes
          && memory == p->memory;
+}
+
+
+// class PixelBufferBig -------------------------------------------------------
+
+PixelBufferBig::PixelBufferBig ()
+{
+}
+
+PixelBufferBig::~PixelBufferBig ()
+{
 }

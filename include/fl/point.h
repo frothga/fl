@@ -20,6 +20,17 @@ for details.
 
 #include "fl/matrix.h"
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flImage_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
@@ -37,7 +48,7 @@ namespace fl
 	 it makes more difficult is determining the edges and center of an
 	 image, usually one-time calculations.
   **/
-  class Point : public MatrixAbstract<double>
+  class SHARED Point : public MatrixAbstract<double>
   {
   public:
 	Point ();
@@ -77,7 +88,7 @@ namespace fl
 	double y;
   };
 
-  class PointInterest : public Point
+  class SHARED PointInterest : public Point
   {
   public:
 	PointInterest ();
@@ -106,7 +117,7 @@ namespace fl
 	}
   };
 
-  class PointAffine : public PointInterest
+  class SHARED PointAffine : public PointInterest
   {
   public:
 	PointAffine ();
@@ -130,7 +141,7 @@ namespace fl
 	float angle;  ///< characteristic angle; generally the direction of the gradient.
   };
 
-  class PointMSER : public PointAffine
+  class SHARED PointMSER : public PointAffine
   {
   public:
 	PointMSER ();

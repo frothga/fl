@@ -19,5 +19,5 @@ for details.
 
 namespace fl
 {
-  template void gelss (const MatrixAbstract<float> & A, Matrix<float> & x, const MatrixAbstract<float> & B, float * residual, bool destroyA, bool destroyB);
+  template SHARED void gelss (const MatrixAbstract<float> & A, Matrix<float> & x, const MatrixAbstract<float> & B, float * residual, bool destroyA, bool destroyB);
 }

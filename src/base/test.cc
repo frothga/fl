@@ -1,7 +1,22 @@
+/*
+Author: Fred Rothganger
+
+Copyright 2005, 2009, 2010 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
+*/
+
+
 #define __STDC_LIMIT_MACROS
-#include <iostream>
+
 #include <fl/parms.h>
 #include <fl/vectorsparse.h>
+#include <fl/serialize.h>
+
+#include <iostream>
+#include <fstream>
 
 
 using namespace std;
@@ -20,6 +35,49 @@ testParameters (int argc, char * argv[])
 	throw "Parameters class fails";
   }
   cout << "Parameters class passes" << endl;
+}
+
+void
+testSerialize ()
+{
+  class A
+  {
+  public:
+	A () {}
+	virtual void read (istream & stream) {}
+	virtual void write (ostream & stream) const {}
+  };
+
+  class B : public A
+  {
+  public:
+	B () {}
+  };
+
+  class C : public A
+  {
+  public:
+	C () {}
+  };
+
+  Product<A, A>::add ("a");
+  Product<A, B>::add ("b");
+  Product<A, C>::add ("c");
+
+  B b;
+  ofstream ofs ("testBaseFile", ios::binary);
+  Factory<A>::write (ofs, b);
+  ofs.close ();
+
+  ifstream ifs ("testBaseFile", ios::binary);
+  A * a = Factory<A>::read (ifs);
+  if (typeid (*a) != typeid (b))
+  {
+	cerr << "Unexpected class retrieved from stream" << endl;
+	throw "Serialize fails";
+  }
+
+  cout << "Serialize passes" << endl;
 }
 
 inline void
@@ -129,6 +187,7 @@ int main (int argc, char * argv[])
   try
   {
 	//testParameters (argc, argv);
+	testSerialize ();
 	testVectorsparse ();
   }
   catch (const char * message)

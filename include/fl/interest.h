@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -24,12 +24,23 @@ for details.
 
 #include <set>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flImage_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
   // General interest operator interface ----------------------------------------
 
-  class InterestPointSet : public std::vector<PointInterest *>
+  class SHARED InterestPointSet : public std::vector<PointInterest *>
   {
   public:
 	InterestPointSet ();
@@ -40,7 +51,7 @@ namespace fl
 	bool ownPoints;  ///< true if we are responsible to destroy the points (default value).
   };
 
-  class InterestOperator
+  class SHARED InterestOperator
   {
   public:
 	virtual ~InterestOperator ();
@@ -61,7 +72,7 @@ namespace fl
 
   // Specific interest operators ------------------------------------------------
 
-  class InterestHarris : public InterestOperator
+  class SHARED InterestHarris : public InterestOperator
   {
   public:
 	InterestHarris (int neighborhood = 5, int maxPoints = 5000, float thresholdFactor = 0.02);
@@ -77,7 +88,7 @@ namespace fl
 	float thresholdFactor;  ///< Percent of max interest response level at which to cut off interest points.
   };
 
-  class InterestHarrisLaplacian : public InterestOperator
+  class SHARED InterestHarrisLaplacian : public InterestOperator
   {
   public:
 	InterestHarrisLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);
@@ -99,7 +110,7 @@ namespace fl
 	float stepSize;
   };
 
-  class InterestLaplacian : public InterestOperator
+  class SHARED InterestLaplacian : public InterestOperator
   {
   public:
 	InterestLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);  ///< neighborhood >= 0 means fixed size (min = 1 pixel); neighborhood < 0 means multiple of scale.
@@ -122,7 +133,7 @@ namespace fl
 	 Like InterestLaplacian, but uses a separable kernel.  Better for handling
 	 larger scales.  Should deprecate InterestLaplacian.
   **/
-  class InterestHessian : public InterestOperator
+  class SHARED InterestHessian : public InterestOperator
   {
   public:
 	InterestHessian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);  ///< neighborhood >= 0 means fixed size (min = 1 pixel); neighborhood < 0 means multiple of scale.
@@ -147,7 +158,7 @@ namespace fl
 	 Gaussian extrema.  The shape of a difference-of-Gaussian kernel is very
 	 similar to a Laplacian of Gaussian.
   **/
-  class InterestDOG : public InterestOperator
+  class SHARED InterestDOG : public InterestOperator
   {
   public:
 	InterestDOG (float firstScale = 1.6f, float lastScale = INFINITY, int extraSteps = 3);  ///< extraSteps gives the number of sub-levels between octaves.
@@ -170,7 +181,7 @@ namespace fl
 	bool fast;  ///< Indicates to use fast mode:  23% faster,  23% more points.  Under strictest conditions (matching scale), repeatability goes down.  However, larger numer of points detected compensates for this as scale criterion is relaxed.
   };
 
-  class InterestMSER : public InterestOperator
+  class SHARED InterestMSER : public InterestOperator
   {
   public:
 	InterestMSER (int delta = 5, float sizeRatio = 0.9f);

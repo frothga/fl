@@ -19,8 +19,8 @@ namespace fl
   /**
 	 The venerable "Numerical Recipes in C" method.
   **/
-  void zroots (const Vector<std::complex<double> > & a, Vector<std::complex<double> > & roots, bool polish = true, bool sortroots = true);
-  int laguer (const Vector<std::complex<double> > & a, std::complex<double> & x);  ///< Subroutine of zroots()
+  SHARED void zroots (const Vector<std::complex<double> > & a, Vector<std::complex<double> > & roots, bool polish = true, bool sortroots = true);
+  SHARED int laguer (const Vector<std::complex<double> > & a, std::complex<double> & x);  ///< Subroutine of zroots()
 }
 
 

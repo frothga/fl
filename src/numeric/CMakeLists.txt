@@ -60,6 +60,9 @@ endif (FFTW_FOUND)
 
 add_library (flNumeric
   ../../include/fl/math.h
+  ../../include/fl/random.h
+  ../../include/fl/stats.h
+  random.cc
   zroots.cc
 
   # Metrics, Distances, Measures, etc.
@@ -170,11 +173,9 @@ add_library (flNumeric
   MDA.cc
 )
 target_link_libraries (flNumeric
+  flNet
   flBase
-  ${LAPACK_LIBRARIES}
-  ${BLAS_LIBRARIES}
-  ${GCC_LIBRARIES}
-  ${RT_LIBRARIES}
+  ${FL_LIBRARIES}
 )
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)

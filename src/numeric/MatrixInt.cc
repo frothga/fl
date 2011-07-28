@@ -31,7 +31,7 @@ template class Factory<MatrixAbstract<int> >;
 
 namespace fl
 {
-  template std::ostream & operator << (std::ostream & stream, const MatrixAbstract<int> & A);
-  template std::istream & operator >> (std::istream & stream, MatrixAbstract<int> & A);
-  template MatrixAbstract<int> & operator << (MatrixAbstract<int> & A, const std::string & source);
+  template SHARED std::ostream & operator << (std::ostream & stream, const MatrixAbstract<int> & A);
+  template SHARED std::istream & operator >> (std::istream & stream, MatrixAbstract<int> & A);
+  template SHARED MatrixAbstract<int> & operator << (MatrixAbstract<int> & A, const std::string & source);
 }

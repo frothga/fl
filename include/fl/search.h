@@ -22,6 +22,17 @@ for details.
 
 #include <vector>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNumeric_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
@@ -33,7 +44,7 @@ namespace fl
 	 or an error function.
   **/
   template<class T>
-  class Searchable
+  class SHARED Searchable
   {
   public:
 	virtual ~Searchable () {}
@@ -63,7 +74,7 @@ namespace fl
 	 functions to instantiate a subclass.
   **/
   template<class T>
-  class SearchableNumeric : public Searchable<T>
+  class SHARED SearchableNumeric : public Searchable<T>
   {
   public:
 	SearchableNumeric (T perturbation = -1);
@@ -83,7 +94,7 @@ namespace fl
 	 entire domain of the function.
   **/
   template<class T>
-  class SearchableSparse : public SearchableNumeric<T>
+  class SHARED SearchableSparse : public SearchableNumeric<T>
   {
   public:
 	SearchableSparse (T perturbation = -1);
@@ -168,7 +179,7 @@ namespace fl
 	 for the largest value vector.
   **/
   template<class T>
-  class Search
+  class SHARED Search
   {
   public:
 	virtual ~Search () {}
@@ -187,7 +198,7 @@ namespace fl
 	 (that is, a least square solution).
    **/
   template<class T>
-  class LineSearch : public Search<T>
+  class SHARED LineSearch : public Search<T>
   {
   public:
 	LineSearch (T toleranceF = (T) -1, T toleranceX = (T) -1);
@@ -200,7 +211,7 @@ namespace fl
   };
 
   template<class T>
-  class AnnealingAdaptive : public Search<T>
+  class SHARED AnnealingAdaptive : public Search<T>
   {
   public:
 	AnnealingAdaptive (bool minimize = true, int levels = 10, int patience = -1);  ///< minimize == true means do least squares; minimize == false means find largest values
@@ -213,7 +224,7 @@ namespace fl
   };
 
   template<class T>
-  class ParticleSwarm : public Search<T>
+  class SHARED ParticleSwarm : public Search<T>
   {
   public:
 	/**
@@ -241,7 +252,7 @@ namespace fl
 	T inertia;  ///< Portion of previous velocity to include in next velocity.
 	T decayRate;  ///< Multiply inertia by this amount during each iteration.
 
-	class Particle
+	class SHARED Particle
 	{
 	public:
 	  T         value;
@@ -253,7 +264,7 @@ namespace fl
   };
 
   template<class T>
-  class GradientDescent : public Search<T>
+  class SHARED GradientDescent : public Search<T>
   {
   public:
 	GradientDescent (T toleranceX = -1, T updateRate = -0.01, int patience = 3);
@@ -266,7 +277,7 @@ namespace fl
   };
 
   template<class T>
-  class ConjugateGradient : public Search<T>
+  class SHARED ConjugateGradient : public Search<T>
   {
   public:
 	ConjugateGradient (T toleranceX = -1, int restartIterations = 5, int maxIterations = -1);  ///< toleranceX < 0 means use sqrt (machine precision); maxIterations < 1 means use dimension of point
@@ -281,7 +292,7 @@ namespace fl
   };
 
   template<class T>
-  class NewtonRaphson : public Search<T>
+  class SHARED NewtonRaphson : public Search<T>
   {
   public:
 	NewtonRaphson (int direction = -1, T toleranceX = -1, T updateRate = 1, int maxIterations = 200);
@@ -298,7 +309,7 @@ namespace fl
 	 LM based on QR decomposition.  Adapted from MINPACK.
   **/
   template<class T>
-  class LevenbergMarquardt : public Search<T>
+  class SHARED LevenbergMarquardt : public Search<T>
   {
   public:
 	LevenbergMarquardt (T toleranceF = -1, T toleranceX = -1, int maxIterations = 200);  ///< toleranceF/X == -1 means use sqrt (machine precision)
@@ -317,7 +328,7 @@ namespace fl
 	 LM based on Bunch-Kaufman decomposition with sparse implementation.
   **/
   template<class T>
-  class LevenbergMarquardtSparseBK : public Search<T>
+  class SHARED LevenbergMarquardtSparseBK : public Search<T>
   {
   public:
 	LevenbergMarquardtSparseBK (T toleranceF = -1, T toleranceX = -1, int maxIterations = 200, int maxPivot = 20);

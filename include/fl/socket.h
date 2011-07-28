@@ -77,10 +77,21 @@ for details.
 
 #include <istream>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNet_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
-  class SocketStreambuf : public std::streambuf
+  class SHARED SocketStreambuf : public std::streambuf
   {
   public:
 	SocketStreambuf (SOCKET socket = INVALID_SOCKET, int timeout = 0);
@@ -99,7 +110,7 @@ namespace fl
 	int timeout;
   };
 
-  class SocketStream : public std::iostream
+  class SHARED SocketStream : public std::iostream
   {
   public:
 	SocketStream (const std::string & hostname, const std::string & port, int timeout = 0);
@@ -117,7 +128,7 @@ namespace fl
 	bool ownSocket;  ///< Indicates that we created the socket ourselves, and must shut it down on destruction.
   };
 
-  class Listener
+  class SHARED Listener
   {
   public:
 	Listener (int timeout = 0, bool threaded = true);
@@ -142,7 +153,7 @@ namespace fl
   };
 
 # ifdef WIN32
-  class WinsockInitializer
+  class SHARED WinsockInitializer
   {
 	WinsockInitializer ();
 	~WinsockInitializer ();

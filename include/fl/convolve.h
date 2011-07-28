@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -23,6 +23,17 @@ for details.
 #include "fl/point.h"
 
 #include <ostream>
+
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flImage_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
 
 
 namespace fl
@@ -61,7 +72,7 @@ namespace fl
 	 pixel coordinates refer to either the entire pixel or to its center,
 	 depending on context.
   **/
-  class Convolution : public Filter
+  class SHARED Convolution : public Filter
   {
   public:
 	virtual Image filter (const Image & image) = 0;  ///< Convolve the entire image with the kernel contained in this object.
@@ -76,7 +87,7 @@ namespace fl
   /**
 	 Stores the kernel as a discrete set of points (a raster).
   **/
-  class ConvolutionDiscrete2D : public Convolution, public Image
+  class SHARED ConvolutionDiscrete2D : public Convolution, public Image
   {
   public:
 	ConvolutionDiscrete2D (const BorderMode mode = Crop,
@@ -89,7 +100,7 @@ namespace fl
 	void normalFloats ();  ///< Zero out any sub-normal floats in kernel, because they cause numerical exceptions that really drag down performance.
   };
 
-  class Gaussian2D : public ConvolutionDiscrete2D
+  class SHARED Gaussian2D : public ConvolutionDiscrete2D
   {
   public:
 	Gaussian2D (double sigma = 1.0,
@@ -99,7 +110,7 @@ namespace fl
 	static double cutoff;  ///< Minimum number of standard deviations to include in a Gaussian kernel
   };
 
-  class DifferenceOfGaussians : public ConvolutionDiscrete2D
+  class SHARED DifferenceOfGaussians : public ConvolutionDiscrete2D
   {
   public:
 	DifferenceOfGaussians (double sigmaPlus,
@@ -108,7 +119,7 @@ namespace fl
 						   const PixelFormat & format = GrayFloat);
   };
 
-  class GaussianDerivativeFirst : public ConvolutionDiscrete2D
+  class SHARED GaussianDerivativeFirst : public ConvolutionDiscrete2D
   {
   public:
 	GaussianDerivativeFirst (int xy = 0,  ///< xy == 0 means x-derivative; xy != 0 means y-derivative
@@ -119,7 +130,7 @@ namespace fl
 							 const PixelFormat & format = GrayFloat);
   };
 
-  class GaussianDerivativeSecond : public ConvolutionDiscrete2D
+  class SHARED GaussianDerivativeSecond : public ConvolutionDiscrete2D
   {
   public:
 	GaussianDerivativeSecond (int xy1 = 0,
@@ -131,7 +142,7 @@ namespace fl
 							  const PixelFormat & format = GrayFloat);
   };
 
-  class GaussianDerivativeThird : public ConvolutionDiscrete2D
+  class SHARED GaussianDerivativeThird : public ConvolutionDiscrete2D
   {
   public:
 	GaussianDerivativeThird (int xy1 = 0,
@@ -144,7 +155,7 @@ namespace fl
 							 const PixelFormat & format = GrayFloat);
   };
 
-  class Laplacian : public ConvolutionDiscrete2D
+  class SHARED Laplacian : public ConvolutionDiscrete2D
   {
   public:
 	Laplacian (double sigma = 1.0,
@@ -163,13 +174,13 @@ namespace fl
 	Horizontal
   };
 
-  class Convolution1D : public Convolution
+  class SHARED Convolution1D : public Convolution
   {
   public:
 	Direction direction;
   };
 
-  class ConvolutionDiscrete1D : public Convolution1D, public Image
+  class SHARED ConvolutionDiscrete1D : public Convolution1D, public Image
   {
   public:
 	ConvolutionDiscrete1D (const BorderMode mode = Crop,
@@ -185,7 +196,7 @@ namespace fl
 	void normalFloats ();  ///< Zero out any sub-normal floats in kernel, because they cause numerical exceptions that really drag down performance.
   };
 
-  class Gaussian1D : public ConvolutionDiscrete1D
+  class SHARED Gaussian1D : public ConvolutionDiscrete1D
   {
   public:
 	Gaussian1D (double sigma = 1.0,
@@ -194,7 +205,7 @@ namespace fl
 				const Direction direction = Horizontal);
   };
 
-  class GaussianDerivative1D : public ConvolutionDiscrete1D
+  class SHARED GaussianDerivative1D : public ConvolutionDiscrete1D
   {
   public:
 	GaussianDerivative1D (double sigma = 1.0,
@@ -203,7 +214,7 @@ namespace fl
 						  const Direction direction = Horizontal);
   };
 
-  class GaussianDerivativeSecond1D : public ConvolutionDiscrete1D
+  class SHARED GaussianDerivativeSecond1D : public ConvolutionDiscrete1D
   {
   public:
 	GaussianDerivativeSecond1D (double sigma = 1.0,
@@ -218,7 +229,7 @@ namespace fl
 	 The "kernels" are only in double format, and the only BorderMode is
 	 (sort of like) Boost.
    **/
-  class ConvolutionRecursive1D : public Convolution1D
+  class SHARED ConvolutionRecursive1D : public Convolution1D
   {
   public:
 	virtual Image filter (const Image & image);
@@ -250,21 +261,21 @@ namespace fl
 	double scale;
   };
 
-  class GaussianRecursive1D : public ConvolutionRecursive1D
+  class SHARED GaussianRecursive1D : public ConvolutionRecursive1D
   {
   public:
 	GaussianRecursive1D (double sigma = 1.0,
 						 const Direction direction = Horizontal);
   };
 
-  class GaussianDerivativeRecursive1D : public ConvolutionRecursive1D
+  class SHARED GaussianDerivativeRecursive1D : public ConvolutionRecursive1D
   {
   public:
 	GaussianDerivativeRecursive1D (double sigma = 1.0,
 								   const Direction direction = Horizontal);
   };
 
-  class GaussianDerivativeSecondRecursive1D : public ConvolutionRecursive1D
+  class SHARED GaussianDerivativeSecondRecursive1D : public ConvolutionRecursive1D
   {
   public:
 	GaussianDerivativeSecondRecursive1D (double sigma = 1.0,
@@ -274,7 +285,7 @@ namespace fl
 
   // Interest operators -------------------------------------------------------
 
-  class FilterHarris : public Filter
+  class SHARED FilterHarris : public Filter
   {
   public:
 	FilterHarris (double sigmaD = 1.0, double sigmaI = 1.4, const PixelFormat & format = GrayFloat);
@@ -316,7 +327,7 @@ namespace fl
 	 returns the absolute value of the product of the eigenvectors.  The
 	 regular FilterHarris only approximates this and at a different scale.
   **/
-  class FilterHarrisEigen : public FilterHarris
+  class SHARED FilterHarrisEigen : public FilterHarris
   {
   public:
 	FilterHarrisEigen (double sigmaD = 1.0, double sigmaI = 1.4, const PixelFormat & format = GrayFloat) : FilterHarris (sigmaD, sigmaI, format) {}
@@ -328,7 +339,7 @@ namespace fl
   /**
 	 Also similar to FilterHarris, but computes L_xx + L_yy instead.
   **/
-  class FilterHessian : public Filter
+  class SHARED FilterHessian : public Filter
   {
   public:
 	FilterHessian (double sigma = 1.0, const PixelFormat & format = GrayFloat);
@@ -356,7 +367,7 @@ namespace fl
 	 division in the (much more repetitive) non-border case, and instead
 	 multiply by 2 in border case.
    **/
-  class FiniteDifferenceX : public Filter
+  class SHARED FiniteDifferenceX : public Filter
   {
   public:
 	virtual Image filter (const Image & image);	
@@ -365,13 +376,13 @@ namespace fl
   /**
 	 Same as FiniteDifferenceX, but in the Y direction.
    **/
-  class FiniteDifferenceY : public Filter
+  class SHARED FiniteDifferenceY : public Filter
   {
   public:
 	virtual Image filter (const Image & image);	
   };
 
-  class NonMaxSuppress : public Filter
+  class SHARED NonMaxSuppress : public Filter
   {
   public:
 	NonMaxSuppress (int half = 1, BorderMode mode = UseZeros);  ///< Only recognizes UseZeros and ZeroFill.  Other modes are mapped to closest equivalent.
@@ -391,7 +402,7 @@ namespace fl
 	 An information gathering filter.  Returns the image unaltered and stores
 	 the results in this object's state.
   **/
-  class IntensityStatistics : public Filter
+  class SHARED IntensityStatistics : public Filter
   {
   public:
 	IntensityStatistics (bool ignoreZeros = false);
@@ -412,7 +423,7 @@ namespace fl
 	 An information gathering filter.  Finds standard deviation of intensity
 	 values based on a given average value.
   **/
-  class IntensityHistogram : public Filter
+  class SHARED IntensityHistogram : public Filter
   {
   public:
 	IntensityHistogram (const std::vector<float> & ranges);
@@ -430,7 +441,7 @@ namespace fl
   /**
 	 Treating the image as a vector in high-dimensional space, normalize to given Euclidean length.
   **/
-  class Normalize : public Filter
+  class SHARED Normalize : public Filter
   {
   public:
 	Normalize (double length = 1);
@@ -443,7 +454,7 @@ namespace fl
   /**
 	 For floating point images, convert all values v to fabs(v).
   **/
-  class AbsoluteValue : public Filter
+  class SHARED AbsoluteValue : public Filter
   {
   public:
 	virtual Image filter (const Image & image);
@@ -454,7 +465,7 @@ namespace fl
 	 transformation x <== ax + b to the pixel values.  If image format is
 	 integer, it is passed thru unmodified.
   **/
-  class Rescale : public Filter
+  class SHARED Rescale : public Filter
   {
   public:
 	Rescale (double a = 1.0, double b = 0);
@@ -465,7 +476,7 @@ namespace fl
 	double b;
   };
 
-  class Transform : public Filter
+  class SHARED Transform : public Filter
   {
   public:
 	Transform (const Matrix<double> & A, bool inverse = false);  ///< Prefer double format for better inversion (when needed).
@@ -499,7 +510,7 @@ namespace fl
 	int height;
   };
 
-  class TransformGauss : public Transform
+  class SHARED TransformGauss : public Transform
   {
   public:
 	TransformGauss (const Matrix<double> & A, bool inverse = false) : Transform (A, inverse),     G (GrayFloat) {needG = true; sigma = 0.5f;}
@@ -534,7 +545,7 @@ namespace fl
 	 Scales an image up by an integer amount.  Basically, this is a stripped
 	 down version of Transform that avoids blurring the image.
    **/
-  class Zoom : public Filter
+  class SHARED Zoom : public Filter
   {
   public:
 	Zoom (int scaleX, int scaleY);
@@ -545,13 +556,13 @@ namespace fl
 	int scaleY;
   };
 
-  class Rotate180 : public Filter
+  class SHARED Rotate180 : public Filter
   {
   public:
 	virtual Image filter (const Image & image);
   };
 
-  class Rotate90 : public Filter
+  class SHARED Rotate90 : public Filter
   {
   public:
 	Rotate90 (bool clockwise = false);  ///< clockwise in terms of image coordinate system, not in terms of displayed image on screen.  clockwise == true is same as rotation by -90 degrees in image coordinate system.
@@ -561,7 +572,7 @@ namespace fl
 	bool clockwise;
   };
 
-  class ClearAlpha : public Filter
+  class SHARED ClearAlpha : public Filter
   {
   public:
 	ClearAlpha (unsigned int color = 0x0);

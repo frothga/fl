@@ -27,6 +27,17 @@ for details.
 #include <map>
 #include <complex>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNumeric_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 // The linear algebra package has the following goals:
 // * Be simple and straightforward for a programmer to use.  It should be
@@ -78,7 +89,7 @@ namespace fl
 	 matrices are the most common case.
   **/
   template<class T>
-  class MatrixAbstract
+  class SHARED MatrixAbstract
   {
   public:
 	virtual ~MatrixAbstract ();
@@ -176,17 +187,17 @@ namespace fl
   }
 
   template<class T>
-  std::string elementToString (const T & value);
+  SHARED std::string elementToString (const T & value);
 
   template<class T>
-  T elementFromString (const std::string & value);
+  SHARED T elementFromString (const std::string & value);
 
   /**
 	 Print human readable matrix to stream.  Formatted to be readable by
 	 operator >> (istream, Matrix).
   **/
   template<class T>
-  std::ostream &
+  SHARED std::ostream &
   operator << (std::ostream & stream, const MatrixAbstract<T> & A);
 
   /**
@@ -206,7 +217,7 @@ namespace fl
 	 </ul>
   **/
   template<class T>
-  std::istream &
+  SHARED std::istream &
   operator >> (std::istream & stream, MatrixAbstract<T> & A);
 
   /**
@@ -216,7 +227,7 @@ namespace fl
 	 Matrix<T>::Matrix(const string &).
   **/
   template<class T>
-  MatrixAbstract<T> &
+  SHARED MatrixAbstract<T> &
   operator << (MatrixAbstract<T> & A, const std::string & source);
 
   /**
@@ -317,7 +328,7 @@ namespace fl
 	 will not allocate memory if they exceed the current storage size.
   **/
   template<class T>
-  class MatrixStrided : public MatrixAbstract<T>
+  class SHARED MatrixStrided : public MatrixAbstract<T>
   {
   public:
 	MatrixStrided ();  ///< Mainly for the convenience of Matrix constructors.  Generally, you will not directly construct an instance of this class.
@@ -419,7 +430,7 @@ namespace fl
   };
 
   template<class T>
-  class Matrix : public MatrixStrided<T>
+  class SHARED Matrix : public MatrixStrided<T>
   {
   public:
 	Matrix ();
@@ -454,7 +465,7 @@ namespace fl
 	 Vector is "syntactic sugar" for a Matrix with only one column.
   **/
   template<class T>
-  class Vector : public Matrix<T>
+  class SHARED Vector : public Matrix<T>
   {
   public:
 	Vector ();
@@ -480,7 +491,7 @@ namespace fl
 	 portion.
   **/
   template<class T>
-  class MatrixPacked : public MatrixAbstract<T>
+  class SHARED MatrixPacked : public MatrixAbstract<T>
   {
   public:
 	MatrixPacked ();
@@ -518,7 +529,7 @@ namespace fl
 	 holding the column structures would be better.
   **/
   template<class T>
-  class MatrixSparse : public MatrixAbstract<T>
+  class SHARED MatrixSparse : public MatrixAbstract<T>
   {
   public:
 	MatrixSparse ();
@@ -556,7 +567,7 @@ namespace fl
 	 element and zero for any other element.
   **/
   template<class T>
-  class MatrixIdentity : public MatrixAbstract<T>
+  class SHARED MatrixIdentity : public MatrixAbstract<T>
   {
   public:
 	MatrixIdentity ();
@@ -581,7 +592,7 @@ namespace fl
 	 and returns zero for any other element.
   **/
   template<class T>
-  class MatrixDiagonal : public MatrixAbstract<T>
+  class SHARED MatrixDiagonal : public MatrixAbstract<T>
   {
   public:
 	MatrixDiagonal ();
@@ -629,7 +640,7 @@ namespace fl
 
   /// this(i,j) maps to that(j,i)
   template<class T>
-  class MatrixTranspose : public MatrixAbstract<T>
+  class SHARED MatrixTranspose : public MatrixAbstract<T>
   {
   public:
 	MatrixTranspose (MatrixAbstract<T> * that);
@@ -661,7 +672,7 @@ namespace fl
   };
 
   template<class T>
-  class MatrixRegion : public MatrixAbstract<T>
+  class SHARED MatrixRegion : public MatrixAbstract<T>
   {
   public:
 	MatrixRegion (const MatrixAbstract<T> & that, const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1);
@@ -717,7 +728,7 @@ namespace fl
   //    direct implementations in small matrix sizes (particularly 2x2).
 
   template<class T, int R, int C>
-  class MatrixFixed : public MatrixAbstract<T>
+  class SHARED MatrixFixed : public MatrixAbstract<T>
   {
   public:
 	MatrixFixed ();
@@ -768,16 +779,16 @@ namespace fl
   };
 
   template<class T, int R, int C>
-  Matrix<T> operator ! (const MatrixFixed<T,R,C> & A);
+  SHARED Matrix<T> operator ! (const MatrixFixed<T,R,C> & A);
 
   template<class T>
-  MatrixFixed<T,2,2> operator ! (const MatrixFixed<T,2,2> & A);
+  SHARED MatrixFixed<T,2,2> operator ! (const MatrixFixed<T,2,2> & A);
 
   template<class T>
-  void geev (const MatrixFixed<T,2,2> & A, Matrix<T> & eigenvalues);
+  SHARED void geev (const MatrixFixed<T,2,2> & A, Matrix<T> & eigenvalues);
 
   template<class T>
-  void geev (const MatrixFixed<T,2,2> & A, Matrix<std::complex<T> > & eigenvalues);
+  SHARED void geev (const MatrixFixed<T,2,2> & A, Matrix<std::complex<T> > & eigenvalues);
 }
 
 

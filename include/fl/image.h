@@ -27,19 +27,30 @@ for details.
 
 #include <assert.h>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flImage_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
   // Forward declaration for use by Image
-  class PixelBuffer;
-  class PixelFormat;
-  class Pixel;
-  class ImageFileFormat;
+  class SHARED PixelBuffer;
+  class SHARED PixelFormat;
+  class SHARED Pixel;
+  class SHARED ImageFileFormat;
 
 
   // Image --------------------------------------------------------------------
 
-  class Image
+  class SHARED Image
   {
   public:
 	Image ();  ///< Creates a new image of GrayChar, but with no buffer memory allocated.
@@ -106,7 +117,7 @@ namespace fl
 	 Base class for reified functions that take as input an image and output
 	 another image.
   **/
-  class Filter
+  class SHARED Filter
   {
   public:
 	virtual Image filter (const Image & image) = 0;  ///< This could be const, but it is useful to allow filters to collect statistics.  Note that such filters are not thread safe.
@@ -137,9 +148,15 @@ namespace fl
   // PixelBuffer --------------------------------------------------------------
 
   /**
+	 Changes the stride and height of a dense raster in memory.  Used mainly as
+	 a utility function by PixelBuffer, but sometimes useful elsewhere.
+  **/
+  extern SHARED void reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight, int pad = 0);
+
+  /**
 	 An interface for various classes that manage the storage of image data.
    **/
-  class PixelBuffer : public ReferenceCounted
+  class SHARED PixelBuffer : public ReferenceCounted
   {
   public:
 	virtual ~PixelBuffer ();
@@ -199,7 +216,7 @@ namespace fl
 	 The default structure for most Images.  Each pixel contains its color
 	 channels contiguously, and pixels are arranged contiguously in memory.
    **/
-  class PixelBufferPacked : public PixelBuffer
+  class SHARED PixelBufferPacked : public PixelBuffer
   {
   public:
 	PixelBufferPacked (int depth = 1);
@@ -234,7 +251,7 @@ namespace fl
 	 When resizing or intializing without specifying stride, determines a
 	 stride0 that is a multiple of 16 bytes.
    **/
-  class PixelBufferPlanar : public PixelBuffer
+  class SHARED PixelBufferPlanar : public PixelBuffer
   {
   public:
 	PixelBufferPlanar ();
@@ -270,7 +287,7 @@ namespace fl
 	 values.
 	 </ul>
   **/
-  class PixelBufferGroups : public PixelBuffer
+  class SHARED PixelBufferGroups : public PixelBuffer
   {
   public:
 	PixelBufferGroups (int pixels, int bytes);
@@ -302,7 +319,7 @@ namespace fl
 	 image resides on disk, and a subset of its blocks are kept in cache at
 	 any given time.
    **/
-  class PixelBufferBig : public PixelBuffer
+  class SHARED PixelBufferBig : public PixelBuffer
   {
   public:
 	PixelBufferBig ();
@@ -318,7 +335,7 @@ namespace fl
 	 iterate over the buffer directly using pointers.
    **/
   template<class T>
-  class ImageOf : public Image
+  class SHARED ImageOf : public Image
   {
   public:
 	// These constructors blindly wrap the constructors of Image, without
@@ -480,7 +497,7 @@ namespace fl
 	 \todo Add accessor for numbered color channels.  This will be most
 	 meaningful for hyperspectal data.
   **/
-  class PixelFormat : public Filter, public ReferenceCounted
+  class SHARED PixelFormat : public Filter, public ReferenceCounted
   {
   public:
 	virtual ~PixelFormat ();
@@ -534,14 +551,14 @@ namespace fl
   /**
 	 Specifies the interface required by PixelBufferGroups.
    **/
-  class Macropixel
+  class SHARED Macropixel
   {
   public:
 	int pixels;  ///< Pixels per group.
 	int bytes;  ///< Bytes per group.
   };
 
-  class PixelFormatPalette : public PixelFormat, public Macropixel
+  class SHARED PixelFormatPalette : public PixelFormat, public Macropixel
   {
   public:
 	PixelFormatPalette (unsigned char * r, unsigned char * g, unsigned char * b, int stride = 1, int bits = 8, bool bigendian = true);  ///< r, g, b and stride specify the structure of the source table, which we copy into our internal format.
@@ -568,7 +585,7 @@ namespace fl
 	 other than the full word, but it is a somewhat different layout, since
 	 only one pixel occurs in any one word.
    **/
-  class PixelFormatGrayBits : public PixelFormat, public Macropixel
+  class SHARED PixelFormatGrayBits : public PixelFormat, public Macropixel
   {
   public:
 	/**
@@ -592,7 +609,7 @@ namespace fl
 	int           shifts[8];  ///< How far to upshift the indexed pixel to put it in the most significant position.
   };
 
-  class PixelFormatGrayChar : public PixelFormat
+  class SHARED PixelFormatGrayChar : public PixelFormat
   {
   public:
 	PixelFormatGrayChar ();
@@ -618,7 +635,7 @@ namespace fl
 	virtual void          setGray (void * pixel, float gray) const;
   };
 
-  class PixelFormatGrayShort : public PixelFormat
+  class SHARED PixelFormatGrayShort : public PixelFormat
   {
   public:
 	PixelFormatGrayShort (unsigned short grayMask = 0xFFFF);
@@ -644,7 +661,7 @@ namespace fl
 	int grayShift;  ///< How many bits to shift grayMask to align the msb with bit 15.
   };
 
-  class PixelFormatGrayFloat : public PixelFormat
+  class SHARED PixelFormatGrayFloat : public PixelFormat
   {
   public:
 	PixelFormatGrayFloat ();
@@ -671,7 +688,7 @@ namespace fl
 	virtual void          setGray (void * pixel, float gray) const;
   };
 
-  class PixelFormatGrayDouble : public PixelFormat
+  class SHARED PixelFormatGrayDouble : public PixelFormat
   {
   public:
 	PixelFormatGrayDouble ();
@@ -707,7 +724,7 @@ namespace fl
 	 a particular set of bitmasks will have different meanings on different
 	 endian machines.
   **/
-  class PixelFormatRGBABits : public PixelFormat
+  class SHARED PixelFormatRGBABits : public PixelFormat
   {
   public:
 	PixelFormatRGBABits (int depth, unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask);
@@ -740,7 +757,7 @@ namespace fl
 	int alphaBits;
   };
 
-  class PixelFormatRGBAChar : public PixelFormatRGBABits
+  class SHARED PixelFormatRGBAChar : public PixelFormatRGBABits
   {
   public:
 	PixelFormatRGBAChar ();
@@ -759,7 +776,7 @@ namespace fl
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
   };
 
-  class PixelFormatRGBChar : public PixelFormatRGBABits
+  class SHARED PixelFormatRGBChar : public PixelFormatRGBABits
   {
   public:
 	PixelFormatRGBChar ();
@@ -775,7 +792,7 @@ namespace fl
 	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
   };
 
-  class PixelFormatRGBAShort : public PixelFormat
+  class SHARED PixelFormatRGBAShort : public PixelFormat
   {
   public:
 	PixelFormatRGBAShort ();
@@ -786,7 +803,7 @@ namespace fl
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
   };
 
-  class PixelFormatRGBShort : public PixelFormat
+  class SHARED PixelFormatRGBShort : public PixelFormat
   {
   public:
 	PixelFormatRGBShort ();
@@ -795,7 +812,7 @@ namespace fl
 	virtual void          setRGBA  (void * pixel, unsigned int rgba) const;
   };
 
-  class PixelFormatRGBAFloat : public PixelFormat
+  class SHARED PixelFormatRGBAFloat : public PixelFormat
   {
   public:
 	PixelFormatRGBAFloat ();
@@ -808,7 +825,7 @@ namespace fl
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;
   };
 
-  class PixelFormatYUV : public PixelFormat
+  class SHARED PixelFormatYUV : public PixelFormat
   {
   public:
 	PixelFormatYUV (int ratioH, int ratioV) : ratioH (ratioH), ratioV (ratioV) {}
@@ -817,7 +834,7 @@ namespace fl
 	int ratioV;  ///< How many vertical luma samples per chroma sample.
   };
 
-  class PixelFormatPackedYUV : public PixelFormatYUV, public Macropixel
+  class SHARED PixelFormatPackedYUV : public PixelFormatYUV, public Macropixel
   {
   public:
 	struct YUVindex
@@ -846,7 +863,7 @@ namespace fl
 	YUVindex * table;
   };
 
-  class PixelFormatPlanarYUV : public PixelFormatYUV
+  class SHARED PixelFormatPlanarYUV : public PixelFormatYUV
   {
   public:
 	PixelFormatPlanarYUV (int ratioH, int ratioV);
@@ -869,7 +886,7 @@ namespace fl
 	 16 <= U,V <= 240.  Video standards call for footroom and headroom
 	 to allow for analog signal overshoots.
    **/
-  class PixelFormatPlanarYCbCr : public PixelFormatYUV
+  class SHARED PixelFormatPlanarYCbCr : public PixelFormatYUV
   {
   public:
 	PixelFormatPlanarYCbCr (int ratioH, int ratioV);
@@ -895,7 +912,7 @@ namespace fl
 	static unsigned char * buildAll ();  ///< Returns the value of lutYin, but actually constructs and assigns all 6 luts.
   };
 
-  class PixelFormatHLSFloat : public PixelFormat
+  class SHARED PixelFormatHLSFloat : public PixelFormat
   {
   public:
 	PixelFormatHLSFloat ();
@@ -908,27 +925,27 @@ namespace fl
 	float HLSvalue (const float & n1, const float & n2, float h) const;  ///< Subroutine of getRGBA(floats).
   };
 
-  extern PixelFormatGrayChar           GrayChar;
-  extern PixelFormatGrayShort          GrayShort;
-  extern PixelFormatGrayFloat          GrayFloat;
-  extern PixelFormatGrayDouble         GrayDouble;
-  extern PixelFormatRGBAChar           RGBAChar;
-  extern PixelFormatRGBAShort          RGBAShort;
-  extern PixelFormatRGBAFloat          RGBAFloat;
-  extern PixelFormatRGBChar            RGBChar;
-  extern PixelFormatRGBShort           RGBShort;
-  extern PixelFormatRGBABits           B5G5R5;
-  extern PixelFormatRGBABits           BGRChar;
-  extern PixelFormatRGBABits           BGRChar4;
-  extern PixelFormatRGBABits           BGRAChar;
-  extern PixelFormatPackedYUV          UYVY;
-  extern PixelFormatPackedYUV          YUYV;
-  extern PixelFormatPackedYUV          UYV;
-  extern PixelFormatPackedYUV          UYYVYY;
-  extern PixelFormatPackedYUV          UYVYUYVYYYYY;
-  extern PixelFormatPlanarYCbCr        YUV420;
-  extern PixelFormatPlanarYCbCr        YUV411;
-  extern PixelFormatHLSFloat           HLSFloat;
+  extern SHARED PixelFormatGrayChar           GrayChar;
+  extern SHARED PixelFormatGrayShort          GrayShort;
+  extern SHARED PixelFormatGrayFloat          GrayFloat;
+  extern SHARED PixelFormatGrayDouble         GrayDouble;
+  extern SHARED PixelFormatRGBAChar           RGBAChar;
+  extern SHARED PixelFormatRGBAShort          RGBAShort;
+  extern SHARED PixelFormatRGBAFloat          RGBAFloat;
+  extern SHARED PixelFormatRGBChar            RGBChar;
+  extern SHARED PixelFormatRGBShort           RGBShort;
+  extern SHARED PixelFormatRGBABits           B5G5R5;
+  extern SHARED PixelFormatRGBABits           BGRChar;
+  extern SHARED PixelFormatRGBABits           BGRChar4;
+  extern SHARED PixelFormatRGBABits           BGRAChar;
+  extern SHARED PixelFormatPackedYUV          UYVY;
+  extern SHARED PixelFormatPackedYUV          YUYV;
+  extern SHARED PixelFormatPackedYUV          UYV;
+  extern SHARED PixelFormatPackedYUV          UYYVYY;
+  extern SHARED PixelFormatPackedYUV          UYVYUYVYYYYY;
+  extern SHARED PixelFormatPlanarYCbCr        YUV420;
+  extern SHARED PixelFormatPlanarYCbCr        YUV411;
+  extern SHARED PixelFormatHLSFloat           HLSFloat;
 
   // Naming convention for RGBABits:
   // R<red bits>G<green bits>B<blue bits>
@@ -967,7 +984,7 @@ namespace fl
 	 burden of storing intermediate results.  We should instead store the
 	 intermediate results in Vector<float> as RGB values.
   **/
-  class Pixel
+  class SHARED Pixel
   {
   public:
 	Pixel ();
@@ -1019,7 +1036,7 @@ namespace fl
 	 Helper class for ImageFile that actually implements the methods for a
 	 specific codec.
   **/
-  class ImageFileDelegate : public ReferenceCounted
+  class SHARED ImageFileDelegate : public ReferenceCounted
   {
   public:
 	virtual ~ImageFileDelegate ();
@@ -1084,7 +1101,7 @@ namespace fl
 	 the origin is in the upper-left corner, x increases to the right and
 	 y increases downward.
    **/
-  class ImageFile
+  class SHARED ImageFile
   {
   public:
 	ImageFile ();
@@ -1154,7 +1171,7 @@ namespace fl
   /**
 	 \todo Add a mutex around the static variable formats.
   **/
-  class ImageFileFormat
+  class SHARED ImageFileFormat
   {
   public:
 	virtual ~ImageFileFormat ();
@@ -1172,7 +1189,7 @@ namespace fl
 	static std::vector<ImageFileFormat *> formats;
   };
 
-  class ImageFileFormatBMP : public ImageFileFormat
+  class SHARED ImageFileFormatBMP : public ImageFileFormat
   {
   public:
 	static void use ();
@@ -1182,7 +1199,7 @@ namespace fl
 	virtual float handles (const std::string & formatName) const;
   };
 
-  class ImageFileFormatPGM : public ImageFileFormat
+  class SHARED ImageFileFormatPGM : public ImageFileFormat
   {
   public:
 	static void use ();
@@ -1192,7 +1209,7 @@ namespace fl
 	virtual float handles (const std::string & formatName) const;
   };
 
-  class ImageFileFormatPNG : public ImageFileFormat
+  class SHARED ImageFileFormatPNG : public ImageFileFormat
   {
   public:
 	static void use ();
@@ -1202,7 +1219,7 @@ namespace fl
 	virtual float handles (const std::string & formatName) const;
   };
 
-  class ImageFileFormatEPS : public ImageFileFormat
+  class SHARED ImageFileFormatEPS : public ImageFileFormat
   {
   public:
 	static void use ();
@@ -1212,7 +1229,7 @@ namespace fl
 	virtual float handles (const std::string & formatName) const;
   };
 
-  class ImageFileFormatJPEG : public ImageFileFormat
+  class SHARED ImageFileFormatJPEG : public ImageFileFormat
   {
   public:
 	static void use ();
@@ -1222,7 +1239,7 @@ namespace fl
 	virtual float handles (const std::string & formatName) const;
   };
 
-  class ImageFileFormatTIFF : public ImageFileFormat
+  class SHARED ImageFileFormatTIFF : public ImageFileFormat
   {
   public:
 	static void use ();
@@ -1233,7 +1250,7 @@ namespace fl
 	virtual float handles (const std::string & formatName) const;
   };
 
-  class ImageFileFormatNITF : public ImageFileFormat
+  class SHARED ImageFileFormatNITF : public ImageFileFormat
   {
   public:
 	static void use ();
@@ -1243,7 +1260,7 @@ namespace fl
 	virtual float handles (const std::string & formatName) const;
   };
 
-  class ImageFileFormatMatlab : public ImageFileFormat
+  class SHARED ImageFileFormatMatlab : public ImageFileFormat
   {
   public:
 	static void use ();

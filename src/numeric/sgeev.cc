@@ -19,7 +19,7 @@ for details.
 
 namespace fl
 {
-  template void geev (const MatrixAbstract<float> & A, Matrix<std::complex<float> > & eigenvalues, Matrix<float> & eigenvectors, bool destroyA);
-  template void geev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors, bool destroyA);
-  template void geev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, bool destroyA);
+  template SHARED void geev (const MatrixAbstract<float> & A, Matrix<std::complex<float> > & eigenvalues, Matrix<float> & eigenvectors, bool destroyA);
+  template SHARED void geev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors, bool destroyA);
+  template SHARED void geev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, bool destroyA);
 }

@@ -16,18 +16,29 @@ for details.
 #include <map>
 #include <iostream>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNumeric_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
   // Basic neural network elements --------------------------------------------
 
-  class Synapse;
+  class SHARED Synapse;
 
   /**
 	 A node in a neural network.  Integrates information from other Neurons
 	 via Synapse's and transmits results out over other Synapse's.
    **/
-  class Neuron
+  class SHARED Neuron
   {
   public:
 	virtual ~Neuron ();
@@ -54,7 +65,7 @@ namespace fl
 	 instances of this class or some specialized subclass.  An example of
 	 specialization is the NeuronDelay below.
    **/
-  class NeuronBackprop : public Neuron
+  class SHARED NeuronBackprop : public Neuron
   {
   public:
 	NeuronBackprop ();
@@ -74,7 +85,7 @@ namespace fl
 	 Uses the net activation from the previous cycle to determine output,
 	 rather than net activation from current cycle.
    **/
-  class NeuronDelay : public NeuronBackprop
+  class SHARED NeuronDelay : public NeuronBackprop
   {
   public:
 	NeuronDelay ();
@@ -90,7 +101,7 @@ namespace fl
 	 An input Neuron that reads an entry in a vector.  Allows the programmer
 	 to devise an NN that reads feature vectors directly.
    **/
-  class NeuronInputVector : public NeuronBackprop
+  class SHARED NeuronInputVector : public NeuronBackprop
   {
   public:
 	NeuronInputVector (Vector<float> & value, int row);
@@ -105,7 +116,7 @@ namespace fl
 	 An output Neuron that uses an entry in a vector as ground truth during
 	 training.  Doesn't actually write to the vector.
    **/
-  class NeuronOutputVector : public NeuronBackprop
+  class SHARED NeuronOutputVector : public NeuronBackprop
   {
   public:
 	NeuronOutputVector (Vector<float> & value, int row);
@@ -119,7 +130,7 @@ namespace fl
   /**
 	 One-way connection between two Neurons.  Holds the synaptic weight.
    **/
-  class Synapse
+  class SHARED Synapse
   {
   public:
 	Synapse ();
@@ -137,7 +148,7 @@ namespace fl
 	 Conveys one-shot computation forward, and adjusts weight during
 	 back-prop learning.
    **/
-  class SynapseBackprop : public Synapse
+  class SHARED SynapseBackprop : public Synapse
   {
   public:
 	SynapseBackprop () {};
@@ -158,7 +169,7 @@ namespace fl
 	 to fixing the bias as an attribute of the Neuron itself, and it allows
 	 back-prop to learn the bias value.
    **/
-  class SynapseBias : public SynapseBackprop
+  class SHARED SynapseBias : public SynapseBackprop
   {
   public:
 	SynapseBias (NeuronBackprop * to) : SynapseBackprop (NULL, to) {};
@@ -170,7 +181,7 @@ namespace fl
 
   // Neural network engine ----------------------------------------------------
 
-  class NeuralNetwork
+  class SHARED NeuralNetwork
   {
   public:
 	virtual ~NeuralNetwork ();  ///< Establishes that destructor is virtual, but doesn't do anything.
@@ -185,7 +196,7 @@ namespace fl
 	 the NN, and override appropriate functions to supply data during
 	 training or runtime phases.
    **/
-  class NeuralNetworkBackprop : public NeuralNetwork
+  class SHARED NeuralNetworkBackprop : public NeuralNetwork
   {
   public:
 	virtual ~NeuralNetworkBackprop ();
@@ -210,7 +221,7 @@ namespace fl
   /**
 	 A backprop NN that binds its input and outputs to Vector<float>'s.
    **/
-  class NeuralNetworkVector : public NeuralNetworkBackprop
+  class SHARED NeuralNetworkVector : public NeuralNetworkBackprop
   {
   public:
 	NeuralNetworkVector (int inputSize, int outputSize, int hiddenSize);

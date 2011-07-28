@@ -20,7 +20,6 @@ for details.
 
 #include "fl/image.h"
 
-
 #ifdef _MSC_VER
 
 #  define WIN32_LEAN_AND_MEAN
@@ -29,9 +28,16 @@ for details.
 #  undef max
 #  include <pthread.h>
 
+#  undef SHARED
+#  ifdef flX_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+
 namespace fl
 {
-  class SlideShow
+  class SHARED SlideShow
   {
   public:
 	SlideShow ();

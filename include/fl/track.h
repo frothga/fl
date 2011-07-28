@@ -14,12 +14,23 @@ for details.
 #include "fl/convolve.h"
 #include "fl/slideshow.h"
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flImage_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
   // Generic tracking interface -----------------------------------------------
 
-  class PointTracker
+  class SHARED PointTracker
   {
   public:
 	virtual void nextImage (const Image & image) = 0;  ///< Push the current image back to the "previous" position, and make the given image the "current" image.
@@ -37,7 +48,7 @@ namespace fl
 	 estimating an updated location.  The client program must generate
 	 and manage interest points, as well as verify the new locations.
    **/
-  class KLT : public PointTracker
+  class SHARED KLT : public PointTracker
   {
   public:
 	KLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f);

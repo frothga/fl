@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -22,13 +22,24 @@ for details.
 
 #include <iostream>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNumeric_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
   /**
 	 Dimensionality reduction methods.
   **/
-  class DimensionalityReduction
+  class SHARED DimensionalityReduction
   {
   public:
 	// A derived class must override at least one analyze() method.  Otherwise,
@@ -41,7 +52,7 @@ namespace fl
 	virtual void write (std::ostream & stream) const;
   };
 
-  class PCA : public DimensionalityReduction
+  class SHARED PCA : public DimensionalityReduction
   {
   public:
 	PCA (int targetDimension);
@@ -57,7 +68,7 @@ namespace fl
 	Matrix<float> W;  ///< Basis matrix for reduced space.
   };
 
-  class MDA : public DimensionalityReduction
+  class SHARED MDA : public DimensionalityReduction
   {
   public:
 	MDA () {}

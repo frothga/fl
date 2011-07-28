@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -27,6 +27,17 @@ for details.
 #include <string>
 #include <fstream>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flImage_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
@@ -35,7 +46,7 @@ namespace fl
   /**
 	 An abstract 2D drawing surface.
   **/
-  class Canvas
+  class SHARED Canvas
   {
   public:
 	virtual ~Canvas ();
@@ -70,7 +81,7 @@ namespace fl
 
   // Specific Canvas implementations ------------------------------------------
 
-  class CanvasImage : public Canvas, public Image
+  class SHARED CanvasImage : public Canvas, public Image
   {
   public:
 	CanvasImage (const PixelFormat & format = GrayChar);
@@ -121,7 +132,7 @@ namespace fl
   /**
 	 Outputs drawing as a Postscript file
   **/
-  class CanvasPS : public Canvas
+  class SHARED CanvasPS : public Canvas
   {
   public:
 	CanvasPS (const std::string & fileName, float width, float height);  ///< width and height are in points.  They are used to determine %%BoundingBox.

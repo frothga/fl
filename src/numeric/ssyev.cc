@@ -19,6 +19,6 @@ for details.
 
 namespace fl
 {
-  template void syev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors, bool destroyA);
-  template void syev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, bool destroyA);
+  template SHARED void syev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, Matrix<float> & eigenvectors, bool destroyA);
+  template SHARED void syev (const MatrixAbstract<float> & A, Matrix<float> & eigenvalues, bool destroyA);
 }

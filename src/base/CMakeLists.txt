@@ -11,14 +11,11 @@ add_library (flBase
   ../../include/fl/binary.h
   ../../include/fl/parms.h
   ../../include/fl/pointer.h
-  ../../include/fl/random.h
   ../../include/fl/serialize.h
-  ../../include/fl/stats.h
   ../../include/fl/string.h
   ../../include/fl/time.h
   Parameters.cc
   Pointer.cc
-  random.cc
 )
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)

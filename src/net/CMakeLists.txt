@@ -12,8 +12,7 @@ add_library (flNet
   SocketStream.cc
 )
 target_link_libraries (flNet
-  ${CMAKE_THREAD_LIBS_INIT}
-  ${SOCKET_LIBRARIES}
+  ${FL_LIBRARIES}
 )
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)

@@ -19,6 +19,6 @@ for details.
 
 namespace fl
 {
-  template Matrix<float> MatrixAbstract<float>::operator ! () const;
-  template float det (const MatrixAbstract<float> & A);
+  template SHARED Matrix<float> MatrixAbstract<float>::operator ! () const;
+  template SHARED float det (const MatrixAbstract<float> & A);
 }

@@ -20,6 +20,17 @@ for details.
 
 #include <stdlib.h>
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNumeric_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 namespace fl
 {
@@ -40,7 +51,7 @@ namespace fl
 
   // Random number with a Gaussian distribution, mean of zero, and standard
   // deviation of 1.  Note that the range of this function is [-inf, inf].
-  float randGaussian ();
+  SHARED float randGaussian ();
 }
 
 

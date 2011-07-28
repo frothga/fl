@@ -24,6 +24,13 @@ else (MSVC)
   )
 endif (MSVC)
 
+target_link_libraries (flX
+  flImage
+  flNumeric
+  flBase
+  ${FL_LIBRARIES}
+)
+
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
   install (TARGETS flX
     RUNTIME DESTINATION bin
