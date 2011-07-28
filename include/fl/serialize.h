@@ -23,6 +23,7 @@ for details.
 #include <map>
 //#include <ext/hash_map>  // hash_map has different include paths on different systems.  The simplest solution is probably just to add it to the include path in Config
 #include <typeinfo>
+#include <iostream>
 
 
 namespace fl
