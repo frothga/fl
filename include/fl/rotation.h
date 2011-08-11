@@ -35,6 +35,8 @@ for details.
 #include <fl/matrix.h>
 #include <fl/lapack.h>
 
+#include <limits>
+
 
 inline fl::Vector<double>
 conjugate (const fl::Vector<double> & V)
