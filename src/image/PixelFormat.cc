@@ -112,7 +112,7 @@ PixelFormatRGBABits fl::BGRAChar (4, 0xFF00,   0xFF0000, 0xFF000000, 0xFF);
 #endif
 
 // Increment reference count for standard formats so they won't be destroyed
-// when the last external reference release them.
+// when the last external reference releases them.
 static int incrementRefcount ()
 {
   GrayChar    .PointerPolyReferenceCount++;
