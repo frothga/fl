@@ -14,6 +14,7 @@ for details.
 #include "fl/string.h"
 #include "fl/endian.h"
 
+#include <stdio.h>
 #include <typeinfo>
 
 #if BYTE_ORDER != LITTLE_ENDIAN
