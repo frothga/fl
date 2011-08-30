@@ -150,7 +150,7 @@ set (FL_LIBRARIES ${FL_LIBRARIES}
   ${GTIF_LIBRARIES}
   ${JPEG_LIBRARIES}
   ${PNG_LIBRARIES}
-  ${Freetype_LIBRARIES}
+  ${FREETYPE_LIBRARIES}
   ${X11_LIBRARIES}
   ${OPENGL_LIBRARIES}
   ${FFMPEG_LIBRARIES}
@@ -202,9 +202,10 @@ if    (PNG_FOUND)
   add_definitions (-DHAVE_PNG)
 endif (PNG_FOUND)
 
-if    (Freetype_FOUND)
+if    (FREETYPE_FOUND)
   add_definitions (-DHAVE_FREETYPE)
-endif (Freetype_FOUND)
+  set (FL_INCLUDE_DIRS ${FL_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
+endif (FREETYPE_FOUND)
 
 if    (X11_FOUND)
   add_definitions (-DHAVE_X11)

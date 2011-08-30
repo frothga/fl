@@ -1019,6 +1019,7 @@ CanvasImage::initFontLibrary ()
   scanFontDirectory ("/cygdrive/c/WINDOWS/Fonts");
   scanFontDirectory ("/usr/X11R6/lib/X11/fonts/TTF");
   scanFontDirectory ("/usr/X11R6/lib/X11/fonts/Type1");
+  scanFontDirectory ("/usr/share/fonts/default/Type1");
   // Do these once scanFontDirectory looks for "fonts.dir".  Otherwise, takes too long.
   //scanFontDirectory ("/usr/X11R6/lib/X11/fonts/100dpi");
   //scanFontDirectory ("/usr/X11R6/lib/X11/fonts/75dpi");
@@ -1072,7 +1073,7 @@ void
 CanvasImage::scanFontDirectory (const string & path)
 {
 # ifdef HAVE_FREETYPE
-  cerr << "Scanning " << path;
+  cerr << "Scanning " << path << endl;
 
 #   ifdef WIN32
 
