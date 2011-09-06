@@ -25,6 +25,7 @@ for details.
 #include <cmath>
 #include <limits.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #ifdef _MSC_VER
 #  include <float.h>
