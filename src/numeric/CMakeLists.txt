@@ -108,10 +108,12 @@ add_library (flNumeric
   MatrixBool.cc
   VectorBool.cc
   MatrixSparseBool.cc
-  #   Integer
+  #   Integer (system dependent size)
   MatrixInt.cc
   VectorInt.cc
   MatrixSparseInt.cc
+  #   uint16_t
+  MatrixUint16.cc
 
   # Lapack bridge
   ${flNumericBLAS}

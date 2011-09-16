@@ -92,6 +92,39 @@ namespace fl
 
   template<class T, int R, int C>
   MatrixResult<T>
+  MatrixFixed<T,R,C>::row (const int r) const
+  {
+	return new MatrixStrided<T> (Pointer ((void *) data, R * C * sizeof (T)), r, 1, C, 1, C);
+  }
+
+  template<class T, int R, int C>
+  MatrixResult<T>
+  MatrixFixed<T,R,C>::column (const int c) const
+  {
+	return new MatrixStrided<T> (Pointer ((void *) data, R * C * sizeof (T)), c * C, R, 1, 1, C);
+  }
+
+  template<class T, int R, int C>
+  MatrixResult<T>
+  MatrixFixed<T,R,C>::region (const int firstRow, const int firstColumn, int lastRow, int lastColumn) const
+  {
+	if (lastRow < 0)
+	{
+	  lastRow = R - 1;
+	}
+	if (lastColumn < 0)
+	{
+	  lastColumn = C - 1;
+	}
+	int offset  = firstColumn * C + firstRow;
+	int rows    = lastRow    - firstRow    + 1;
+	int columns = lastColumn - firstColumn + 1;
+
+	return new MatrixStrided<T> (Pointer ((void *) data, R * C * sizeof (T)), offset, rows, columns, 1, C);
+  }
+
+  template<class T, int R, int C>
+  MatrixResult<T>
   MatrixFixed<T,R,C>::operator ~ () const
   {
 	MatrixFixed<T,C,R> * result = new MatrixFixed<T,C,R>;

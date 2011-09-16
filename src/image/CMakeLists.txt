@@ -87,6 +87,7 @@ add_library (flImage
   FilterHessian.cc
   FiniteDifference.cc
   NonMaxSuppress.cc
+  Median.cc
   IntensityStatistics.cc
   IntensityHistogram.cc
   Normalize.cc

@@ -762,6 +762,9 @@ namespace fl
 	virtual int rows () const;
 	virtual int columns () const;
 	virtual void resize (const int rows = R, const int columns = C);
+	virtual MatrixResult<T> row (const int r) const;
+	virtual MatrixResult<T> column (const int c) const;
+	virtual MatrixResult<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const;
 
 	virtual MatrixResult<T> operator ~ () const;
 	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
