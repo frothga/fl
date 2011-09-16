@@ -10,18 +10,15 @@ for details.
 
 
 #include "fl/convolve.h"
-
-// Doesn't work under MS DLL
-// Need to make specializations of MatrixFixed shared w/o making all
-// MatrixFixeds shared, and need to do it without laying down code in the
-// header.
-//#include "fl/MatrixFixed.tcc"
-//template class fl::MatrixFixed<uint16_t,16,1>;
-//template class fl::MatrixFixed<uint16_t,16,16>;
+#include "fl/MatrixFixed.tcc"
 
 
 using namespace std;
 using namespace fl;
+
+
+template class MatrixFixed<uint16_t,16,1>;
+template class MatrixFixed<uint16_t,16,16>;
 
 
 // class Median ---------------------------------------------------------------

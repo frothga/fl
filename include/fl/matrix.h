@@ -728,7 +728,7 @@ namespace fl
   //    direct implementations in small matrix sizes (particularly 2x2).
 
   template<class T, int R, int C>
-  class SHARED MatrixFixed : public MatrixAbstract<T>
+  class MatrixFixed : public MatrixAbstract<T>
   {
   public:
 	MatrixFixed ();
@@ -780,6 +780,13 @@ namespace fl
 	// Data
 	T data[C][R];
   };
+
+  // For MS DLLs, declare that explicit specializations will be available
+  // that are exported.
+  extern template class SHARED MatrixFixed<float, 2,2>;
+  extern template class SHARED MatrixFixed<float, 3,3>;
+  extern template class SHARED MatrixFixed<double,2,2>;
+  extern template class SHARED MatrixFixed<double,3,3>;
 
   template<class T, int R, int C>
   SHARED Matrix<T> operator ! (const MatrixFixed<T,R,C> & A);
