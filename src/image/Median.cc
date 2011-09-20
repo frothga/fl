@@ -10,15 +10,10 @@ for details.
 
 
 #include "fl/convolve.h"
-#include "fl/MatrixFixed.tcc"
 
 
 using namespace std;
 using namespace fl;
-
-
-template class MatrixFixed<uint16_t,16,1>;
-template class MatrixFixed<uint16_t,16,16>;
 
 
 // class Median ---------------------------------------------------------------
@@ -124,8 +119,8 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
   public:
 	Histogram ()
 	{
-	  coarse.clear ();
-	  fine.clear ();
+	  memset (coarse, 0, 16  * sizeof (uint16_t));
+	  memset (fine,   0, 256 * sizeof (uint16_t));
 	}
 
 	inline void increment (const uint8_t & pixel)
@@ -142,12 +137,60 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 
 	inline void operator += (const Histogram & that)
 	{
-	  coarse += that.coarse;
-	  fine   += that.fine;
+	  const uint16_t * from = that.coarse;
+	  uint16_t *       to   = coarse;
+	  uint16_t *       end  = to + 16;
+	  while (to < end) *to++ += *from++;
+
+	  from = that.fine;
+	  to   = fine;
+	  end  = fine + 256;
+	  while (to < end) *to++ += *from++;
 	}
 
-	MatrixFixed<uint16_t,16,1>  coarse;
-	MatrixFixed<uint16_t,16,16> fine;
+	inline void addCoarse (const Histogram & that)
+	{
+	  const uint16_t * from = that.coarse;
+	  uint16_t *       to   = coarse;
+	  uint16_t *       end  = to + 16;
+	  while (to < end) *to++ += *from++;
+	}
+
+	inline void subtractCoarse (const Histogram & that)
+	{
+	  const uint16_t * from = that.coarse;
+	  uint16_t *       to   = coarse;
+	  uint16_t *       end  = to + 16;
+	  while (to < end) *to++ -= *from++;
+	}
+
+	inline void addFine (const Histogram & that, int c)
+	{
+	  const int        index = c * 16;
+	  const uint16_t * from = that.fine + index;
+	  uint16_t *       to   =      fine + index;
+	  uint16_t *       end  = to + 16;
+	  while (to < end) *to++ += *from++;
+	}
+
+	inline void subtractFine (const Histogram & that, int c)
+	{
+	  const int        index = c * 16;
+	  const uint16_t * from = that.fine + index;
+	  uint16_t *       to   =      fine + index;
+	  uint16_t *       end  = to + 16;
+	  while (to < end) *to++ -= *from++;
+	}
+
+	inline void clearFine (int c)
+	{
+	  uint16_t * p   = fine + c * 16;
+	  uint16_t * end = p + 16;
+	  while (p < end) *p++ = 0;
+	}
+
+	uint16_t coarse[16];
+	uint16_t fine  [256];
   };
 
   Histogram * histograms = new Histogram[width];
@@ -214,14 +257,14 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 	  r = x - radius;
 	  if (r >= 0)
 	  {
-		total.coarse -= histograms[r].coarse;
+		total.subtractCoarse (histograms[r]);
 		count--;
 	  }
 
 	  r = x + radius;
 	  if (r < width)
 	  {
-		total.coarse += histograms[r].coarse;
+		total.addCoarse (histograms[r]);
 		count++;
 	  }
 
@@ -237,36 +280,36 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 	  sum -= total.coarse[c];
 
 	  // Update associated 2nd level histogram
-	  MatrixResult<uint16_t> fineColumn = total.fine.column (c);
 	  r = x - radius;
 	  if (lastColumn[c] >= r)
 	  {
 		for (int w = lastColumn[c] + 1; w <= x; w++)
 		{
 		  r = w - radius;
-		  if (r >= 0) fineColumn -= histograms[r].fine.column (c);
+		  if (r >= 0) total.subtractFine (histograms[r], c);
 
 		  r = w + radius;
-		  if (r < width) fineColumn += histograms[r].fine.column (c);
+		  if (r < width) total.addFine (histograms[r], c);
 		}
 	  }
 	  else
 	  {
-		fineColumn.clear ();
+		total.clearFine (c);
 		int lo = max (x - radius, 0);
 		int hi = min (x + radius, width - 1);
-		for (int w = lo; w <= hi; w++) fineColumn += histograms[w].fine.column (c);
+		for (int w = lo; w <= hi; w++) total.addFine (histograms[w], c);
 	  }
 	  lastColumn[c] = x;
 
 	  // Find fine level
-	  int f = 0;
-	  for (f = 0; f < 16; f++)
+	  c *= 16;
+	  int last = c + 16;
+	  for (; c < last; c++)
 	  {
-		sum += fineColumn[f];
+		sum += total.fine[c];
 		if (sum > threshold) break;
 	  }
-	  outBuffer[y * outStrideV + x * outStrideH] = c * 16 + f;
+	  outBuffer[y * outStrideV + x * outStrideH] = c;
 	}
   }
 
