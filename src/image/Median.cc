@@ -218,7 +218,7 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
   for (int y = 0; y < height; y++)
   {
 	// Advance all column histograms one row
-	int r = y - radius;
+	int r = y - radius - 1;
 	if (r >= 0)
 	{
 	  uint8_t * p = inBuffer + r * inStrideV;
@@ -254,18 +254,18 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 	int count = widthRadius * countY;
 	for (int x = 0; x < width; x++)
 	{
-	  r = x - radius;
+	  r = x - radius - 1;
 	  if (r >= 0)
 	  {
 		total.subtractCoarse (histograms[r]);
-		count--;
+		count -= countY;
 	  }
 
 	  r = x + radius;
 	  if (r < width)
 	  {
 		total.addCoarse (histograms[r]);
-		count++;
+		count += countY;
 	  }
 
 	  // Find coarse level
@@ -285,7 +285,7 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 	  {
 		for (int w = lastColumn[c] + 1; w <= x; w++)
 		{
-		  r = w - radius;
+		  r = w - radius - 1;
 		  if (r >= 0) total.subtractFine (histograms[r], c);
 
 		  r = w + radius;
