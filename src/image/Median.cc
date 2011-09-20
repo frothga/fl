@@ -234,6 +234,7 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 		sum += total.coarse[c];
 		if (sum > threshold) break;
 	  }
+	  sum -= total.coarse[c];
 
 	  // Update associated 2nd level histogram
 	  MatrixResult<uint16_t> fineColumn = total.fine.column (c);
@@ -259,7 +260,6 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 	  lastColumn[c] = x;
 
 	  // Find fine level
-	  sum = 0;
 	  int f = 0;
 	  for (f = 0; f < 16; f++)
 	  {
