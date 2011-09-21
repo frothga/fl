@@ -119,8 +119,15 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
   public:
 	Histogram ()
 	{
-	  memset (coarse, 0, 16  * sizeof (uint16_t));
-	  memset (fine,   0, 256 * sizeof (uint16_t));
+	  uint64_t * p = (uint64_t *) coarse;
+	  p[0] = 0;
+	  p[1] = 0;
+	  p[2] = 0;
+	  p[3] = 0;
+
+	  p = (uint64_t *) fine;
+	  uint64_t * end = (uint64_t *) (fine + 256);
+	  while (p < end) *p++ = 0;
 	}
 
 	inline void increment (const uint8_t & pixel)
@@ -135,58 +142,70 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 	  fine  [pixel     ]--;
 	}
 
-	inline void operator += (const Histogram & that)
+	inline void operator += (Histogram & that)
 	{
-	  const uint16_t * from = that.coarse;
-	  uint16_t *       to   = coarse;
-	  uint16_t *       end  = to + 16;
-	  while (to < end) *to++ += *from++;
+	  uint64_t * from = (uint64_t *) that.coarse;
+	  uint64_t * to   = (uint64_t *) coarse;
+	  to[0] += from[0];
+	  to[1] += from[1];
+	  to[2] += from[2];
+	  to[3] += from[3];
 
-	  from = that.fine;
-	  to   = fine;
-	  end  = fine + 256;
-	  while (to < end) *to++ += *from++;
-	}
-
-	inline void addCoarse (const Histogram & that)
-	{
-	  const uint16_t * from = that.coarse;
-	  uint16_t *       to   = coarse;
-	  uint16_t *       end  = to + 16;
+	  from            = (uint64_t *) that.fine;
+	  to              = (uint64_t *) fine;
+	  uint64_t * end  = (uint64_t *) (fine + 256);
 	  while (to < end) *to++ += *from++;
 	}
 
-	inline void subtractCoarse (const Histogram & that)
+	inline void addCoarse (Histogram & that)
 	{
-	  const uint16_t * from = that.coarse;
-	  uint16_t *       to   = coarse;
-	  uint16_t *       end  = to + 16;
-	  while (to < end) *to++ -= *from++;
+	  uint64_t * from = (uint64_t *) that.coarse;
+	  uint64_t * to   = (uint64_t *) coarse;
+	  to[0] += from[0];
+	  to[1] += from[1];
+	  to[2] += from[2];
+	  to[3] += from[3];
 	}
 
-	inline void addFine (const Histogram & that, int c)
+	inline void subtractCoarse (Histogram & that)
 	{
-	  const int        index = c * 16;
-	  const uint16_t * from = that.fine + index;
-	  uint16_t *       to   =      fine + index;
-	  uint16_t *       end  = to + 16;
-	  while (to < end) *to++ += *from++;
+	  uint64_t * from = (uint64_t *) that.coarse;
+	  uint64_t * to   = (uint64_t *) coarse;
+	  to[0] -= from[0];
+	  to[1] -= from[1];
+	  to[2] -= from[2];
+	  to[3] -= from[3];
 	}
 
-	inline void subtractFine (const Histogram & that, int c)
+	inline void addFine (Histogram & that, int c)
 	{
-	  const int        index = c * 16;
-	  const uint16_t * from = that.fine + index;
-	  uint16_t *       to   =      fine + index;
-	  uint16_t *       end  = to + 16;
-	  while (to < end) *to++ -= *from++;
+	  int        index = c * 16;
+	  uint64_t * from  = (uint64_t *) (that.fine + index);
+	  uint64_t * to    = (uint64_t *) (fine      + index);
+	  to[0] += from[0];
+	  to[1] += from[1];
+	  to[2] += from[2];
+	  to[3] += from[3];
+	}
+
+	inline void subtractFine (Histogram & that, int c)
+	{
+	  int        index = c * 16;
+	  uint64_t * from  = (uint64_t *) (that.fine + index);
+	  uint64_t * to    = (uint64_t *) (fine      + index);
+	  to[0] -= from[0];
+	  to[1] -= from[1];
+	  to[2] -= from[2];
+	  to[3] -= from[3];
 	}
 
 	inline void clearFine (int c)
 	{
-	  uint16_t * p   = fine + c * 16;
-	  uint16_t * end = p + 16;
-	  while (p < end) *p++ = 0;
+	  uint64_t * p = (uint64_t *) (fine + c * 16);
+	  p[0] = 0;
+	  p[1] = 0;
+	  p[2] = 0;
+	  p[3] = 0;
 	}
 
 	uint16_t coarse[16];
@@ -275,7 +294,7 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 	  for (c = 0; c < 16; c++)
 	  {
 		sum += total.coarse[c];
-		if (sum > threshold) break;
+		if (sum >= threshold) break;
 	  }
 	  sum -= total.coarse[c];
 
@@ -307,7 +326,7 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 	  for (; c < last; c++)
 	  {
 		sum += total.fine[c];
-		if (sum > threshold) break;
+		if (sum >= threshold) break;
 	  }
 	  outBuffer[y * outStrideV + x * outStrideH] = c;
 	}
