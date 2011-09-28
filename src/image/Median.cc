@@ -23,7 +23,8 @@ Median::Median (int radius, float order)
   order (order),
   cacheSize (0)
 {
-  if (radius < 1) throw "This filter requires a radius of at least 1.";
+  if (radius < 1  ) throw "This filter requires a radius of at least 1.";
+  if (radius > 127) cerr << "WARNING: Window size exceeds numeric capacity." << endl; 
 }
 
 static inline int
@@ -95,24 +96,41 @@ Median::filter (const Image & image)
 void
 Median::split (int width, int height, uint8_t * inBuffer, int inStrideH, int inStrideV, uint8_t * outBuffer, int outStrideH, int outStrideV)
 {
-  if (cacheSize == 0)
+  const int histogramBytes   = sizeof (uint16_t) * (16 + 256);
+  const int extraBookkeeping = sizeof (int) * 16 + 1024;
+  int maxHistograms = (cacheSize - extraBookkeeping) / histogramBytes;
+
+  if (maxHistograms < 3 * radius) // 2 * radius, plus some amount of progress on each stripe
   {
-	filter (width, height, inBuffer, inStrideH, inStrideV, outBuffer, outStrideH, outStrideV);
+	filter (width, height, 0, width - 1, inBuffer, inStrideH, inStrideV, outBuffer, outStrideH, outStrideV);
   }
   else
   {
-	// For now, just process whole thing.
-	filter (width, height, inBuffer, inStrideH, inStrideV, outBuffer, outStrideH, outStrideV);
+	int left = 0;
+	while (left < width)
+	{
+	  int begin = max (0, left - radius);
+	  int end   = begin + maxHistograms;
+	  int right;
+	  if (end < width)  // need seam between stripes
+	  {
+		right = end - radius - 1;
+	  }
+	  else  // end >= width, so no more stipes follow
+	  {
+		end = width;
+		right = width - 1;
+	  }
+	  filter (end - begin, height, left - begin, right - begin,
+			  inBuffer  + begin * inStrideH,  inStrideH,  inStrideV,
+			  outBuffer + begin * outStrideH, outStrideH, outStrideV);
+	  left = right + 1;
+	}
   }
 }
 
-/**
-   @todo This version assumes both borders are processed, and in Boost mode.
-   If split() is fully implemented, then need flags to change border handling
-   for interior columns.
- **/
 void
-Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int inStrideV, uint8_t * outBuffer, int outStrideH, int outStrideV)
+Median::filter (int width, int height, int left, int right, uint8_t * inBuffer, int inStrideH, int inStrideV, uint8_t * outBuffer, int outStrideH, int outStrideV)
 {
   class Histogram
   {
@@ -144,6 +162,11 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 
 	inline void operator += (Histogram & that)
 	{
+	  // The trick here, and in all other similar functions in this class,
+	  // is to add four numbers at the same time.  As long as the arithmetic
+	  // does not overflow, adding a pair of unsigned 64-bit integers has
+	  // exactly the same effect as adding four pairs of unsigned 16-bit
+	  // integers individually.
 	  uint64_t * from = (uint64_t *) that.coarse;
 	  uint64_t * to   = (uint64_t *) coarse;
 	  to[0] += from[0];
@@ -214,7 +237,6 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 
   Histogram * histograms = new Histogram[width];
   int heightRadius = min (radius, height);
-  int widthRadius  = min (radius, width );
 
   // Prepare column histograms as if they are at row -1
   uint8_t * p    = inBuffer;
@@ -265,13 +287,15 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 	Histogram total;
 	int lastColumn[16];
 
-	//   Prepare running total up to column -1
-	for (int x = 0; x < widthRadius; x++) total += histograms[x];
-	for (int i = 0; i < 16; i++) lastColumn[i] = -1;
+	//   Prepare running total up to just before first column
+	int lo = max (left - 1 - radius, 0);
+	int hi = min (left - 1 + radius, width - 1);
+	for (int x = lo; x <= hi; x++) total += histograms[x];
+	for (int i = 0; i < 16; i++) lastColumn[i] = left - 1;
 
 	//   Scan columns
-	int count = widthRadius * countY;
-	for (int x = 0; x < width; x++)
+	int count = (hi - lo + 1) * countY;
+	for (int x = left; x <= right; x++)
 	{
 	  r = x - radius - 1;
 	  if (r >= 0)
@@ -314,8 +338,8 @@ Median::filter (int width, int height, uint8_t * inBuffer, int inStrideH, int in
 	  else
 	  {
 		total.clearFine (c);
-		int lo = max (x - radius, 0);
-		int hi = min (x + radius, width - 1);
+		lo = max (x - radius, 0);
+		hi = min (x + radius, width - 1);
 		for (int w = lo; w <= hi; w++) total.addFine (histograms[w], c);
 	  }
 	  lastColumn[c] = x;
