@@ -21,7 +21,6 @@ namespace std
 }
 
 #include "fl/Matrix.tcc"
-#include "fl/serialize.h"
 
 
 using namespace fl;
@@ -32,8 +31,6 @@ template class MatrixStrided<uint16_t>;
 template class Matrix<uint16_t>;
 template class MatrixTranspose<uint16_t>;
 template class MatrixRegion<uint16_t>;
-
-template class Factory<MatrixAbstract<uint16_t> >;
 
 namespace fl
 {

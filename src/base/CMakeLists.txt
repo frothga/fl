@@ -14,6 +14,7 @@ add_library (flBase
   ../../include/fl/serialize.h
   ../../include/fl/string.h
   ../../include/fl/time.h
+  Archive.cc
   Parameters.cc
   Pointer.cc
 )

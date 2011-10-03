@@ -19,60 +19,28 @@ for details.
 
 
 #include <stdio.h>
+#include <stdint.h>
 #include <string>
+#include <vector>
 #include <map>
-//#include <ext/hash_map>  // hash_map has different include paths on different systems.  The simplest solution is probably just to add it to the include path in Config
 #include <typeinfo>
 #include <iostream>
+#include <fstream>
+
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flBase_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
 
 
 namespace fl
 {
-  /*  Initial work on archive objects.
-  class ArchiveIn
-  {
-  public:
-	ArchiveIn (std::istream & stream) : stream (stream) {};
-
-	template<class T>
-	void raw (T & data)
-	{
-	  stream.read ((char *) &T, sizeof (T));
-	}
-
-	std::istream & stream;
-	std::vector<void *> pointers;
-  };
-
-  class ArchiveOut
-  {
-  public:
-	ArchiveOut (std::ostream & stream) : stream (stream) {};
-
-	template<class T>
-	void raw (T & data)
-	{
-	  stream.write ((char *) &T, sizeof (T));
-	}
-
-	std::ostream & stream;
-	std::hash_map<void *, int> pointers;
-  };
-  */
-
-  /**
-	 Defines the interface required of any class that expects to be stored
-	 on a stream.  It is optional whether a serializable class actually
-	 inherits from this class or not, because presently nothing in the
-	 serialization machinery explicitly asks for an object of this class.
-   **/
-  class Serializable
-  {
-	Serializable ();  ///< A default constructor is mandatory.
-	virtual void read  (std::istream & stream) = 0;
-	virtual void write (std::ostream & stream) const = 0;
-  };
-
   typedef void * productCreate ();
   typedef std::map<std::string, productCreate *> productMappingIn;
   typedef std::map<std::string, std::string>     productMappingOut;
@@ -230,10 +198,245 @@ namespace fl
 		uniqueName = temp;
 	  }
 
-	  Factory<B>::registry.in.insert  (make_pair (uniqueName, &create));
-	  Factory<B>::registry.out.insert (make_pair (typeidName, uniqueName));
+	  Factory<B>::registry.in.insert  (std::make_pair (uniqueName, &create));
+	  Factory<B>::registry.out.insert (std::make_pair (typeidName, uniqueName));
 	}
   };
+
+  class ClassDescription
+  {
+  public:
+	productCreate * create;
+	uint32_t        version;
+	std::string     name;     ///< name to write to stream
+	int32_t         index;    ///< serial # of class in archive; negative means not encountered yet
+  };
+
+  /**
+	 Manages all bookkeeping needed to read and write object structures
+	 on a stream.
+	 This is not the most sophisticated serialization scheme.  It can't do
+	 everything.  If you want to do everything, use Boost.
+	 The rules for this method are:
+	 * Everything is either a primitive type or a subclass of Serializable.
+	 * Serializable is always polymorphic, with at least one virtual function:
+	   serialize(Archive).
+	 * Select STL classes get special treatment, and are effectively primitive:
+	   string and vector.
+	 * Serializables are numbered sequentially in the archive, starting at zero.
+	 * Pointers are written as the index of the referenced Serializable.
+	 * Just before a Serializable class is used for the first time, a record
+	   describing it appears in the archive.  This record contains only
+	   information that might be unknown at that point.  In particular,
+	   a reference to Serializable will only cause a version number to be
+	   written, while a pointer to Serializable will cause a class name to
+	   be written, followed by a version number.
+	 * Classes are numbered sequentially in the archive, starting at zero.
+	 * If a pointer appears and its referenced Serializable has not yet
+	   appeared, then the referenced Serializable appears immediately after.
+	 * When a Serializable is written out to fulfill a pointer, the record
+	   begins with a class index.
+	 * No reference class members are allowed.  Therefore, a Serializable is
+	   either already instantiated, or is instantiated based on its class
+	   index (using a static factory function).
+	 * To implement all this, every class'es serialize() function must begin
+	   with a call that registers both the static factory function and the
+	   version number of the class.
+   **/
+  class Archive
+  {
+  public:
+	SHARED Archive (std::istream & in,  bool ownStream = false);
+	SHARED Archive (std::ostream & out, bool ownStream = false);
+	SHARED Archive (const std::string & fileName, const std::string & mode);
+	SHARED ~Archive ();
+
+	SHARED void open (std::istream & in, bool ownStream = false);
+	SHARED void open (std::ostream & out, bool ownStream = false);
+	SHARED void open (const std::string & fileName, const std::string & mode);
+	SHARED void close ();
+
+	template<class T>
+	void registerClass (const std::string & name = "")
+	{
+	  // Inner-class used to lay down a function that can construct an object
+	  // of type T.
+	  struct Product
+	  {
+		static void * create ()
+		{
+		  return new T;  // default constructor
+		}
+	  };
+
+	  std::cerr << "registerClass" << std::endl;
+	  std::string typeidName = typeid (T).name ();
+	  std::map<std::string, ClassDescription *>::iterator outEntry = classesOut.find (typeidName);
+	  if (outEntry == classesOut.end ())
+	  {
+		ClassDescription * info = new ClassDescription;
+		info->create  = Product::create;
+		info->name    = (name.size () == 0) ? typeidName : name;
+		info->version = T::serializeCurrentVersion ();
+		info->index   = -1;
+		classesOut.insert (make_pair (typeidName, info));
+		alias     .insert (make_pair (info->name, info));
+	  }
+	}
+
+	template<class T>
+	Archive & operator & (T & data)
+	{
+	  std::cerr << "operator & reference" << std::endl;
+	  std::string typeidName = typeid (T).name ();  // Because reference members are not allowed, we assume that T is exactly the class we are working with, rather than a parent thereof.
+
+	  // Auto-register if necessary
+	  std::map<std::string, ClassDescription *>::iterator it = classesOut.find (typeidName);
+	  if (it == classesOut.end ())
+	  {
+		registerClass<T> ();
+		it = classesOut.find (typeidName);
+	  }
+
+	  // Assign class index if necessary
+	  if (it->second->index == -1)
+	  {
+		it->second->index = classesIn.size ();
+		classesIn.push_back (it->second);
+		// Serialize the class description.  Only need version #.  Don't need
+		// class name because it is implicit.
+		(*this) & it->second->version;
+	  }
+
+	  // Record pointer
+	  if (in)
+	  {
+		pointersIn.push_back (&data);
+	  }
+	  else
+	  {
+		if (pointersOut.find (&data) != pointersOut.end ())
+		{
+		  throw "Attempt to serialize an object that has already been serialized via a pointer.";
+		}
+		pointersOut.insert (make_pair (&data, pointersOut.size ()));
+	  }
+
+	  data.serialize (*this, it->second->version);
+	  return *this;
+	}
+
+	template<class T>
+	Archive & operator & (T * & data)
+	{
+	  std::cerr << "operator & pointer" << std::endl;
+	  if (in)
+	  {
+		uint32_t pointer;
+		(*this) & pointer;
+		if (pointer > pointersIn.size ()) throw "pointer index out of range in archive";
+		if (pointer < pointersIn.size ()) data = (T *) pointersIn[pointer];
+		else  // new pointer, so serialize associated object
+		{
+		  uint32_t classIndex;
+		  (*this) & classIndex;
+		  if (classIndex >  classesIn.size ()) throw "class index out of range in archive";
+		  if (classIndex == classesIn.size ())  // new class, so deserialize class info
+		  {
+			std::string name;
+			(*this) & name;
+
+			std::map<std::string, ClassDescription *>::iterator it = alias.find (name);
+			if (it == classesOut.end ()) throw "Class needs to be registered before first occurrence in archive.";
+			it->second->index = classIndex;
+			classesIn.push_back (it->second);
+
+			(*this) & it->second->version;
+		  }
+
+		  data = (T *) classesIn[classIndex]->create ();
+		  pointersIn.push_back (data);
+		  data->serialize (*this, classesIn[classIndex]->version);
+		}
+	  }
+	  else
+	  {
+		std::map<void *, uint32_t>::iterator p = pointersOut.find (data);
+		if (p != pointersOut.end ()) (*this) & p->second;
+		else
+		{
+		  p = pointersOut.insert (std::make_pair (data, pointersOut.size ())).first;
+		  (*this) & p->second;
+
+		  std::string typeidName = typeid (*data).name ();
+		  std::map<std::string, ClassDescription *>::iterator c = classesOut.find (typeidName);
+		  if (c == classesOut.end ()) throw "Attempt to write unregistered polymorphic class";
+		  if (c->second->index >= 0) (*this) & c->second->index;
+		  else
+		  {
+			c->second->index = classesIn.size ();
+			classesIn.push_back (c->second);
+			(*this) & c->second->index;
+			(*this) & c->second->name;
+			(*this) & c->second->version;
+		  }
+
+		  data->serialize (*this, c->second->version);
+		}
+	  }
+	  return *this;
+	}
+
+	template<class T>
+	Archive & operator & (std::vector<T> & data)
+	{
+	  std::cerr << "operator & vector" << std::endl;
+	  uint32_t count = data.size ();
+	  (*this) & count;
+	  if (in)
+	  {
+		if (in->bad ()) throw "stream bad";
+		data.reserve (data.size () + count);
+		for (int i = 0; i < count; i++)
+		{
+		  T temp;
+		  (*this) & temp;
+		  data.push_back (temp);
+		}
+	  }
+	  else
+	  {
+		for (int i = 0; i < count; i++) (*this) & data[i];
+	  }
+	  return (*this);
+	}
+
+	std::istream * in;
+	std::ostream * out;
+	bool ownStream;
+
+	std::vector<void *>        pointersIn;   ///< mapping from serial # to pointer
+	std::map<void *, uint32_t> pointersOut;  ///< mapping from pointer to serial #; @todo change this to unordered_map when broadly available
+
+	std::vector<ClassDescription *>           classesIn;   ///< mapping from serial # to class description; ClassDescription objects are held by classesOut
+	std::map<std::string, ClassDescription *> classesOut;  ///< mapping from RTTI name to class description; one-to-one
+	std::map<std::string, ClassDescription *> alias;       ///< mapping from user-assigned name to class description; can be many-to-one
+  };
+
+  // These are necessary, because any type that does not have an explicit
+  // operator&() function must have a serialize() function.  The programmer
+  // may define others locally as needed.
+  template<> SHARED Archive & Archive::operator & (std::string    & data);
+  template<> SHARED Archive & Archive::operator & (uint8_t        & data);
+  template<> SHARED Archive & Archive::operator & (uint16_t       & data);
+  template<> SHARED Archive & Archive::operator & (uint32_t       & data);
+  template<> SHARED Archive & Archive::operator & (uint64_t       & data);
+  template<> SHARED Archive & Archive::operator & (int8_t         & data);
+  template<> SHARED Archive & Archive::operator & (int16_t        & data);
+  template<> SHARED Archive & Archive::operator & (int32_t        & data);
+  template<> SHARED Archive & Archive::operator & (int64_t        & data);
+  template<> SHARED Archive & Archive::operator & (float          & data);
+  template<> SHARED Archive & Archive::operator & (double         & data);
 }
 
 

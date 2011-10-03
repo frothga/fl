@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/Matrix.tcc"
-#include "fl/serialize.h"
 
 
 using namespace fl;
@@ -26,8 +25,6 @@ template class MatrixStrided<int>;
 template class Matrix<int>;
 template class MatrixTranspose<int>;
 template class MatrixRegion<int>;
-
-template class Factory<MatrixAbstract<int> >;
 
 namespace fl
 {

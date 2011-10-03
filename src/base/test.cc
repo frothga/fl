@@ -43,6 +43,20 @@ public:
   A () {}
   virtual void read (istream & stream) {}
   virtual void write (ostream & stream) const {}
+  virtual void serialize (Archive & a, uint32_t version)
+  {
+	cerr << "A version " << version << endl;
+	a & number;
+	a & name;
+  }
+  static uint32_t serializeCurrentVersion ()
+  {
+	return 1;
+  }
+
+  // Some basic types to serialize
+  int32_t number;
+  string name;
 };
 
 class B : public A
@@ -57,8 +71,63 @@ public:
   C () {}
 };
 
+class D
+{
+public:
+  virtual void serialize (Archive & a, uint32_t version)
+  {
+	cerr << "D version " << version << endl;
+	a.registerClass<A> ();
+	a.registerClass<B> ();
+	a.registerClass<C> ("bob");
+	a & collection;
+  }
+  static uint32_t serializeCurrentVersion ()
+  {
+	return 2;
+  }
+
+  bool operator == (const D & that)
+  {
+	if (collection.size ()  !=  that.collection.size ())
+	{
+	  cerr << "Collections are different sizes: " << collection.size () << " " << that.collection.size () << endl;
+	  return false;
+	}
+	for (int i = 0; i < collection.size (); i++)
+	{
+	  A * a = collection[i];
+	  A * b = that.collection[i];
+	  if (typeid (*a)  !=  typeid (*b))
+	  {
+		cerr << "types are different: " << typeid (*a).name () << " " << typeid (*b).name () << endl;
+		return false;
+	  }
+	  if (a->name != b->name) return false;
+	  if (a->number != b->number) return false;
+	}
+
+	return true;
+  }
+
+  vector<A *> collection;
+};
+
+ostream &
+operator << (ostream & stream, const D & data)
+{
+  cerr << typeid (data).name () << endl;
+  cerr << data.collection.size () << endl;
+  for (int i = 0; i < data.collection.size (); i++)
+  {
+	A * a = data.collection[i];
+	cerr << hex << a << dec << " " << typeid (*a).name () << " " << a->name << " " << a->number << endl;
+  }
+  return stream;
+}
+
 void
-testSerialize ()
+testFactory ()
 {
   Product<A, A>::add ("a");
   Product<A, B>::add ("b");
@@ -74,10 +143,44 @@ testSerialize ()
   if (typeid (*a) != typeid (b))
   {
 	cerr << "Unexpected class retrieved from stream" << endl;
-	throw "Serialize fails";
+	throw "Factory fails";
   }
 
-  cout << "Serialize passes" << endl;
+  cout << "Factory passes" << endl;
+}
+
+void
+testArchive ()
+{
+  A * a = new A;
+  B * b = new B;
+  C * c = new C;
+  D before;
+  before.collection.push_back (a);
+  before.collection.push_back (b);
+  before.collection.push_back (c);
+  a->name = "a";
+  b->name = "b";
+  c->name = "c";
+  a->number = 1;
+  b->number = 2;
+  c->number = 3;
+
+  {
+	Archive archive ("testBaseFile", "w");
+	archive & before;
+  }
+
+  {
+	Archive archive ("testBaseFile", "r");
+	D after;
+	archive & after;
+
+	cerr << "before:" << endl << before << endl;
+	cerr << "after:" << endl << after << endl;
+	if (after == before) cout << "Archive passes" << endl;
+	else throw "Archive fails";
+  }
 }
 
 inline void
@@ -187,8 +290,9 @@ int main (int argc, char * argv[])
   try
   {
 	//testParameters (argc, argv);
-	testSerialize ();
-	testVectorsparse ();
+	//testFactory ();
+	testArchive ();
+	//testVectorsparse ();
   }
   catch (const char * message)
   {
