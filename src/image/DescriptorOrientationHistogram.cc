@@ -36,12 +36,6 @@ DescriptorOrientationHistogram::DescriptorOrientationHistogram (float supportRad
   lastBuffer = 0;
 }
 
-DescriptorOrientationHistogram::DescriptorOrientationHistogram (istream & stream)
-{
-  lastBuffer = 0;
-  read (stream);
-}
-
 void
 DescriptorOrientationHistogram::computeGradient (const Image & image)
 {
@@ -219,25 +213,12 @@ DescriptorOrientationHistogram::patch (const Vector<float> & value)
 }
 
 void
-DescriptorOrientationHistogram::read (std::istream & stream)
+DescriptorOrientationHistogram::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
-
-  stream.read ((char *) &supportRadial, sizeof (supportRadial));
-  stream.read ((char *) &supportPixel,  sizeof (supportPixel));
-  stream.read ((char *) &kernelSize,    sizeof (kernelSize));
-  stream.read ((char *) &bins,          sizeof (bins));
-  stream.read ((char *) &cutoff,        sizeof (cutoff));
-}
-
-void
-DescriptorOrientationHistogram::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  stream.write ((char *) &supportRadial, sizeof (supportRadial));
-  stream.write ((char *) &supportPixel,  sizeof (supportPixel));
-  stream.write ((char *) &kernelSize,    sizeof (kernelSize));
-  stream.write ((char *) &bins,          sizeof (bins));
-  stream.write ((char *) &cutoff,        sizeof (cutoff));
+  archive & *((Descriptor *) this);
+  archive & supportRadial;
+  archive & supportPixel;
+  archive & kernelSize;
+  archive & bins;
+  archive & cutoff;
 }

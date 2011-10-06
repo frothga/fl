@@ -75,8 +75,8 @@ namespace fl
 	virtual int columns () const;
 	virtual void resize (const int rows, const int columns = 1);  ///< We only have one size.  This will throw an exception if (rows * columns) != 2.
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
 
 	virtual MatrixResult<double> homogeneous () const;
 
@@ -96,8 +96,7 @@ namespace fl
 	PointInterest (std::istream & stream);
 	virtual ~PointInterest ();
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	float weight;  ///< strength of response of interest operator
 	float scale;  ///< "characteristic scale" of image around interest point
@@ -129,8 +128,7 @@ namespace fl
 	Matrix<double> rectification () const;  ///< Computes the 3x3 (affine) homography from the image patch indicated by this point to the normalized form.
 	Matrix<double> projection () const;  ///< Computes the 3x3 (affine) homography from the normalized form back into the image patch indicated by this point.
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	/**
 	   The matrix A is the 2x2 transformation from a rectified patch back to
@@ -151,8 +149,7 @@ namespace fl
 	PointMSER (int index, unsigned char threshold, bool sign = true);
 	PointMSER (std::istream & stream);
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int index;  ///< of a pixel actually inside the region.  The (x,y) value inherited from PointAffine may not satisfy this property.  index translates to a pixel value as (index % width, index / width).
 	unsigned char threshold;  ///< gray-level value

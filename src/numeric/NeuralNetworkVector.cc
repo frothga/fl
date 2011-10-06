@@ -85,12 +85,13 @@ NeuralNetworkVector::read (std::istream & stream)
   constructNetwork (inputSize, outputSize, hiddenSizes);
 
   // Now read all the weights
+  Archive archive (stream);
   Vector<float> biases;
   Matrix<float> weights;
   if (hiddenLayers < 1)
   {
-	biases.read (stream);
-	weights.read (stream);
+	archive & biases;
+	archive & weights;
 	for (int i = 0; i < outputs.size (); i++)
 	{
 	  vector<Synapse *> & synapses = outputs[i]->inputs;
@@ -104,8 +105,8 @@ NeuralNetworkVector::read (std::istream & stream)
   else
   {
 	// Inputs to first hidden layer
-	biases.read (stream);
-	weights.read (stream);
+	archive & biases;
+	archive & weights;
 	for (int i = 0; i < hiddenSizes[0]; i++)
 	{
 	  vector<Synapse *> & synapses = hidden[i]->inputs;
@@ -120,8 +121,8 @@ NeuralNetworkVector::read (std::istream & stream)
 	int h = hiddenSizes[0];
 	for (int i = 1; i < hiddenLayers; i++)
 	{
-	  biases.read (stream);
-	  weights.read (stream);
+	  archive & biases;
+	  archive & weights;
 	  for (int j = 0; j < hiddenSizes[i]; j++)
 	  {
 		vector<Synapse *> & synapses = hidden[h++]->inputs;
@@ -134,8 +135,8 @@ NeuralNetworkVector::read (std::istream & stream)
 	}
 
 	// Hidden layer to output layer
-	biases.read (stream);
-	weights.read (stream);
+	archive & biases;
+	archive & weights;
 	for (int i = 0; i < outputs.size (); i++)
 	{
 	  vector<Synapse *> & synapses = outputs[i]->inputs;
@@ -168,6 +169,7 @@ NeuralNetworkVector::write (std::ostream & stream, bool withName) const
   }
 
   // Write all the weights
+  Archive archive (stream);
   Vector<float> biases;
   Matrix<float> weights;
   if (hiddenLayers < 1)
@@ -183,8 +185,8 @@ NeuralNetworkVector::write (std::ostream & stream, bool withName) const
 		weights(i,j-1) = synapses[j]->weight;
 	  }
 	}
-	biases.write (stream);
-	weights.write (stream);
+	archive & biases;
+	archive & weights;
   }
   else
   {
@@ -200,8 +202,8 @@ NeuralNetworkVector::write (std::ostream & stream, bool withName) const
 		weights(i,j-1) = synapses[j]->weight;
 	  }
 	}
-	biases.write (stream);
-	weights.write (stream);
+	archive & biases;
+	archive & weights;
 
 	// Hidden layer to hidden layer
 	int h = hiddenSizes[0];
@@ -218,8 +220,8 @@ NeuralNetworkVector::write (std::ostream & stream, bool withName) const
 		  weights(j,k-1) = synapses[k]->weight;
 		}
 	  }
-	  biases.write (stream);
-	  weights.write (stream);
+	  archive & biases;
+	  archive & weights;
 	}
 
 	// Hidden layer to output layer
@@ -234,8 +236,8 @@ NeuralNetworkVector::write (std::ostream & stream, bool withName) const
 		weights(i,j-1) = synapses[j]->weight;
 	  }
 	}
-	biases.write (stream);
-	weights.write (stream);
+	archive & biases;
+	archive & weights;
   }
 }
 

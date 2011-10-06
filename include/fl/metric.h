@@ -50,8 +50,8 @@ namespace fl
 
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const = 0;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
   };
 }
 

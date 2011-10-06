@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/reduce.h"
-#include "fl/serialize.h"
 
 
 using namespace std;
@@ -24,7 +23,7 @@ using namespace fl;
 
 // DimensionalityReduction ----------------------------------------------------
 
-template class Factory<DimensionalityReduction>;
+uint32_t DimensionalityReduction::serializeVersion = 0;
 
 void
 DimensionalityReduction::analyze (const vector< Vector<float> > & data)
@@ -40,11 +39,6 @@ DimensionalityReduction::analyze (const vector< Vector<float> > & data, const ve
 }
 
 void
-DimensionalityReduction::read (istream & stream)
-{
-}
-
-void
-DimensionalityReduction::write (ostream & stream) const
+DimensionalityReduction::serialize (Archive & archive, uint32_t version)
 {
 }

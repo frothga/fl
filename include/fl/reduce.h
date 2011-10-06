@@ -48,21 +48,19 @@ namespace fl
 	virtual void analyze (const std::vector< Vector<float> > & data, const std::vector<int> & classAssignments);
 	virtual Vector<float> reduce (const Vector<float> & datum) = 0;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
   };
 
   class SHARED PCA : public DimensionalityReduction
   {
   public:
-	PCA (int targetDimension);
-	PCA (std::istream & stream);
+	PCA (int targetDimension = 1);
 
 	virtual void analyze (const std::vector< Vector<float> > & data);
 	virtual Vector<float> reduce (const Vector<float> & datum);
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int targetDimension;
 	Matrix<float> W;  ///< Basis matrix for reduced space.
@@ -72,13 +70,11 @@ namespace fl
   {
   public:
 	MDA () {}
-	MDA (std::istream & stream);
 
 	virtual void analyze (const std::vector< Vector<float> > & data, const std::vector<int> & classAssignments);
 	virtual Vector<float> reduce (const Vector<float> & datum);
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	Matrix<float> W;  ///< Basis matrix for reduced space.
   };

@@ -40,11 +40,6 @@ DescriptorTextonScale::DescriptorTextonScale (int angles, float firstScale, floa
   initialize ();
 }
 
-DescriptorTextonScale::DescriptorTextonScale (istream & stream)
-{
-  read (stream);
-}
-
 void
 DescriptorTextonScale::initialize ()
 {
@@ -341,27 +336,14 @@ DescriptorTextonScale::patch (const Vector<float> & value)
 }
 
 void
-DescriptorTextonScale::read (std::istream & stream)
+DescriptorTextonScale::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
+  archive & *((Descriptor *) this);
+  archive & angles;
+  archive & firstScale;
+  archive & lastScale;
+  archive & steps;
+  archive & supportRadial;
 
-  stream.read ((char *) &angles,        sizeof (angles));
-  stream.read ((char *) &firstScale,    sizeof (firstScale));
-  stream.read ((char *) &lastScale,     sizeof (lastScale));
-  stream.read ((char *) &steps,         sizeof (steps));
-  stream.read ((char *) &supportRadial, sizeof (supportRadial));
-
-  initialize ();
-}
-
-void
-DescriptorTextonScale::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  stream.write ((char *) &angles,        sizeof (angles));
-  stream.write ((char *) &firstScale,    sizeof (firstScale));
-  stream.write ((char *) &lastScale,     sizeof (lastScale));
-  stream.write ((char *) &steps,         sizeof (steps));
-  stream.write ((char *) &supportRadial, sizeof (supportRadial));
+  if (archive.in) initialize ();
 }

@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005 Sandia Corporation.
+Copyright 2005, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -33,11 +33,6 @@ DescriptorSchmid::DescriptorSchmid (int scaleCount, float scaleStep)
   this->scaleStep = scaleStep;
 
   initialize (scaleCount);
-}
-
-DescriptorSchmid::DescriptorSchmid (std::istream & stream)
-{
-  read (stream);
 }
 
 void
@@ -101,24 +96,12 @@ DescriptorSchmid::findScale (float sigma)
 }
 
 void
-DescriptorSchmid::read (std::istream & stream)
+DescriptorSchmid::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
-
-  int scaleCount;
-  stream.read ((char *) &scaleCount, sizeof (scaleCount));
-  stream.read ((char *) &scaleStep, sizeof (scaleStep));
-
-  initialize (scaleCount);
-}
-
-void
-DescriptorSchmid::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
+  archive & *((Descriptor *) this);
   int scaleCount = descriptors.size ();
-  stream.write ((char *) &scaleCount, sizeof (scaleCount));
-  stream.write ((char *) &scaleStep, sizeof (scaleStep));
-}
+  archive & scaleCount;
+  archive & scaleStep;
 
+  if (archive.in) initialize (scaleCount);
+}

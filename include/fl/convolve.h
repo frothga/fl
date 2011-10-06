@@ -21,6 +21,7 @@ for details.
 #include "fl/image.h"
 #include "fl/matrix.h"
 #include "fl/point.h"
+#include "fl/serialize.h"
 
 #include <ostream>
 
@@ -97,7 +98,11 @@ namespace fl
 	virtual Image filter (const Image & image);
 	virtual double response (const Image & image, const Point & p) const;  ///< Strength of response of filter to image at input pixel (x, y).  Crop mode is treated as if ZeroFill mode, ie: no shift between input and output coordinate system.
 
+	virtual void serialize (Archive & archive, uint32_t version);
+
 	void normalFloats ();  ///< Zero out any sub-normal floats in kernel, because they cause numerical exceptions that really drag down performance.
+
+	static uint32_t serializeVersion;
   };
 
   class SHARED Gaussian2D : public ConvolutionDiscrete2D
@@ -161,6 +166,8 @@ namespace fl
 	Laplacian (double sigma = 1.0,
 			   const BorderMode mode = Crop,
 			   const PixelFormat & format = GrayFloat);
+
+	virtual void serialize (Archive & archive, uint32_t version);
 
 	double sigma;
   };

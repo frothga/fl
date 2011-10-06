@@ -40,8 +40,8 @@ KMeansParallel::KMeansParallel (float maxSize, float minSize, int initialK, int 
 {
 }
 
-KMeansParallel::KMeansParallel (istream & stream, const string & clusterFileName)
-: KMeans (stream, clusterFileName),
+KMeansParallel::KMeansParallel (const string & clusterFileName)
+: KMeans (clusterFileName),
   Listener (4000)
 {
 }
@@ -74,14 +74,13 @@ KMeansParallel::run (const std::vector<Vector<float> > & data)
     // cost of losing everything in a crash).
 	if (clusterFileName.size ())
 	{
-	  ofstream target (clusterFileName.c_str (), ios::binary);
-	  write (target);
+	  Archive (clusterFileName, "w") & *this;
 	}
 	else
 	{
 	  cout.flush ();
 	  rewind (stdout);
-	  write (cout);
+	  Archive (cout) & *this;
 	}
 
 	// Estimation: Generate probability of membership for each datum in each cluster.
@@ -254,7 +253,7 @@ cerr << peer << " put back " << unit << endl;
 		ss.read ((char *) &change, sizeof (change));
 		try
 		{
-		  clusters[unit].read (ss);
+		  Archive ((istream &) ss) & clusters[unit];
 		}
 		catch (...)
 		{
@@ -339,13 +338,13 @@ cerr << "  expecting: " << size << " " << ctime (&mtime);
 cerr << "  checking NFS: " << stats.st_size << " " << ctime (&stats.st_mtime);
 		}
 		while (stats.st_size != size  ||  stats.st_mtime < mtime);
-		ifstream target (clusterFileName.c_str (), ios::binary);
-        if (! target.good ())
+		Archive target (clusterFileName, "r");
+        if (! target.in->good ())
 		{
 		  cerr << "Unable to reopen cluster file " << clusterFileName << endl;
 		  exit (1);
 		}
-		read (target);
+		target & *this;
 		member.resize (clusters.size (), data->size ());
 		break;
 	  }
@@ -376,13 +375,13 @@ cerr << "perform maximization" << endl;
         if (! clusters.size ())  // Catch the very special case that we jumped in during maximization
 		{
 		  cerr << "  need to read cluster file" << endl;
-		  ifstream target (clusterFileName.c_str (), ios::binary);
-		  if (! target.good ())
+		  Archive target (clusterFileName, "r");
+		  if (! target.in->good ())
 		  {
 			cerr << "Unable to reopen cluster file " << clusterFileName << endl;
 			exit (1);
 		  }
-		  read (target);
+		  target & *this;
 		  member.resize (clusters.size (), data->size ());
 		}
 		int unit;
@@ -401,7 +400,7 @@ cerr << "  done receiving member" << endl;
 		float change = maximize (*data, member, unit);
 		ss.write ((char *) &change, sizeof (change));
 cerr << "  about to write cluster" << endl;
-		clusters[unit].write (ss);
+		Archive ((ostream &) ss) & clusters[unit];
 		ss.flush ();
 cerr << "  wrote cluster" << endl;
 		break;

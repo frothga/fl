@@ -30,6 +30,12 @@ using namespace fl;
 
 // class ClusterGauss ---------------------------------------------------------
 
+uint32_t ClusterGauss::serializeVersion = 0;
+
+ClusterGauss::ClusterGauss ()
+{
+}
+
 ClusterGauss::ClusterGauss (Vector<float> & center, float alpha)
 {
   this->alpha = alpha;
@@ -45,11 +51,6 @@ ClusterGauss::ClusterGauss (Vector<float> & center, Matrix<float> & covariance, 
   this->center.copyFrom (center);
   this->covariance.copyFrom (covariance);
   prepareInverse ();
-}
-
-ClusterGauss::ClusterGauss (istream & stream)
-{
-  read (stream);
 }
 
 ClusterGauss::~ClusterGauss ()
@@ -117,20 +118,13 @@ ClusterGauss::probability (const Vector<float> & point, float * scale, float * m
 }
 
 void
-ClusterGauss::read (istream & stream)
+ClusterGauss::serialize (Archive & archive, uint32_t version)
 {
-  stream.read ((char *) &alpha, sizeof (alpha));
-  center.read (stream);
-  covariance.read (stream);
-  prepareInverse ();
-}
+  archive & alpha;
+  archive & center;
+  archive & covariance;
 
-void
-ClusterGauss::write (ostream & stream) const
-{
-  stream.write ((char *) &alpha, sizeof (alpha));
-  center.write (stream);
-  covariance.write (stream);
+  if (archive.in) prepareInverse ();
 }
 
 
@@ -146,10 +140,8 @@ KMeans::KMeans (float maxSize, float minSize, int initialK, int maxK, const stri
   this->clusterFileName = clusterFileName;
 }
 
-KMeans::KMeans (istream & stream, const string & clusterFileName)
+KMeans::KMeans (const string & clusterFileName)
 {
-  read (stream);
-
   this->clusterFileName = clusterFileName;
 }
 
@@ -172,11 +164,7 @@ KMeans::run (const std::vector<Vector<float> > & data)
     // We assume that one iteration takes a very long time, so the cost of
     // dumping our state every time is relatively small (esp. compared to the
     // cost of losing everything in a crash).
-	if (clusterFileName.size ())
-	{
-	  ofstream target (clusterFileName.c_str (), ios::binary);
-	  write (target);
-	}
+	if (clusterFileName.size ()) Archive (clusterFileName, "w") & *this;
 
 	// Estimation: Generate probability of membership for each datum in each cluster.
 	Matrix<float> member (clusters.size (), data.size ());
@@ -568,71 +556,23 @@ KMeans::representative (int group)
 }
 
 void
-KMeans::read (istream & stream)
-{
-  stream.read ((char *) &maxSize,  sizeof (maxSize));
-  stream.read ((char *) &minSize,  sizeof (minSize));
-  stream.read ((char *) &initialK, sizeof (initialK));  // Actually, the current K!  :)
-  stream.read ((char *) &maxK,     sizeof (maxK));
-
-  clusters.clear ();
-  for (int i = 0; i < initialK; i++)
-  {
-	ClusterGauss c (stream);
-	clusters.push_back (c);
-  }
-
-  int count;
-  stream.read ((char *) &count, sizeof (count));
-  for (int i = 0; i < count; i++)
-  {
-	float change;
-	stream.read ((char *) &change, sizeof (change));
-	changes.push_back (change);
-  }
-
-  stream.read ((char *) &count, sizeof (count));
-  for (int i = 0; i < count; i++)
-  {
-	float velocity;
-	stream.read ((char *) &velocity, sizeof (velocity));
-	velocities.push_back (velocity);
-  }
-}
-
-void
-KMeans::write (ostream & stream) const
+KMeans::serialize (Archive & archive, uint32_t version)
 {
   cerr << "top of write" << endl;
-  (const_cast<KMeans *> (this))->clusterFileTime = time (NULL);
+  if (archive.out) clusterFileTime = time (NULL);
 
-  ClusterMethod::write (stream);
+  archive & *((ClusterMethod *) this);
 
-  stream.write ((char *) &maxSize, sizeof (maxSize));
-  stream.write ((char *) &minSize, sizeof (minSize));
-  int K = clusters.size ();
-  stream.write ((char *) &K,       sizeof (K));
-  stream.write ((char *) &maxK,    sizeof (maxK));
+  archive & maxSize;
+  archive & minSize;
+  initialK = clusters.size ();
+  archive & initialK;
+  archive & maxK;
 
-  for (int i = 0; i < K; i++)
-  {
-	clusters[i].write (stream);
-  }
+  archive & clusters;
+  archive & changes;
+  archive & velocities;
 
-  int count = changes.size ();
-  stream.write ((char *) &count, sizeof (count));
-  for (int i = 0; i < count; i++)
-  {
-	stream.write ((char *) &changes[i], sizeof (float));
-  }
-
-  count = velocities.size ();
-  stream.write ((char *) &count, sizeof (count));
-  for (int i = 0; i < count; i++)
-  {
-	stream.write ((char *) &velocities[i], sizeof (float));
-  }
-
-  (const_cast<KMeans *> (this))->clusterFileSize = stream.tellp ();
+  if (archive.out) clusterFileSize = archive.out->tellp ();
   cerr << "bottom of write" << endl;
 }

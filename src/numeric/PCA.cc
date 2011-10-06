@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -25,13 +25,8 @@ using namespace fl;
 // class PCA ------------------------------------------------------------------
 
 PCA::PCA (int targetDimension)
+: targetDimension (targetDimension)
 {
-  this->targetDimension = targetDimension;
-}
-
-PCA::PCA (istream & stream)
-{
-  read (stream);
 }
 
 void
@@ -84,19 +79,9 @@ PCA::reduce (const Vector<float> & datum)
 }
 
 void
-PCA::read (istream & stream)
+PCA::serialize (Archive & archive, uint32_t version)
 {
-  DimensionalityReduction::read (stream);
-
-  stream.read ((char *) & targetDimension, sizeof (targetDimension));
-  W.read (stream);
-}
-
-void
-PCA::write (ostream & stream) const
-{
-  DimensionalityReduction::write (stream);
-
-  stream.write ((char *) & targetDimension, sizeof (targetDimension));
-  W.write (stream);
+  archive & *((DimensionalityReduction *) this);
+  archive & targetDimension;
+  archive & W;
 }

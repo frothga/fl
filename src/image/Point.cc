@@ -23,6 +23,8 @@ using namespace fl;
 
 // class Point ----------------------------------------------------------------
 
+uint32_t Point::serializeVersion = 0;
+
 Point::Point ()
 {
   x = 0;
@@ -33,11 +35,6 @@ Point::Point (double x, double y)
 {
   this->x = x;
   this->y = y;
-}
-
-Point::Point (std::istream & stream)
-{
-  read (stream);
 }
 
 MatrixAbstract<double> *
@@ -68,17 +65,10 @@ Point::resize (const int rows, const int columns)
 }
 
 void
-Point::read (std::istream & stream)
+Point::serialize (Archive & archive, uint32_t version)
 {
-  stream.read ((char *) &x, sizeof (x));
-  stream.read ((char *) &y, sizeof (y));
-}
-
-void
-Point::write (std::ostream & stream) const
-{
-  stream.write ((char *) &x, sizeof (x));
-  stream.write ((char *) &y, sizeof (y));
+  archive & x;
+  archive & y;
 }
 
 MatrixResult<double>
@@ -132,31 +122,28 @@ PointInterest::PointInterest (const Point & p)
   detector = Unknown;
 }
 
-PointInterest::PointInterest (std::istream & stream)
-{
-  read (stream);
-}
-
 PointInterest::~PointInterest ()
 {
 }
 
-void
-PointInterest::read (std::istream & stream)
+namespace fl
 {
-  Point::read (stream);
-  stream.read ((char *) &weight,   sizeof (weight));
-  stream.read ((char *) &scale,    sizeof (scale));
-  stream.read ((char *) &detector, sizeof (detector));
+  template<>
+  Archive &
+  Archive::operator & (PointInterest::DetectorType & detector)
+  {
+	if (in) in ->read  ((char *) &detector, sizeof (detector));
+	else    out->write ((char *) &detector, sizeof (detector));
+  }
 }
 
 void
-PointInterest::write (std::ostream & stream) const
+PointInterest::serialize (Archive & archive, uint32_t version)
 {
-  Point::write (stream);
-  stream.write ((char *) &weight,   sizeof (weight));
-  stream.write ((char *) &scale,    sizeof (scale));
-  stream.write ((char *) &detector, sizeof (detector));
+  archive & *((Point *) this);
+  archive & weight;
+  archive & scale;
+  archive & detector;
 }
 
 
@@ -181,11 +168,6 @@ PointAffine::PointAffine (const PointInterest & p)
 {
   A.identity ();
   angle = 0;
-}
-
-PointAffine::PointAffine (std::istream & stream)
-{
-  read (stream);
 }
 
 PointAffine::PointAffine (const Matrix<double> & S)
@@ -242,19 +224,11 @@ PointAffine::projection () const
 }
 
 void
-PointAffine::read (std::istream & stream)
+PointAffine::serialize (Archive & archive, uint32_t version)
 {
-  PointInterest::read (stream);
-  A.read (stream);
-  stream.read ((char *) &angle, sizeof (angle));
-}
-
-void
-PointAffine::write (std::ostream & stream) const
-{
-  PointInterest::write (stream);
-  A.write (stream);
-  stream.write ((char *) &angle, sizeof (angle));
+  archive & *((PointInterest *) this);
+  archive & A;
+  archive & angle;
 }
 
 
@@ -296,25 +270,11 @@ PointMSER::PointMSER (int index, unsigned char threshold, bool sign)
   this->sign      = sign;
 }
 
-PointMSER::PointMSER (std::istream & stream)
-{
-  read (stream);
-}
-
 void
-PointMSER::read (std::istream & stream)
+PointMSER::serialize (Archive & archive, uint32_t version)
 {
-  PointAffine::read (stream);
-  stream.read ((char *) &index,     sizeof (index));
-  stream.read ((char *) &threshold, sizeof (threshold));
-  stream.read ((char *) &sign,      sizeof (sign));
-}
-
-void
-PointMSER::write (std::ostream & stream) const
-{
-  PointAffine::write (stream);
-  stream.write ((char *) &index,     sizeof (index));
-  stream.write ((char *) &threshold, sizeof (threshold));
-  stream.write ((char *) &sign,      sizeof (sign));
+  archive & *((PointAffine *) this);
+  archive & index;
+  archive & threshold;
+  archive & sign;
 }

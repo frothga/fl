@@ -4,6 +4,13 @@ Copyright (c) 2001-2004 Dept. of Computer Science and Beckman Institute,
                         Univ. of Illinois.  All rights reserved.
 Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
+
+
+Copyright 2010 Sandia Corporation.
+Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+the U.S. Government retains certain rights in this software.
+Distributed under the GNU Lesser General Public License.  See the file LICENSE
+for details.
 */
 
 
@@ -19,21 +26,20 @@ using namespace std;
 
 DescriptorScale::DescriptorScale (float firstScale, float lastScale, int interQuanta, float quantum)
 {
-  initialize (firstScale, lastScale, powf (quantum, 1.0f / interQuanta));
+  this->firstScale = max (1.0f, firstScale);
+  this->lastScale = max (this->firstScale, lastScale);
+  stepSize = powf (quantum, 1.0f / interQuanta);
+  dimension = 1;
 }
 
-DescriptorScale::DescriptorScale (istream & stream)
+DescriptorScale::~DescriptorScale ()
 {
-  read (stream);
+  for (int i = 0; i < laplacians.size (); i++) delete laplacians[i];
 }
 
 void
-DescriptorScale::initialize (float firstScale, float lastScale, float stepSize)
+DescriptorScale::initialize ()
 {
-  dimension = 1;
-  firstScale = max (1.0f, firstScale);
-  lastScale = max (firstScale, lastScale);
-
   int s = 0;
   while (true)
   {
@@ -42,8 +48,8 @@ DescriptorScale::initialize (float firstScale, float lastScale, float stepSize)
 	{
 	  break;
 	}
-	Laplacian l (scale);
-	l *= scale * scale;
+	Laplacian * l = new Laplacian (scale);
+	(*l) *= scale * scale;
 	laplacians.push_back (l);
   }
 }
@@ -51,18 +57,20 @@ DescriptorScale::initialize (float firstScale, float lastScale, float stepSize)
 Vector<float>
 DescriptorScale::value (const Image & image, const PointAffine & point)
 {
+  if (laplacians.size () == 0) initialize ();
+
   Vector<float> result (1);
   result[0] = 1;
 
   float bestResponse = 0;
-  vector<Laplacian>::iterator l;
+  vector<Laplacian *>::iterator l;
   for (l = laplacians.begin (); l < laplacians.end (); l++)
   {
-	float response = fabsf (l->response (image, point));
+	float response = fabsf ((*l)->response (image, point));
 	if (response > bestResponse)
 	{
 	  bestResponse = response;
-	  result[0] = l->sigma;
+	  result[0] = (*l)->sigma;
 	}
   }
 
@@ -82,31 +90,10 @@ DescriptorScale::patch (const Vector<float> & value)
 }
 
 void
-DescriptorScale::read (std::istream & stream)
+DescriptorScale::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
-
-  float firstScale;
-  float lastScale;
-  float stepSize;
-
-  stream.read ((char *) &firstScale, sizeof (firstScale));
-  stream.read ((char *) &lastScale,  sizeof (lastScale));
-  stream.read ((char *) &stepSize,   sizeof (stepSize));
-
-  initialize (firstScale, lastScale, stepSize);
-}
-
-void
-DescriptorScale::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  float firstScale = laplacians.front ().sigma;
-  float lastScale  = laplacians.back ().sigma;
-  float stepSize   = laplacians[1].sigma / laplacians[0].sigma;
-
-  stream.write ((char *) &firstScale, sizeof (firstScale));
-  stream.write ((char *) &lastScale,  sizeof (lastScale));
-  stream.write ((char *) &stepSize,   sizeof (stepSize));
+  archive & *((Descriptor *) this);
+  archive & firstScale;
+  archive & lastScale;
+  archive & stepSize;
 }

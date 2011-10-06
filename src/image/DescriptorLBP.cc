@@ -37,11 +37,6 @@ DescriptorLBP::DescriptorLBP (int P, float R, float supportRadial, int supportPi
   initialize ();
 }
 
-DescriptorLBP::DescriptorLBP (istream & stream)
-{
-  read (stream);
-}
-
 void
 DescriptorLBP::initialize ()
 {
@@ -243,25 +238,13 @@ DescriptorLBP::comparison ()
 }
 
 void
-DescriptorLBP::read (std::istream & stream)
+DescriptorLBP::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
+  archive & *((Descriptor *) this);
+  archive & P;
+  archive & R;
+  archive & supportRadial;
+  archive & supportPixel;
 
-  stream.read ((char *) &P,             sizeof (P));
-  stream.read ((char *) &R,             sizeof (R));
-  stream.read ((char *) &supportRadial, sizeof (supportRadial));
-  stream.read ((char *) &supportPixel,  sizeof (supportPixel));
-
-  initialize ();
-}
-
-void
-DescriptorLBP::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  stream.write ((char *) &P,             sizeof (P));
-  stream.write ((char *) &R,             sizeof (R));
-  stream.write ((char *) &supportRadial, sizeof (supportRadial));
-  stream.write ((char *) &supportPixel,  sizeof (supportPixel));
+  if (archive.in) initialize ();
 }

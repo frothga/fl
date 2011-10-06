@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -26,12 +26,6 @@ using namespace fl;
 
 DescriptorFilters::DescriptorFilters ()
 {
-}
-
-DescriptorFilters::DescriptorFilters (istream & stream)
-{
-  read (stream);
-  prepareFilterMatrix ();
 }
 
 DescriptorFilters::~DescriptorFilters ()
@@ -97,40 +91,8 @@ DescriptorFilters::patch (const Vector<float> & value)
 }
 
 void
-DescriptorFilters::read (istream & stream)
+DescriptorFilters::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
-
-  int count = 0;
-  stream.read ((char *) &count, sizeof (count));
-  for (int i = 0; i < count; i++)
-  {
-	int width = 0;
-	int height = 0;
-	stream.read ((char *) &width, sizeof (width));
-	stream.read ((char *) &height, sizeof (height));
-	Image image (width, height, GrayFloat);
-	PixelBufferPacked * pbp = (PixelBufferPacked *) image.buffer;
-	stream.read ((char *) pbp->memory, height * pbp->stride);
-	filters.push_back (ConvolutionDiscrete2D (image));
-  }
+  archive & *((Descriptor *) this);
+  archive & filters;
 }
-
-void
-DescriptorFilters::write (ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  int count = filters.size ();
-  stream.write ((char *) &count, sizeof (count));
-  for (int i = 0; i < count; i++)
-  {
-	int width  = filters[i].width;
-	int height = filters[i].height;
-	stream.write ((char *) &width,  sizeof (width));
-	stream.write ((char *) &height, sizeof (height));
-	PixelBufferPacked * pbp = (PixelBufferPacked *) filters[i].buffer;
-	stream.write ((char *) pbp->memory, height * pbp->stride);
-  }
-}
-

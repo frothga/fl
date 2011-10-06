@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005 Sandia Corporation.
+Copyright 2005, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -28,11 +28,6 @@ DescriptorSchmidScale::DescriptorSchmidScale (float sigma)
 {
   this->sigma = sigma;
   initialize ();
-}
-
-DescriptorSchmidScale::DescriptorSchmidScale (std::istream & stream)
-{
-  read (stream);
 }
 
 void
@@ -200,18 +195,10 @@ DescriptorSchmidScale::patch (const Vector<float> & value)
 }
 
 void
-DescriptorSchmidScale::read (std::istream & stream)
+DescriptorSchmidScale::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
+  archive & *((Descriptor *) this);
+  archive & sigma;
 
-  stream.read ((char *) &sigma, sizeof (sigma));
-  initialize ();
-}
-
-void
-DescriptorSchmidScale::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  stream.write ((char *) &sigma, sizeof (sigma));
+  if (archive.in) initialize ();
 }

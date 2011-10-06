@@ -42,11 +42,6 @@ DescriptorColorHistogram3D::DescriptorColorHistogram3D (int width, int height, f
   initialize ();
 }
 
-DescriptorColorHistogram3D::DescriptorColorHistogram3D (istream & stream)
-{
-  read (stream);
-}
-
 DescriptorColorHistogram3D::~DescriptorColorHistogram3D ()
 {
   if (valid)
@@ -339,23 +334,12 @@ DescriptorColorHistogram3D::comparison ()
 }
 
 void
-DescriptorColorHistogram3D::read (std::istream & stream)
+DescriptorColorHistogram3D::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
+  archive & *((Descriptor *) this);
+  archive & width;
+  archive & height;
+  archive & supportRadial;
 
-  stream.read ((char *) &width,         sizeof (width));
-  stream.read ((char *) &height,        sizeof (height));
-  stream.read ((char *) &supportRadial, sizeof (supportRadial));
-
-  initialize ();
-}
-
-void
-DescriptorColorHistogram3D::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  stream.write ((char *) &width,         sizeof (width));
-  stream.write ((char *) &height,        sizeof (height));
-  stream.write ((char *) &supportRadial, sizeof (supportRadial));
+  if (archive.in) initialize ();
 }

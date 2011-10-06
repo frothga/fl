@@ -43,21 +43,27 @@ public:
   A () {}
   virtual void read (istream & stream) {}
   virtual void write (ostream & stream) const {}
-  virtual void serialize (Archive & a, uint32_t version)
+  void serialize (Archive & a, uint32_t version)
   {
-	cerr << "A version " << version << endl;
 	a & number;
 	a & name;
   }
-  static uint32_t serializeCurrentVersion ()
+
+  virtual bool operator == (const A & that)
   {
-	return 1;
+	if (typeid (*this) != typeid (that)) return false;
+	if (number != that.number) return false;
+	if (name != that.name) return false;
+	return true;
   }
 
+  static uint32_t serializeVersion;
+
   // Some basic types to serialize
-  int32_t number;
+  int number;
   string name;
 };
+uint32_t A::serializeVersion = 1;
 
 class B : public A
 {
@@ -69,22 +75,31 @@ class C : public A
 {
 public:
   C () {}
+  void serialize (Archive & a, uint32_t version)
+  {
+	a & *((A *) this);
+	a & truth;
+  }
+  virtual bool operator == (const A & that)
+  {
+	if (! A::operator == (that)) return false;
+	if (truth != ((C*) &that)->truth) return false;
+	return true;
+  }
+
+  bool truth;
 };
 
 class D
 {
 public:
-  virtual void serialize (Archive & a, uint32_t version)
+  void serialize (Archive & a, uint32_t version)
   {
-	cerr << "D version " << version << endl;
 	a.registerClass<A> ();
 	a.registerClass<B> ();
 	a.registerClass<C> ("bob");
+	a.registerClass<C> ("sam");
 	a & collection;
-  }
-  static uint32_t serializeCurrentVersion ()
-  {
-	return 2;
   }
 
   bool operator == (const D & that)
@@ -98,20 +113,15 @@ public:
 	{
 	  A * a = collection[i];
 	  A * b = that.collection[i];
-	  if (typeid (*a)  !=  typeid (*b))
-	  {
-		cerr << "types are different: " << typeid (*a).name () << " " << typeid (*b).name () << endl;
-		return false;
-	  }
-	  if (a->name != b->name) return false;
-	  if (a->number != b->number) return false;
+	  if (! (*a == *b)) return false;
 	}
-
 	return true;
   }
 
+  static uint32_t serializeVersion;
   vector<A *> collection;
 };
+uint32_t D::serializeVersion = 2;
 
 ostream &
 operator << (ostream & stream, const D & data)
@@ -165,10 +175,13 @@ testArchive ()
   a->number = 1;
   b->number = 2;
   c->number = 3;
+  c->truth = false;
 
   {
 	Archive archive ("testBaseFile", "w");
 	archive & before;
+
+	if (archive.alias.size () != 4) throw "Unexpected number of aliases";
   }
 
   {
@@ -289,10 +302,10 @@ int main (int argc, char * argv[])
 {
   try
   {
-	//testParameters (argc, argv);
-	//testFactory ();
+	testParameters (argc, argv);
+	testFactory ();
 	testArchive ();
-	//testVectorsparse ();
+	testVectorsparse ();
   }
   catch (const char * message)
   {

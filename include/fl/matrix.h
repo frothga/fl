@@ -20,6 +20,7 @@ for details.
 
 #include "fl/pointer.h"
 #include "fl/math.h"
+#include "fl/serialize.h"
 
 #include <iostream>
 #include <sstream>
@@ -172,8 +173,8 @@ namespace fl
 	virtual MatrixAbstract & operator -= (const T scalar);            ///< Decrease each element by scalar
 
 	// Serialization
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
 
 	// Global Data
 	static int displayWidth;  ///< Number of character positions per cell to use when printing out matrix.
@@ -306,8 +307,7 @@ namespace fl
 	virtual MatrixAbstract<T> & operator -= (const MatrixAbstract<T> & B)    {return *result -= B;}
 	virtual MatrixAbstract<T> & operator -= (const T scalar)                 {return *result -= scalar;}
 
-	virtual void read  (std::istream & stream)                               {result->read  (stream);}
-	virtual void write (std::ostream & stream) const                         {result->write (stream);}
+	void serialize (Archive & archive, uint32_t version)                     {throw "Attempt to serialize a MatrixResult";}
 
 	MatrixAbstract<T> * result;  ///< We always take responsibility for destroying "result".
   };
@@ -417,8 +417,7 @@ namespace fl
 	template<class T2> MatrixResult<T> operator * (const MatrixAbstract<T2> & B) const {return operator * ((MatrixStrided<T>) B);}
 	template<class T2> MatrixResult<T> operator - (const MatrixAbstract<T2> & B) const {return operator - ((MatrixStrided<T>) B);}
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	// Data
 	Pointer data;
@@ -437,7 +436,6 @@ namespace fl
 	Matrix (const int rows, const int columns = 1);
 	Matrix (const MatrixAbstract<T> & that);
 	template<class T2> Matrix (const MatrixAbstract<T2> & that) : MatrixStrided<T> (that) {}
-	Matrix (std::istream & stream);
 	Matrix (const std::string & source);
 	Matrix (T * that, const int rows, const int columns = 1);  ///< Attach to memory block pointed to by that
 	Matrix (Pointer & that, const int rows = -1, const int columns = 1);  ///< Share memory block with that.  rows == -1 or columns == -1 means infer number from size of memory.  At least one of {rows, columns} must be positive.
@@ -473,7 +471,6 @@ namespace fl
 	Vector (const MatrixAbstract<T> & that);
 	template<class T2> Vector (const MatrixAbstract<T2> & that) : Matrix<T> (that) {this->strideC = this->rows_ = this->rows_ * this->columns_; this->columns_ = 1;}
 	Vector (const Matrix<T> & that);
-	Vector (std::istream & stream);
 	Vector (const std::string & source);
 	Vector (T * that, const int rows);  ///< Attach to memory block pointed to by that
 	Vector (Pointer & that, const int rows = -1);  ///< Share memory block with that.  rows == -1 means infer number from size of memory
@@ -497,7 +494,6 @@ namespace fl
 	MatrixPacked ();
 	MatrixPacked (const int rows);  ///< columns = rows
 	MatrixPacked (const MatrixAbstract<T> & that);
-	MatrixPacked (std::istream & stream);
 	virtual uint32_t classID () const;
 
 	virtual MatrixAbstract<T> * clone (bool deep = false) const;
@@ -513,8 +509,7 @@ namespace fl
 
 	virtual MatrixResult<T> operator ~ () const;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	// Data
 	Pointer data;
@@ -535,7 +530,6 @@ namespace fl
 	MatrixSparse ();
 	MatrixSparse (const int rows, const int columns);
 	MatrixSparse (const MatrixAbstract<T> & that);
-	MatrixSparse (std::istream & stream);
 	~MatrixSparse ();
 	virtual uint32_t classID () const;
 
@@ -555,8 +549,7 @@ namespace fl
 	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
 	virtual MatrixResult<T> operator - (const MatrixAbstract<T> & B) const;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int rows_;
 	fl::PointerStruct< std::vector< std::map<int, T> > > data;
@@ -745,7 +738,6 @@ namespace fl
 		}
 	  }
 	}
-	MatrixFixed (std::istream & stream);
 	virtual uint32_t classID () const;
 
 	virtual MatrixAbstract<T> * clone (bool deep = false) const;
@@ -774,8 +766,7 @@ namespace fl
 	virtual MatrixAbstract<T> & operator *= (const T scalar);
 	virtual MatrixAbstract<T> & operator /= (const T scalar);
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	// Data
 	T data[C][R];

@@ -17,7 +17,6 @@ for details.
 #ifndef fl_serialize_h
 #define fl_serialize_h
 
-
 #include <stdio.h>
 #include <stdint.h>
 #include <string>
@@ -203,13 +202,17 @@ namespace fl
 	}
   };
 
+  class Archive;
+  typedef void serializeFunction (void * me, Archive & archive, uint32_t version);
+
   class ClassDescription
   {
   public:
-	productCreate * create;
-	uint32_t        version;
-	std::string     name;     ///< name to write to stream
-	int32_t         index;    ///< serial # of class in archive; negative means not encountered yet
+	productCreate *     create;
+	serializeFunction * serialize;
+	std::string         name;     ///< name to write to stream
+	uint32_t            index;    ///< serial # of class in archive; 0xFFFFFFFF means not assigned yet
+	uint32_t            version;
   };
 
   /**
@@ -256,6 +259,19 @@ namespace fl
 	SHARED void open (const std::string & fileName, const std::string & mode);
 	SHARED void close ();
 
+	/**
+	   Create a class description record in memory.
+	   Only use for classes that can be instantiated (have a default
+	   constructor and are not abstract).  Note that all classes that are
+	   serialized polymorphically must be intantiable.
+	   @param name Specifies the string actually stored in the stream that
+	   identifies this class.  Can be called several times with different
+	   values.  When reading a stream, all values act as aliases for the same
+	   class.  When writing a stream, only the value given in the last call
+	   is used.  If no value is given, defaults to the RTTI name of the class.
+	   This isn't necessarily the best thing, because RTTI names can vary
+	   between compilers, and even between versions of the same compiler.
+	 **/
 	template<class T>
 	void registerClass (const std::string & name = "")
 	{
@@ -267,69 +283,78 @@ namespace fl
 		{
 		  return new T;  // default constructor
 		}
+		static void serialize (void * me, Archive & archive, uint32_t version)
+		{
+		  ((T *) me)->serialize (archive, version);
+		}
 	  };
 
-	  std::cerr << "registerClass" << std::endl;
+	  // Create or locate basic registration record
 	  std::string typeidName = typeid (T).name ();
-	  std::map<std::string, ClassDescription *>::iterator outEntry = classesOut.find (typeidName);
-	  if (outEntry == classesOut.end ())
+	  std::map<std::string, ClassDescription *>::iterator c = classesOut.find (typeidName);
+	  if (c == classesOut.end ())
 	  {
 		ClassDescription * info = new ClassDescription;
-		info->create  = Product::create;
-		info->name    = (name.size () == 0) ? typeidName : name;
-		info->version = T::serializeCurrentVersion ();
-		info->index   = -1;
-		classesOut.insert (make_pair (typeidName, info));
-		alias     .insert (make_pair (info->name, info));
+		info->index   = 0xFFFFFFFF;
+		info->version = T::serializeVersion;
+		c = classesOut.insert (make_pair (typeidName, info)).first;
 	  }
+	  c->second->create    = Product::create;
+	  c->second->serialize = Product::serialize;
+	  c->second->name      = (name.size () == 0) ? typeidName : name;
+
+	  // Add or reassign alias for initial lookup when reading from stream
+	  alias.insert (make_pair (c->second->name, c->second));
 	}
 
 	template<class T>
 	Archive & operator & (T & data)
 	{
-	  std::cerr << "operator & reference" << std::endl;
-	  std::string typeidName = typeid (T).name ();  // Because reference members are not allowed, we assume that T is exactly the class we are working with, rather than a parent thereof.
-
 	  // Auto-register if necessary
-	  std::map<std::string, ClassDescription *>::iterator it = classesOut.find (typeidName);
-	  if (it == classesOut.end ())
+	  std::string typeidName = typeid (T).name ();  // Because reference members are not allowed, we assume that T is exactly the class we are working with, rather than a parent thereof.
+	  std::map<std::string, ClassDescription *>::iterator c = classesOut.find (typeidName);
+	  if (c == classesOut.end ())
 	  {
-		registerClass<T> ();
-		it = classesOut.find (typeidName);
+		ClassDescription * info = new ClassDescription;
+		info->create    = 0;
+		info->serialize = 0;
+		info->name      = typeidName;
+		info->index     = 0xFFFFFFFF;
+		info->version   = T::serializeVersion;
+		c = classesOut.insert (make_pair (typeidName, info)).first;
+		// No need for alias, unless class is also treated polymorphically.
 	  }
 
 	  // Assign class index if necessary
-	  if (it->second->index == -1)
+	  if (c->second->index == 0xFFFFFFFF)
 	  {
-		it->second->index = classesIn.size ();
-		classesIn.push_back (it->second);
+		c->second->index = classesIn.size ();
+		classesIn.push_back (c->second);
 		// Serialize the class description.  Only need version #.  Don't need
 		// class name because it is implicit.
-		(*this) & it->second->version;
+		(*this) & c->second->version;
 	  }
 
-	  // Record pointer
+	  // Record the pointer
 	  if (in)
 	  {
 		pointersIn.push_back (&data);
 	  }
 	  else
 	  {
-		if (pointersOut.find (&data) != pointersOut.end ())
+		if (pointersOut.find (&data) == pointersOut.end ())
 		{
-		  throw "Attempt to serialize an object that has already been serialized via a pointer.";
+		  pointersOut.insert (make_pair (&data, pointersOut.size ()));
 		}
-		pointersOut.insert (make_pair (&data, pointersOut.size ()));
 	  }
 
-	  data.serialize (*this, it->second->version);
+	  data.serialize (*this, c->second->version);
 	  return *this;
 	}
 
 	template<class T>
 	Archive & operator & (T * & data)
 	{
-	  std::cerr << "operator & pointer" << std::endl;
 	  if (in)
 	  {
 		uint32_t pointer;
@@ -346,17 +371,20 @@ namespace fl
 			std::string name;
 			(*this) & name;
 
-			std::map<std::string, ClassDescription *>::iterator it = alias.find (name);
-			if (it == classesOut.end ()) throw "Class needs to be registered before first occurrence in archive.";
-			it->second->index = classIndex;
-			classesIn.push_back (it->second);
+			std::map<std::string, ClassDescription *>::iterator a = alias.find (name);
+			if (a == alias.end ()) throw "Class needs to be registered before first occurrence in archive.";
+			a->second->index = classIndex;
+			classesIn.push_back (a->second);
 
-			(*this) & it->second->version;
+			(*this) & a->second->version;
 		  }
 
-		  data = (T *) classesIn[classIndex]->create ();
+		  ClassDescription * d = classesIn[classIndex];
+		  if (d->create    == 0) throw "create() has not been registered";
+		  if (d->serialize == 0) throw "serialize() has not been registered";
+		  data = (T *) d->create ();
 		  pointersIn.push_back (data);
-		  data->serialize (*this, classesIn[classIndex]->version);
+		  d->serialize (data, *this, d->version);
 		}
 	  }
 	  else
@@ -371,7 +399,7 @@ namespace fl
 		  std::string typeidName = typeid (*data).name ();
 		  std::map<std::string, ClassDescription *>::iterator c = classesOut.find (typeidName);
 		  if (c == classesOut.end ()) throw "Attempt to write unregistered polymorphic class";
-		  if (c->second->index >= 0) (*this) & c->second->index;
+		  if (c->second->index < 0xFFFFFFFF) (*this) & c->second->index;
 		  else
 		  {
 			c->second->index = classesIn.size ();
@@ -381,7 +409,7 @@ namespace fl
 			(*this) & c->second->version;
 		  }
 
-		  data->serialize (*this, c->second->version);
+		  c->second->serialize (data, *this, c->second->version);
 		}
 	  }
 	  return *this;
@@ -390,7 +418,6 @@ namespace fl
 	template<class T>
 	Archive & operator & (std::vector<T> & data)
 	{
-	  std::cerr << "operator & vector" << std::endl;
 	  uint32_t count = data.size ();
 	  (*this) & count;
 	  if (in)
@@ -437,6 +464,7 @@ namespace fl
   template<> SHARED Archive & Archive::operator & (int64_t        & data);
   template<> SHARED Archive & Archive::operator & (float          & data);
   template<> SHARED Archive & Archive::operator & (double         & data);
+  template<> SHARED Archive & Archive::operator & (bool           & data);
 }
 
 

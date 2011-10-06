@@ -21,6 +21,7 @@ for details.
 #include "fl/matrix.h"
 #include "fl/socket.h"
 #include "fl/metric.h"
+#include "fl/serialize.h"
 
 #include <iostream>
 #include <vector>
@@ -55,11 +56,12 @@ namespace fl
 	virtual int           classCount () = 0;  ///< Returns the number of classes.
 	virtual Vector<float> representative (int group) = 0;  ///< Return a representative member of group.  "group" has same semantics as return value of classify (); we just can't use the word "class" because it is a keyword in C++.  :)
 
-	// The read () and write () methods should serialize enough data to either
-	// resume clustering with a call to run () or to answer cluster queries via
-	// classify () and representative ().
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	/**
+	   Serialize enough data to either resume clustering with a call to run ()
+	   or to answer cluster queries via classify () and representative ().
+	**/
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
 
 	bool stop;  ///< If set true, signals run () to terminate at the next reasonable spot.  run () should clear this flag when it first starts, but only monitor it after that.
   };
@@ -70,15 +72,16 @@ namespace fl
   class SHARED ClusterGauss
   {
   public:
+	ClusterGauss ();
 	ClusterGauss (Vector<float> & center, float alpha = 1.0);
 	ClusterGauss (Vector<float> & center, Matrix<float> & covariance, float alpha = 1.0);
-	ClusterGauss (std::istream & stream);  ///< Construct from stream
 	~ClusterGauss ();
 
 	void prepareInverse ();  ///< When covariance is changed, update cached information necessary to compute Mahalanobis distance.
 	float probability (const Vector<float> & point, float * scale = NULL, float * minScale = NULL);  ///< The probability of being in the cluster, which is simply the Gaussian of the distance from the center.  Result is multiplied by exp (scale) if minScale == NULL; otherwise scale and minScale are updated, and result is unscaled.
-	void read (std::istream & stream);
-	void write (std::ostream & stream) const;
+
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
 
 	float alpha;
 	Vector<float> center;
@@ -93,15 +96,15 @@ namespace fl
   {
   public:
 	KMeans (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");  ///< clusterFileName refers to target file for new clustering data, which is very likely to be different from input file.
-	KMeans (std::istream & stream, const std::string & clusterFileName = "");  ///< Construct from stream.
+	KMeans (const std::string & clusterFileName = "");
 
 	virtual void          run (const std::vector< Vector<float> > & data);
 	virtual int           classify (const Vector<float> & point);
 	virtual Vector<float> distribution (const Vector<float> & point);
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
-	virtual void          read (std::istream & stream);
-	virtual void          write (std::ostream & stream) const;
+
+	void serialize (Archive & archive, uint32_t version);
 
 	void initialize (const std::vector< Vector<float> > & data);
 	void estimate (const std::vector< Vector<float> > & data, Matrix<float> & member, int jbegin, int jend);
@@ -128,7 +131,7 @@ namespace fl
   {
   public:
 	KMeansParallel (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");
-	KMeansParallel (std::istream & stream, const std::string & clusterFileName = "");
+	KMeansParallel (const std::string & clusterFileName = "");
 
 	virtual void run (const std::vector< Vector<float> > & data);
 	virtual void processConnection (fl::SocketStream & ss, struct sockaddr_in & clientAddress);
@@ -168,15 +171,15 @@ namespace fl
   class SHARED ClusterCosine
   {
   public:
+	ClusterCosine ();
 	ClusterCosine (int dimension);
 	ClusterCosine (Vector<float> & center);
-	ClusterCosine (std::istream & stream);
 
 	float distance (const Vector<float> & point);
 	float update (const Vector<float> & point, float weight);
 
-	void read (std::istream & stream);
-	void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
 
 	Vector<float> center;
   };
@@ -184,16 +187,15 @@ namespace fl
   class SHARED Kohonen : public ClusterMethod
   {
   public:
-	Kohonen (int width, float sigma = 1.0, float learningRate = 0.1, float decayRate = 0.5);
-	Kohonen (std::istream & stream);
+	Kohonen (int width = 10, float sigma = 1.0, float learningRate = 0.1, float decayRate = 0.5);
 
 	virtual void          run (const std::vector< Vector<float> > & data);
 	virtual int           classify (const Vector<float> & point);
 	virtual Vector<float> distribution (const Vector<float> & point);
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
-	virtual void          read (std::istream & stream);
-	virtual void          write (std::ostream & stream) const;
+
+	void serialize (Archive & archive, uint32_t version);
 
 	std::vector<ClusterCosine> map;
 	int width;  ///< Number of discrete positions in one dimension.
@@ -208,12 +210,13 @@ namespace fl
   class SHARED ClusterAgglomerative
   {
   public:
+	ClusterAgglomerative ();
 	ClusterAgglomerative (const Vector<float> & center, int count = 1);
-	ClusterAgglomerative (std::istream & stream);
 
 	void operator += (const ClusterAgglomerative & that);
-	void read (std::istream & stream);
-	void write (std::ostream & stream) const;
+
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
 
 	Vector<float> center;
 	int count;  ///< Number of data represented by this cluster.
@@ -222,8 +225,8 @@ namespace fl
   class SHARED Agglomerate : public ClusterMethod
   {
   public:
+	Agglomerate ();
 	Agglomerate (Metric * comparison, float distanceLimit, int minClusters = 1);
-	Agglomerate (std::istream & stream);
 	~Agglomerate ();
 
 	virtual void          run (const std::vector< Vector<float> > & data);
@@ -231,8 +234,8 @@ namespace fl
 	virtual Vector<float> distribution (const Vector<float> & point);
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+
+	void serialize (Archive & archive, uint32_t version);
 
 	Metric * metric;
 	float distanceLimit;  ///< The largest distance permissible between two clusters.

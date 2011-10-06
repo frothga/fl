@@ -27,12 +27,6 @@ namespace fl
   }
 
   template<class T, int R, int C>
-  MatrixFixed<T,R,C>::MatrixFixed (std::istream & stream)
-  {
-	read (stream);
-  }
-
-  template<class T, int R, int C>
   uint32_t
   MatrixFixed<T,R,C>::classID () const
   {
@@ -234,16 +228,10 @@ namespace fl
 
   template<class T, int R, int C>
   void
-  MatrixFixed<T,R,C>::read (std::istream & stream)
+  MatrixFixed<T,R,C>::serialize (Archive & archive, uint32_t version)
   {
-	stream.read ((char *) data, R * C * sizeof (T));
-  }
-
-  template<class T, int R, int C>
-  void
-  MatrixFixed<T,R,C>::write (std::ostream & stream) const
-  {
-	stream.write ((char *) data, R * C * sizeof (T));
+	if (archive.in) archive.in ->read  ((char *) data, R * C * sizeof (T));
+	else            archive.out->write ((char *) data, R * C * sizeof (T));
   }
 }
 

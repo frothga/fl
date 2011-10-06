@@ -40,11 +40,6 @@ DescriptorSIFT::DescriptorSIFT (int width, int angles)
   init ();
 }
 
-DescriptorSIFT::DescriptorSIFT (istream & stream)
-{
-  read (stream);
-}
-
 DescriptorSIFT::~DescriptorSIFT ()
 {
   map<int, ImageOf<float> *>::iterator it;
@@ -335,31 +330,16 @@ DescriptorSIFT::comparison ()
 }
 
 void
-DescriptorSIFT::read (std::istream & stream)
+DescriptorSIFT::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
+  archive & *((Descriptor *) this);
+  archive & width;
+  archive & angles;
+  archive & angleRange;
+  archive & supportRadial;
+  archive & supportPixel;
+  archive & sigmaWeight;
+  archive & maxValue;
 
-  stream.read ((char *) &width,         sizeof (width));
-  stream.read ((char *) &angles,        sizeof (angles));
-  stream.read ((char *) &angleRange,    sizeof (angleRange));
-  stream.read ((char *) &supportRadial, sizeof (supportRadial));
-  stream.read ((char *) &supportPixel,  sizeof (supportPixel));
-  stream.read ((char *) &sigmaWeight,   sizeof (sigmaWeight));
-  stream.read ((char *) &maxValue,      sizeof (maxValue));
-
-  init ();
-}
-
-void
-DescriptorSIFT::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  stream.write ((char *) &width,         sizeof (width));
-  stream.write ((char *) &angles,        sizeof (angles));
-  stream.write ((char *) &angleRange,    sizeof (angleRange));
-  stream.write ((char *) &supportRadial, sizeof (supportRadial));
-  stream.write ((char *) &supportPixel,  sizeof (supportPixel));
-  stream.write ((char *) &sigmaWeight,   sizeof (sigmaWeight));
-  stream.write ((char *) &maxValue,      sizeof (maxValue));
+  if (archive.in) init ();
 }

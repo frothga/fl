@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/cluster.h"
-#include "fl/serialize.h"
 
 
 using namespace fl;
@@ -24,14 +23,9 @@ using namespace std;
 
 // class ClusterMethod --------------------------------------------------------
 
-template class Factory<ClusterMethod>;
+uint32_t ClusterMethod::serializeVersion = 0;
 
 void
-ClusterMethod::read (istream & stream)
-{
-}
-
-void
-ClusterMethod::write (ostream & stream) const
+ClusterMethod::serialize (Archive & archive, uint32_t version)
 {
 }

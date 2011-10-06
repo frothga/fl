@@ -23,6 +23,8 @@ using namespace fl;
 
 // class ConvolutionDiscrete2D ------------------------------------------------
 
+uint32_t ConvolutionDiscrete2D::serializeVersion = 0;
+
 ConvolutionDiscrete2D::ConvolutionDiscrete2D (const BorderMode mode, const PixelFormat & format)
 : Image (format)
 {
@@ -466,5 +468,29 @@ ConvolutionDiscrete2D::normalFloats ()
 	  }
 	  a++;
 	}
+  }
+}
+
+void
+ConvolutionDiscrete2D::serialize (Archive & archive, uint32_t version)
+{
+  archive & width;
+  archive & height;
+
+  bool isFloat = format != 0  &&  *format == GrayFloat;
+  archive & isFloat;
+
+  if (archive.in)
+  {
+	if (isFloat) format = &GrayFloat;
+	else         format = &GrayDouble;
+	resize (width, height);  // should still work, even though width and height are unchanged
+	PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
+	archive.in->read ((char *) pbp->memory, height * pbp->stride);
+  }
+  else
+  {
+	PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
+	archive.out->write ((char *) pbp->memory, height * pbp->stride);
   }
 }

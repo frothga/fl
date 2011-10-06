@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -53,12 +53,6 @@ namespace fl
 	  rows_ = 0;
 	  copyFrom (that);
 	}
-  }
-
-  template<class T>
-  MatrixPacked<T>::MatrixPacked (std::istream & stream)
-  {
-	read (stream);
   }
 
   template<class T>
@@ -188,24 +182,20 @@ namespace fl
 
   template<class T>
   void
-  MatrixPacked<T>::read (std::istream & stream)
+  MatrixPacked<T>::serialize (Archive & archive, uint32_t version)
   {
-	stream.read ((char *) &rows_, sizeof (rows_));
-	if (! stream.good ())
+	archive & rows_;
+	if (archive.in)
 	{
-	  throw "Stream bad.  Unable to finish reading matrix.";
+	  if (! archive.in->good ()) throw "Stream bad.  Unable to finish reading matrix.";
+	  int bytes = sizeof (T) * (rows_ + 1) * rows_ / 2;
+	  data.grow (bytes);
+	  archive.in->read ((char *) data, bytes);
 	}
-	int bytes = sizeof (T) * (rows_ + 1) * rows_ / 2;
-	data.grow (bytes);
-	stream.read ((char *) data, bytes);
-  }
-
-  template<class T>
-  void
-  MatrixPacked<T>::write (std::ostream & stream) const
-  {
-	stream.write ((char *) &rows_, sizeof (rows_));
-	stream.write ((char *) data, sizeof (T) * (rows_ + 1) * rows_ / 2);
+	else
+	{
+	  archive.out->write ((char *) data, sizeof (T) * (rows_ + 1) * rows_ / 2);
+	}
   }
 }
 

@@ -32,11 +32,6 @@ DescriptorSpin::DescriptorSpin (int binsRadial, int binsIntensity, float support
   dimension = binsRadial * binsIntensity;
 }
 
-DescriptorSpin::DescriptorSpin (std::istream & stream)
-{
-  read (stream);
-}
-
 Vector<float>
 DescriptorSpin::value (const Image & image, const PointAffine & point)
 {
@@ -201,25 +196,13 @@ DescriptorSpin::comparison ()
 }
 
 void
-DescriptorSpin::read (std::istream & stream)
+DescriptorSpin::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
-
-  stream.read ((char *) &binsRadial,       sizeof (binsRadial));
-  stream.read ((char *) &binsIntensity,    sizeof (binsIntensity));
-  stream.read ((char *) &supportRadial,    sizeof (supportRadial));
-  stream.read ((char *) &supportIntensity, sizeof (supportIntensity));
+  archive & *((Descriptor *) this);
+  archive & binsRadial;
+  archive & binsIntensity;
+  archive & supportRadial;
+  archive & supportIntensity;
 
   dimension = binsRadial * binsIntensity;
-}
-
-void
-DescriptorSpin::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  stream.write ((char *) &binsRadial,       sizeof (binsRadial));
-  stream.write ((char *) &binsIntensity,    sizeof (binsIntensity));
-  stream.write ((char *) &supportRadial,    sizeof (supportRadial));
-  stream.write ((char *) &supportIntensity, sizeof (supportIntensity));
 }

@@ -138,7 +138,6 @@ template<>
 Archive &
 Archive::operator & (uint32_t & data)
 {
-  cerr << "operator & uint32_t" << endl;
   if (in) in ->read  ((char *) &data, sizeof (data));
   else    out->write ((char *) &data, sizeof (data));
   return *this;
@@ -175,7 +174,6 @@ template<>
 Archive &
 Archive::operator & (int32_t & data)
 {
-  cerr << "operator & int32_t" << endl;
   if (in) in ->read  ((char *) &data, sizeof (data));
   else    out->write ((char *) &data, sizeof (data));
   return *this;
@@ -202,6 +200,15 @@ Archive::operator & (float & data)
 template<>
 Archive &
 Archive::operator & (double & data)
+{
+  if (in) in ->read  ((char *) &data, sizeof (data));
+  else    out->write ((char *) &data, sizeof (data));
+  return *this;
+}
+
+template<>
+Archive &
+Archive::operator & (bool & data)
 {
   if (in) in ->read  ((char *) &data, sizeof (data));
   else    out->write ((char *) &data, sizeof (data));

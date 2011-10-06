@@ -25,13 +25,12 @@ using namespace std;
 // class DescriptorOrientation ------------------------------------------------
 
 DescriptorOrientation::DescriptorOrientation (float supportRadial, int supportPixel, float kernelSize)
+: supportPixel  (supportPixel),
+  kernelSize    (kernelSize)
 {
-  initialize (supportRadial, supportPixel, kernelSize);
-}
-
-DescriptorOrientation::DescriptorOrientation (istream & stream)
-{
-  read (stream);
+  dimension = 1;
+  this->supportRadial = supportRadial;
+  initialize ();
 }
 
 static inline void
@@ -56,13 +55,8 @@ killRadius (float limit, Image & image)
 }
 
 void
-DescriptorOrientation::initialize (float supportRadial, int supportPixel, float kernelSize)
+DescriptorOrientation::initialize ()
 {
-  dimension = 1;
-  this->supportRadial = supportRadial;
-  this->supportPixel  = supportPixel;
-  this->kernelSize    = kernelSize;
-
   double filterScale = supportPixel / kernelSize;
   Gx = GaussianDerivativeFirst (0, filterScale, -1, 0, UseZeros);
   Gy = GaussianDerivativeFirst (1, filterScale, -1, 0, UseZeros);
@@ -105,23 +99,12 @@ DescriptorOrientation::patch (const Vector<float> & value)
 }
 
 void
-DescriptorOrientation::read (std::istream & stream)
+DescriptorOrientation::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
+  archive & *((Descriptor *) this);
+  archive & supportRadial;
+  archive & supportPixel;
+  archive & kernelSize;
 
-  stream.read ((char *) &supportRadial, sizeof (supportRadial));
-  stream.read ((char *) &supportPixel,  sizeof (supportPixel));
-  stream.read ((char *) &kernelSize,    sizeof (kernelSize));
-
-  initialize (supportRadial, supportPixel, kernelSize);
-}
-
-void
-DescriptorOrientation::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  stream.write ((char *) &supportRadial, sizeof (supportRadial));
-  stream.write ((char *) &supportPixel,  sizeof (supportPixel));
-  stream.write ((char *) &kernelSize,    sizeof (kernelSize));
+  if (archive.in) initialize ();
 }

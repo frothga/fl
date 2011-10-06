@@ -54,13 +54,6 @@ namespace fl
   }
 
   template<class T>
-  MatrixSparse<T>::MatrixSparse (std::istream & stream)
-  {
-	data.initialize ();
-	read (stream);
-  }
-
-  template<class T>
   MatrixSparse<T>::~MatrixSparse ()
   {
   }
@@ -385,59 +378,48 @@ namespace fl
 
   template<class T>
   void
-  MatrixSparse<T>::read (std::istream & stream)
+  MatrixSparse<T>::serialize (Archive & archive, uint32_t version)
   {
-	int n;
-	stream.read ((char *) &n, sizeof (n));
-	if (! stream.good ())
+	int n = data->size ();
+	archive & n;
+
+	if (archive.in)
 	{
-	  throw "MatrixSparse: can't finish reading because stream is bad";
+	  if (! archive.in->good ()) throw "MatrixSparse: can't finish reading because stream is bad";
+	  data->resize (n);
 	}
-	data->resize (n);
 
 	for (int i = 0; i < n; i++)
 	{
 	  std::map<int,T> & C = (*data)[i];
 
-	  int m;
-	  stream.read ((char *) &m, sizeof (m));
+	  int m = C.size ();
+	  archive & m;
 
-	  typename std::map<int,T>::iterator insertionPoint = C.begin ();
-	  for (int j = 0; j < m; j++)
+	  typename std::map<int,T>::iterator it = C.begin ();
+	  if (archive.in)
 	  {
-		int first;
-		T second;
-		stream.read ((char *) &first, sizeof (first));
-		stream.read ((char *) &second, sizeof (second));
-		insertionPoint = C.insert (insertionPoint, std::make_pair (first, second));
-		rows_ = std::max (rows_, first + 1);
+		for (int j = 0; j < m; j++)
+		{
+		  int first;
+		  T second;
+		  archive.in->read ((char *) &first,  sizeof (first ));
+		  archive.in->read ((char *) &second, sizeof (second));
+		  it = C.insert (it, std::make_pair (first, second));
+		  rows_ = std::max (rows_, first + 1);
+		}
+	  }
+	  else
+	  {
+		while (it != C.end ())
+		{
+		  archive.out->write ((char *) & it->first,  sizeof (it->first ));
+		  archive.out->write ((char *) & it->second, sizeof (it->second));
+		  it++;
+		}
 	  }
 	}
   }
-
-  template<class T>
-  void
-  MatrixSparse<T>::write (std::ostream & stream) const
-  {
-	const int n = data->size ();
-	stream.write ((char *) &n, sizeof (n));
-	for (int i = 0; i < n; i++)
-	{
-	  std::map<int,T> & C = (*data)[i];
-
-	  const int m = C.size ();
-	  stream.write ((char *) &m, sizeof (m));
-
-	  typename std::map<int,T>::iterator j = C.begin ();
-	  while (j != C.end ())
-	  {
-		stream.write ((char *) & j->first, sizeof (j->first));
-		stream.write ((char *) & j->second, sizeof (j->second));
-		j++;
-	  }
-	}
-  }
-
 }
 
 #endif

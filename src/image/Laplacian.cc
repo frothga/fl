@@ -55,3 +55,10 @@ Laplacian::Laplacian (double sigma, const BorderMode mode, const PixelFormat & f
   *this <<= temp * format;
   normalFloats ();
 }
+
+void
+Laplacian::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((ConvolutionDiscrete2D *) this);
+  archive & sigma;
+}

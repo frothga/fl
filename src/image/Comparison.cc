@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -37,29 +37,8 @@ Comparison::preprocess (const Vector<float> & value) const
 }
 
 void
-Comparison::read (istream & stream)
+Comparison::serialize (Archive & archive, uint32_t version)
 {
-}
-
-void
-Comparison::write (ostream & stream) const
-{
-}
-
-/**
-   Since at present all Comparisons (other than ComparisonCombo) are
-   lightweight classes implemented in this single source file, it makes sense
-   to just register them all at once.  Another alternative would be to hard
-   code a factory just for Comparisons.  However, the Factory template is
-   more flexible.
- **/
-void
-Comparison::addProducts ()
-{
-  Product<Metric, NormalizedCorrelation>::add ();
-  Product<Metric, MetricEuclidean>::add ();
-  Product<Metric, HistogramIntersection>::add ();
-  Product<Metric, ChiSquared>::add ();
 }
 
 
@@ -68,11 +47,6 @@ Comparison::addProducts ()
 NormalizedCorrelation::NormalizedCorrelation (bool subtractMean)
 {
   this->subtractMean = subtractMean;
-}
-
-NormalizedCorrelation::NormalizedCorrelation (istream & stream)
-{
-  read (stream);
 }
 
 Vector<float>
@@ -141,17 +115,10 @@ NormalizedCorrelation::value (const Vector<float> & value1, const Vector<float> 
 }
 
 void
-NormalizedCorrelation::read (istream & stream)
+NormalizedCorrelation::serialize (Archive & archive, uint32_t version)
 {
-  Comparison::read (stream);
-  stream.read ((char *) &subtractMean, sizeof (subtractMean));
-}
-
-void
-NormalizedCorrelation::write (ostream & stream) const
-{
-  Comparison::write (stream);
-  stream.write ((char *) &subtractMean, sizeof (subtractMean));
+  archive & *((Comparison *) this);
+  archive & subtractMean;
 }
 
 
@@ -169,11 +136,6 @@ MetricEuclidean::MetricEuclidean (float upperBound)
   this->upperBound = upperBound;
 }
 
-MetricEuclidean::MetricEuclidean (istream & stream)
-{
-  read (stream);
-}
-
 float
 MetricEuclidean::value (const Vector<float> & value1, const Vector<float> & value2) const
 {
@@ -188,26 +150,14 @@ MetricEuclidean::value (const Vector<float> & value1, const Vector<float> & valu
 }
 
 void
-MetricEuclidean::read (istream & stream)
+MetricEuclidean::serialize (Archive & archive, uint32_t version)
 {
-  Comparison::read (stream);
-  stream.read ((char *) &upperBound, sizeof (upperBound));
-}
-
-void
-MetricEuclidean::write (ostream & stream) const
-{
-  Comparison::write (stream);
-  stream.write ((char *) &upperBound, sizeof (upperBound));
+  archive & *((Comparison *) this);
+  archive & upperBound;
 }
 
 
 // class HistogramIntersection ------------------------------------------------
-
-HistogramIntersection::HistogramIntersection (istream & stream)
-{
-  read (stream);
-}
 
 float
 HistogramIntersection::value (const Vector<float> & value1, const Vector<float> & value2) const
@@ -238,11 +188,6 @@ HistogramIntersection::value (const Vector<float> & value1, const Vector<float> 
 
 
 // class ChiSquared -----------------------------------------------------------
-
-ChiSquared::ChiSquared (istream & stream)
-{
-  read (stream);
-}
 
 Vector<float>
 ChiSquared::preprocess (const Vector<float> & value) const

@@ -1141,8 +1141,7 @@ testConvolutionDiscrete2DnormalFloats ()
 }
 
 // DescriptorFilters::prepareFilterMatrix
-// DescriptorFilters::read
-// DescriptorFilters::write
+// DescriptorFilters::serialize
 // Rescale::Rescale
 // Rescale::filter
 // Rotate180
@@ -1179,12 +1178,13 @@ testDescriptorFilters ()
 	throw "DescriptorFilters fails";
   }
 
-  ofstream ofs ("test.filters");
-  desc.write (ofs);
+  Archive ofs ("test.filters", "w");
+  ofs & desc;
   ofs.close ();
 
-  ifstream ifs ("test.filters");
-  DescriptorFilters desc2 (ifs);
+  Archive ifs ("test.filters", "r");
+  DescriptorFilters desc2;
+  ifs & desc2;
   ifs.close ();
 
   Vector<float> value2 = desc2.value (image, target);
@@ -1672,7 +1672,6 @@ main (int argc, char * argv[])
 	  dataDir += "/";
 	}
 
-	testPixelFormat ();
 	testAbsoluteValue ();
 	testCanvasImage ();
 	testConvolutionDiscrete1D ();
@@ -1688,6 +1687,7 @@ main (int argc, char * argv[])
 	testVideo ();
 	testBitblt ();
 	testKLT ();
+	testPixelFormat ();  // The most expensive test, so do last.
   }
   catch (const char * error)
   {

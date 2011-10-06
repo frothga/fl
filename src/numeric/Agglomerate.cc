@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -15,7 +15,7 @@ for details.
 
 
 #include "fl/cluster.h"
-#include "fl/serialize.h"
+#include "fl/descriptor.h"
 
 
 using namespace std;
@@ -24,15 +24,16 @@ using namespace fl;
 
 // class ClusterAgglomerative -------------------------------------------------
 
+uint32_t ClusterAgglomerative::serializeVersion = 0;
+
+ClusterAgglomerative::ClusterAgglomerative ()
+{
+}
+
 ClusterAgglomerative::ClusterAgglomerative (const Vector<float> & center, int count)
 {
   this->center = center;  // shallow copy.  Use deep copy when updating center.
   this->count = count;
-}
-
-ClusterAgglomerative::ClusterAgglomerative (istream & stream)
-{
-  read (stream);
 }
 
 void
@@ -43,32 +44,24 @@ ClusterAgglomerative::operator += (const ClusterAgglomerative & that)
 }
 
 void
-ClusterAgglomerative::read (istream & stream)
+ClusterAgglomerative::serialize (Archive & archive, uint32_t version)
 {
-  center.read (stream);
-  stream.read ((char *) &count, sizeof (count));
-}
-
-void
-ClusterAgglomerative::write (ostream & stream) const
-{
-  center.write (stream);
-  stream.write ((char *) &count, sizeof (count));
+  archive & center;
+  archive & count;
 }
 
 
 // class Agglomerate ----------------------------------------------------------
+
+Agglomerate::Agglomerate ()
+{
+}
 
 Agglomerate::Agglomerate (Metric * metric, float distanceLimit, int minClusters)
 {
   this->metric        = metric;
   this->distanceLimit = distanceLimit;
   this->minClusters   = minClusters;
-}
-
-Agglomerate::Agglomerate (istream & stream)
-{
-  read (stream);
 }
 
 Agglomerate::~Agglomerate ()
@@ -200,43 +193,17 @@ Agglomerate::representative (int group)
   return clusters[group]->center;
 }
 
+/**
+   The client code is responsible for registering the Metrics used with
+   this class, because we have no way of knowing a priori which ones they
+   will be.
+**/
 void
-Agglomerate::read (istream & stream)
+Agglomerate::serialize (Archive & archive, uint32_t version)
 {
-  ClusterMethod::read (stream);
-
-  metric = Factory<Metric>::read (stream);
-
-  stream.read ((char *) &distanceLimit, sizeof (distanceLimit));
-  stream.read ((char *) &minClusters, sizeof (minClusters));
-
-  int count = 0;
-  stream.read ((char *) &count, sizeof (count));
-  if (! stream.good ())
-  {
-	throw "Can't finish reading clusters: stream bad.";
-  }
-  clusters.resize (count);
-  for (int i = 0; i < count; i++)
-  {
-	clusters[i] = new ClusterAgglomerative (stream);
-  }
-}
-
-void
-Agglomerate::write (ostream & stream) const
-{
-  ClusterMethod::write (stream);
-
-  Factory<Metric>::write (stream, *metric);
-
-  stream.write ((char *) &distanceLimit, sizeof (distanceLimit));
-  stream.write ((char *) &minClusters, sizeof (minClusters));
-
-  int count = clusters.size ();
-  stream.write ((char *) &count, sizeof (count));
-  for (int i = 0; i < count; i++)
-  {
-    clusters[i]->write (stream);
-  }
+  archive & *((ClusterMethod *) this);
+  archive & metric;
+  archive & distanceLimit;
+  archive & minClusters;
+  archive & clusters;
 }

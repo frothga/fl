@@ -25,6 +25,12 @@ using namespace fl;
 
 // class ClusterCosine --------------------------------------------------------
 
+uint32_t ClusterCosine::serializeVersion = 0;
+
+ClusterCosine::ClusterCosine ()
+{
+}
+
 ClusterCosine::ClusterCosine (int dimension)
 {
   center.resize (dimension);
@@ -39,11 +45,6 @@ ClusterCosine::ClusterCosine (Vector<float> & center)
 {
   this->center.copyFrom (center);
   this->center.normalize ();
-}
-
-ClusterCosine::ClusterCosine (istream & stream)
-{
-  read (stream);
 }
 
 float
@@ -64,15 +65,9 @@ ClusterCosine::update (const Vector<float> & point, float weight)
 }
 
 void
-ClusterCosine::read (istream & stream)
+ClusterCosine::serialize (Archive & archive, uint32_t version)
 {
-  center.read (stream);
-}
-
-void
-ClusterCosine::write (ostream & stream) const
-{
-  center.write (stream);
+  archive & center;
 }
 
 
@@ -84,11 +79,6 @@ Kohonen::Kohonen (int width, float sigma, float learningRate, float decayRate)
   this->sigma        = sigma;
   this->learningRate = learningRate;
   this->decayRate    = decayRate;
-}
-
-Kohonen::Kohonen (istream & stream)
-{
-  read (stream);
 }
 
 void
@@ -232,33 +222,12 @@ Kohonen::representative (int group)
 }
 
 void
-Kohonen::read (istream & stream)
+Kohonen::serialize (Archive & archive, uint32_t version)
 {
-  stream.read ((char *) &width,        sizeof (width));
-  stream.read ((char *) &sigma,        sizeof (sigma));
-  stream.read ((char *) &learningRate, sizeof (learningRate));
-  stream.read ((char *) &decayRate,    sizeof (decayRate));
-
-  int count = width * width;
-  for (int i = 0; i < count; i++)
-  {
-	ClusterCosine c (stream);
-	map.push_back (c);
-  }
-}
-
-void
-Kohonen::write (ostream & stream) const
-{
-  ClusterMethod::write (stream);
-
-  stream.write ((char *) &width,        sizeof (width));
-  stream.write ((char *) &sigma,        sizeof (sigma));
-  stream.write ((char *) &learningRate, sizeof (learningRate));
-  stream.write ((char *) &decayRate,    sizeof (decayRate));
-
-  for (int i = 0; i < map.size (); i++)
-  {
-	map[i].write (stream);
-  }
+  archive & *((ClusterMethod *) this);
+  archive & width;
+  archive & sigma;
+  archive & learningRate;
+  archive & decayRate;
+  archive & map;
 }

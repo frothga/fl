@@ -24,6 +24,7 @@ for details.
 #include "fl/canvas.h"
 #include "fl/imagecache.h"
 #include "fl/metric.h"
+#include "fl/serialize.h"
 
 #include <iostream>
 #include <vector>
@@ -56,9 +57,7 @@ namespace fl
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const = 0;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
-	static void addProducts ();  ///< Registers with the Factory all basic Comparison classes other than ComparisonCombo.
+	void serialize (Archive & archive, uint32_t version);
 
 	bool needPreprocess;  ///< Indicates that any data passed to the value() function should be preprocessed.  Default (set by constructor) is true.  If you compare values multiple times, it is more efficient to preprocess them all once and then set this flag to false.
   };
@@ -71,7 +70,6 @@ namespace fl
   {
   public:
 	ComparisonCombo ();
-	ComparisonCombo (std::istream & stream);
 	virtual ~ComparisonCombo ();  ///< Delete all comparisons we are holding.
 
 	void clear ();
@@ -82,8 +80,7 @@ namespace fl
 	virtual float value (int index, const Vector<float> & value1, const Vector<float> & value2) const;  ///< Compares one specific feature vector from the set.
 	Vector<float> extract (int index, const Vector<float> & value) const;  ///< Returns one specific feature vector from the set.
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	std::vector<Comparison *> comparisons;
 	std::vector<int> dimensions;
@@ -104,13 +101,11 @@ namespace fl
   {
   public:
 	NormalizedCorrelation (bool subtractMean = true);
-	NormalizedCorrelation (std::istream & stream);
 
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	bool subtractMean;  ///< Indicates that during normalization, subtract the mean of the elements in the vector.
   };
@@ -124,12 +119,10 @@ namespace fl
   {
   public:
 	MetricEuclidean (float upperBound = INFINITY);
-	MetricEuclidean (std::istream & stream);
 
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	float upperBound;  ///< The largest possible distance, if known.  Infinity if not known.  Determines whether to use linear function or hyperbolic squashing function to map distance to resulting value.
   };
@@ -143,7 +136,6 @@ namespace fl
   {
   public:
 	HistogramIntersection () {}
-	HistogramIntersection (std::istream & stream);
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
   };
 
@@ -155,7 +147,6 @@ namespace fl
   {
   public:
 	ChiSquared () {}
-	ChiSquared (std::istream & stream);
 
 	virtual Vector<float> preprocess (const Vector<float> & value) const;
 	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
@@ -175,8 +166,8 @@ namespace fl
 	virtual Image patch (const Vector<float> & value) = 0;  ///< Return a graphical representation of the descriptor.  Preferrably an image patch that would stimulate this descriptor to return the given value.
 	virtual Comparison * comparison ();  ///< Return an instance of the recommended Comparison for feature vectors from this type of Descriptor.  Caller is responsible to destroy instance.
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
 
 	bool monochrome;  ///< True if this descriptor works only on intensity values.  False if this descriptor uses color channels in some way.
 	int dimension;  ///< Number of elements in result of value().  0 if dimension can change from one call to the next.
@@ -191,7 +182,6 @@ namespace fl
   {
   public:
 	DescriptorCombo ();
-	DescriptorCombo (std::istream & stream);
 	virtual ~DescriptorCombo ();  ///< Delete all descriptors we are holding.
 
 	void add (Descriptor * descriptor);  ///< Append another descriptor to the list.  This object takes responsibility for the pointer.
@@ -200,8 +190,7 @@ namespace fl
 	virtual Image patch (const Vector<float> & value);
 	Image patch (int index, const Vector<float> & value);  ///< Returns a visualization of one specific feature vector in the set.
 	virtual Comparison * comparison ();
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	std::vector<Descriptor *> descriptors;
 
@@ -217,15 +206,18 @@ namespace fl
   {
   public:
 	DescriptorScale (float firstScale = 1, float lastScale = 25, int interQuanta = 40, float quantum = 2);  ///< quantum is most meaningful as a prime number; 2 means "doubling" or "octaves"
-	DescriptorScale (std::istream & stream);
-	void initialize (float firstScale, float lastScale, float stepSize);
+	virtual ~DescriptorScale ();
+	void initialize ();
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
 
-	std::vector<Laplacian> laplacians;
+	void serialize (Archive & archive, uint32_t version);
+
+	float firstScale;
+	float lastScale;
+	float stepSize;
+	std::vector<Laplacian *> laplacians;
   };
 
   /**
@@ -236,13 +228,11 @@ namespace fl
   {
   public:
 	DescriptorOrientation (float supportRadial = 6.0f, int supportPixel = 32, float kernelSize = 2.5f);
-	DescriptorOrientation (std::istream & stream);
-	void initialize (float supportRadial, int supportPixel, float kernelSize);
+	void initialize ();
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel + 1.
 	float kernelSize;  ///< Number of sigmas of the Gaussian kernel to cover the radius fo the patch.  Similar semantics to supportRadial, except applies to the derivation kernels.
@@ -258,14 +248,12 @@ namespace fl
   {
   public:
 	DescriptorOrientationHistogram (float supportRadial = 4.5f, int supportPixel = 16, float kernelSize = 2.5f, int bins = 36);
-	DescriptorOrientationHistogram (std::istream & stream);
 
 	void computeGradient (const Image & image);
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);  ///< Returns one or more angle hypotheses, listed in order of descending strength.  That is, the strongest angle hypothesis will be in row 0.
 	virtual Image patch (const Vector<float> & value);
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int supportPixel;  ///< Pixel radius of patch, if needed.  Patch size = 2 * supportPixel.
 	float kernelSize;  ///< Similar to DescriptorOrientation::kernelSize, except that this class achieves the same effect by raising blur to the appropriate level.  Only applies to patches with shape change.
@@ -297,13 +285,11 @@ namespace fl
   {
   public:
 	DescriptorContrast (float supportRadial = 6.0f, int supportPixel = 32);
-	DescriptorContrast (std::istream & stream);
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel.
   };
@@ -312,15 +298,13 @@ namespace fl
   {
   public:
 	DescriptorFilters ();
-	DescriptorFilters (std::istream & stream);
 	virtual ~DescriptorFilters ();  
 
 	void prepareFilterMatrix ();
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	std::vector<ConvolutionDiscrete2D> filters;
 	Matrix<float> filterMatrix;
@@ -332,7 +316,6 @@ namespace fl
   {
   public:
 	DescriptorFiltersTexton (int angles = 6, int scales = 4, float firstScale = -1, float scaleStep = -1);
-	DescriptorFiltersTexton (std::istream & stream) : DescriptorFilters (stream) {}
   };
 
   class SHARED DescriptorPatch : public Descriptor
@@ -345,8 +328,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int width;
   };
@@ -361,8 +343,7 @@ namespace fl
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	float sigma;
 	ConvolutionDiscrete2D G;
@@ -387,8 +368,7 @@ namespace fl
 
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	DescriptorSchmidScale * findScale (float sigma);
 
@@ -405,8 +385,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int   binsRadial;
 	int   binsIntensity;
@@ -432,8 +411,7 @@ namespace fl
 	void patch (const std::string & fileName, const Vector<float> & value);  ///< Write a visualization of the descriptor to a postscript file.
 	void patch (Canvas * canvas, const Vector<float> & value, int size);  ///< Subroutine used by other patch() methods.
 	virtual Comparison * comparison ();  ///< Return a MetricEuclidean, rather than the default (NormalizedCorrelation).
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	// Parameters
 	int width;  ///< Number of horizontal or vertical positions.
@@ -476,8 +454,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int width;  ///< Number of bins in the U and V dimensions.
 	Matrix<bool> valid;  ///< Stores true for every bin that translates to a valid RGB color.
@@ -507,8 +484,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int width;  ///< Number of bins in the U and V dimensions.
 	int height;  ///< Number of bins in the Y dimension.
@@ -533,8 +509,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image, const PointAffine & point);
 	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	void * lastBuffer;  ///< For detecting change in cached image.
 	double lastTime;  ///< For detecting change in cached image.
@@ -577,8 +552,7 @@ namespace fl
 	virtual Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	int P;  ///< Number of evenly spaced sample points around center.
 	float R;  ///< Radius of circle of sample points.

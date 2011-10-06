@@ -37,6 +37,9 @@ namespace fl
   int MatrixAbstract<T>::displayPrecision = 6;
 
   template<class T>
+  uint32_t MatrixAbstract<T>::serializeVersion = 0;
+
+  template<class T>
   MatrixAbstract<T>::~MatrixAbstract ()
   {
   }
@@ -566,13 +569,7 @@ namespace fl
 
   template<class T>
   void
-  MatrixAbstract<T>::read (std::istream & stream)
-  {
-  }
-
-  template<class T>
-  void
-  MatrixAbstract<T>::write (std::ostream & stream) const
+  MatrixAbstract<T>::serialize (Archive & archive, uint32_t version)
   {
   }
 
@@ -1807,61 +1804,58 @@ namespace fl
 
   template<class T>
   void
-  MatrixStrided<T>::read (std::istream & stream)
+  MatrixStrided<T>::serialize (Archive & archive, uint32_t version)
   {
-	offset  = 0;
-	stream.read ((char *) & rows_,    sizeof (rows_));
-	stream.read ((char *) & columns_, sizeof (columns_));
-	strideR = 1;
-	strideC = rows_;
-	if (! stream.good ())
-	{
-	  throw "Stream bad.  Unable to finish reading Matrix.";
-	}
-	int bytes = rows_ * columns_ * sizeof (T);
-	this->data.grow (bytes);
-	stream.read ((char *) data, bytes);
-  }
+	archive & rows_;
+	archive & columns_;
 
-  template<class T>
-  void
-  MatrixStrided<T>::write (std::ostream & stream) const
-  {
-	stream.write ((char *) & rows_,    sizeof (rows_));
-	stream.write ((char *) & columns_, sizeof (columns_));
-	T * i = (T *) data + offset;
-	// Chunk the output as much as possible.  This makes writing to the stream much faster.
-	if (strideR == 1)
+	if (archive.in)
 	{
-	  if (strideC == rows_)
-	  {
-		stream.write ((char *) i, rows_ * columns_ * sizeof (T));
-	  }
-	  else
-	  {
-		const int bytes = rows_ * sizeof (T);
-		int count = bytes * columns_;
-		while (count > 0)
-		{
-		  stream.write ((char *) i, bytes);
-		  i += strideC;
-		  count -= bytes;
-		}
-	  }
+	  offset  = 0;
+	  strideR = 1;
+	  strideC = rows_;
+
+	  if (! archive.in->good ()) throw "Stream bad.  Unable to finish reading Matrix.";
+	  int bytes = rows_ * columns_ * sizeof (T);
+	  this->data.grow (bytes);
+	  archive.in->read ((char *) data, bytes);
 	}
 	else
 	{
-	  T * end = i + strideC * columns_;
-	  const int stepC = strideC - rows_ * strideR;
-	  while (i != end)
+	  T * i = (T *) data + offset;
+	  // Chunk the output as much as possible.  This makes writing to the stream much faster.
+	  if (strideR == 1)
 	  {
-		T * columnEnd = i + rows_ * strideR;
-		while (i != columnEnd)
+		if (strideC == rows_)
 		{
-		  stream.write ((char *) i, sizeof (T));
-		  i += strideR;
+		  archive.out->write ((char *) i, rows_ * columns_ * sizeof (T));
 		}
-		i += stepC;
+		else
+		{
+		  const int bytes = rows_ * sizeof (T);
+		  int count = bytes * columns_;
+		  while (count > 0)
+		  {
+			archive.out->write ((char *) i, bytes);
+			i += strideC;
+			count -= bytes;
+		  }
+		}
+	  }
+	  else
+	  {
+		T * end = i + strideC * columns_;
+		const int stepC = strideC - rows_ * strideR;
+		while (i != end)
+		{
+		  T * columnEnd = i + rows_ * strideR;
+		  while (i != columnEnd)
+		  {
+			archive.out->write ((char *) i, sizeof (T));
+			i += strideR;
+		  }
+		  i += stepC;
+		}
 	  }
 	}
   }
@@ -1905,12 +1899,6 @@ namespace fl
 		*i++ = that(r,c);
 	  }
 	}
-  }
-
-  template<class T>
-  Matrix<T>::Matrix (std::istream & stream)
-  {
-	MatrixStrided<T>::read (stream);
   }
 
   template<class T>

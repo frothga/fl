@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -28,11 +28,6 @@ DescriptorPatch::DescriptorPatch (int width, float supportRadial)
   this->width = width;
   this->supportRadial = supportRadial;
   dimension = width * width;
-}
-
-DescriptorPatch::DescriptorPatch (std::istream & stream)
-{
-  read (stream);
 }
 
 DescriptorPatch::~DescriptorPatch ()
@@ -75,21 +70,11 @@ DescriptorPatch::comparison ()
 }
 
 void
-DescriptorPatch::read (std::istream & stream)
+DescriptorPatch::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
+  archive & *((Descriptor *) this);
+  archive & width;
+  archive & supportRadial;
 
-  stream.read ((char *) &width, sizeof (width));
-  stream.read ((char *) &supportRadial, sizeof (supportRadial));
   dimension = width * width;
 }
-
-void
-DescriptorPatch::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  stream.write ((char *) &width, sizeof (width));
-  stream.write ((char *) &supportRadial, sizeof (supportRadial));
-}
-

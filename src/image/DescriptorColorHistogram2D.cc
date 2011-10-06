@@ -38,11 +38,6 @@ DescriptorColorHistogram2D::DescriptorColorHistogram2D (int width, float support
   initialize ();
 }
 
-DescriptorColorHistogram2D::DescriptorColorHistogram2D (istream & stream)
-{
-  read (stream);
-}
-
 void
 DescriptorColorHistogram2D::initialize ()
 {
@@ -274,21 +269,11 @@ DescriptorColorHistogram2D::comparison ()
 }
 
 void
-DescriptorColorHistogram2D::read (std::istream & stream)
+DescriptorColorHistogram2D::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
+  archive & *((Descriptor *) this);
+  archive & width;
+  archive & supportRadial;
 
-  stream.read ((char *) &width,         sizeof (width));
-  stream.read ((char *) &supportRadial, sizeof (supportRadial));
-
-  initialize ();
-}
-
-void
-DescriptorColorHistogram2D::write (std::ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  stream.write ((char *) &width,         sizeof (width));
-  stream.write ((char *) &supportRadial, sizeof (supportRadial));
+  if (archive.in) initialize ();
 }

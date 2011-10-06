@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -27,13 +27,6 @@ using namespace fl;
 DescriptorCombo::DescriptorCombo ()
 {
   lastBuffer = 0;
-}
-
-DescriptorCombo::DescriptorCombo (istream & stream)
-{
-  lastBuffer = 0;
-
-  read (stream);
 }
 
 DescriptorCombo::~DescriptorCombo ()
@@ -124,33 +117,10 @@ DescriptorCombo::comparison ()
 }
 
 void
-DescriptorCombo::read (istream & stream)
+DescriptorCombo::serialize (Archive & archive, uint32_t version)
 {
-  Descriptor::read (stream);
-
-  int count = 0;
-  stream.read ((char *) &count, sizeof (count));
-  if (! stream.good ())
-  {
-	throw "Can't finish reading DescriptorCombo: stream bad.";
-  }
-  for (int i = 0; i < count; i++)
-  {
-	add (Factory<Descriptor>::read (stream));
-  }
-}
-
-void
-DescriptorCombo::write (ostream & stream) const
-{
-  Descriptor::write (stream);
-
-  int count = descriptors.size ();
-  stream.write ((char *) &count, sizeof (count));
-  for (int i = 0; i < count; i++)
-  {
-	Factory<Descriptor>::write (stream, *descriptors[i]);
-  }
+  archive & *((Descriptor *) this);
+  archive & descriptors;
 }
 
 
@@ -159,12 +129,6 @@ DescriptorCombo::write (ostream & stream) const
 ComparisonCombo::ComparisonCombo ()
 {
   totalDimension = 0;
-}
-
-ComparisonCombo::ComparisonCombo (istream & stream)
-{
-  totalDimension = 0;
-  read (stream);
 }
 
 ComparisonCombo::~ComparisonCombo ()
@@ -255,39 +219,14 @@ ComparisonCombo::extract (int index, const Vector<float> & value) const
 }
 
 void
-ComparisonCombo::read (istream & stream)
+ComparisonCombo::serialize (Archive & archive, uint32_t version)
 {
-  Comparison::read (stream);
+  archive & *((Comparison *) this);
+  archive & comparisons;
+  archive & dimensions;
 
-  int count = 0;
-  stream.read ((char *) &count, sizeof (count));
-  if (! stream.good ())
+  if (archive.in)
   {
-	throw "Can't finish reading ComparisonCombo: stream bad.";
-  }
-  for (int i = 0; i < count; i++)
-  {
-	Comparison * c = dynamic_cast<Comparison *> (Factory<Metric>::read (stream));
-	if (! c) throw "Stored object is not a Comparison.";
-    comparisons.push_back (c);
-	int d;
-	stream.read ((char *) &d, sizeof (d));
-    dimensions.push_back (d);
-    totalDimension += d;
-  }
-}
-
-void
-ComparisonCombo::write (ostream & stream) const
-{
-  Comparison::write (stream);
-
-  int count = comparisons.size ();
-  stream.write ((char *) &count, sizeof (count));
-  for (int i = 0; i < count; i++)
-  {
-	comparisons[i]->write (stream);
-	int d = dimensions[i];
-	stream.write ((char *) &d, sizeof (d));
+	for (int i = 0; i < dimensions.size (); i++) totalDimension += dimensions[i];
   }
 }
