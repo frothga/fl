@@ -21,7 +21,7 @@ for details.
 #include "fl/image.h"
 #include "fl/matrix.h"
 #include "fl/point.h"
-#include "fl/serialize.h"
+#include "fl/archive.h"
 
 #include <ostream>
 

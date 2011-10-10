@@ -13,7 +13,8 @@ for details.
 
 #include <fl/parms.h>
 #include <fl/vectorsparse.h>
-#include <fl/serialize.h>
+#include <fl/archive.h>
+#include <fl/factory.h>
 
 #include <iostream>
 #include <fstream>

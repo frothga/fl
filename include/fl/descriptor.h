@@ -24,7 +24,7 @@ for details.
 #include "fl/canvas.h"
 #include "fl/imagecache.h"
 #include "fl/metric.h"
-#include "fl/serialize.h"
+#include "fl/archive.h"
 
 #include <iostream>
 #include <vector>

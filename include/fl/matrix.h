@@ -20,7 +20,7 @@ for details.
 
 #include "fl/pointer.h"
 #include "fl/math.h"
-#include "fl/serialize.h"
+#include "fl/archive.h"
 
 #include <iostream>
 #include <sstream>

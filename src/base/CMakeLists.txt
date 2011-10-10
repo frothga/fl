@@ -7,11 +7,11 @@
 
 
 add_library (flBase
-  ../../include/fl/endian.h
+  ../../include/fl/archive.h
   ../../include/fl/binary.h
+  ../../include/fl/endian.h
   ../../include/fl/parms.h
   ../../include/fl/pointer.h
-  ../../include/fl/serialize.h
   ../../include/fl/string.h
   ../../include/fl/time.h
   Archive.cc
