@@ -100,7 +100,6 @@ template<>
 Archive &
 Archive::operator & (string & data)
 {
-  cerr << "operator & string" << endl;
   uint32_t count = data.size ();
   (*this) & count;
   if (in)
