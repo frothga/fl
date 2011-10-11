@@ -193,8 +193,9 @@ namespace fl
 	  {
 		uint32_t pointer;
 		(*this) & pointer;
-		if (pointer > pointersIn.size ()) throw "pointer index out of range in archive";
-		if (pointer < pointersIn.size ()) data = (T *) pointersIn[pointer];
+		if      (pointer == 0xFFFFFFFF) data = 0;
+		else if (pointer > pointersIn.size ()) throw "pointer index out of range in archive";
+		else if (pointer < pointersIn.size ()) data = (T *) pointersIn[pointer];
 		else  // new pointer, so serialize associated object
 		{
 		  uint32_t classIndex;
@@ -223,6 +224,11 @@ namespace fl
 	  }
 	  else
 	  {
+		if (data == 0)
+		{
+		  uint32_t nullPointer = 0xFFFFFFFF;
+		  return (*this) & nullPointer;
+		}
 		std::map<void *, uint32_t>::iterator p = pointersOut.find (data);
 		if (p != pointersOut.end ()) (*this) & p->second;
 		else

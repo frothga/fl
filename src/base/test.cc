@@ -133,6 +133,8 @@ public:
 	{
 	  A * a = collection[i];
 	  A * b = that.collection[i];
+	  if (a == 0  &&  b == 0) return true;
+	  if (a == 0  ||  b == 0) return false;
 	  if (! (*a == *b)) return false;
 	}
 	return true;
@@ -151,7 +153,9 @@ operator << (ostream & stream, const D & data)
   for (int i = 0; i < data.collection.size (); i++)
   {
 	A * a = data.collection[i];
-	cerr << hex << a << dec << " " << typeid (*a).name () << " " << a->name << " " << a->number << endl;
+	cerr << hex << a << dec;
+	if (a) cerr << " " << typeid (*a).name () << " " << a->name << " " << a->number << endl;
+	else cerr << endl;
   }
   return stream;
 }
@@ -189,6 +193,7 @@ testArchive ()
   before.collection.push_back (a);
   before.collection.push_back (b);
   before.collection.push_back (c);
+  before.collection.push_back (0);
   a->name = "a";
   b->name = "b";
   c->name = "c";
