@@ -140,9 +140,9 @@ operator << (ostream & stream, const D & data)
 void
 testFactory ()
 {
-  Product<A, A>::add ("a");
-  Product<A, B>::add ("b");
-  Product<A, C>::add ("c");
+  Factory<A>::add<A> ("a");
+  Factory<A>::add<B> ("b");
+  Factory<A>::add<C> ("c");
 
   B b;
   ofstream ofs ("testBaseFile", ios::binary);

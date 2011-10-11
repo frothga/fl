@@ -24,7 +24,6 @@ for details.
 #include <map>
 #include <typeinfo>
 #include <iostream>
-#include <fstream>
 
 #undef SHARED
 #ifdef _MSC_VER
@@ -40,9 +39,9 @@ for details.
 
 namespace fl
 {
-  typedef void * productCreate ();
-  typedef std::map<std::string, productCreate *> productMappingIn;
-  typedef std::map<std::string, std::string>     productMappingOut;
+  typedef void * createFunction ();
+  typedef std::map<std::string, createFunction *> productMappingIn;
+  typedef std::map<std::string, std::string>      productMappingOut;
   /**
 	 Bundling both mappings in a single object makes it easier to instantiate
 	 the registry in those case where it is necessary.
@@ -96,6 +95,56 @@ namespace fl
   class Factory
   {
   public:
+	template<class D>
+	static void add (const std::string & name = "")
+	{
+	  struct productWrapper
+	  {
+		static void * create ()
+		{
+		  return new D;  // default constructor
+		}
+	  };
+
+	  std::string typeidName = typeid (D).name ();
+	  add (name, typeidName, productWrapper::create);
+	}
+
+	static void add (const std::string & name, const std::string & typeidName, createFunction * create)
+	{
+	  // Remove any old mapping
+	  productMappingOut::iterator outEntry = registry.out.find (typeidName);
+	  if (outEntry != registry.out.end ())
+	  {
+		productMappingIn::iterator inEntry = registry.in.find (outEntry->second);
+		if (inEntry != registry.in.end ()) registry.in.erase (inEntry);
+		registry.out.erase (outEntry);
+	  }
+
+	  std::string uniqueName;
+	  if (name.size ())
+	  {
+		uniqueName = name;
+	  }
+	  else
+	  {
+		// Search for a unique name.  This implementation is exceedingly
+		// inefficient, but given that the number classes registered is
+		// generally much less than 100, and that this is a one-time
+		// process, the cost doesn't matter too much.
+		char temp[32];
+		for (int i = 0; ; i++)
+		{
+		  sprintf (temp, "%i", i);
+		  if (registry.in.find (temp) == registry.in.end ()) break;
+		}
+		uniqueName = temp;
+	  }
+
+	  registry.in.insert  (std::make_pair (uniqueName, create));
+	  registry.out.insert (std::make_pair (typeidName, uniqueName));
+	}
+
 	/**
 	   Instantiates a named subclass.  This function serves two roles.
 	   One is to act as a subroutine of read().  The other is to allow
@@ -146,53 +195,6 @@ namespace fl
 	static productRegistry registry;
   };
   template <class B> productRegistry Factory<B>::registry;
-
-  template<class B, class D>  // "B" for base class, and "D" for derived class
-  class Product
-  {
-  public:
-	static void * create ()
-	{
-	  return new D;  // default constructor
-	}
-
-	static void add (const std::string & name = "")
-	{
-	  std::string typeidName = typeid (D).name ();
-
-	  // Remove any old mapping
-	  productMappingOut::iterator outEntry = Factory<B>::registry.out.find (typeidName);
-	  if (outEntry != Factory<B>::registry.out.end ())
-	  {
-		productMappingIn::iterator inEntry = Factory<B>::registry.in.find (outEntry->second);
-		if (inEntry != Factory<B>::registry.in.end ()) Factory<B>::registry.in.erase (inEntry);
-		Factory<B>::registry.out.erase (outEntry);
-	  }
-
-	  std::string uniqueName;
-	  if (name.size ())
-	  {
-		uniqueName = name;
-	  }
-	  else
-	  {
-		// Search for a unique name.  This implementation is exceedingly
-		// inefficient, but given that the number classes registered is
-		// generally much less than 100, and that this is a one-time
-		// process, the cost doesn't matter too much.
-		char temp[32];
-		for (int i = 0; ; i++)
-		{
-		  sprintf (temp, "%i", i);
-		  if (Factory<B>::registry.in.find (temp) == Factory<B>::registry.in.end ()) break;
-		}
-		uniqueName = temp;
-	  }
-
-	  Factory<B>::registry.in.insert  (std::make_pair (uniqueName, &create));
-	  Factory<B>::registry.out.insert (std::make_pair (typeidName, uniqueName));
-	}
-  };
 }
 
 
