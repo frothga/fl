@@ -134,6 +134,7 @@ namespace fl
   {
 	if (in) in ->read  ((char *) &detector, sizeof (detector));
 	else    out->write ((char *) &detector, sizeof (detector));
+	return *this;
   }
 }
 
