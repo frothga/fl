@@ -64,7 +64,7 @@ public:
   int number;
   string name;
 };
-uint32_t A::serializeVersion = 1;
+uint32_t A::serializeVersion = 0;
 
 class B : public A
 {
@@ -75,21 +75,40 @@ public:
 class C : public A
 {
 public:
-  C () {}
+  C ()
+  {
+	restoredVersion = serializeVersion;
+  }
   void serialize (Archive & a, uint32_t version)
   {
 	a & *((A *) this);
-	a & truth;
+	if (version == 0) cerr << "not serializing 'truth'" << endl;
+	else
+	{
+	  cerr << "serializing 'truth'" << endl;
+	  a & truth;
+	}
+	restoredVersion = version;
   }
   virtual bool operator == (const A & that)
   {
 	if (! A::operator == (that)) return false;
+	cerr << "C::operator==  versions " << restoredVersion << " " << ((C *) &that)->restoredVersion << endl;
+	if (restoredVersion == 0  ||  ((C *) &that)->restoredVersion == 0)
+	{
+	  cerr << "not comparing truth, because one of the objects is old version" << endl;
+	  return true;
+	}
 	if (truth != ((C*) &that)->truth) return false;
 	return true;
   }
 
+  static uint32_t serializeVersion;
+
+  uint32_t restoredVersion;
   bool truth;
 };
+uint32_t C::serializeVersion = 0;
 
 class D
 {
@@ -122,7 +141,7 @@ public:
   static uint32_t serializeVersion;
   vector<A *> collection;
 };
-uint32_t D::serializeVersion = 2;
+uint32_t D::serializeVersion = 0;
 
 ostream &
 operator << (ostream & stream, const D & data)
@@ -178,6 +197,7 @@ testArchive ()
   c->number = 3;
   c->truth = false;
 
+  cerr << "testing basic Achive" << endl;
   {
 	Archive archive ("testBaseFile", "w");
 	archive & before;
@@ -192,9 +212,27 @@ testArchive ()
 
 	cerr << "before:" << endl << before << endl;
 	cerr << "after:" << endl << after << endl;
-	if (after == before) cout << "Archive passes" << endl;
-	else throw "Archive fails";
+	if (! (after == before)) throw "Archive fails";
   }
+
+  cerr << "testing versioned Archive" << endl;
+  {
+	Archive archive ("testBaseFile", "w");
+	uint32_t oldVersion = C::serializeVersion;
+	C::serializeVersion = 1;
+	archive & before;
+	C::serializeVersion = oldVersion;
+  }
+
+  {
+	Archive archive ("testBaseFile", "r");
+	D after;
+	archive & after;
+
+	if (! (after == before)) throw "Archive fails";
+  }
+
+  cout << "Archive passes" << endl;
 }
 
 inline void
