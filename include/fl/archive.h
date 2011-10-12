@@ -264,7 +264,7 @@ namespace fl
 	  {
 		if (in->bad ()) throw "stream bad";
 		data.reserve (data.size () + count);
-		for (int i = 0; i < count; i++)
+		for (uint32_t i = 0; i < count; i++)
 		{
 		  T temp;
 		  (*this) & temp;
@@ -273,7 +273,7 @@ namespace fl
 	  }
 	  else
 	  {
-		for (int i = 0; i < count; i++) (*this) & data[i];
+		for (uint32_t i = 0; i < count; i++) (*this) & data[i];
 	  }
 	  return (*this);
 	}
