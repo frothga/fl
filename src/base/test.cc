@@ -113,13 +113,14 @@ uint32_t C::serializeVersion = 0;
 class D
 {
 public:
-  void serialize (Archive & a, uint32_t version)
+  void serialize (Archive & archive, uint32_t version)
   {
-	a.registerClass<A> ();
-	a.registerClass<B> ();
-	a.registerClass<C> ("bob");
-	a.registerClass<C> ("sam");
-	a & collection;
+	archive.registerClass<A> ();
+	archive.registerClass<B> ();
+	archive.registerClass<C> ("bob");
+	archive.registerClass<C> ("sam");
+
+	archive & collection;
   }
 
   bool operator == (const D & that)

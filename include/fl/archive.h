@@ -170,16 +170,17 @@ namespace fl
 	  }
 
 	  // Record the pointer
-	  if (in)
+	  // It is an error to record an object through a pointer, and then
+	  // later record it through a reference.  The problem with this is
+	  // that two (or more) copies of the object will be created, and
+	  // the pointers will not address the same object as the reference.
+	  // It is possible to detect this situation at write-time (by keeping
+	  // track of which class an object was last written under), but we
+	  // currently don't want to spend the space resources on it.
+	  if (pointersOut.find (&data) == pointersOut.end ())
 	  {
-		pointersIn.push_back (&data);
-	  }
-	  else
-	  {
-		if (pointersOut.find (&data) == pointersOut.end ())
-		{
-		  pointersOut.insert (make_pair (&data, pointersOut.size ()));
-		}
+		pointersOut.insert (make_pair (&data, pointersOut.size ()));
+		if (in) pointersIn.push_back (&data);
 	  }
 
 	  data.serialize (*this, c->second->version);
@@ -218,6 +219,7 @@ namespace fl
 		  if (d->create    == 0) throw "create() has not been registered";
 		  if (d->serialize == 0) throw "serialize() has not been registered";
 		  data = (T *) d->create ();
+		  pointersOut.insert (make_pair (data, pointersOut.size ()));
 		  pointersIn.push_back (data);
 		  d->serialize (data, *this, d->version);
 		}
@@ -238,7 +240,11 @@ namespace fl
 
 		  std::string typeidName = typeid (*data).name ();
 		  std::map<std::string, ClassDescription *>::iterator c = classesOut.find (typeidName);
-		  if (c == classesOut.end ()) throw "Attempt to write unregistered polymorphic class";
+		  if (c == classesOut.end ())
+		  {
+			sprintf (message, "Unregistered class %s", typeidName.c_str ());
+			throw message;
+		  }
 		  if (c->second->index < 0xFFFFFFFF) (*this) & c->second->index;
 		  else
 		  {
@@ -288,6 +294,8 @@ namespace fl
 	std::vector<ClassDescription *>           classesIn;   ///< mapping from serial # to class description; ClassDescription objects are held by classesOut
 	std::map<std::string, ClassDescription *> classesOut;  ///< mapping from RTTI name to class description; one-to-one
 	std::map<std::string, ClassDescription *> alias;       ///< mapping from user-assigned name to class description; can be many-to-one
+
+	char message[256];  ///< buffer for constructing detailed exceptions
   };
 
   // These are necessary, because any type that does not have an explicit
