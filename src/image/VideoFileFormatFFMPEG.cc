@@ -213,7 +213,7 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 		  return;
 		}
 	  }
-	  while (packet.stream_index != stream->index  ||  (stream->parser  &&  ! (packet.flags & PKT_FLAG_KEY)));
+	  while (packet.stream_index != stream->index  ||  (stream->parser  &&  ! (packet.flags & AV_PKT_FLAG_KEY)));
 	  state = 0;
 	  size = packet.size;
 	  gotPicture = 0;
@@ -388,13 +388,13 @@ VideoInFileFFMPEG::open (const string & fileName)
   memset (&picture, 0, sizeof (picture));
   gotPicture = 0;
 
-  state = av_open_input_file (&fc, fileName.c_str (), NULL, 0, NULL);
+  state = avformat_open_input (&fc, fileName.c_str (), 0, 0);
   if (state < 0)
   {
 	return;
   }
 
-  state = av_find_stream_info (fc);
+  state = avformat_find_stream_info (fc, 0);
   if (state < 0)
   {
 	return;
@@ -404,7 +404,7 @@ VideoInFileFFMPEG::open (const string & fileName)
   for (int i = 0; i < fc->nb_streams; i++)
   {
 	fc->streams[i]->discard = AVDISCARD_ALL;
-	if (stream == 0  &&  fc->streams[i]->codec->codec_type == CODEC_TYPE_VIDEO)
+	if (stream == 0  &&  fc->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
 	{
 	  stream = fc->streams[i];
 	  fc->streams[i]->discard = AVDISCARD_DEFAULT;
@@ -429,7 +429,7 @@ VideoInFileFFMPEG::open (const string & fileName)
 	cc->flags |= CODEC_FLAG_TRUNCATED;
   }
 
-  state = avcodec_open (cc, codec);
+  state = avcodec_open2 (cc, codec, 0);
   if (state < 0)
   {
 	return;
@@ -588,7 +588,7 @@ VideoOutFileFFMPEG::open (const std::string & fileName, const std::string & form
 
   strcpy (fc->filename, fileName.c_str ());
 
-  stream = av_new_stream (fc, 0);
+  stream = avformat_new_stream (fc, 0);
   if (! stream)
   {
 	state = -10;
@@ -601,7 +601,7 @@ VideoOutFileFFMPEG::open (const std::string & fileName, const std::string & form
   {
 	for (AVCodec * i = av_codec_next (0); i; i = av_codec_next (i))
 	{
-	  if (i->encode  &&  i->type == CODEC_TYPE_VIDEO  &&  codecName == i->name)
+	  if (i->encode  &&  i->type == AVMEDIA_TYPE_VIDEO  &&  codecName == i->name)
 	  {
 		codec = i;
 		break;
@@ -644,16 +644,13 @@ VideoOutFileFFMPEG::open (const std::string & fileName, const std::string & form
 	cc.time_base.den = 24;
   }
 
-  state = av_set_parameters (fc, 0);
-  if (state < 0) return;
-
   if (fc->oformat->flags & AVFMT_NOFILE)
   {
 	cerr << "WARNING: Non-file type video format.  Not sure how this works, but proceeding anyway." << endl;
   }
   else
   {
-	state = url_fopen (& fc->pb, fileName.c_str (), URL_WRONLY);
+	state = avio_open (& fc->pb, fileName.c_str (), AVIO_FLAG_WRITE);
 	if (state < 0) return;
   }
 
@@ -684,8 +681,8 @@ VideoOutFileFFMPEG::close ()
 
   if (fc)
   {
-	av_metadata_free (&fc->metadata);
-	if (! (fc->oformat->flags & AVFMT_NOFILE)) url_fclose (fc->pb);
+	av_dict_free (&fc->metadata);
+	if (! (fc->oformat->flags & AVFMT_NOFILE)) avio_close (fc->pb);
 	av_free (fc);
 	fc = 0;
   }
@@ -759,11 +756,11 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	// Must know pixel format before opening codec, and we only know that
 	// after receiving the first image, so we open the codec here rather than
 	// in open().
-	state = avcodec_open (stream->codec, codec);
+	state = avcodec_open2 (stream->codec, codec, 0);
 	if (state < 0) return;
 	state = 0;
 
-	state = av_write_header (fc);
+	state = avformat_write_header (fc, 0);
 	if (state < 0) return;
 	state = 0;
 
@@ -825,7 +822,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 
 	if (fc->oformat->flags & AVFMT_RAWPICTURE)
 	{
-	  packet.flags |= PKT_FLAG_KEY;
+	  packet.flags |= AV_PKT_FLAG_KEY;
 	  packet.data = (uint8_t *) &dest;
 	  packet.size = sizeof (AVPicture);
 	}
@@ -837,7 +834,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	  }
 	  if (cc->coded_frame->key_frame)
 	  {
-		packet.flags |= PKT_FLAG_KEY;
+		packet.flags |= AV_PKT_FLAG_KEY;
 	  }
 	  packet.data = (uint8_t *) videoBuffer;
 	  packet.size = size;

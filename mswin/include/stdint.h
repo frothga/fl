@@ -16,5 +16,6 @@ typedef unsigned int       uint32_t;
 typedef unsigned long long uint64_t;
 
 #define INT64_C(x) x ## LL
+#define UINT64_C(x)	x ## ULL
 
 #endif
