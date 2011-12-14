@@ -169,14 +169,89 @@ CanvasImage::drawPoint (const Point & p, unsigned int color)
   drawSegment (p2, p3, color);
 }
 
+// The following is an implementation of the Cohen-Sutherland clipping
+// algorithm, for use by drawSegment().  We use Cohen-Sutherland because
+// it has faster early-out than other clipping algorithms, and we assume
+// that most segments do not cross the boundary of the drawable area.
+
+static const int LEFT   = 0x1;
+static const int RIGHT  = 0x2;
+static const int TOP    = 0x4;
+static const int BOTTOM = 0x8;
+
+static inline int
+clipCode (const double & fWidth, const double & fHeight, const Point & a)
+{
+  int result = 0;
+  if      (a.x < -0.5)    result |= LEFT;
+  else if (a.x > fWidth)  result |= RIGHT;
+  if      (a.y < -0.5)    result |= TOP;
+  else if (a.y > fHeight) result |= BOTTOM;
+  return result;
+}
+
+static inline bool
+clip (const int & width, const int & height, Point & a, Point & b)
+{
+  const double fWidth  = width  - 0.500001;
+  const double fHeight = height - 0.500001;
+  int clipA = clipCode (fWidth, fHeight, a);
+  int clipB = clipCode (fWidth, fHeight, b);
+  while (true)
+  {
+	if (! (clipA | clipB)) return true;
+	if (   clipA & clipB ) return false;
+
+	double x;
+	double y;
+	int endpoint = clipA ? clipA : clipB;
+	double slope = (b.y - a.y) / (b.x - a.x);
+	if (endpoint & LEFT)
+	{
+	  x = 0;
+	  y = a.y - a.x             * (b.y - a.y) / (b.x - a.x);
+	}
+	else if (endpoint & RIGHT)
+	{
+	  x = fWidth;
+	  y = a.y + (fWidth - a.x)  * (b.y - a.y) / (b.x - a.x);
+	}
+	else if (endpoint & TOP)
+	{
+	  x = a.x - a.y             * (b.x - a.x) / (b.y - a.y);
+	  y = 0;
+	}
+	else  // endpoint & BOTTOM
+	{
+	  x = a.x + (fHeight - a.y) * (b.x - a.x) / (b.y - a.y);
+	  y = fHeight;
+	}
+
+	if (endpoint == clipA)
+	{
+	  a.x = x;
+	  a.y = y;
+	  clipA = clipCode (fWidth, fHeight, a);
+	}
+	else  // endpoint == clipB
+	{
+	  b.x = x;
+	  b.y = y;
+	  clipB = clipCode (fWidth, fHeight, b);
+	}
+  }
+}
+
 void
 CanvasImage::drawSegment (const Point & a, const Point & b, unsigned int color)
 {
   Point ta = trans (a);
   Point tb = trans (b);
 
-  float dx = tb.x - ta.x;
-  float dy = tb.y - ta.y;
+  if (! clip (width, height, ta, tb)) return;
+
+  double dx = tb.x - ta.x;
+  double dy = tb.y - ta.y;
 
   if (dx == 0  &&  dy == 0)
   {
@@ -878,6 +953,7 @@ CanvasImage::setScale (float x, float y)
 void
 CanvasImage::setLineWidth (float width)
 {
+  if (lineWidth == width) return;
   lineWidth = width;
 
   float radius = width / 2;
