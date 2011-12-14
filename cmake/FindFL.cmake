@@ -84,11 +84,11 @@ if (MSVC)
 
   # Avoid linkage conflicts caused by using mswin libraries.
   if    (NOT CMAKE_EXE_LINKER_FLAGS MATCHES libcmt)
-    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libcmt;libcmtd" CACHE STRING "linker flags" FORCE)
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libcmt;libcmtd /OPT:NOREF" CACHE STRING "linker flags" FORCE)
   endif (NOT CMAKE_EXE_LINKER_FLAGS MATCHES libcmt)
 
   if    (NOT CMAKE_SHARED_LINKER_FLAGS MATCHES libcmt)
-    set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:libcmt;libcmtd" CACHE STRING "linker flags" FORCE)
+    set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:libcmt;libcmtd /OPT:NOREF" CACHE STRING "linker flags" FORCE)
   endif (NOT CMAKE_SHARED_LINKER_FLAGS MATCHES libcmt)
 
   # Use multiple-processors to compile c/c++ code

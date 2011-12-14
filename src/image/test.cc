@@ -968,7 +968,7 @@ testAbsoluteValue ()
   cout << "AbsoluteValue passes" << endl;
 }
 
-// CanvasImage::drawFilledRectangle
+// CanvasImage
 void
 testCanvasImage ()
 {
@@ -992,7 +992,30 @@ testCanvasImage ()
 	  }
 	}
   }
-  cout << "CanvasImage::drawFilledRectangle passes" << endl;
+
+  ci.drawSegment (Point (-100,  430), Point ( 50, 580));
+  ci.drawSegment (Point ( 590, -100), Point (740,  50));
+  for (int y = 0; y < ci.height; y++)
+  {
+	for (int x = 0; x < ci.width; x++)
+	{
+	  if (ci.getGray (x, y))
+	  {
+		cout << x << " " << y << " not zero!" << endl;
+		throw "CanvasImage::drawSegment fails";
+	  }
+	}
+  }
+
+  ci.drawSegment (Point ( -50,  100), Point (100, -50));
+  ci.drawSegment (Point ( 540,  530), Point (690, 380));
+  if (   ci.getGray (25,  25 ) == 0  ||  ci.getGray (23,  23 ) != 0  ||  ci.getGray (27,  27 ) != 0
+	  || ci.getGray (615, 455) == 0  ||  ci.getGray (613, 453) != 0  ||  ci.getGray (617, 457) != 0)
+  {
+	throw "CanvasImage::drawSegment fails";
+  }
+
+  cout << "CanvasImage passes" << endl;
 }
 
 // ConvolutionDiscrete1D
