@@ -25,6 +25,7 @@ for details.
 extern "C"
 {
 # include <libavformat/avformat.h>
+# include <libavutil/mathematics.h>
 }
 
 #include <typeinfo>
