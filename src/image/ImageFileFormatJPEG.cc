@@ -26,7 +26,7 @@ extern "C"
 #  include <jpeglib.h>
 }
 
-#include <strstream>
+#include <sstream>
 #include <typeinfo>
 
 
@@ -354,14 +354,14 @@ ImageFileDelegateJPEG::get (const string & name, string & value)
   {
 	if (name == "width"  ||  name == "blockWidth")
 	{
-	  ostrstream sv;
+	  ostringstream sv;
 	  sv << dinfo.output_width;
 	  value = sv.str ();
 	  return;
 	}
 	if (name == "height"  ||  name == "blockHeight")
 	{
-	  ostrstream sv;
+	  ostringstream sv;
 	  sv << dinfo.output_height;
 	  value = sv.str ();
 	  return;
@@ -370,7 +370,7 @@ ImageFileDelegateJPEG::get (const string & name, string & value)
 
   if (name == "quality")
   {
-	ostrstream sv;
+	ostringstream sv;
 	sv << quality;
 	value = sv.str ();
 	return;
@@ -451,7 +451,7 @@ ImageFileDelegateJPEG::get (const string & name, Matrix<double> & value)
 	// Scan value to count rows and columns
 	int rows = 0;
 	int columns = 0;
-	istrstream sv (it->second.c_str ());
+	istringstream sv (it->second);
 	while (sv.good ())
 	{
 	  string line;
@@ -538,7 +538,7 @@ ImageFileDelegateJPEG::set (const string & name, const Matrix<double> & value)
 
   if (name == "comments")
   {
-	ostrstream sv;
+	ostringstream sv;
 	sv << value;
 	comments += sv.str ();
 	return;
@@ -548,7 +548,7 @@ ImageFileDelegateJPEG::set (const string & name, const Matrix<double> & value)
   {
 	if (value.rows () > 0  &&  value.columns () > 0)
 	{
-	  ostrstream sv;
+	  ostringstream sv;
 	  sv << value;
 	  namedValues.insert (make_pair (name, sv.str ()));
 	}
@@ -559,7 +559,7 @@ ImageFileDelegateJPEG::set (const string & name, const Matrix<double> & value)
   }
   else if (value.rows () > 0  &&  value.columns () > 0)
   {
-	ostrstream sv;
+	ostringstream sv;
 	sv << value;
 	comments += sv.str ();
   }

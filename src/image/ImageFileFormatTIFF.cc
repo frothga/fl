@@ -27,7 +27,7 @@ for details.
 #  include <geotiff.h>
 #endif
 
-#include <strstream>
+#include <sstream>
 #include <typeinfo>
 
 #include <errno.h>
@@ -706,7 +706,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	  get (name, v);
 	  if (v.rows () > 0  &&  v.columns () > 0)
 	  {
-		ostrstream sv;
+		ostringstream sv;
 		sv << v;
 		value = sv.str ();
 	  }
@@ -1303,8 +1303,8 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 	int count = value.rows () * value.columns ();
 	if (! count) throw "Emptry matrix";
 
-	void * data = 0;
-	ostrstream adata;
+	const void * data = 0;
+	ostringstream adata;
 
 #   define writeVector(type) \
 	data = malloc (count * sizeof (type)); \
@@ -1343,7 +1343,7 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 		break;
 	  case TIFF_ASCII:
 		adata << value;
-		data = adata.str ();
+		data = adata.str ().c_str ();
 	}
 
 	if (fi->field_passcount)
@@ -1397,7 +1397,7 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 	  }
 	}
 
-	if (data  &&  fi->field_type != TIFF_DOUBLE  &&  fi->field_type != TIFF_ASCII) free (data);
+	if (data  &&  fi->field_type != TIFF_DOUBLE  &&  fi->field_type != TIFF_ASCII) free ((void *) data);
 	return;
   }
 
@@ -1420,7 +1420,7 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 	  }
 	  case TYPE_ASCII:
 	  {
-		ostrstream data;
+		ostringstream data;
 		data << value;
 		GTIFKeySet (gtif, (geokey_t) key, TYPE_ASCII, data.pcount (), data.str ());
 	  }
