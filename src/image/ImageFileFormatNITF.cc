@@ -31,8 +31,8 @@ using namespace fl;
  **/
 struct nitfMapping
 {
-  char * name;  ///< NITF standard field name.  If null, then end of table.
-  int    size;  ///< byte count
+  const char * name;  ///< NITF standard field name.  If null, then end of table.
+  int          size;  ///< byte count
 
   /**
 	 A terse string that indicates the kind of data in this field.
@@ -43,8 +43,8 @@ struct nitfMapping
 	 <li>"F" -- Float
 	 </ul>
   **/
-  char * type;
-  char * defaultValue;  ///< Blank if standard default for given type.
+  const char * type;
+  const char * defaultValue;  ///< Blank if standard default for given type.
 };
 
 class nitfItem
@@ -1047,7 +1047,7 @@ enum nitfItemID
 
 struct nitfTypeMapping
 {
-  char *        name;
+  const char *  name;
   nitfItemID    id;
   nitfMapping * map;  ///< alternate map
 };
