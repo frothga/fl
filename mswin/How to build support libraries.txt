@@ -24,13 +24,11 @@ To build 64bit versions, you will need the x64 cross-compiler supplied with Visu
 
 	vcexpress /useenv
 
-One of these packages (FFMPEG) can only be built under MinGW + MSYS.  First install MinGW (either 32-bit or 64-bit), then install MSYS and have it point its /mingw directory to the correct version of MinGW.
+Some of these packages can only be built using the MinGW cross-compiler.  The optimal configuration is to use a Linux system (for example, one running inside of VirtualBox on Windows).  Avoid MSYS.  Also avoid using the original MinGW project.  Instead, use both 32-bit and 64-bit resources from the MinGW-w64 fork:  http://sourceforge.net/projects/mingw-w64
 
-MinGW 32-bit: To prepare the MinGW compiler, go to http://sourceforge.net/projects/mingw/files, download the latest installer, and place it in c:\mingw32\setup.  Accept the default "current" package.
+The rest of these instructions assume that "mingw32" and "mingw64" refer to the root directories where the respective tool-chains have been installed.  When cross-compiling, it is important to add the mingw bin directory to the path:
 
-MinGW 64-bit: Download from http://sourceforge.net/projects/mingw-w64/files.  Install in c:\mingw64, and add it to the path as described above.
-
-To prepare the MSYS environment, go to http://sourceforge.net/projects/mingw/files and download/run the latest MSYS Base System installer program.  Install in c:\msys.
+	export PATH={mingw32 or mingw64}/bin:$PATH
 
 
 FL supplied headers
@@ -51,12 +49,11 @@ Copy the contents of the include directory into mswin/include.
 
 Pthreads-w32
 ------------
-The original source for pthreads-w32 may be found at http://sourceware.org/pthreads-win32.  However, the site does not seem to be actively maintained, and more current code is available than is posted on the site.  The best way to get the most recent CVS code and some needed patches is to download from the MinGW-w64 project site: http://sourceforge.net/projects/mingw-w64/files/External%20binary%20packages%20%28Win64%20hosted%29/pthreads/pthreads-20100604.zip
-or more recent.
+The original source for pthreads-w32 may be found at http://sourceware.org/pthreads-win32.  However, the site does not seem to be actively maintained, and more current code is available than is posted on the site.  Instructions for either getting the pre-built binaries or building using the MinGW cross-compiler are available at: http://sourceforge.net/apps/trac/mingw-w64/wiki/Compile%20pthreads
 
-Expand the zip file, go into the "source" directory, and either run the unix shell script "prep_pthreads" or expand pthreads-win32.tar.gz and apply pthreads-w64sup.patch.
+You can download pthreads-20100604.zip (or more recent) and find both pre-built binaries and the source code.
 
-In the resulting "pthreads" directory, open pthread.dsw and allow VS to convert it.  You may need to convert the line endings in pthread.dsp for VS to accept it.  For 64-bit, open configuration manager and add the x64 platform.  Select Release mode and compile.
+To build with Visual Studio, patch the source per the directions.  In the resulting "pthreads" directory, open pthread.dsw and allow VS to convert it.  You may need to convert the line endings in pthread.dsp for VS to accept it.  For 64-bit, open configuration manager and add the x64 platform.  Select Release mode and compile.
 
 Copy the library to mswin/lib or lib64 and rename:
 
@@ -77,58 +74,91 @@ Copy headers to mswin/include:
 
 LAPACK and BLAS
 ---------------
-Prebuilt binaries are available from the CLAPACK project: http://www.netlib.org/clapack/LIB_WINDOWS/prebuilt_libraries_windows.html
-Use the Release nowrap versions.
+Prebuilt binaries are available from the LAPACK for Windows project:  http://icl.cs.utk.edu/lapack-for-windows/lapack/index.html
+As of this writing, the links for 64-bit binaries are broken, so you need to go straight to the directories.
 
-If you wish to build the libraries, follow the instructions given in http://www.netlib.org/clapack/readme.install.  In particular, follow the instructions for a non-wrapped Fortran interface to BLAS, rather than a CBLAS interface.
+32-bit:
+
+Copy to mswin/lib:
+
+	libblas.lib     --> blas.lib
+	liblapack.lib   --> lapack.lib
+
+Copy to mswin/bin:
+
+	libblas.dll      (never rename a dll)
+	liblapack.dll
+
+64-bit:  The download is buggy.  They will probably fix this at some point...
+
+Copy to mswin/lib64:
+
+	BLAS.lib        --> blas.lib
+	LAPACK.lib      --> lapack.lib
+
+Copy to mswin/bin64:
+
+	BLAS.dll        --> libblas.dll  (they broke the golden rule given above)
+	LAPACK.dll      --> liblapack.dll
+	mingw64/x86_64-w64-mingw32/lib/libgfortran-3.dll
+	mingw64/x86_64-w64-mingw32/lib/libquadmath-0.dll
+	mingw64/x86_64-w64-mingw32/lib/libgcc_s_sjlj-1.dll
 
 The reference implementation of BLAS is sufficient, but a more efficient one can be built using GotoBLAS from the University of Texas: http://www.tacc.utexas.edu/software_modules.php
-GotoBLAS requires a Cygwin environment to build.  Instructions are included in the downloaded package.
+GotoBLAS requires the MinGW cross-compiler to build.  Instructions are included in the downloaded package.
 
-Copy libraries to mswin/lib or lib64 and rename:
 
-	BLAS_nowrap.lib     --> blas.lib
-	clapack_nowrap.lib  --> lapack.lib
-	libf2c.lib          --> fortran.lib
+FFTW
+----
+Download prebuilt libraries from http://www.fftw.org/install/windows.html
+Expand the zip file into mswin/build/fftw-{version}/{32 or 64}
+Run the ming32 or ming64 version of dlltool on each of its DLLs to produce LIBs.
+
+	{some nasty prefix}-dlltool -D {name}.dll -d {name}.def -l {name}.lib
+
+Copy to mswin/lib or lib64:
+
+	 libfftw{version}{float type}-{version}.lib --> fftw{version}{float type}.lib
+
+Copy to mswin/bin or bin64:
+
+	 libfftw{version}{float type}-{version}.dll
 
 
 JPEG
 ----
-The following instructions are designed for a raw download of the 1998 version of jpeg-6b.  Overwrite the configuration files with vc specific version:
+Download from http://www.libjpeg-turbo.org/
+This group seems to have taken up the mantel of JPEG development.
 
-	jconfig.vc  --> jconfig.h
-	makefile.vc --> makefile
-
-Start a Visual Studio Command Prompt (or x64 variant thereof) and type:
-
-	cd {mswin}/build/jpeg-6b
-	nmake clean all
-
-Ignore warnings about security.
+Use CMake gui to generate a Visual Studio project.  SIMD build is broken, so uncheck it.  Select "Release" configuration and build.
 
 Copy the library to mswin/lib or lib64, and rename:
 
-	libjpeg.lib  --> jpeg.lib
+	release/turbojpeg-static.lib  --> jpeg.lib
 
 Copy the headers to mswin/include:
 
-	jconfig.h
-	jerror.h
-	jmorecfg.h
 	jpeglib.h
+	jconfig.h
+	jmorecfg.h
+	jerror.h
 
 
 Z
 -
-Launch projects/visualc6/zlib.dsw
-This workspace file is out of date, but still converts successfully as of VS2008.
+Download from http://zlib.net/
+Use CMake gui to generate Visual Studio project.  Be sure to turn off BUILD_SHARED_LIBS.
 
-For 64-bit build, open configuration manager and add the x64 platform.
-Select "LIB Release" mode and compile.
+Select "Release" mode.
+For 64-bit build, set /MACHINE:X64 for the zlib project.  (For some reason, CMake doesn't seem to take care of this right.):
+	Select "Properties" on the zlip project.
+	Click "Librarian"
+	Click the dropdown list for "Target Machine" and select correct type.
+Compile.
 
 Copy the library to mswin/lib or lib64 and rename:
 
-	projects/visualc6/Win32_LIB_Release/zlib.lib  --> z.lib
+	Release/zlib.lib  --> z.lib
 
 Copy the headers to mswin/include:
 
@@ -177,6 +207,8 @@ Copy the headers to mswin/include:
 
 GeoTIFF
 -------
+Download from http://download.osgeo.org/geotiff/libgeotiff
+
 Overwrite configuration with vc specific files:
 
 	geo_config.h.vc --> geo_config.h
@@ -199,63 +231,64 @@ Optionally, get rid of mswin/bin/geotiff.dll and mswin/lib/geotiff_i.lib
 
 PNG
 ---
-Open projects/{most recent visualc version}/libpng.sln in Visual Studio and allow to convert.
+Download from http://www.libpng.org/pub/png
 
-Select "LIB Release" mode.  For 64-bit, open the configuration manager and add the x64 platform.
-
-Edit properties of the "libpng" project to set the correct path to the zlib project directory in "Additional Include Directories".
+Follow directions in projects/vstudio/readme.txt for setting path to zlib.  Default seems work with the mswin/build structure.
+Open projects/vstudio/libpng.sln.  Select "Release Library" mode.  For 64-bit, open the configuration manager and add the x64 platform.
 
 Build only the libpng project.  Either delete or disable other projects besides "libpng", or use a project-only option from the build menu.
 
 Copy the library up to mswin/lib or lib64 and rename:
 
-	projects/{visualc x}/x64/LIB Release/libpng.lib    --> png.lib   // x64 build
-or	projects/{visualc x}/Win32_LIB_Release/libpng.lib  --> png.lib   // Win32 build
+	projects/vstudio/x64/Release Library/libpng{version}.lib  --> lib64/png.lib
+or	projects/vstudio/Release Library/libpng{version}.lib      --> lib/png.lib
 
 Copy the headers up to mswin/include:
 
 	png.h
 	pngconf.h
+	pnglibconf.h
 
 
 FFmpeg
 ------
-Must be built using MinGW.  Building as shared libraries (DLLs) works better, because it eliminates the need to supply as many dependencies to VC++.  Guidance for building FFmpeg under MinGW may be found at http://ffmpeg.arrozcru.org.  There are prebuilt libraries available for download from that web site, but they appear to be configured for GPL.  If LGPL is necessary (generally the case), do the following...
+Must be built using MinGW.  Building as shared libraries (DLLs) works better, because it eliminates the need to supply as many dependencies to VC++.  FFMPEG forked in mid 2011.  The "libav" forks seems better maintained for Windows use.  There are prebuilt libraries available for download from that web site, but they appear to be configured for GPL.  If LGPL is necessary (generally the case), do the following...
 
-Download the latest code from http://ffmpeg.org, and extract it into c:/msys/ffmpeg.
+Download the latest code from http://libav.org, and expand into {mswin}/build/libav
 
-Start an MSYS session and type the following...  (An easy way to do this is:  1) If in notepad, turn off word-wrap.  2) Copy a line.  3) Past into msys session using right-click menu on title bar.)
+32-bit:
 
-	export PATH="/c/Program Files/Microsoft Visual Studio 9.0/VC/bin":"/c/Program Files/Microsoft Visual Studio 9.0/Common7/IDE":$PATH   // to make lib.exe available
-	cd /ffmpeg
-	./configure --prefix=/ffmpeg/encap --disable-ffmpeg --disable-ffplay --disable-ffserver --enable-memalign-hack --enable-shared --disable-static
-	make clean        // if you need to clean out a previous build
-	rm -rf encap      // to clean out previous distribution
+	cd {mswin}/build/libav
+	./configure --prefix={mswin}/build/libav/encap32 --enable-runtime-cpudetect --enable-cross-compile --enable-w32threads --cross-prefix=i686-w64-mingw32- --arch=i686 --target-os=mingw32 --enable-memalign-hack --enable-shared --disable-static --disable-dxva2
+	make clean           // if you need to clean out a previous build
+	rm -rf encap{32,64}  // to clean out previous distribution
 	make
-	make install      // put new distribution in encap directory
-
-Substitute your chosen version of Visual Studio in the PATH setting above.
+	make install         // put new distribution in encap directory
 
 For 64-bit builds, substitute the following configure line:
 
-	./configure --prefix=/ffmpeg/encap --disable-ffmpeg --disable-ffplay --disable-ffserver --enable-memalign-hack --enable-shared --disable-static --cross-prefix=x86_64-w64-mingw32- --target-os=mingw32 --arch=x86_64
+	./configure --prefix={mswin}/build/libav/encap64 --enable-runtime-cpudetect --enable-cross-compile --enable-w32threads --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-memalign-hack --enable-shared --disable-static --disable-dxva2
 
-Copy DLLs to mswin/bin:
+Note that the option "--disable-dxva2" is present because the MinGW-w64 cross-compiles seem to lack some DirectX support that normally comes with MinGW.  Not sure why.  May be temporary.
 
-	/ffmpeg/encap/bin/avcodec-{major version}.dll
-	/ffmpeg/encap/bin/avdevice-{major version}.dll
-	/ffmpeg/encap/bin/avformat-{major version}.dll
-	/ffmpeg/encap/bin/avutil-{major version}.dll
-	/ffmpeg/encap/bin/swscale-{major version}.dll
+Copy DLLs to mswin/bin or mswin/bin64:
+
+	libav/encap{32,64}/bin/avcodec-{major version}.dll
+	libav/encap{32,64}/bin/avdevice-{major version}.dll
+	libav/encap{32,64}/bin/avfilter-{major version}.dll
+	libav/encap{32,64}/bin/avformat-{major version}.dll
+	libav/encap{32,64}/bin/avutil-{major version}.dll
+	libav/encap{32,64}/bin/swscale-{major version}.dll
 
 where {major version} is the number before the first dot in a version string.  The major version is necessary, because this is what the import libraries are constructed to look for.  All other forms are simply copies of xxx-{major version}.dll.
 
 Copy import libaries to mswin/lib or lib64:
 
-	/ffmpeg/encap/bin/avcodec.lib
-	/ffmpeg/encap/bin/avdevice.lib
-	/ffmpeg/encap/bin/avformat.lib
-	/ffmpeg/encap/bin/avutil.lib
-	/ffmpeg/encap/bin/swscale.lib
+	libav/encap{32,64}/bin/avcodec.lib
+	libav/encap{32,64}/bin/avdevice.lib
+	libav/encap{32,64}/bin/avfilter.lib
+	libav/encap{32,64}/bin/avformat.lib
+	libav/encap{32,64}/bin/avutil.lib
+	libav/encap{32,64}/bin/swscale.lib
 
-Copy /ffmpeg/encap/include to mswin/include.
+Copy libav/encap{any}/include to mswin/include.
