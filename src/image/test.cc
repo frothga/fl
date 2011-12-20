@@ -1280,6 +1280,52 @@ testDescriptors ()
 # endif
 }
 
+// Assumes that both images are pretty much in raw RGB, with little conversion
+// required.
+bool
+compareImages (const Image & A, const Image & B)
+{
+  if (A.width != B.width  ||  A.height != B.height) return false;
+
+  for (int y = 0; y < A.height; y++)
+  {
+	for (int x = 0; x < A.width; x++)
+	{
+	  if (A.getRGBA (x, y)  !=  B.getRGBA (x, y)) return false;
+	}
+  }
+
+  return true;
+}
+
+void
+testImageFileFormat ()
+{
+# ifdef HAVE_TIFF
+  ImageFileFormatTIFF::use ();
+# endif
+
+# ifdef HAVE_PNG
+  ImageFileFormatPNG::use ();
+# endif
+
+  Image test (dataDir + "test.jpg");
+
+# ifdef HAVE_TIFF
+  test.write (dataDir + "test.tif");
+  Image compareTIFF (dataDir + "test.tif");
+  if (! compareImages (test, compareTIFF)) throw "TIFF image doesn't match original";
+  cout << "TIFF passes" << endl;
+# endif
+
+# ifdef HAVE_PNG
+  test.write (dataDir + "test.png");
+  Image comparePNG (dataDir + "test.png");
+  if (! compareImages (test, comparePNG)) throw "PNG image doesn't match original";
+  cout << "PNG passes" << endl;
+# endif
+}
+
 // IntensityStatistics
 // IntensityHistogram
 void
@@ -1704,6 +1750,7 @@ main (int argc, char * argv[])
 	testConvolutionDiscrete2DnormalFloats ();
 	testDescriptorFilters ();
 	testDescriptors ();
+	testImageFileFormat ();
 	testIntensityFilters ();
 	testInterest ();
 	testTransform ();

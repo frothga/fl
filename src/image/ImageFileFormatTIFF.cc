@@ -52,6 +52,7 @@ class ImageFileDelegateTIFF : public ImageFileDelegate
 public:
   ImageFileDelegateTIFF (istream * in, ostream * out, bool ownStream = false);
   virtual ~ImageFileDelegateTIFF ();
+  void open ();  ///< Enable lazy opening of file, so user can specify BigTIFF via metadata interface.
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
@@ -78,6 +79,7 @@ public:
   ostream * out;
   bool ownStream;
   toff_t startPosition;
+  bool bigtiff;
 
   TIFF * tif;
 # ifdef HAVE_GEOTIFF
@@ -94,11 +96,24 @@ ImageFileDelegateTIFF::ImageFileDelegateTIFF (istream * in, ostream * out, bool 
   this->ownStream = ownStream;
   if (in) startPosition = (toff_t) in->tellg ();
   else    startPosition = (toff_t) out->tellp ();
+  bigtiff = false;
+
+  tif = 0;
+# ifdef HAVE_GEOTIFF
+  gtif = 0;
+# endif
+}
+
+void
+ImageFileDelegateTIFF::open ()
+{
+  string mode = in ? "r" : "w";
+  if (bigtiff) mode += "8";
 
   tif = TIFFClientOpen
   (
     "",
-	in ? "r" : "w",
+	mode.c_str (),
 	(thandle_t) this,
 	tiffRead,
 	tiffWrite,
@@ -112,9 +127,6 @@ ImageFileDelegateTIFF::ImageFileDelegateTIFF (istream * in, ostream * out, bool 
   {
 	throw "Unable to open file.";
   }
-
-  TIFFSetWarningHandler (0);  // suppress warning messagse
-  //TIFFSetErrorHandler (0);  // don't suppress error messages
 
 # ifdef HAVE_GEOTIFF
   gtif = GTIFNew (tif);
@@ -175,7 +187,7 @@ FormatMapping formatMap[] =
 void
 ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 {
-  if (! tif) throw "ImageFileDelegateTIFF not open";
+  if (! tif) open ();
 
   bool ok = true;
 
@@ -456,7 +468,8 @@ fillBlock (unsigned char * block, int stride, int depth, int width, int height, 
 void
 ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 {
-  if (! tif) throw "ImageFileDelegateTIFF not open";
+  if (! tif) open ();
+
   if (x < 0  ||  y < 0) throw "Target coordinates must be non-negative";
 
   if (format == 0)  // signals need for one-time setup, including other tags besides pixel format
@@ -673,6 +686,14 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 void
 ImageFileDelegateTIFF::get (const string & name, string & value)
 {
+  if (name == "bigtiff")
+  {
+	value = bigtiff ? "1" : "0";
+	return;
+  }
+
+  if (! tif) open ();
+
   const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
   if (fi)
   {
@@ -780,6 +801,15 @@ ImageFileDelegateTIFF::get (const string & name, double & value)
 void
 ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 {
+  if (name == "bigtiff")
+  {
+	value.resize (1, 1);
+	value(0,0) = bigtiff ? 1 : 0;
+	return;
+  }
+
+  if (! tif) open ();
+
   if (name == "GeoTransformationMatrix")
   {
 	uint16 count;
@@ -1194,6 +1224,15 @@ findType (geokey_t key)
 void
 ImageFileDelegateTIFF::set (const string & name, const string & value)
 {
+  if (name == "bigtiff")
+  {
+	if (tif) return;  // no longer settable
+	bigtiff = ! (value.size () == 0  ||  value == "0"  ||  value == "false");
+	return;
+  }
+
+  if (! tif) open ();
+
   const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
   if (fi)
   {
@@ -1269,6 +1308,15 @@ ImageFileDelegateTIFF::set (const string & name, double value)
 void
 ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 {
+  if (name == "bigtiff")
+  {
+	if (tif) return;  // no longer settable
+	bigtiff = value(0,0);
+	return;
+  }
+
+  if (! tif) open ();
+
   if (name == "GeoTransformationMatrix")
   {
 	Matrix<double> v = ~value;
@@ -1543,6 +1591,9 @@ ImageFileFormatTIFF::use ()
 
 ImageFileFormatTIFF::ImageFileFormatTIFF ()
 {
+  TIFFSetWarningHandler (0);  // suppress warning messagse
+  //TIFFSetErrorHandler (0);  // don't suppress error messages
+
 # ifdef HAVE_GEOTIFF
   XTIFFInitialize ();
 # endif
@@ -1571,13 +1622,13 @@ ImageFileFormatTIFF::isIn (std::istream & stream) const
   // wrong order as well.
   if (magic.substr (0, 2) == "II")  // little endian
   {
-	if (magic[2] == '\x2A'  &&  magic[3] == '\x00') return 1;
-	if (magic[2] == '\x00'  &&  magic[3] == '\x2A') return 0.8;
+	if (magic[2] == '\x00'  &&  (magic[3] == '\x2A'  ||  magic[3] == '\x2B')) return 0.8;
+	if (magic[3] == '\x00'  &&  (magic[2] == '\x2A'  ||  magic[2] == '\x2B')) return 1;
   }
   if (magic.substr (0, 2) == "MM")  // big endian
   {
-	if (magic[2] == '\x2A'  &&  magic[3] == '\x00') return 0.8;
-	if (magic[2] == '\x00'  &&  magic[3] == '\x2A') return 1;
+	if (magic[2] == '\x00'  &&  (magic[3] == '\x2A'  ||  magic[3] == '\x2B')) return 1;
+	if (magic[3] == '\x00'  &&  (magic[2] == '\x2A'  ||  magic[2] == '\x2B')) return 0.8;
   }
 
   return 0;
