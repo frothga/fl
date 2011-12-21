@@ -17,6 +17,7 @@ for details.
 #include "fl/search.h"
 #include "fl/random.h"
 #include "fl/lapack.h"
+#include "fl/fourier.h"
 
 #include <limits>
 #include <complex>
@@ -252,7 +253,7 @@ testSearch ()
   epsilons(3,0) = INFINITY;  // AnnealingAdaptive can't solve a line search
   epsilons(3,3) = INFINITY;  // neither can ParticleSwarm
   epsilons.row (1).clear (INFINITY);  // very few methods can solve PolynomialTestFunction ...
-  epsilons(1,2) = 1e-7;               // except LM
+  epsilons(1,2) = 1e-5;               // except LM
 # ifdef HAVE_LAPACK
   epsilons(1,4) = 1e-5;
 # endif
@@ -902,6 +903,27 @@ testLAPACK ()
   cout << "LAPACK passes" << endl;
 }
 
+template<class T>
+void
+testFourier ()
+{
+  T epsilon = 5 * numeric_limits<T>::epsilon ();
+
+  // Generate a matrix of random numbers
+  Matrix<T> A = makeMatrix (100, 100);
+
+  // Do a round-trip pair of transforms
+  Fourier<T> F;
+  Matrix<complex<T> > C;
+  Matrix<T> B;
+  F.dft (A, C);
+  F.dft (C, B);
+
+  // Compare result with original matrix
+  if (A.rows () != B.rows ()  ||  A.columns () != B.columns ()) throw "Unexpected size of output from round-trip through Fourier.";
+  if ((A - B).norm (INFINITY) > epsilon) throw "Excessive difference between elements in round-trip through Fourier.";
+  cout << "Fourier passes" << endl;
+}
 
 template<class T>
 void
@@ -917,6 +939,9 @@ testAll ()
   testDot<T> ();
 # ifdef HAVE_LAPACK
   testLAPACK<T> ();
+# endif
+# ifdef HAVE_FFTW
+  testFourier<T> ();
 # endif
 }
 
