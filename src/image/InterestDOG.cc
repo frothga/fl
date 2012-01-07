@@ -130,149 +130,6 @@ difference (const Image & a, const Image & b)
   return result;
 }
 
-/**
-   Downsample the given image by a factor of 2.
- **/
-static inline Image
-decimate (const Image & image)
-{
-  Image result (image.width / 2, image.height / 2, GrayFloat);
-  float * fromPixel = (float *) ((PixelBufferPacked *) image .buffer)->memory;
-  float * toPixel   = (float *) ((PixelBufferPacked *) result.buffer)->memory;
-  float * end       = toPixel + result.width * result.height;
-  while (toPixel < end)
-  {
-	float * nextRow = fromPixel + 2 * image.width;
-	float * rowEnd  = toPixel   +     result.width;
-	while (toPixel < rowEnd)
-	{
-	  *toPixel++ = *fromPixel++;
-	  fromPixel++;
-	}
-	fromPixel = nextRow;
-  }
-  return result;
-}
-
-/**
-   The inverse operation of decimate().  Requires the target size be specified,
-   since it could be odd or even.
- **/
-static inline Image
-upsample (const Image & image, int width, int height)
-{
-  /*  Slightly more accurate, but much slower
-  Transform u (2.0, 2.0);
-  float x = width  / 2.0f - 0.5f;
-  float y = height / 2.0f - 0.5f;
-  u.setWindow (x, y, width, height);
-  return image * u;
-  */
-
-  Image result (width, height, GrayFloat);
-  float * resultBuffer = (float *) ((PixelBufferPacked *) result.buffer)->memory;
-
-  // Double the main body of the image
-  float * p00 = (float *) ((PixelBufferPacked *) image.buffer)->memory;
-  float * p10 = p00 + 1;
-  float * p01 = p00 + image.width;
-  float * p11 = p01 + 1;
-
-  float * q00 = (float *) resultBuffer;
-  float * q10 = q00 + 1;
-  float * q01 = q00 + result.width;
-  float * q11 = q01 + 1;
-  int lastStep = width + 2 + width % 2;  // to step over odd pixel at end, if it is there
-
-  float * end = p00 + image.width * image.height;
-  while (p11 < end)
-  {
-	float * rowEnd = p00 + image.width;
-	while (p10 < rowEnd)
-	{
-	  *q00 =  *p00;
-	  *q10 = (*p00 + *p10) / 2.0f;
-	  *q01 = (*p00 + *p01) / 2.0f;
-	  *q11 = (*p00 + *p10 + *p01 + *p11) / 4.0f;
-
-	  p00 = p10++;
-	  p01 = p11++;
-
-	  q00 += 2;
-	  q10 += 2;
-	  q01 += 2;
-	  q11 += 2;
-	}
-	*q00 = *q10 =  *p00;
-	*q01 = *q11 = (*p00 + *p01) / 2.0f;
-
-	q00 += lastStep;
-	q10 = q00 + 1;
-	q01 += lastStep;
-	q11 = q01 + 1;
-
-	p00 = p10++;
-	p01 = p11++;
-  }
-
-  // Fill in bottom
-  if (height % 2)  // odd: copy two rows of pixels
-  {
-	float * q02 = q01 + result.width;
-	float * q12 = q02 + 1;
-	float * rowEnd = p00 + image.width;
-	while (p10 < rowEnd)
-	{
-	  *q00 = *q01 = *q02 =  *p00;
-	  *q10 = *q11 = *q12 = (*p00 + *p10) / 2.0f;
-
-	  p00 = p10++;
-
-	  q00 += 2;
-	  q10 += 2;
-	  q01 += 2;
-	  q11 += 2;
-	  q02 += 2;
-	  q12 += 2;
-	}
-	*q00 = *q10 = *q01 = *q11 = *q02 = *q12 = *p00;
-  }
-  else  // even: copy one row of pixels
-  {
-	float * rowEnd = p00 + image.width;
-	while (p10 < rowEnd)
-	{
-	  *q00 = *q01 =  *p00;
-	  *q10 = *q11 = (*p00 + *p10) / 2.0f;
-
-	  p00 = p10++;
-
-	  q00 += 2;
-	  q10 += 2;
-	  q01 += 2;
-	  q11 += 2;
-	}
-	*q00 = *q10 = *q01 = *q11 = *p00;
-  }
-
-  // Fill in right side
-  if (width % 2)  // odd: copy an extra column of pixels
-  {
-	float * q1 = (float *) resultBuffer;
-	float * end = q1 + result.width * result.height;
-	q1 += (result.width - 1);
-	float * q0 = q1 - 1;
-	while (q1 < end)
-	{
-	  *q1 = *q0;
-	  q0 += width;
-	  q1 += width;
-	}
-  }
-
-  return result;
-}
-
 void
 InterestDOG::run (const Image & image, InterestPointSet & result)
 {
@@ -311,6 +168,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
   vector<Image> blurred (steps + 3);
   vector< ImageOf<float> > dogs (steps + 2);
   vector< ImageOf<float> > smalldogs (2);
+  Decimate decimate (2);
   while (work.width >= minsize  &&  work.height >= minsize  &&  octave * firstScale <= lastScale)
   {
 	if (fast)
@@ -348,7 +206,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 	  }
 	  int w = work.width;
 	  int h = work.height;
-	  work = decimate (work);
+	  work *= decimate;
 	  for (int i = steps; i < steps + 2; i++)
 	  {
 		blurred[i] = work;
@@ -358,7 +216,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 		blur.direction = Vertical;
 		work *= blur;
 		smalldogs[i-steps] = difference (blurred[i], work);
-		dogs[i] = upsample (smalldogs[i-steps], w, h);
+		dogs[i] = smalldogs[i-steps] * DoubleSize (w % 2, h % 2);
 		ImageCache::shared.get (new EntryPyramid (blurred[i], octave * firstScale * powf (scaleRatio, i)));
 	  }
 	  blurred[steps+2] = work;
@@ -383,9 +241,9 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 	  }
 	  else
 	  {
-		dogs[0] = decimate (dogs[steps  ]);
-		dogs[1] = decimate (dogs[steps+1]);
-		blurred[2] = decimate (blurred[steps+2]);
+		dogs[0] = dogs[steps  ] * decimate;
+		dogs[1] = dogs[steps+1] * decimate;
+		blurred[2] = blurred[steps+2] * decimate;
 		work = blurred[2];
 		for (int i = 3; i < steps + 3; i++)
 		{
