@@ -17,6 +17,7 @@ for details.
 #include "fl/descriptor.h"
 #include "fl/canvas.h"
 #include "fl/color.h"
+#include "fl/imagecache.h"
 
 
 using namespace fl;
@@ -103,30 +104,30 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 
   // Find or generate gray image at appropriate blur level
   const float scaleTolerance = pow (2.0f, -1.0f / 6);  // TODO: parameterize "6", should be 2 * octaveSteps
-  ImageCache::shared.add (image);
-  PyramidImage * entry = ImageCache::shared.get (ImageCache::monochrome, point.scale);
+  ImageCache::shared.setOriginal (image);
+  EntryPyramid * entry = (EntryPyramid *) ImageCache::shared.getClosest (new EntryPyramid (GrayFloat, point.scale));
   if (! entry  ||  scaleTolerance > (entry->scale > point.scale ? point.scale / entry->scale : entry->scale / point.scale))
   {
-	entry = ImageCache::shared.getLE (ImageCache::monochrome, point.scale);
+	entry = (EntryPyramid *) ImageCache::shared.getLE (new EntryPyramid (GrayFloat, point.scale));
 	if (! entry)  // No smaller image exists, which means base level image (scale == 0.5) does not exist.
 	{
-	  entry = ImageCache::shared.add (image * GrayFloat, ImageCache::monochrome);
+	  entry = (EntryPyramid *) ImageCache::shared.get (new EntryPyramid (GrayFloat));
 	}
   }
-  const float octave = (float) image.width / entry->width;
+  const float octave = (float) image.width / entry->image.width;
   PointAffine p = point;
   p.x = (p.x + 0.5f) / octave - 0.5f;
   p.y = (p.y + 0.5f) / octave - 0.5f;
   p.scale /= octave;
 
   Image patch;
-  if (entry->width == entry->height  &&  p.angle == 0  &&  fabs (2.0f * p.scale * supportRadial - entry->width) < 0.5)
+  if (entry->image.width == entry->image.height  &&  p.angle == 0  &&  fabs (2.0f * p.scale * supportRadial - entry->image.width) < 0.5)
   {
 	// patch == entire image, so no need to transform
 	// Note that the test above should also verify that p is at the center
 	// of the image.  However, if the other tests pass, then this is almost
 	// certainly the case.
-	patch = (*entry);
+	patch = entry->image;
   }
   else
   {
@@ -134,7 +135,7 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 	const double patchScale = supportPixel / supportRadial;
 	Transform t (p.projection (), patchScale);
 	t.setWindow (0, 0, patchSize, patchSize);
-	patch = (*entry) * t;
+	patch = entry->image * t;
   }
   float * g = getKernel (patch.width);
 

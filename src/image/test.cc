@@ -1241,13 +1241,13 @@ testDescriptorFilters ()
 # endif
 }
 
+// DescriptorSIFT
 // DescriptorLBP
 // DescriptorPatch
 // DescriptorTextonScale
 void
 testDescriptors ()
 {
-# ifdef HAVE_LAPACK
   CanvasImage image (360, 240, GrayFloat);
   image.clear ();
   image.drawFilledRectangle (Point (160, 120), Point (165, 125));
@@ -1256,11 +1256,39 @@ testDescriptors ()
   PointAffine pa;
   pa.x = 160;
   pa.y = 120;
-  pa.A(0,0) = 5;
-  pa.A(1,1) = 5;
+  pa.A(0,0) = 1;
+  pa.A(1,1) = 1;
+  pa.scale = 5;
 
+  DescriptorSIFT sift;
+  Vector<float> value = sift.value (image, pa);
+  // dimensions of sift are: y, x, angle
+  if (value.rows () != 128) throw "Unexpected default size for SIFT descriptor.";
+  float * r = &value[0];
+  for (int y = 0; y < 4; y++)
+  {
+	for (int x = 0; x < 4; x++)
+	{
+	  for (int a = 0; a < 8; a++)
+	  {
+		if (y == 0  ||  y == 3  ||  x == 0  ||  x == 3)
+		{
+		  if (*r != 0) throw "Unexpected value in SIFT descriptor.";
+		}
+		else
+		{
+		  if (*r == 0) throw "Unexpected value in SIFT descriptor.";
+		}
+		r++;
+	  }
+	}
+  }
+  cout << "DescriptorSIFT passes" << endl;
+
+# ifdef HAVE_LAPACK
   DescriptorLBP lbp;
-  Vector<float> value = lbp.value (image, pa);
+  value = lbp.value (image, pa);
+  cerr << "DescriptorLBP completed, but result is unverified" << endl;
 
   DescriptorPatch patch (10, 1);
   value = patch.value (image, pa);
@@ -1269,12 +1297,11 @@ testDescriptors ()
 	cout << "unexpected value: " << value << endl;
 	throw "DescriptorPatch fails";
   } 
+  cout << "DescriptorPatch passes" << endl;
 
   DescriptorTextonScale ts;
   value = ts.value (image, pa);
-
-  cout << "DescriptorPatch passes" << endl;
-  cerr << "more work needed to verify results for DescriptorLBP and DescriptorTextonScale" << endl;
+  cerr << "DescriptorTextonScale completed, but result is unverified" << endl;
 # else
   cout << "WARNING: DescriptorPatch, DescriptorLBP and DescriptorTextonScale not tested due to lack of LAPACK" << endl;
 # endif
@@ -1282,20 +1309,82 @@ testDescriptors ()
 
 // Assumes that both images are pretty much in raw RGB, with little conversion
 // required.
-bool
+int
 compareImages (const Image & A, const Image & B)
 {
-  if (A.width != B.width  ||  A.height != B.height) return false;
+  if (A.width != B.width  ||  A.height != B.height) return 256;
 
+  int worst = 0;
   for (int y = 0; y < A.height; y++)
   {
 	for (int x = 0; x < A.width; x++)
 	{
-	  if (A.getRGBA (x, y)  !=  B.getRGBA (x, y)) return false;
+	  uint32_t p1 = A.getRGBA (x, y);
+	  uint32_t p2 = B.getRGBA (x, y);
+	  for (int c = 0; c < 3; c++)
+	  {
+		int c1 = p1 & 0xFF;
+		int c2 = p2 & 0xFF;
+		worst = max (worst, abs (c1 - c2));
+		p1 >>= 8;
+		p2 >>= 8;
+	  }
 	}
   }
 
-  return true;
+  return worst;
+}
+
+void
+probeCache (ImageCache & cache, Image & test, const PixelFormat & format, float scale, int width, int tolerance)
+{
+  EntryPyramid * o = (EntryPyramid *) cache.get (new EntryPyramid (format, scale, width));
+  if (! o) throw "ImageCache failed to return a result";
+  if (o->image.width != width  ||  o->scale != scale  ||  *o->image.format != format)
+  {
+	throw "ImageCache returned a result that doesn't match the query.";
+  }
+
+  float ratio = (float) width / test.width;
+  Image compare = test * TransformGauss (ratio, ratio);
+  int worst = compareImages (o->image, compare);
+  cerr << "worst = " << worst << endl;
+  if (worst > tolerance) throw "unexpected color value";
+}
+
+void
+testImageCache ()
+{
+# ifdef HAVE_JPEG
+  Image test (dataDir + "test.jpg");
+  test *= GrayFloat;  // temporary, until Convolution1D (also BlurDecimate and DoubleSize) can handle color
+
+  // Parameters for top-level image
+  const float scale = 8;
+  const float ratio = 0.5 / scale;
+  const int   width = (int) roundp (test.width * ratio);
+
+  ImageCache cache;
+  cache.setOriginal (test);
+
+  // Construct a pyramid implicitly
+  probeCache (cache, test, *test.format, 8, 20, 9);
+
+  // Get a double-sized image
+  probeCache (cache, test, *test.format, 0.25, test.width * 2, 29);  // Just verifying the request works, even though accuracy is terrible.
+
+  // Get a different size image for an existing scale-level
+  probeCache (cache, test, *test.format, 4, test.width / 4, 62);
+
+  // Induce a search for best entry to resample
+  probeCache (cache, test, *test.format, 6, test.width / 8, 25);
+
+  cerr << cache;
+
+  cout << "ImageCache passes" << endl;
+# else
+  cout << "WARNING: ImageCache not tested due to lack of JPEG." << endl;
+# endif
 }
 
 void
@@ -1314,14 +1403,14 @@ testImageFileFormat ()
 # ifdef HAVE_TIFF
   test.write (dataDir + "test.tif");
   Image compareTIFF (dataDir + "test.tif");
-  if (! compareImages (test, compareTIFF)) throw "TIFF image doesn't match original";
+  if (compareImages (test, compareTIFF) > 0) throw "TIFF image doesn't match original";
   cout << "TIFF passes" << endl;
 # endif
 
 # ifdef HAVE_PNG
   test.write (dataDir + "test.png");
   Image comparePNG (dataDir + "test.png");
-  if (! compareImages (test, comparePNG)) throw "PNG image doesn't match original";
+  if (compareImages (test, comparePNG) > 0) throw "PNG image doesn't match original";
   cout << "PNG passes" << endl;
 # endif
 }
@@ -1750,6 +1839,7 @@ main (int argc, char * argv[])
 	testConvolutionDiscrete2DnormalFloats ();
 	testDescriptorFilters ();
 	testDescriptors ();
+	testImageCache ();
 	testImageFileFormat ();
 	testIntensityFilters ();
 	testInterest ();
@@ -1762,6 +1852,11 @@ main (int argc, char * argv[])
   catch (const char * error)
   {
 	cout << "Exception: " << error << endl;
+	return 1;
+  }
+  catch (int error)
+  {
+	cout << "Numeric Exception: " << error << endl;
 	return 1;
   }
 

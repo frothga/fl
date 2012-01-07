@@ -578,6 +578,62 @@ namespace fl
 	int scaleY;
   };
 
+  /**
+	 Roughly doubles the size of an image.  There is allowance for hinting
+	 that the resulting image should be odd-sized.  Does similar job to
+	 Transform but optimized for special circumstances.
+   **/
+  class SHARED DoubleSize : public Filter
+  {
+  public:
+	DoubleSize (bool oddWidth = false, bool oddHeight = false);
+
+	virtual Image filter (const Image & image);
+
+	bool oddWidth;  ///< Output width should be input width * 2 + 1
+	bool oddHeight; ///< Output height should be input height * 2 + 1
+  };
+
+  /**
+	 Downsample image by an integer ratio.  Assumes that image is already
+	 blurred to a level that simply sampling every nth pixel is enough to
+	 preserve all relevant information.  Does similar job to Transform but
+	 optimized for special circumstances.
+   **/
+  class SHARED Decimate : public Filter
+  {
+  public:
+	Decimate (int ratioX = 2, int ratioY = 0);  ///< Will make ratioY the same as ratioX if not specified.
+
+	virtual Image filter (const Image & image);
+
+	int ratioX;
+	int ratioY;
+  };
+
+  /**
+	 Blurs and image and then downsamples by an integer ratio.  Like a
+	 combination of Gaussian1D and Decimate, but optimized to avoid any
+	 unused blurring.
+   **/
+  class SHARED BlurDecimate : public Filter
+  {
+  public:
+	BlurDecimate (int ratioX = 2, double sigmaXbefore = 0.5, double sigmaXafter = 0.5,
+				  int ratioY = 0, double sigmaYbefore = 0,   double sigmaYafter = 0);
+
+	virtual Image filter (const Image & image);
+
+	int ratioX;
+	int ratioY;
+	double sigmaXbefore;  ///< Amount of blur assumed to be in input image.
+	double sigmaXafter;   ///< Desired amount of blur in output image, in terms of output pixels.
+	double sigmaYbefore;
+	double sigmaYafter;
+	Gaussian1D blurX;
+	Gaussian1D blurY;
+  };
+
   class SHARED Rotate180 : public Filter
   {
   public:

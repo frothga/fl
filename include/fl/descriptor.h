@@ -22,7 +22,6 @@ for details.
 #include "fl/matrix.h"
 #include "fl/point.h"
 #include "fl/canvas.h"
-#include "fl/imagecache.h"
 #include "fl/metric.h"
 #include "fl/archive.h"
 

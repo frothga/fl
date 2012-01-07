@@ -16,6 +16,7 @@ for details.
 
 #include "fl/descriptor.h"
 #include "fl/canvas.h"
+#include "fl/imagecache.h"
 
 
 using namespace fl;
@@ -67,16 +68,16 @@ DescriptorOrientationHistogram::value (const Image & image, const PointAffine & 
   float radius;
   if (point.A(0,0) == 1.0f  &&  point.A(0,1) == 0.0f  &&  point.A(1,0) == 0.0f  &&  point.A(1,1) == 1.0f)  // No shape change, so we can work in context of original image.
   {
-	ImageCache::shared.add (image);
-	PyramidImage * entry = ImageCache::shared.get (ImageCache::monochrome, point.scale);
+	ImageCache::shared.setOriginal (image);
+	ImageCacheEntry * entry = ImageCache::shared.get (new EntryPyramid (GrayFloat, point.scale));
 	if (! entry) throw "Could not find cached image";
-	float octave = (float) image.width / entry->width;
+	float octave = (float) image.width / entry->image.width;
 	PointAffine p = point;
 	p.x = (p.x + 0.5f) / octave - 0.5f;
 	p.y = (p.y + 0.5f) / octave - 0.5f;
 	p.scale /= octave;
 
-	computeGradient (*entry);
+	computeGradient (entry->image);
 
 	radius = p.scale * supportRadial;
 	sourceL = (int) floorf (p.x - radius);
