@@ -791,9 +791,6 @@ convolveV (T * kernel, T * image, T * result,
 Image
 ConvolutionDiscrete1D::filter (const Image & image)
 {
-  // This code is essentially the same as Convolution2D::filter ().  However, it
-  // removes one layer of looping, which saves a little bit of overhead.
-
   if (*format != *image.format)
   {
 	if (format->precedence <= image.format->precedence)
