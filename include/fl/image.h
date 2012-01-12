@@ -1209,6 +1209,16 @@ namespace fl
 	virtual float handles (const std::string & formatName) const;
   };
 
+  class SHARED ImageFileFormatRRIF : public ImageFileFormat
+  {
+  public:
+	static void use ();
+	virtual ImageFileDelegate * open (std::istream & stream, bool ownStream = false) const;
+	virtual ImageFileDelegate * open (std::ostream & stream, bool ownStream = false) const;
+	virtual float isIn (std::istream & stream) const;
+	virtual float handles (const std::string & formatName) const;
+  };
+
   class SHARED ImageFileFormatPNG : public ImageFileFormat
   {
   public:

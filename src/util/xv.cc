@@ -44,6 +44,7 @@ main (int argc, char * argv[])
 	// Internal formats
 	ImageFileFormatBMP   ::use ();
 	ImageFileFormatPGM   ::use ();
+	ImageFileFormatRRIF  ::use ();
 	ImageFileFormatMatlab::use ();
 	ImageFileFormatNITF  ::use ();
 	// External formats

@@ -54,6 +54,7 @@ add_library (flImage
   ImageFileFormat.cc
   ImageFileFormatBMP.cc
   ImageFileFormatPGM.cc
+  ImageFileFormatRRIF.cc
   ImageFileFormatEPS.cc
   ImageFileFormatMatlab.cc
   ImageFileFormatNITF.cc
