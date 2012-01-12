@@ -57,7 +57,7 @@ namespace fl
 
 	Image image; ///< The actual cached data.
   };
-  std::ostream & operator << (std::ostream & stream, const ImageCacheEntry & data);
+  SHARED std::ostream & operator << (std::ostream & stream, const ImageCacheEntry & data);
 
   /**
 	 A mechanism for storing and sharing image-processing results.
@@ -88,7 +88,7 @@ namespace fl
 
 	static ImageCache shared;  ///< Global cache used by image library.
   };
-  std::ostream & operator << (std::ostream & stream, const ImageCache & data);
+  SHARED std::ostream & operator << (std::ostream & stream, const ImageCache & data);
 
   /**
 	 Same image as original with some variation of pixel format or scale.
