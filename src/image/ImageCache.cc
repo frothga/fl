@@ -223,6 +223,7 @@ EntryPyramid::generate (ImageCache & cache)
   }
   if (! bestEntry)
   {
+	if (! cache.original) throw "ImageCache::original not set";
 	if (minScale < cache.original->scale)
 	{
 	  bestEntry = cache.original;
@@ -295,8 +296,8 @@ EntryPyramid::resample (ImageCache & cache, const EntryPyramid * source)
   float ratio = (float) sourceWidth / targetWidth;  // downsampling ratio; values < 1 mean upsampling
   float decimal = abs (ratio - roundp (ratio));
 
-  double a =         scale *         image.width / originalWidth;  // native scale after
-  double b = source->scale * source->image.width / originalWidth;  // native scale before
+  double a = targetScale * targetWidth / originalWidth;  // native scale after
+  double b = sourceScale * sourceWidth / originalWidth;  // native scale before
 
   // BlurDecimate if applicable
   if (fast  &&  ratio > 2 - epsilon  &&  decimal < epsilon)  // integer downsample, so decimate is appropriate
