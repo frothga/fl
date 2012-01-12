@@ -51,8 +51,8 @@ DescriptorOrientationHistogram::computeGradient (const Image & image)
   lastTime = image.timestamp;
 
   Image work = image * GrayFloat;
-  I_x = work * FiniteDifferenceX ();
-  I_y = work * FiniteDifferenceY ();
+  I_x = work * FiniteDifference (Horizontal);
+  I_y = work * FiniteDifference (Vertical);
 }
 
 Vector<float>

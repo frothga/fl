@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/cluster.h"
-#include "fl/descriptor.h"
 
 
 using namespace std;

@@ -374,19 +374,13 @@ namespace fl
 	 division in the (much more repetitive) non-border case, and instead
 	 multiply by 2 in border case.
    **/
-  class SHARED FiniteDifferenceX : public Filter
+  class SHARED FiniteDifference : public Convolution1D
   {
   public:
-	virtual Image filter (const Image & image);	
-  };
+	FiniteDifference (Direction direction);
 
-  /**
-	 Same as FiniteDifferenceX, but in the Y direction.
-   **/
-  class SHARED FiniteDifferenceY : public Filter
-  {
-  public:
 	virtual Image filter (const Image & image);	
+	virtual double response (const Image & image, const Point & p) const;
   };
 
   class SHARED NonMaxSuppress : public Filter

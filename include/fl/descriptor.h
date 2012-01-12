@@ -428,8 +428,8 @@ namespace fl
 	std::map<int, ImageOf<float> *> kernels;  ///< Gaussian weighting kernels for various sizes of rectified patch.
 	ImageOf<float> I_x;  ///< x component of gradient vectors
 	ImageOf<float> I_y;  ///< y component of gradient vectors
-	FiniteDifferenceX fdX;
-	FiniteDifferenceY fdY;
+	FiniteDifference fdX;
+	FiniteDifference fdY;
   };
 
   /**

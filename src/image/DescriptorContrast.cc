@@ -56,8 +56,8 @@ DescriptorContrast::value (const Image & image, const PointAffine & point)
 	patch = image * rectify;
   }
   patch *= GrayFloat;
-  ImageOf<float> I_x = patch * FiniteDifferenceX ();
-  ImageOf<float> I_y = patch * FiniteDifferenceY ();
+  ImageOf<float> I_x = patch * FiniteDifference (Horizontal);
+  ImageOf<float> I_y = patch * FiniteDifference (Vertical);
 
   float average = 0;
   for (int y = 0; y < patch.height; y++)

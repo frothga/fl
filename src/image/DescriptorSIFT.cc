@@ -27,6 +27,8 @@ using namespace std;
 // class DescriptorSIFT ------------------------------------------------------
 
 DescriptorSIFT::DescriptorSIFT (int width, int angles)
+: fdX (Horizontal),
+  fdY (Vertical)
 {
   this->width = width;
   this->angles = angles;
