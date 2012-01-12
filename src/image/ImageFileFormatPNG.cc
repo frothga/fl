@@ -262,7 +262,6 @@ ImageFileDelegatePNG::write (const Image & image, int x, int y)
   }
   assert (format != 0);
   Image work = image * *format;
-  cerr << typeid (*format).name () << endl;
 
   rows = (png_bytep *) malloc (work.height * sizeof (png_bytep));
   if (PixelBufferPacked * buffer = (PixelBufferPacked *) work.buffer)
