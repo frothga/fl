@@ -24,21 +24,37 @@ using namespace fl;
 class ImageFileDelegateRRIF : public ImageFileDelegate
 {
 public:
-  ImageFileDelegateRRIF (istream * in, ostream * out, bool ownStream = false)
-  {
-	this->in = in;
-	this->out = out;
-	this->ownStream = ownStream;
-  }
+  ImageFileDelegateRRIF (istream * in, ostream * out, bool ownStream = false);
   ~ImageFileDelegateRRIF ();
 
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
+  virtual void get (const string & name, string & value);
+  virtual void set (const string & name, const string & value);
+
   istream * in;
   ostream * out;
   bool ownStream;
+
+  uint16_t height;
+  uint16_t width;
 };
+
+ImageFileDelegateRRIF::ImageFileDelegateRRIF (istream * in, ostream * out, bool ownStream)
+{
+  this->in = in;
+  this->out = out;
+  this->ownStream = ownStream;
+  height = 0;
+  width  = 0;
+
+  // Scan header if we are opened for read.
+  if (! in) return;
+  in->ignore (4);  // magic string
+  in->read ((char *) & height, sizeof (height));
+  in->read ((char *) & width,  sizeof (width));
+}
 
 ImageFileDelegateRRIF::~ImageFileDelegateRRIF ()
 {
@@ -53,13 +69,6 @@ void
 ImageFileDelegateRRIF::read (Image & image, int x, int y, int ignorewidth, int ignoreheight)
 {
   if (! in) throw "ImageFileDelegateRRIF not open for reading";
-
-  // Parse header...
-  uint16_t height = 0;
-  uint16_t width = 0;
-  in->ignore (4);  // magic string
-  in->read ((char *) & height, sizeof (height));
-  in->read ((char *) & width,  sizeof (width));
 
   // Read data
   if (! in->good ()) throw "Unable to finish reading image: stream bad.";
@@ -80,8 +89,8 @@ ImageFileDelegateRRIF::write (const Image & image, int x, int y)
   if (! buffer) throw "RRIF can only handle packed buffers for now";
 
   // Header
-  uint16_t height = work.height;
-  uint16_t width  = work.width;
+  height = work.height;
+  width  = work.width;
   (*out) << "RRIF";
   out->write ((char *) & height, sizeof (height));
   out->write ((char *) & width,  sizeof (width));
@@ -100,6 +109,27 @@ ImageFileDelegateRRIF::write (const Image & image, int x, int y)
 	  row += buffer->stride;
 	}
   }
+}
+
+void
+ImageFileDelegateRRIF::get (const string & name, string & value)
+{
+  char buffer[32];
+  if (name == "width")
+  {
+	sprintf (buffer, "%i", width);
+	value = buffer;
+  }
+  else if (name == "height")
+  {
+	sprintf (buffer, "%i", height);
+	value = buffer;
+  }
+}
+
+void
+ImageFileDelegateRRIF::set (const string & name, const string & value)
+{
 }
 
 
