@@ -65,6 +65,16 @@ namespace fl
 	  *i = tolower (*i);
 	}
   }
+
+  inline void
+  uppercase (std::string & target)
+  {
+	std::string::iterator i;
+	for (i = target.begin (); i < target.end (); i++)
+	{
+	  *i = toupper (*i);
+	}
+  }
 }
 
 #ifdef _MSC_VER
