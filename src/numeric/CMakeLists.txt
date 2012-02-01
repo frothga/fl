@@ -62,7 +62,6 @@ add_library (flNumeric
   ../../include/fl/math.h
   ../../include/fl/random.h
   ../../include/fl/stats.h
-  Metadata.cc
   random.cc
   zroots.cc
 

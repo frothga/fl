@@ -11,6 +11,8 @@ for details.
 
 #include "fl/metadata.h"
 
+#include <stdlib.h>
+
 using namespace fl;
 using namespace std;
 
@@ -51,25 +53,6 @@ Metadata::get (const string & name, double & value)
 }
 
 void
-Metadata::get (const string & name, Matrix<double> & value)
-{
-  string temp;
-  get (name, temp);
-  if (temp.size ())
-  {
-	if (temp.find_first_of ('[') != string::npos)
-	{
-	  value = Matrix<double> (temp);
-	}
-	else
-	{
-	  value.resize (1, 1);
-	  value(0,0) = atof (temp.c_str ());
-	}
-  }
-}
-
-void
 Metadata::set (const string & name, const string & value)
 {
 }
@@ -94,14 +77,6 @@ void
 Metadata::set (const string & name, double value)
 {
   char buffer[32];
-  sprintf (buffer, "%u", value);
+  sprintf (buffer, "%g", value);
   set (name, buffer);
-}
-
-void
-Metadata::set (const string & name, const Matrix<double> & value)
-{
-  string temp;
-  value.toString (temp);
-  set (name, temp);
 }

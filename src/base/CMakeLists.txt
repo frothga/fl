@@ -16,6 +16,7 @@ add_library (flBase
   ../../include/fl/string.h
   ../../include/fl/time.h
   Archive.cc
+  Metadata.cc
   NamedValueSet.cc
   Parameters.cc
   Pointer.cc
