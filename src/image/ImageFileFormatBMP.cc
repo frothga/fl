@@ -37,15 +37,8 @@ public:
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
-  virtual void get (const string & name, string & value);
-  virtual void get (const string & name, int & value);
-  virtual void get (const string & name, double & value);
-  virtual void get (const string & name, Matrix<double> & value);
-
+  virtual void get (const string & name,       string & value);
   virtual void set (const string & name, const string & value);
-  virtual void set (const string & name, int value);
-  virtual void set (const string & name, double value);
-  virtual void set (const string & name, const Matrix<double> & value);
 
   istream * in;
   ostream * out;
@@ -667,84 +660,28 @@ ImageFileDelegateBMP::write (const Image & image, int ignorex, int ignorey)
 void
 ImageFileDelegateBMP::get (const string & name, string & value)
 {
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	char buffer[100];
-	sprintf (buffer, "%f", v(0,0));
-	value = buffer;
-  }
-}
-
-void
-ImageFileDelegateBMP::get (const string & name, int & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = (int) roundp (v(0,0));
-  }
-}
-
-void
-ImageFileDelegateBMP::get (const string & name, double & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = v(0,0);
-  }
-}
-
-void
-ImageFileDelegateBMP::get (const string & name, Matrix<double> & value)
-{
+  char buffer[32];
   if (name == "topdown")
   {
-	value.resize (1, 1);
-	value(0,0) = topDown;
+	sprintf (buffer, "%i", (int) topDown);
+	value = buffer;
   }
   else if (name == "width")
   {
-	value.resize (1, 1);
-	value(0,0) = width;
+	sprintf (buffer, "%i", width);
+	value = buffer;
   }
   else if (name == "height")
   {
-	value.resize (1, 1);
-	value(0,0) = height;
+	sprintf (buffer, "%i", height);
+	value = buffer;
   }
 }
 
 void
 ImageFileDelegateBMP::set (const string & name, const string & value)
 {
-  set (name, atof (value.c_str ()));
-}
-
-void
-ImageFileDelegateBMP::set (const string & name, int value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
-ImageFileDelegateBMP::set (const string & name, double value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
-ImageFileDelegateBMP::set (const string & name, const Matrix<double> & value)
-{
-  if (name == "topdown") topDown = value(0,0);
+  if (name == "topdown") topDown = atoi (value.c_str ());
 }
 
 

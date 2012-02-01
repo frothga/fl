@@ -10,11 +10,13 @@ add_library (flBase
   ../../include/fl/archive.h
   ../../include/fl/binary.h
   ../../include/fl/endian.h
+  ../../include/fl/metadata.h
   ../../include/fl/parms.h
   ../../include/fl/pointer.h
   ../../include/fl/string.h
   ../../include/fl/time.h
   Archive.cc
+  NamedValueSet.cc
   Parameters.cc
   Pointer.cc
 )

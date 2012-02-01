@@ -19,7 +19,7 @@ for details.
 
 
 #include "fl/pointer.h"
-#include "fl/matrix.h"
+#include "fl/metadata.h"
 
 #include <iostream>
 #include <string>
@@ -1036,23 +1036,13 @@ namespace fl
 	 Helper class for ImageFile that actually implements the methods for a
 	 specific codec.
   **/
-  class SHARED ImageFileDelegate : public ReferenceCounted
+  class SHARED ImageFileDelegate : public ReferenceCounted, public Metadata
   {
   public:
 	virtual ~ImageFileDelegate ();
 
 	virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0) = 0;
 	virtual void write (const Image & image, int x = 0, int y = 0) = 0;
-
-	virtual void get (const std::string & name, std::string & value);
-	virtual void get (const std::string & name, int & value);
-	virtual void get (const std::string & name, double & value);
-	virtual void get (const std::string & name, Matrix<double> & value);
-
-	virtual void set (const std::string & name, const std::string & value);
-	virtual void set (const std::string & name, int value);
-	virtual void set (const std::string & name, double value);
-	virtual void set (const std::string & name, const Matrix<double> & value);
   };
 
   /**
@@ -1101,7 +1091,7 @@ namespace fl
 	 the origin is in the upper-left corner, x increases to the right and
 	 y increases downward.
    **/
-  class SHARED ImageFile
+  class SHARED ImageFile : public Metadata
   {
   public:
 	ImageFile ();
@@ -1154,15 +1144,10 @@ namespace fl
 	**/
 	void write (const Image & image, int x = 0, int y = 0);
 
-	void get (const std::string & name, std::string & value);
-	void get (const std::string & name, int & value);
-	void get (const std::string & name, double & value);
-	void get (const std::string & name, Matrix<double> & value);
-
+	void get (const std::string & name,       std::string & value);
 	void set (const std::string & name, const std::string & value);
-	void set (const std::string & name, int value);
-	void set (const std::string & name, double value);
-	void set (const std::string & name, const Matrix<double> & value);
+	using Metadata::get;
+	using Metadata::set;
 
 	PointerPoly<ImageFileDelegate> delegate;
 	double timestamp;  ///< When it can be determined from the filesystem, apply it to the image.

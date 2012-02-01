@@ -1502,15 +1502,10 @@ public:
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
-  virtual void get (const string & name, string & value);
-  virtual void get (const string & name, int & value);
-  virtual void get (const string & name, double & value);
-  virtual void get (const string & name, Matrix<double> & value);
-
+  virtual void get (const string & name,       string & value);
   virtual void set (const string & name, const string & value);
-  virtual void set (const string & name, int value);
-  virtual void set (const string & name, double value);
-  virtual void set (const string & name, const Matrix<double> & value);
+  using Metadata::get;
+  using Metadata::set;
 
   istream * in;
   ostream * out;
@@ -1583,52 +1578,6 @@ remapSpecialNames (const string & name, string & result)
   else                            result = name;
 }
 
-void
-ImageFileDelegateNITF::get (const string & name, string & value)
-{
-  if (! header) return;
-
-  string n;
-  remapSpecialNames (name, n);
-
-  if (name == "imageIndex")
-  {
-	char buffer[10];
-	sprintf (buffer, "%i", imageIndex);
-	value = buffer;
-  }
-  else if (header->contains (n))
-  {
-	header->get (n, value);
-  }
-  else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
-  {
-	images[imageIndex]->get (n, value);
-  }
-}
-
-void
-ImageFileDelegateNITF::get (const string & name, int & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = (int) roundp (v(0,0));
-  }
-}
-
-void
-ImageFileDelegateNITF::get (const string & name, double & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = v(0,0);
-  }
-}
-
 static inline void
 geoToDecimal (const string & geo, double & x, double & y)
 {
@@ -1644,7 +1593,7 @@ geoToDecimal (const string & geo, double & x, double & y)
 }
 
 void
-ImageFileDelegateNITF::get (const string & name, Matrix<double> & value)
+ImageFileDelegateNITF::get (const string & name, string & value)
 {
   if (! header) return;
 
@@ -1729,93 +1678,46 @@ ImageFileDelegateNITF::get (const string & name, Matrix<double> & value)
 	gelss (~IJ, X, ~XY, (double *) 0, true, true);
 
 	// Assemble result
-	value.resize (4, 4);
-	value.clear ();
-	value.region (0, 0) = ~X;
-	value.region (0, 3) = centerXY - value.region (0, 0, 1, 1) * centerIJ;
-	value(3,3) = 1;
+	Matrix<double> temp (4, 4);
+	temp.clear ();
+	temp.region (0, 0) = ~X;
+	temp.region (0, 3) = centerXY - temp.region (0, 0, 1, 1) * centerIJ;
+	temp(3,3) = 1;
+	temp.toString (value);
 
 	return;
   }
 
   string n;
   remapSpecialNames (name, n);
-  double v = NAN;
-  bool found = false;
+
   if (name == "imageIndex")
   {
-	found = true;
-	v = imageIndex;
+	char buffer[10];
+	sprintf (buffer, "%i", imageIndex);
+	value = buffer;
   }
   else if (header->contains (n))
   {
-	found = true;
-	header->get (n, v);
+	header->get (n, value);
   }
   else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
   {
-	found = true;
-	images[imageIndex]->get (n, v);
-  }
-  if (found)
-  {
-	value.resize (1, 1);
-	value(0,0) = v;
+	images[imageIndex]->get (n, value);
   }
 }
 
 void
 ImageFileDelegateNITF::set (const string & name, const string & value)
 {
-  if (name == "imageIndex")
-  {
-	Matrix<double> v (1, 1);
-	v(0,0) = atof (value.c_str ());
-	set (name, v);
-	return;
-  }
-
   createHeader ();
 
   string n;
   remapSpecialNames (name, n);
 
-  if (header->contains (n))
-  {
-	header->set (n, value);
-  }
-  else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
-  {
-	images[imageIndex]->set (n, value);
-  }
-}
-
-void
-ImageFileDelegateNITF::set (const string & name, int value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
-ImageFileDelegateNITF::set (const string & name, double value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
-ImageFileDelegateNITF::set (const string & name, const Matrix<double> & value)
-{
-  createHeader ();
-
-  string n;
-  remapSpecialNames (name, n);
   if (name == "imageIndex")
   {
-	imageIndex = (int) roundp (value(0,0));
+	imageIndex = atoi (value.c_str ());
 	imageIndex = min (imageIndex, 998);
 
 	while (imageIndex >= images.size ())
@@ -1826,11 +1728,11 @@ ImageFileDelegateNITF::set (const string & name, const Matrix<double> & value)
   }
   else if (header->contains (n))
   {
-	header->set (n, value(0,0));
+	header->set (n, value);
   }
   else if (imageIndex >= 0  &&  images[imageIndex]->contains (n))
   {
-	images[imageIndex]->set (n, value(0,0));
+	images[imageIndex]->set (n, value);
   }
 }
 

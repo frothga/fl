@@ -30,7 +30,7 @@ public:
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
-  virtual void get (const string & name, string & value);
+  virtual void get (const string & name,       string & value);
   virtual void set (const string & name, const string & value);
 
   istream * in;

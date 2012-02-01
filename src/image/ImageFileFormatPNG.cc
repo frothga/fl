@@ -34,16 +34,6 @@ public:
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
-  virtual void get (const string & name, string & value);
-  virtual void get (const string & name, int & value);
-  virtual void get (const string & name, double & value);
-  virtual void get (const string & name, Matrix<double> & value);
-
-  virtual void set (const string & name, const string & value);
-  virtual void set (const string & name, int value);
-  virtual void set (const string & name, double value);
-  virtual void set (const string & name, const Matrix<double> & value);
-
   static void errorHandler   (png_structp png, png_const_charp message);
   static void warningHandler (png_structp png, png_const_charp message);
   static void readHandler    (png_structp png, png_bytep data, png_size_t length);
@@ -296,64 +286,6 @@ ImageFileDelegatePNG::write (const Image & image, int x, int y)
 
   png_write_image (png, rows);
   png_write_end (png, info);
-}
-
-void
-ImageFileDelegatePNG::get (const string & name, string & value)
-{
-}
-
-void
-ImageFileDelegatePNG::get (const string & name, int & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = (int) roundp (v(0,0));
-  }
-}
-
-void
-ImageFileDelegatePNG::get (const string & name, double & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = v(0,0);
-  }
-}
-
-void
-ImageFileDelegatePNG::get (const string & name, Matrix<double> & value)
-{
-}
-
-void
-ImageFileDelegatePNG::set (const string & name, const string & value)
-{
-}
-
-void
-ImageFileDelegatePNG::set (const string & name, int value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
-ImageFileDelegatePNG::set (const string & name, double value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
-ImageFileDelegatePNG::set (const string & name, const Matrix<double> & value)
-{
 }
 
 void

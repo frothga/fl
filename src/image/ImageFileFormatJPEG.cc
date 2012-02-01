@@ -148,15 +148,8 @@ public:
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
-  virtual void get (const string & name, string & value);
-  virtual void get (const string & name, int & value);
-  virtual void get (const string & name, double & value);
-  virtual void get (const string & name, Matrix<double> & value);
-
+  virtual void get (const string & name,       string & value);
   virtual void set (const string & name, const string & value);
-  virtual void set (const string & name, int value);
-  virtual void set (const string & name, double value);
-  virtual void set (const string & name, const Matrix<double> & value);
 
   istream * in;
   ostream * out;
@@ -391,95 +384,6 @@ ImageFileDelegateJPEG::get (const string & name, string & value)
 }
 
 void
-ImageFileDelegateJPEG::get (const string & name, int & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = (int) roundp (v(0,0));
-  }
-}
-
-void
-ImageFileDelegateJPEG::get (const string & name, double & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = v(0,0);
-  }
-}
-
-void
-ImageFileDelegateJPEG::get (const string & name, Matrix<double> & value)
-{
-  if (out)
-  {
-	if (name == "width"  ||  name == "blockWidth")
-	{
-	  value.resize (1, 1);
-	  value(0,0) = dinfo.output_width;
-	  return;
-	}
-	if (name == "height"  ||  name == "blockHeight")
-	{
-	  value.resize (1, 1);
-	  value(0,0) = dinfo.output_height;
-	  return;
-	}
-  }
-
-  if (name == "quality")
-  {
-	value.resize (1,1);
-	value(0,0) = quality;
-	return;
-  }
-
-  if (name == "comments"  &&  comments.size ())
-  {
-	value.resize (1,1);
-	value(0,0) = atol (comments.c_str ());
-	return;
-  }
-
-  map<string, string>::iterator it = namedValues.find (name);
-  if (it != namedValues.end ())
-  {
-	// Scan value to count rows and columns
-	int rows = 0;
-	int columns = 0;
-	istringstream sv (it->second);
-	while (sv.good ())
-	{
-	  string line;
-	  getline (sv, line);
-	  if (line.size ()) rows++;
-	  if (! columns)
-	  {
-		trim (line);
-		while (line.size ())
-		{
-		  columns++;
-		  int pos = line.find_first_of (" \t");
-		  if (pos == string::npos) break;
-		  line = line.substr (pos);
-		  trim (line);
-		}
-	  }
-	}
-
-	// Extract the matrix
-	value.resize (rows, columns);
-	value << it->second;
-
-	return;
-  }
-}
-
-void
 ImageFileDelegateJPEG::set (const string & name, const string & value)
 {
   if (name == "quality")
@@ -508,60 +412,6 @@ ImageFileDelegateJPEG::set (const string & name, const string & value)
   else if (value.size ())
   {
 	comments = comments + value;
-  }
-}
-
-void
-ImageFileDelegateJPEG::set (const string & name, int value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
-ImageFileDelegateJPEG::set (const string & name, double value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
-ImageFileDelegateJPEG::set (const string & name, const Matrix<double> & value)
-{
-  if (name == "quality")
-  {
-	quality = (int) roundp (value(0,0));
-	return;
-  }
-
-  if (name == "comments")
-  {
-	ostringstream sv;
-	sv << value;
-	comments += sv.str ();
-	return;
-  }
-
-  if (name.size ())
-  {
-	if (value.rows () > 0  &&  value.columns () > 0)
-	{
-	  ostringstream sv;
-	  sv << value;
-	  namedValues.insert (make_pair (name, sv.str ()));
-	}
-	else
-	{
-	  namedValues.erase (name);
-	}
-  }
-  else if (value.rows () > 0  &&  value.columns () > 0)
-  {
-	ostringstream sv;
-	sv << value;
-	comments += sv.str ();
   }
 }
 

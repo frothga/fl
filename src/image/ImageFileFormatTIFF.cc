@@ -57,15 +57,10 @@ public:
   virtual void read (Image & image, int x = 0, int y = 0, int width = 0, int height = 0);
   virtual void write (const Image & image, int x = 0, int y = 0);
 
-  virtual void get (const string & name, string & value);
-  virtual void get (const string & name, int & value);
-  virtual void get (const string & name, double & value);
-  virtual void get (const string & name, Matrix<double> & value);
-
+  virtual void get (const string & name,       string & value);
   virtual void set (const string & name, const string & value);
-  virtual void set (const string & name, int value);
-  virtual void set (const string & name, double value);
-  virtual void set (const string & name, const Matrix<double> & value);
+  using Metadata::get;
+  using Metadata::set;
 
   static tsize_t tiffRead  (thandle_t handle, tdata_t data, tsize_t size);
   static tsize_t tiffWrite (thandle_t handle, tdata_t data, tsize_t size);
@@ -683,6 +678,27 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
   }
 }
 
+// Complete the definition for TIFFField, since this is in TIFF's
+// library-private area.  This is a fragile and temporary solution to handle
+// TIFF 4.x.  Better solution is for the developers of TIFF to give back the
+// ability to reflect on field definitions.  Will negotiate with them for this.
+typedef enum {TIFF_BOGUS1} TIFFSetGetFieldType;
+struct _TIFFField
+{
+  uint32 field_tag;
+  short field_readcount;
+  short field_writecount;
+  TIFFDataType field_type;
+  uint32 reserved;
+  TIFFSetGetFieldType set_field_type;
+  TIFFSetGetFieldType get_field_type;
+  unsigned short field_bit;
+  unsigned char field_oktochange;
+  unsigned char field_passcount;
+  char* field_name;
+  //TIFFFieldArray* field_subfields;
+};
+
 void
 ImageFileDelegateTIFF::get (const string & name, string & value)
 {
@@ -694,121 +710,28 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 
   if (! tif) open ();
 
-  const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
-  if (fi)
+  if (name == "width")
   {
-	if (fi->field_type == TIFF_ASCII)
-	{
-	  uint16 count;
-	  char * v;
-	  if (TIFFGetFieldDefaulted (tif, fi->field_tag, &count, &v)) value = v;
-	}
-	else
-	{
-	  if (name == "Compression")
-	  {
-		// Attempt to look up codec name
-		uint16 v;
-		if (TIFFGetFieldDefaulted (tif, fi->field_tag, &v))
-		{
-		  TIFFCodec * codec = TIFFGetConfiguredCODECs ();
-		  while (codec->name)
-		  {
-			if (v == codec->scheme)
-			{
-			  value = codec->name;
-			  return;
-			}
-			codec++;
-		  }
-		}
-	  }
-	  Matrix<double> v;
-	  get (name, v);
-	  if (v.rows () > 0  &&  v.columns () > 0)
-	  {
-		ostringstream sv;
-		sv << v;
-		value = sv.str ();
-	  }
-	}
+	get ("ImageWidth", value);
 	return;
   }
-
-# ifdef HAVE_GEOTIFF
-  int key = GTIFKeyCode ((char *) name.c_str ());
-  if (key < 0) key = GTIFKeyCode ((char *) (name + "GeoKey").c_str ());
-  if (key >= 0)
+  if (name == "height")
   {
-	char buffer[100];
-	int size = 0;
-	tagtype_t type = TYPE_UNKNOWN;
-	int length = GTIFKeyInfo (gtif, (geokey_t) key, &size, &type);
-	switch (type)
-	{
-	  case TYPE_SHORT:
-	  {
-		uint16 v;
-		if (GTIFKeyGet (gtif, (geokey_t) key, &v, 0, 1))
-		{
-		  value = GTIFValueName ((geokey_t) key, v);
-		}
-		return;
-	  }
-	  case TYPE_DOUBLE:
-	  {
-		double v;
-		if (GTIFKeyGet (gtif, (geokey_t) key, &v, 0, 1))
-		{
-		  sprintf (buffer, "%lf", v);
-		  value = buffer;
-		}
-		return;
-	  }
-	  case TYPE_ASCII:
-	  {
-		value.resize (length);
-		GTIFKeyGet (gtif, (geokey_t) key, (void *) value.c_str (), 0, length);
-		return;
-	  }
-	}
-  }
-# endif
-}
-
-void
-ImageFileDelegateTIFF::get (const string & name, int & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = (int) roundp (v(0,0));
-  }
-}
-
-void
-ImageFileDelegateTIFF::get (const string & name, double & value)
-{
-  Matrix<double> v;
-  get (name, v);
-  if (v.rows () > 0  &&  v.columns () > 0)
-  {
-	value = v(0,0);
-  }
-}
-
-void
-ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
-{
-  if (name == "bigtiff")
-  {
-	value.resize (1, 1);
-	value(0,0) = bigtiff ? 1 : 0;
+	get ("ImageLength", value);
 	return;
   }
-
-  if (! tif) open ();
+  if (name == "blockWidth")
+  {
+	if (TIFFIsTiled (tif)) get ("TileWidth",  value);
+	else                   get ("ImageWidth", value);
+	return;
+  }
+  if (name == "blockHeight")
+  {
+	if (TIFFIsTiled (tif)) get ("TileLength",   value);
+	else                   get ("RowsPerStrip", value);
+	return;
+  }
 
   if (name == "GeoTransformationMatrix")
   {
@@ -821,7 +744,7 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 	}
 	if (found)
 	{
-	  value = ~Matrix<double> (v, 4, 4);
+	  (~Matrix<double> (v, 4, 4)).toString (value);
 	  return;
 	}
 
@@ -833,15 +756,16 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 		double * o;
 		if (TIFFGetField (tif, 33550, &count, &o)) // ModelPixelScale
 		{
-		  value.resize (4, 4);
-		  value.clear ();
-		  value(0,0) = o[0];
-		  value(1,1) = -o[1];
-		  value(2,2) = o[2];
-		  value(0,3) = v[3] - v[0] * o[0];
-		  value(1,3) = v[4] + v[1] * o[1];
-		  value(2,3) = v[5] - v[2] * o[2];
-		  value(3,3) = 1;
+		  Matrix<double> temp (4, 4);
+		  temp.clear ();
+		  temp(0,0) = o[0];
+		  temp(1,1) = -o[1];
+		  temp(2,2) = o[2];
+		  temp(0,3) = v[3] - v[0] * o[0];
+		  temp(1,3) = v[4] + v[1] * o[1];
+		  temp(2,3) = v[5] - v[2] * o[2];
+		  temp(3,3) = 1;
+		  temp.toString (value);
 		}
 	  }
 	  else if (points >= 3)  // 3 or more tiepoints, so solve for transformation using least squares
@@ -892,11 +816,12 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 		  gelss (AT, X, BT, (double *) 0, true, true);
 
 		  // Assemble result
-		  value.resize (4, 4);
-		  value.clear ();
-		  value.region (0, 0) = ~X;
-		  value.region (0, 3) = centerXY - value.region (0, 0, 1, 1) * centerIJ;
-		  value(3,3) = 1;
+		  Matrix<double> temp (4, 4);
+		  temp.clear ();
+		  temp.region (0, 0) = ~X;
+		  temp.region (0, 3) = centerXY - temp.region (0, 0, 1, 1) * centerIJ;
+		  temp(3,3) = 1;
+		  temp.toString (value);
 		}
 		else if (points >= 4)  // solve all 12 parameters
 		{
@@ -935,11 +860,12 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 		  gelss (AT, X, BT, (double *) 0, true, true);
 
 		  // Assemble result
-		  value.resize (4, 4);
-		  value.clear ();
-		  value.region (0, 0) = ~X;
-		  value.region (0, 3) = centerXYZ - value.region (0, 0, 2, 2) * centerIJK;
-		  value(3,3) = 1;
+		  Matrix<double> temp (4, 4);
+		  temp.clear ();
+		  temp.region (0, 0) = ~X;
+		  temp.region (0, 3) = centerXYZ - temp.region (0, 0, 2, 2) * centerIJK;
+		  temp(3,3) = 1;
+		  temp.toString (value);
 		}
 	  }
 	}
@@ -947,32 +873,36 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 	return;
   }
 
-  if (name == "width")
-  {
-	get ("ImageWidth", value);
-	return;
-  }
-  if (name == "height")
-  {
-	get ("ImageLength", value);
-	return;
-  }
-  if (name == "blockWidth")
-  {
-	if (TIFFIsTiled (tif)) get ("TileWidth",  value);
-	else                   get ("ImageWidth", value);
-	return;
-  }
-  if (name == "blockHeight")
-  {
-	if (TIFFIsTiled (tif)) get ("TileLength",   value);
-	else                   get ("RowsPerStrip", value);
-	return;
-  }
-
-  const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
+  const TIFFField * fi = TIFFFieldWithName (tif, name.c_str ());
   if (fi)
   {
+	if (fi->field_type == TIFF_ASCII)
+	{
+	  uint16 count;
+	  char * v;
+	  if (TIFFGetFieldDefaulted (tif, fi->field_tag, &count, &v)) value = v;
+	  return;
+	}
+	if (name == "Compression")
+	{
+	  // Attempt to look up codec name
+	  uint16 v;
+	  if (TIFFGetFieldDefaulted (tif, fi->field_tag, &v))
+	  {
+		TIFFCodec * codec = TIFFGetConfiguredCODECs ();
+		while (codec->name)
+		{
+		  if (v == codec->scheme)
+		  {
+			value = codec->name;
+			return;
+		  }
+		  codec++;
+		}
+	  }
+	  return;  // We failed to find a name for the compression scheme, but no need to process further.
+	}
+
 	int count = fi->field_readcount;
 	TIFFDataType fieldType = fi->field_type;
 
@@ -989,13 +919,14 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 
 	if (count == 1)
 	{
+	  std::ostringstream formatted;
 #     define grabSingle(type) \
 	  { \
 		type v; \
 		if (TIFFGetFieldDefaulted (tif, fi->field_tag, &v)) \
 		{ \
-		  value.resize (1, 1); \
-		  value(0,0) = v; \
+		  formatted << v; \
+		  value = formatted.str (); \
 		} \
 		return; \
 	  }
@@ -1057,43 +988,44 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 	}
 	if (! found) return;
 
-	if (fieldType != TIFF_DOUBLE)
-	{
-	  if (rows == 1) value.resize (count, 1);
-	  else           value.resize (rows, count / rows);
-	}
-
-#   define readVector(type) \
-	for (int i = 0; i < count; i++) \
-	{ \
-	  value[i] = ((type *) data)[i]; \
-	} \
-	return;
+	Matrix<double> temp;
+	if (rows == 1) temp.resize (count, 1);
+	else           temp.resize (rows, count / rows);
 
 	switch (fieldType)
 	{
 	  case TIFF_BYTE:
-		readVector (uint8);
+		for (int i = 0; i < count; i++) temp[i] = ((uint8 * ) data)[i];
+		break;
 	  case TIFF_SBYTE:
-		readVector (int8);
+		for (int i = 0; i < count; i++) temp[i] = ((int8 *  ) data)[i];
+		break;
 	  case TIFF_SHORT:
-		readVector (uint16);
+		for (int i = 0; i < count; i++) temp[i] = ((uint16 *) data)[i];
+		break;
 	  case TIFF_SSHORT:
-		readVector (int16);
+		for (int i = 0; i < count; i++) temp[i] = ((int16 * ) data)[i];
+		break;
 	  case TIFF_LONG:
 	  case TIFF_IFD:
-		readVector (uint32);
+		for (int i = 0; i < count; i++) temp[i] = ((uint32 *) data)[i];
+		break;
 	  case TIFF_SLONG:
-		readVector (int32);
+		for (int i = 0; i < count; i++) temp[i] = ((int32 * ) data)[i];
+		break;
 	  case TIFF_RATIONAL:
 	  case TIFF_SRATIONAL:
 	  case TIFF_FLOAT:
-		readVector (float);
+		for (int i = 0; i < count; i++) temp[i] = ((float * ) data)[i];
+		break;
 	  case TIFF_DOUBLE:
-		if (rows == 1) value = Matrix<double> ((double *) data, count, 1);
-		else           value = Matrix<double> ((double *) data, rows, count / rows);
+		for (int i = 0; i < count; i++) temp[i] = ((double *) data)[i];
+		break;
+	  default:
 		return;
 	}
+	temp.toString (value);
+	return;
   }
 
 # ifdef HAVE_GEOTIFF
@@ -1101,6 +1033,7 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
   if (key < 0) key = GTIFKeyCode ((char *) (name + "GeoKey").c_str ());
   if (key >= 0)
   {
+	char buffer[100];
 	int size = 0;
 	tagtype_t type = TYPE_UNKNOWN;
 	int length = GTIFKeyInfo (gtif, (geokey_t) key, &size, &type);
@@ -1111,8 +1044,7 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 		uint16 v;
 		if (GTIFKeyGet (gtif, (geokey_t) key, &v, 0, 1))
 		{
-		  value.resize (1, 1);
-		  value(0,0) = v;
+		  value = GTIFValueName ((geokey_t) key, v);
 		}
 		return;
 	  }
@@ -1121,20 +1053,15 @@ ImageFileDelegateTIFF::get (const string & name, Matrix<double> & value)
 		double v;
 		if (GTIFKeyGet (gtif, (geokey_t) key, &v, 0, 1))
 		{
-		  value.resize (1, 1);
-		  value(0,0) = v;
+		  sprintf (buffer, "%lf", v);
+		  value = buffer;
 		}
 		return;
 	  }
 	  case TYPE_ASCII:
 	  {
-		string v;
-		v.resize (length);
-		if (GTIFKeyGet (gtif, (geokey_t) key, (void *) v.c_str (), 0, length))
-		{
-		  value.resize (1, 1);
-		  value(0,0) = atof (v.c_str ());
-		}
+		value.resize (length);
+		GTIFKeyGet (gtif, (geokey_t) key, (void *) value.c_str (), 0, length);
 		return;
 	  }
 	}
@@ -1233,97 +1160,6 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 
   if (! tif) open ();
 
-  const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
-  if (fi)
-  {
-	if (fi->field_type == TIFF_ASCII)
-	{
-	  TIFFSetField (tif, fi->field_tag, (char *) value.c_str ());
-	}
-	else
-	{
-	  if (name == "Compression")
-	  {
-		// Attempt to look up codec name
-		TIFFCodec * codec = TIFFGetConfiguredCODECs ();
-		while (codec->name)
-		{
-		  if (value == codec->name)
-		  {
-			set (name, codec->scheme);
-			return;
-		  }
-		  codec++;
-		}
-	  }
-	  set (name, atof (value.c_str ()));
-	}
-	return;
-  }
-
-# ifdef HAVE_GEOTIFF
-  int key = GTIFKeyCode ((char *) name.c_str ());
-  if (key < 0) key = GTIFKeyCode ((char *) (name + "GeoKey").c_str ());
-  if (key >= 0)
-  {
-	switch (findType ((geokey_t) key))
-	{
-	  case TYPE_SHORT:
-	  {
-		int v = GTIFValueCode ((geokey_t) key, (char *) value.c_str ());
-		if (v < 0) v = atoi (value.c_str ());
-		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, (uint16) v);
-		break;
-	  }
-	  case TYPE_DOUBLE:
-	  {
-		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, atof (value.c_str ()));
-		break;
-	  }
-	  case TYPE_ASCII:
-	  {
-		GTIFKeySet (gtif, (geokey_t) key, TYPE_ASCII, value.size (), value.c_str ());
-	  }
-	}
-  }
-# endif
-}
-
-void
-ImageFileDelegateTIFF::set (const string & name, int value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
-ImageFileDelegateTIFF::set (const string & name, double value)
-{
-  Matrix<double> v (1, 1);
-  v(0,0) = value;
-  set (name, v);
-}
-
-void
-ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
-{
-  if (name == "bigtiff")
-  {
-	if (tif) return;  // no longer settable
-	bigtiff = value(0,0);
-	return;
-  }
-
-  if (! tif) open ();
-
-  if (name == "GeoTransformationMatrix")
-  {
-	Matrix<double> v = ~value;
-	TIFFSetField (tif, 34264, (uint16) 16, &v(0,0));
-	return;
-  }
-
   if (name == "width")
   {
 	set ("ImageWidth", value);
@@ -1345,20 +1181,60 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 	return;
   }
 
-  const TIFFFieldInfo * fi = TIFFFindFieldInfoByName (tif, name.c_str (), TIFF_ANY);
+  if (name == "GeoTransformationMatrix")
+  {
+	Matrix<double> v = ~Matrix<double> (value);
+	TIFFSetField (tif, 34264, (uint16) 16, &v(0,0));
+	return;
+  }
+
+  const TIFFField * fi = TIFFFieldWithName (tif, name.c_str ());
   if (fi)
   {
-	int count = value.rows () * value.columns ();
-	if (! count) throw "Emptry matrix";
+	if (fi->field_type == TIFF_ASCII)
+	{
+	  TIFFSetField (tif, fi->field_tag, (char *) value.c_str ());
+	  return;
+	}
+	if (name == "Compression")
+	{
+	  // Attempt to look up codec name
+	  TIFFCodec * codec = TIFFGetConfiguredCODECs ();
+	  while (codec->name)
+	  {
+		if (value == codec->name)
+		{
+		  TIFFSetField (tif, fi->field_tag, codec->scheme);
+		  return;
+		}
+		codec++;
+	  }
+	  return;
+	}
+
+	// If we get this far, then it is a numeric field, not text, so
+	// just convert it to a matrix.
+	Matrix<double> temp;
+	if (value.find_first_of ('[') == string::npos)
+	{
+	  temp.resize (1, 1);
+	  temp(0,0) = atof (value.c_str ());
+	}
+	else
+	{
+	  temp = Matrix<double> (value);
+	}
+
+	const int count = temp.rows () * temp.columns ();
+	if (! count) throw "Empty matrix";
 
 	const void * data = 0;
-	ostringstream adata;
 
 #   define writeVector(type) \
 	data = malloc (count * sizeof (type)); \
 	for (int i = 0; i < count; i++) \
 	{ \
-	  ((type *) data)[i] = (type) roundp (value[i]); \
+	  ((type *) data)[i] = (type) roundp (temp[i]); \
 	} \
 	break;
 
@@ -1387,11 +1263,8 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 		}
 		break;
 	  case TIFF_DOUBLE:
-		data = &value(0,0);
+		data = &temp(0,0);
 		break;
-	  case TIFF_ASCII:
-		adata << value;
-		data = adata.str ().c_str ();
 	}
 
 	if (fi->field_passcount)
@@ -1412,28 +1285,28 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 		switch (fi->field_type)
 		{
 		  case TIFF_BYTE:
-			TIFFSetField (tif, fi->field_tag, *(uint8 *) data);
+			TIFFSetField (tif, fi->field_tag, *(uint8 * ) data);
 			break;
 		  case TIFF_SBYTE:
-			TIFFSetField (tif, fi->field_tag, *(int8 *) data);
+			TIFFSetField (tif, fi->field_tag, *(int8 *  ) data);
 			break;
 		  case TIFF_SHORT:
 			TIFFSetField (tif, fi->field_tag, *(uint16 *) data);
 			break;
 		  case TIFF_SSHORT:
-			TIFFSetField (tif, fi->field_tag, *(int16 *) data);
+			TIFFSetField (tif, fi->field_tag, *(int16 * ) data);
 			break;
 		  case TIFF_LONG:
 		  case TIFF_IFD:
 			TIFFSetField (tif, fi->field_tag, *(uint32 *) data);
 			break;
 		  case TIFF_SLONG:
-			TIFFSetField (tif, fi->field_tag, *(int32 *) data);
+			TIFFSetField (tif, fi->field_tag, *(int32 * ) data);
 			break;
 		  case TIFF_RATIONAL:
 		  case TIFF_SRATIONAL:
 		  case TIFF_FLOAT:
-			TIFFSetField (tif, fi->field_tag, *(float *) data);
+			TIFFSetField (tif, fi->field_tag, *(float * ) data);
 			break;
 		  case TIFF_DOUBLE:
 			TIFFSetField (tif, fi->field_tag, *(double *) data);
@@ -1445,7 +1318,7 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 	  }
 	}
 
-	if (data  &&  fi->field_type != TIFF_DOUBLE  &&  fi->field_type != TIFF_ASCII) free ((void *) data);
+	if (data  &&  fi->field_type != TIFF_DOUBLE) free ((void *) data);
 	return;
   }
 
@@ -1458,19 +1331,19 @@ ImageFileDelegateTIFF::set (const string & name, const Matrix<double> & value)
 	{
 	  case TYPE_SHORT:
 	  {
-		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, (uint16) roundp (value(0,0)));
+		int v = GTIFValueCode ((geokey_t) key, (char *) value.c_str ());
+		if (v < 0) v = atoi (value.c_str ());
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, (uint16) v);
 		break;
 	  }
 	  case TYPE_DOUBLE:
 	  {
-		GTIFKeySet (gtif, (geokey_t) key, TYPE_DOUBLE, 1, value(0,0));
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, atof (value.c_str ()));
 		break;
 	  }
 	  case TYPE_ASCII:
 	  {
-		ostringstream data;
-		data << value;
-		GTIFKeySet (gtif, (geokey_t) key, TYPE_ASCII, data.pcount (), data.str ());
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_ASCII, value.size (), value.c_str ());
 	  }
 	}
   }

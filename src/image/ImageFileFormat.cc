@@ -33,46 +33,6 @@ ImageFileDelegate::~ImageFileDelegate ()
 {
 }
 
-void
-ImageFileDelegate::get (const std::string & name, std::string & value)
-{
-}
-
-void
-ImageFileDelegate::get (const std::string & name, int & value)
-{
-}
-
-void
-ImageFileDelegate::get (const std::string & name, double & value)
-{
-}
-
-void
-ImageFileDelegate::get (const std::string & name, Matrix<double> & value)
-{
-}
-
-void
-ImageFileDelegate::set (const std::string & name, const std::string & value)
-{
-}
-
-void
-ImageFileDelegate::set (const std::string & name, int value)
-{
-}
-
-void
-ImageFileDelegate::set (const std::string & name, double value)
-{
-}
-
-void
-ImageFileDelegate::set (const std::string & name, const Matrix<double> & value)
-{
-}
-
 
 // class ImageFile ------------------------------------------------------------
 
@@ -177,49 +137,7 @@ ImageFile::get (const std::string & name, std::string & value)
 }
 
 void
-ImageFile::get (const std::string & name, int & value)
-{
-  if (! delegate.memory) throw "ImageFile not open";
-  delegate->get (name, value);
-}
-
-void
-ImageFile::get (const std::string & name, double & value)
-{
-  if (! delegate.memory) throw "ImageFile not open";
-  delegate->get (name, value);
-}
-
-void
-ImageFile::get (const std::string & name, Matrix<double> & value)
-{
-  if (! delegate.memory) throw "ImageFile not open";
-  delegate->get (name, value);
-}
-
-void
 ImageFile::set (const std::string & name, const std::string & value)
-{
-  if (! delegate.memory) throw "ImageFile not open";
-  delegate->set (name, value);
-}
-
-void
-ImageFile::set (const std::string & name, int value)
-{
-  if (! delegate.memory) throw "ImageFile not open";
-  delegate->set (name, value);
-}
-
-void
-ImageFile::set (const std::string & name, double value)
-{
-  if (! delegate.memory) throw "ImageFile not open";
-  delegate->set (name, value);
-}
-
-void
-ImageFile::set (const std::string & name, const Matrix<double> & value)
 {
   if (! delegate.memory) throw "ImageFile not open";
   delegate->set (name, value);
