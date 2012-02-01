@@ -1390,28 +1390,38 @@ testImageCache ()
 void
 testImageFileFormat ()
 {
+# ifdef HAVE_JPEG
+  Image test (dataDir + "test.jpg");
+
 # ifdef HAVE_TIFF
   ImageFileFormatTIFF::use ();
+  {
+	ImageFile outFile (dataDir + "test.tif", "w");
+	outFile.set ("Compression", "LZW");
+	outFile.write (test);
+  }
+  {
+	ImageFile inFile (dataDir + "test.tif");
+	Image compareTIFF;
+	inFile.read (compareTIFF);
+	if (compareImages (test, compareTIFF) > 0) throw "TIFF image doesn't match original";
+	string value;
+	inFile.get ("Compression", value);
+	if (value != "LZW") throw "TIFF did not set compression as requested";
+	cout << "TIFF passes" << endl;
+  }
 # endif
 
 # ifdef HAVE_PNG
   ImageFileFormatPNG::use ();
-# endif
-
-  Image test (dataDir + "test.jpg");
-
-# ifdef HAVE_TIFF
-  test.write (dataDir + "test.tif");
-  Image compareTIFF (dataDir + "test.tif");
-  if (compareImages (test, compareTIFF) > 0) throw "TIFF image doesn't match original";
-  cout << "TIFF passes" << endl;
-# endif
-
-# ifdef HAVE_PNG
   test.write (dataDir + "test.png");
   Image comparePNG (dataDir + "test.png");
   if (compareImages (test, comparePNG) > 0) throw "PNG image doesn't match original";
   cout << "PNG passes" << endl;
+# endif
+
+# else
+  cout << "WARNING: ImageFileFormats not tested due to lack of JPEG." << endl;
 # endif
 }
 
@@ -1491,6 +1501,7 @@ testInterest ()
 # endif
 
   int count = points.size ();
+  cerr << "count = " << count << endl;
   if (abs (count - expected) > 50)
   {
 	cout << "unexpected point count " << count << "   rather than " << expected << endl;
