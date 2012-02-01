@@ -590,7 +590,10 @@ namespace fl
   template<class T>
   T elementFromString (const std::string & value)
   {
-	return (T) atof (value.c_str ());
+	std::istringstream formatted (value);
+	T result = (T) 0;
+	formatted >> result;
+	return result;
   }
 
   template<class T>
