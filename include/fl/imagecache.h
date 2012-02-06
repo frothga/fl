@@ -110,6 +110,7 @@ namespace fl
   public:
 	EntryPyramid (const PixelFormat & format, float scale = 0.5f, int width = 0);  ///< Create a query object
 	EntryPyramid (const Image & that, float scale = 0.5f);  ///< Directly store "that"
+	static int targetWidth (float targetScale, int sourceWidth, float sourceScale = 0.5f);  ///< Utility function for calculating desired width of result.  Gives closest power-of-two size.
 
 	virtual void  generate (ImageCache & cache);
 	virtual bool  compare  (const ImageCacheEntry & that) const;

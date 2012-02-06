@@ -170,6 +170,13 @@ EntryPyramid::EntryPyramid (const Image & that, float scale)
   image = that;
 }
 
+int
+EntryPyramid::targetWidth (float targetScale, int sourceWidth, float sourceScale)
+{
+  int w = (int) floor (log (targetScale / sourceScale) / log (2));
+  return sourceWidth / pow (2, w);
+}
+
 static inline float
 ratioDistance (const float & a, const float & b)
 {
@@ -230,8 +237,7 @@ EntryPyramid::generate (ImageCache & cache)
 	}
 	else  // automatic pyramid generation via recursive calls
 	{
-	  int w = (int) floor (log (minScale / cache.original->scale) / log (2));
-	  w = cache.original->image.width / pow (2, w);
+	  int w = targetWidth (minScale, cache.original->image.width, cache.original->scale);
 	  bestEntry = (EntryPyramid *) cache.get (new EntryPyramid (*image.format, minScale, w));
 	}
   }
