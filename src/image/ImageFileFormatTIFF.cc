@@ -144,8 +144,12 @@ ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
 #   endif
 	TIFFClose (tif);
   }
-  if (in)  delete in;
-  if (out) delete out;
+
+  if (ownStream)
+  {
+	if (in)  delete in;
+	if (out) delete out;
+  }
 }
 
 struct FormatMapping
