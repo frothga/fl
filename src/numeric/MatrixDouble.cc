@@ -17,6 +17,20 @@ for details.
 #include "fl/Matrix.tcc"
 #include "fl/metadata.h"
 
+// Must redefine SHARED, because metadata.h includes matrix.h and then sets
+// SHARED for base rather than numeric.  Changing include order doesn't help,
+// due to inclusion guard.
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flNumeric_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
 
 using namespace fl;
 using namespace std;
@@ -39,7 +53,7 @@ void
 Metadata::get (const string & name, Matrix<double> & value)
 {
   string temp;
-  getString (name, temp);
+  get (name, temp);
   if (temp.size ())
   {
 	if (temp.find_first_of ('[') != string::npos)
@@ -59,5 +73,5 @@ Metadata::set (const string & name, const Matrix<double> & value)
 {
   string temp;
   value.toString (temp);
-  setString (name, temp);
+  set (name, temp);
 }

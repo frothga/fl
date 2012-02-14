@@ -66,4 +66,5 @@ fl::operator << (ostream & out, const NamedValueSet & data)
 {
   map<string, string>::const_iterator it;
   for (it = data.namedValues.begin (); it != data.namedValues.end (); it++) out << it->first << " = " << it->second << endl;
+  return out;
 }
