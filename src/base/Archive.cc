@@ -34,8 +34,9 @@ Archive::Archive (ostream & out, bool ownStream)
 
 Archive::Archive (const string & fileName, const string & mode)
 {
-  this->in  = 0;
-  this->out = 0;
+  in        = 0;
+  out       = 0;
+  ownStream = false;
   open (fileName, mode);
 }
 
