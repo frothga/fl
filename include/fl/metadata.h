@@ -46,8 +46,8 @@ namespace fl
 	<li>Pull all the other implementations in with "using Metadata::get" and
 	"using Metadata::set".  This step is important, because the standard
 	behavior of C++ is to hide all the inherited functions when you create
-	a get or set function in the child class.  Alternately, you can explicitl
-	y qualify any call: "object->Metadata::get (...)".
+	a get or set function in the child class.  Alternately, you can explicitly
+	qualify any call: "object->Metadata::get (...)".
 	</ul>
   **/
   class SHARED Metadata
@@ -79,6 +79,8 @@ namespace fl
 
 	virtual void get (const std::string & name,       std::string & value);
 	virtual void set (const std::string & name, const std::string & value);
+	using Metadata::get;
+	using Metadata::set;
 
 	std::map<std::string, std::string> namedValues;
   };
