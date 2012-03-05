@@ -69,7 +69,8 @@ Kohonen::run (const std::vector<Vector<float> > & data)
   int pad = width * (int) ceilf ((float) s / width);
 
   vector<float> changes;
-  Vector<float> oldCenter;
+  float * oldCenter = new float[dimension];
+  float * end       = oldCenter + dimension;
   while (! stop  &&  learningRate > 1e-6)
   {
 	float largestChange = 0;
@@ -92,11 +93,31 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 		  int dx = (cx + (x - h) + pad) % width;
 		  int dy = (cy + (y - h) + pad) % width;
 		  int index = dx * width + dy;
-		  Vector<float> center (&map(0,index), dimension);
-		  oldCenter.copyFrom (center);
-		  center += point * (learningRate * lambda(x,y));
-		  center.normalize ();
-		  float change = (center - oldCenter).norm (2);
+		  float rate = learningRate * lambda(x,y);
+
+		  float * center = & map(0,index);
+		  float * c = center;
+		  float * o = oldCenter;
+		  float * p = & point[0];
+		  float total = 0;
+		  while (o < end)
+		  {
+			*o++ = *c;
+			*c += *p++ * rate;
+			total += *c * *c;
+			c++;
+		  }
+		  total = sqrt (total);
+		  c = center;
+		  o = oldCenter;
+		  float change = 0;
+		  while (o < end)
+		  {
+			*c /= total;
+			float t = *c++ - *o++;
+			change += t * t;
+		  }
+		  change = sqrt (change);
 		  largestChange = max (change, largestChange);
 		}
 	  }
@@ -140,6 +161,7 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 	cerr << "learningRate = " << learningRate << endl;
 	cerr << "time = " << getTimestamp () - startTime << endl;
   }
+  delete [] oldCenter;
 }
 
 int
