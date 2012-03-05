@@ -41,14 +41,14 @@ Kohonen::run (const std::vector<Vector<float> > & data)
   // Prepare set of random clusters
   int dimension = data[0].rows ();
   int count = width * width;
-  map.resize (count, dimension);
-  for (int r = 0; r < count; r++)
+  map.resize (dimension, count);
+  for (int c = 0; c < count; c++)
   {
-	for (int c = 0; c < dimension; c++)
+	for (int r = 0; r < dimension; r++)
 	{
 	  map(r,c) = randGaussian ();
 	}
-	map.row (r).normalize ();
+	map.column (c).normalize ();
   }
 
   // Prepare a Gaussian kernel to use as our neighborhood function
@@ -69,6 +69,7 @@ Kohonen::run (const std::vector<Vector<float> > & data)
   int pad = width * (int) ceilf ((float) s / width);
 
   vector<float> changes;
+  Vector<float> oldCenter;
   while (! stop  &&  learningRate > 1e-6)
   {
 	float largestChange = 0;
@@ -76,8 +77,10 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 
 	for (int i = 0; i < data.size ()  &&  ! stop; i++)
 	{
+	  const Vector<float> & point = data[i];
+
 	  // Find closest cluster
-	  int cluster = classify (data[i]);
+	  int cluster = classify (point);
 	  int cx = cluster / width;  // This implies column major organization
 	  int cy = cluster % width;
 
@@ -89,11 +92,11 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 		  int dx = (cx + (x - h) + pad) % width;
 		  int dy = (cy + (y - h) + pad) % width;
 		  int index = dx * width + dy;
-		  MatrixResult<float> oldRow = map.row (index);
-		  Matrix<float> newRow = oldRow + ~data[i] * (learningRate * lambda(x,y));
-		  newRow.normalize ();
-		  float change = (newRow - oldRow).norm (2);
-		  oldRow = newRow;
+		  Vector<float> center (&map(0,index), dimension);
+		  oldCenter.copyFrom (center);
+		  center += point * (learningRate * lambda(x,y));
+		  center.normalize ();
+		  float change = (center - oldCenter).norm (2);
 		  largestChange = max (change, largestChange);
 		}
 	  }
@@ -142,7 +145,7 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 int
 Kohonen::classify (const Vector<float> & point)
 {
-  Vector<float> distances = map * point;
+  Vector<float> distances = ~map * point;
   float * start = &distances[0];
   float * end   = start + distances.rows ();
   float * best  = start;
@@ -153,13 +156,13 @@ Kohonen::classify (const Vector<float> & point)
 	i++;
   }
 
-  return i - start;
+  return best - start;
 }
 
 Vector<float>
 Kohonen::distribution (const Vector<float> & point)
 {
-  Vector<float> result = map * point;
+  Vector<float> result = ~map * point;
   result /= result.norm (1);
   return result;
 }
