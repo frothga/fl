@@ -17,58 +17,10 @@ for details.
 #include "fl/cluster.h"
 #include "fl/random.h"
 #include "fl/time.h"
-
+#include <iostream>
 
 using namespace std;
 using namespace fl;
-
-
-// class ClusterCosine --------------------------------------------------------
-
-uint32_t ClusterCosine::serializeVersion = 0;
-
-ClusterCosine::ClusterCosine ()
-{
-}
-
-ClusterCosine::ClusterCosine (int dimension)
-{
-  center.resize (dimension);
-  for (int i = 0; i < dimension; i++)
-  {
-	center[i] = randGaussian ();
-  }
-  center.normalize ();
-}
-
-ClusterCosine::ClusterCosine (Vector<float> & center)
-{
-  this->center.copyFrom (center);
-  this->center.normalize ();
-}
-
-float
-ClusterCosine::distance (const Vector<float> & point)
-{
-  return center.dot (point);
-}
-
-float
-ClusterCosine::update (const Vector<float> & point, float weight)
-{
-  int dimension = point.rows ();
-  Vector<float> oldCenter;
-  oldCenter.copyFrom (center);
-  center += point * weight;
-  center.normalize ();
-  return (center - oldCenter).norm (2);
-}
-
-void
-ClusterCosine::serialize (Archive & archive, uint32_t version)
-{
-  archive & center;
-}
 
 
 // class Kohonen -------------------------------------------------------------
@@ -86,14 +38,17 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 {
   stop = false;
 
-  int rows = data[0].rows ();
-
   // Prepare set of random clusters
+  int dimension = data[0].rows ();
   int count = width * width;
-  for (int i = 0; i < count; i++)
+  map.resize (count, dimension);
+  for (int r = 0; r < count; r++)
   {
-	ClusterCosine c (rows);
-	map.push_back (c);
+	for (int c = 0; c < dimension; c++)
+	{
+	  map(r,c) = randGaussian ();
+	}
+	map.row (r).normalize ();
   }
 
   // Prepare a Gaussian kernel to use as our neighborhood function
@@ -133,7 +88,12 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 		{
 		  int dx = (cx + (x - h) + pad) % width;
 		  int dy = (cy + (y - h) + pad) % width;
-		  float change = map[dx * width + dy].update (data[i], learningRate * lambda(x,y));
+		  int index = dx * width + dy;
+		  MatrixResult<float> oldRow = map.row (index);
+		  Matrix<float> newRow = oldRow + ~data[i] * (learningRate * lambda(x,y));
+		  newRow.normalize ();
+		  float change = (newRow - oldRow).norm (2);
+		  oldRow = newRow;
 		  largestChange = max (change, largestChange);
 		}
 	  }
@@ -182,29 +142,24 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 int
 Kohonen::classify (const Vector<float> & point)
 {
-  int result = -1;
-  float highest = 0;
-  for (int i = 0; i < map.size (); i++)
+  Vector<float> distances = map * point;
+  float * start = &distances[0];
+  float * end   = start + distances.rows ();
+  float * best  = start;
+  float * i     = start + 1;
+  while (i < end)
   {
-	float value = map[i].distance (point);
-	if (value > highest)
-	{
-	  result = i;
-	  highest = value;
-	}
+	if (*i > *best) best = i;
+	i++;
   }
 
-  return result;
+  return i - start;
 }
 
 Vector<float>
 Kohonen::distribution (const Vector<float> & point)
 {
-  Vector<float> result (map.size ());
-  for (int i = 0; i < map.size (); i++)
-  {
-	result[i] = map[i].distance (point);
-  }
+  Vector<float> result = map * point;
   result /= result.norm (1);
   return result;
 }
@@ -212,13 +167,13 @@ Kohonen::distribution (const Vector<float> & point)
 int
 Kohonen::classCount ()
 {
-  return map.size ();
+  return map.rows ();
 }
 
 Vector<float>
 Kohonen::representative (int group)
 {
-  return map[group].center;
+  return map.row (group);
 }
 
 void

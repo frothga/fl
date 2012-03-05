@@ -168,22 +168,6 @@ namespace fl
 
   // Kohonen map --------------------------------------------------------------
 
-  class SHARED ClusterCosine
-  {
-  public:
-	ClusterCosine ();
-	ClusterCosine (int dimension);
-	ClusterCosine (Vector<float> & center);
-
-	float distance (const Vector<float> & point);
-	float update (const Vector<float> & point, float weight);
-
-	void serialize (Archive & archive, uint32_t version);
-	static uint32_t serializeVersion;
-
-	Vector<float> center;
-  };
-
   class SHARED Kohonen : public ClusterMethod
   {
   public:
@@ -197,7 +181,7 @@ namespace fl
 
 	void serialize (Archive & archive, uint32_t version);
 
-	std::vector<ClusterCosine> map;
+	Matrix<float> map;
 	int width;  ///< Number of discrete positions in one dimension.
 	float sigma;  ///< Of Gaussian that determines neighborhood to be updated.
 	float learningRate;  ///< How much to scale feature vector during update.
