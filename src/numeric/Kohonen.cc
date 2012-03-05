@@ -41,14 +41,14 @@ Kohonen::run (const std::vector<Vector<float> > & data)
   // Prepare set of random clusters
   int dimension = data[0].rows ();
   int count = width * width;
-  map.resize (dimension, count);
-  for (int c = 0; c < count; c++)
+  map.resize (count, dimension);
+  for (int r = 0; r < count; r++)
   {
-	for (int r = 0; r < dimension; r++)
+	for (int c = 0; c < dimension; c++)
 	{
 	  map(r,c) = randGaussian ();
 	}
-	map.column (c).normalize ();
+	map.row (r).normalize ();
   }
 
   // Prepare a Gaussian kernel to use as our neighborhood function
@@ -95,7 +95,7 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 		  int index = dx * width + dy;
 		  float rate = learningRate * lambda(x,y);
 
-		  float * center = & map(0,index);
+		  float * center = & map(index,0);
 		  float * c = center;
 		  float * o = oldCenter;
 		  float * p = & point[0];
@@ -105,7 +105,7 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 			*o++ = *c;
 			*c += *p++ * rate;
 			total += *c * *c;
-			c++;
+			c += count;
 		  }
 		  total = sqrt (total);
 		  c = center;
@@ -114,8 +114,9 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 		  while (o < end)
 		  {
 			*c /= total;
-			float t = *c++ - *o++;
+			float t = *c - *o++;
 			change += t * t;
+			c += count;
 		  }
 		  change = sqrt (change);
 		  largestChange = max (change, largestChange);
@@ -167,7 +168,7 @@ Kohonen::run (const std::vector<Vector<float> > & data)
 int
 Kohonen::classify (const Vector<float> & point)
 {
-  Vector<float> distances = ~map * point;
+  Vector<float> distances = map * point;
   float * start = &distances[0];
   float * end   = start + distances.rows ();
   float * best  = start;
@@ -184,7 +185,7 @@ Kohonen::classify (const Vector<float> & point)
 Vector<float>
 Kohonen::distribution (const Vector<float> & point)
 {
-  Vector<float> result = ~map * point;
+  Vector<float> result = map * point;
   result /= result.norm (1);
   return result;
 }
