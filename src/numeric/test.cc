@@ -18,6 +18,7 @@ for details.
 #include "fl/random.h"
 #include "fl/lapack.h"
 #include "fl/fourier.h"
+#include "fl/cluster.h"
 
 #include <limits>
 #include <complex>
@@ -925,6 +926,43 @@ testFourier ()
   cout << "Fourier passes" << endl;
 }
 
+void
+testCluster ()
+{
+  // Generate data
+  // Gaussian ball at 2 on each axis.  Ball is small enough to provide
+  // adequate separation in any dimension.  Advantage of this form is that
+  // all balls are equal in size (amenable to KMeans) and we know exactly
+  // how many clusters there should be.
+  const int dimension = 3;
+  const int count = 1000;
+  const float separation = 2;
+  vector<Vector<float> > data;
+  for (int d = 0; d < dimension; d++)
+  {
+	for (int i = 0; i < count; i++)
+	{
+	  Vector<float> datum (dimension);
+	  for (int r = 0; r < dimension; r++) datum[r] = randGaussian ();
+	  datum[d] += separation;
+	  data.push_back (datum);
+	}
+  }
+
+  // Test KMeans
+  KMeans kmeans (dimension);
+  kmeans.run (data);
+  if (kmeans.classCount () != dimension) throw "KMeans wrong number of clusters";
+  for (int i = 0; i < dimension; i++)
+  {
+	Vector<float> point (dimension);
+	point.clear ();
+	point[i] = separation;
+	Vector<float> center = kmeans.representative (kmeans.classify (point));
+	if ((point - center).norm (2) > 0.2) throw "KMeans cluster is missing";
+  }
+}
+
 template<class T>
 void
 testAll ()
@@ -953,6 +991,7 @@ main (int argc, char * argv[])
   {
 	cout << "running all tests for float" << endl;
 	testAll<float> ();
+	testCluster ();
 
 	cout << "running all tests for double" << endl;
 	testAll<double> ();

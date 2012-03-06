@@ -166,6 +166,25 @@ namespace fl
   const float largestDistanceFloat = 87;  ///< = ln (1 / smallestNormalFloat); Actually distance squared, not distance.
 
 
+  // KMeans -------------------------------------------------------------------
+
+  class SHARED KMeans : public ClusterMethod
+  {
+  public:
+	KMeans (int K);
+
+	virtual void          run (const std::vector< Vector<float> > & data);
+	virtual int           classify (const Vector<float> & point);
+	virtual Vector<float> distribution (const Vector<float> & point);
+	virtual int           classCount ();
+	virtual Vector<float> representative (int group);
+
+	void serialize (Archive & archive, uint32_t version);
+
+	std::vector<Vector<float> > clusters;
+  };
+
+
   // Kohonen map --------------------------------------------------------------
 
   class SHARED Kohonen : public ClusterMethod

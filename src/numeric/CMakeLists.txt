@@ -156,11 +156,12 @@ add_library (flNumeric
 
   # Clustering
   ../../include/fl/cluster.h
+  Agglomerate.cc
   ClusterMethod.cc
   GaussianMixture.cc
   ${maybeGaussianMixtureParallel}
+  KMeans.cc
   Kohonen.cc
-  Agglomerate.cc
 
   # Neural Networks
   ../../include/fl/neural.h
