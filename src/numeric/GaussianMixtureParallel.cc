@@ -32,22 +32,22 @@ using namespace fl;
 using namespace std;
 
 
-// class KMeansParallel -------------------------------------------------------
+// class GaussianMixtureParallel ----------------------------------------------
 
-KMeansParallel::KMeansParallel (float maxSize, float minSize, int initialK, int maxK, const string & clusterFileName)
-: KMeans (maxSize, minSize, initialK, maxK, clusterFileName),
+GaussianMixtureParallel::GaussianMixtureParallel (float maxSize, float minSize, int initialK, int maxK, const string & clusterFileName)
+: GaussianMixture (maxSize, minSize, initialK, maxK, clusterFileName),
   Listener (4000)
 {
 }
 
-KMeansParallel::KMeansParallel (const string & clusterFileName)
-: KMeans (clusterFileName),
+GaussianMixtureParallel::GaussianMixtureParallel (const string & clusterFileName)
+: GaussianMixture (clusterFileName),
   Listener (4000)
 {
 }
 
 void
-KMeansParallel::run (const std::vector<Vector<float> > & data)
+GaussianMixtureParallel::run (const std::vector<Vector<float> > & data)
 {
   this->data = &data;
 
@@ -147,16 +147,16 @@ KMeansParallel::run (const std::vector<Vector<float> > & data)
 }
 
 void *
-KMeansParallel::listenThread (void * arg)
+GaussianMixtureParallel::listenThread (void * arg)
 {
 cerr << "starting listenThread" << endl;
-  KMeansParallel * me = (KMeansParallel *) arg;
+  GaussianMixtureParallel * me = (GaussianMixtureParallel *) arg;
   me->listen (portNumber);
   return NULL;
 }
 
 void
-KMeansParallel::processConnection (SocketStream & ss, struct sockaddr_in & clientAddress)
+GaussianMixtureParallel::processConnection (SocketStream & ss, struct sockaddr_in & clientAddress)
 {
   struct in_addr address  = clientAddress.sin_addr;
   struct hostent * hp = gethostbyaddr ((char *) &address, sizeof (address), AF_INET);
@@ -292,7 +292,7 @@ cerr << peer << " exiting proxyThread" << endl;
 }
 
 void
-KMeansParallel::client (std::string serverName)
+GaussianMixtureParallel::client (std::string serverName)
 {
   // Open connection to server
   char portName[256];

@@ -7,7 +7,7 @@
 
 
 if (CMAKE_USE_PTHREADS_INIT)
-  set (maybeKMeansParallel KMeansParallel.cc)
+  set (maybeGaussianMixtureParallel GaussianMixtureParallel.cc)
 endif (CMAKE_USE_PTHREADS_INIT)
 
 if (BLAS_FOUND)
@@ -157,8 +157,8 @@ add_library (flNumeric
   # Clustering
   ../../include/fl/cluster.h
   ClusterMethod.cc
-  KMeans.cc
-  ${maybeKMeansParallel}
+  GaussianMixture.cc
+  ${maybeGaussianMixtureParallel}
   Kohonen.cc
   Agglomerate.cc
 

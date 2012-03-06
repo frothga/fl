@@ -128,9 +128,9 @@ ClusterGauss::serialize (Archive & archive, uint32_t version)
 }
 
 
-// class KMeans ---------------------------------------------------------------
+// class GaussianMixture ------------------------------------------------------
 
-KMeans::KMeans (float maxSize, float minSize, int initialK, int maxK, const string & clusterFileName)
+GaussianMixture::GaussianMixture (float maxSize, float minSize, int initialK, int maxK, const string & clusterFileName)
 {
   this->maxSize  = maxSize;
   this->minSize  = minSize;
@@ -140,13 +140,13 @@ KMeans::KMeans (float maxSize, float minSize, int initialK, int maxK, const stri
   this->clusterFileName = clusterFileName;
 }
 
-KMeans::KMeans (const string & clusterFileName)
+GaussianMixture::GaussianMixture (const string & clusterFileName)
 {
   this->clusterFileName = clusterFileName;
 }
 
 void
-KMeans::run (const std::vector<Vector<float> > & data)
+GaussianMixture::run (const std::vector<Vector<float> > & data)
 {
   stop = false;
   initialize (data);
@@ -194,7 +194,7 @@ KMeans::run (const std::vector<Vector<float> > & data)
 }
 
 void
-KMeans::initialize (const vector<Vector<float> > & data)
+GaussianMixture::initialize (const vector<Vector<float> > & data)
 {
   // Generate set of random clusters
   int K = min (initialK, (int) data.size () / 2);
@@ -266,7 +266,7 @@ cerr << "center: " << center << endl;
   }
   else
   {
-	cerr << "KMeans already initialized with:" << endl;
+	cerr << "GaussianMixture already initialized with:" << endl;
 	cerr << "  clusters = " << clusters.size () << endl;
 	cerr << "  maxSize  = " << maxSize << endl;
 	cerr << "  minSize  = " << minSize << endl;
@@ -287,7 +287,7 @@ cerr << "center: " << center << endl;
 }
 
 void
-KMeans::estimate (const vector<Vector<float> > & data, Matrix<float> & member, int jbegin, int jend)
+GaussianMixture::estimate (const vector<Vector<float> > & data, Matrix<float> & member, int jbegin, int jend)
 {
   for (int j = jbegin; j < jend; j++)
   {
@@ -328,7 +328,7 @@ KMeans::estimate (const vector<Vector<float> > & data, Matrix<float> & member, i
 }
 
 float
-KMeans::maximize (const vector<Vector<float> > & data, const Matrix<float> & member, int i)
+GaussianMixture::maximize (const vector<Vector<float> > & data, const Matrix<float> & member, int i)
 {
   // Calculute new cluster center
   Vector<float> center (data[0].rows ());
@@ -374,7 +374,7 @@ KMeans::maximize (const vector<Vector<float> > & data, const Matrix<float> & mem
 }
 
 bool
-KMeans::convergence (const vector<Vector<float> > & data, const Matrix<float> & member, float largestChange)
+GaussianMixture::convergence (const vector<Vector<float> > & data, const Matrix<float> & member, float largestChange)
 {
   bool converged = false;
 
@@ -516,7 +516,7 @@ KMeans::convergence (const vector<Vector<float> > & data, const Matrix<float> & 
 }
 
 int
-KMeans::classify (const Vector<float> & point)
+GaussianMixture::classify (const Vector<float> & point)
 {
   int result = -1;
   float highest = smallestNormalFloat;
@@ -534,7 +534,7 @@ KMeans::classify (const Vector<float> & point)
 }
 
 Vector<float>
-KMeans::distribution (const Vector<float> & point)
+GaussianMixture::distribution (const Vector<float> & point)
 {
   Vector<float> result (clusters.size ());
   vector< Vector<float> > data;
@@ -544,19 +544,19 @@ KMeans::distribution (const Vector<float> & point)
 }
 
 int
-KMeans::classCount ()
+GaussianMixture::classCount ()
 {
   return clusters.size ();
 }
 
 Vector<float>
-KMeans::representative (int group)
+GaussianMixture::representative (int group)
 {
   return clusters[group].center;
 }
 
 void
-KMeans::serialize (Archive & archive, uint32_t version)
+GaussianMixture::serialize (Archive & archive, uint32_t version)
 {
   cerr << "top of write" << endl;
   if (archive.out) clusterFileTime = time (NULL);

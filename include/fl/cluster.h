@@ -67,7 +67,7 @@ namespace fl
   };
 
 
-  // Soft K-means -------------------------------------------------------------
+  // Gaussian Mixture ---------------------------------------------------------
 
   class SHARED ClusterGauss
   {
@@ -92,11 +92,11 @@ namespace fl
 	float det;  ///< preprocessed multiplier that goes in front of probability expression.  Includes determinant of the covariance matrix.
   };
 
-  class SHARED KMeans : public ClusterMethod
+  class SHARED GaussianMixture : public ClusterMethod
   {
   public:
-	KMeans (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");  ///< clusterFileName refers to target file for new clustering data, which is very likely to be different from input file.
-	KMeans (const std::string & clusterFileName = "");
+	GaussianMixture (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");  ///< clusterFileName refers to target file for new clustering data, which is very likely to be different from input file.
+	GaussianMixture (const std::string & clusterFileName = "");
 
 	virtual void          run (const std::vector< Vector<float> > & data);
 	virtual int           classify (const Vector<float> & point);
@@ -127,11 +127,11 @@ namespace fl
   };
 
 # ifdef HAVE_PTHREAD
-  class SHARED KMeansParallel : public KMeans, public Listener
+  class SHARED GaussianMixtureParallel : public GaussianMixture, public Listener
   {
   public:
-	KMeansParallel (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");
-	KMeansParallel (const std::string & clusterFileName = "");
+	GaussianMixtureParallel (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");
+	GaussianMixtureParallel (const std::string & clusterFileName = "");
 
 	virtual void run (const std::vector< Vector<float> > & data);
 	virtual void processConnection (fl::SocketStream & ss, struct sockaddr_in & clientAddress);
