@@ -171,7 +171,7 @@ namespace fl
   class SHARED KMeans : public ClusterMethod
   {
   public:
-	KMeans (int K);
+	KMeans (int K = 0);
 
 	virtual void          run (const std::vector< Vector<float> > & data);
 	virtual int           classify (const Vector<float> & point);
@@ -181,6 +181,7 @@ namespace fl
 
 	void serialize (Archive & archive, uint32_t version);
 
+	int K;  ///< Desired number of clusters.  Can be changed any time.  Takes effect when run() is called.
 	std::vector<Vector<float> > clusters;
   };
 
@@ -190,8 +191,9 @@ namespace fl
   class SHARED KMeansTree : public ClusterMethod
   {
   public:
-	KMeansTree (int K, int depth);
+	KMeansTree (int K = 0, int depth = 1);
 	~KMeansTree ();
+	void clear ();
 
 	virtual void          run (const std::vector< Vector<float> > & data);
 	virtual int           classify (const Vector<float> & point);

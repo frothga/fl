@@ -20,7 +20,7 @@ using namespace fl;
 // class KMeans ---------------------------------------------------------------
 
 KMeans::KMeans (int K)
-: clusters (K)
+: K (K)
 {
 }
 
@@ -29,10 +29,10 @@ KMeans::run (const std::vector<Vector<float> > & data)
 {
   stop = false;
 
-  const int K = clusters.size ();
   const int count = data.size ();
   const int dimension = data[0].rows ();
 
+  clusters.resize (K);
   for (int i = 0; i < K; i++) clusters[i].resize (dimension);
 
   // Random initial assignments
@@ -121,5 +121,6 @@ void
 KMeans::serialize (Archive & archive, uint32_t version)
 {
   archive & *((ClusterMethod *) this);
+  archive & K;
   archive & clusters;
 }

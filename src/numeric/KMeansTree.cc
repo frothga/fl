@@ -23,25 +23,29 @@ KMeansTree::KMeansTree (int K, int depth)
 : kmeans (K),
   depth (depth)
 {
-  if (depth > 1)
-  {
-	for (int i = 0; i < K; i++) subtrees.push_back (new KMeansTree (K, depth - 1));
-  }
 }
 
 KMeansTree::~KMeansTree ()
 {
+  clear ();
+}
+
+void
+KMeansTree::clear ()
+{
   for (int i = 0; i < subtrees.size (); i++) delete subtrees[i];
+  subtrees.clear ();
 }
 
 void
 KMeansTree::run (const std::vector<Vector<float> > & data)
 {
-  const int K = kmeans.clusters.size ();
-  const int count = data.size ();
-
   kmeans.run (data);
+  cerr << depth;
   if (depth <= 1) return;
+
+  const int K     = kmeans.K;
+  const int count = data.size ();
 
   vector<vector<Vector<float> > > partition (K);
   for (int i = 0; i < count; i++)
@@ -49,9 +53,17 @@ KMeansTree::run (const std::vector<Vector<float> > & data)
 	int g = kmeans.classify (data[i]);
 	partition[g].push_back (data[i]);
   }
+
+  clear ();
   for (int i = 0; i < K; i++)
   {
-	subtrees[i]->run (partition[i]);
+	if (partition[i].size ())
+	{
+	  KMeansTree * tree = new KMeansTree (K, depth - 1);
+	  tree->run (partition[i]);
+	  subtrees.push_back (tree);
+	}
+	else subtrees.push_back (0);
   }
 }
 
@@ -59,11 +71,11 @@ int
 KMeansTree::classify (const Vector<float> & point)
 {
   int g = kmeans.classify (point);
-  if (depth <= 1) return g;
+  if (subtrees.size () == 0) return g;
 
-  int K = kmeans.clusters.size ();
-  int count = pow (K, depth - 1);
-  return g * count + subtrees[g]->classify (point);
+  int result = g * pow (kmeans.K, depth - 1);
+  if (subtrees[g]) result += subtrees[g]->classify (point);
+  return result;
 }
 
 Vector<float>
@@ -78,20 +90,19 @@ KMeansTree::distribution (const Vector<float> & point)
 int
 KMeansTree::classCount ()
 {
-  int K = kmeans.clusters.size ();
-  return pow (K, depth);
+  return pow (kmeans.K, depth);
 }
 
 Vector<float>
 KMeansTree::representative (int group)
 {
-  if (depth <= 1) return kmeans.representative (group);
+  if (subtrees.size () == 0) return kmeans.representative (group);
 
-  int K = kmeans.clusters.size ();
-  int count = pow (K, depth - 1);
+  int count = pow (kmeans.K, depth - 1);
   int s = group / count;
   int g = group % count;
-  return subtrees[s]->representative (g);
+  if (subtrees[s]) return subtrees[s]->representative (g);
+  else             return kmeans.representative (s);
 }
 
 void
