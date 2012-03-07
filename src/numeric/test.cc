@@ -961,6 +961,33 @@ testCluster ()
 	Vector<float> center = kmeans.representative (kmeans.classify (point));
 	if ((point - center).norm (2) > 0.2) throw "KMeans cluster is missing";
   }
+
+  // Test KMeansTree
+  KMeansTree ktree (dimension, 2);
+  ktree.run (data);
+  if (ktree.classCount () != dimension * dimension) throw "KMeansTree wrong number of clusters";
+  Vector<bool> unfound (dimension);
+  unfound.clear (true);
+  for (int i = 0; i < dimension; i++)
+  {
+	Vector<float> point (dimension);
+	point.clear ();
+	point[i] = separation;
+	int g = ktree.kmeans.classify (point);
+	unfound[g] = false;
+
+	Vector<float> center (dimension);
+	center.clear ();
+	for (int j = 0; j < dimension; j++)
+	{
+	  center += ktree.representative (g * dimension + j);
+	}
+	center /= dimension;
+	if ((point - center).norm (2) > 0.3) throw "KMeansTree cluster in unexpected position";
+  }
+  if (unfound.norm (1)) throw "KMeansTree cluster is missing";
+
+  cout << "ClusterMethods pass" << endl;
 }
 
 template<class T>

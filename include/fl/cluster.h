@@ -185,6 +185,28 @@ namespace fl
   };
 
 
+  // KMeansTree ---------------------------------------------------------------
+
+  class SHARED KMeansTree : public ClusterMethod
+  {
+  public:
+	KMeansTree (int K, int depth);
+	~KMeansTree ();
+
+	virtual void          run (const std::vector< Vector<float> > & data);
+	virtual int           classify (const Vector<float> & point);
+	virtual Vector<float> distribution (const Vector<float> & point);
+	virtual int           classCount ();
+	virtual Vector<float> representative (int group);
+
+	void serialize (Archive & archive, uint32_t version);
+
+	KMeans kmeans;
+	int depth; ///< Distance between this node and the its leaf clusters.  Total number of clusters is K^depth, so depth is always greater than zero.
+	std::vector<KMeansTree *> subtrees;
+  };
+  
+
   // Kohonen map --------------------------------------------------------------
 
   class SHARED Kohonen : public ClusterMethod

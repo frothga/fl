@@ -161,6 +161,7 @@ add_library (flNumeric
   GaussianMixture.cc
   ${maybeGaussianMixtureParallel}
   KMeans.cc
+  KMeansTree.cc
   Kohonen.cc
 
   # Neural Networks
