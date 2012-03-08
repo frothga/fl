@@ -208,7 +208,11 @@ namespace fl
 			(*this) & name;
 
 			std::map<std::string, ClassDescription *>::iterator a = alias.find (name);
-			if (a == alias.end ()) throw "Class needs to be registered before first occurrence in archive.";
+			if (a == alias.end ())
+			{
+			  sprintf (message, "Unregistered alias: %s", name.c_str ());
+			  throw message;
+			}
 			a->second->index = classIndex;
 			classesIn.push_back (a->second);
 
@@ -216,8 +220,11 @@ namespace fl
 		  }
 
 		  ClassDescription * d = classesIn[classIndex];
-		  if (d->create    == 0) throw "create() has not been registered";
-		  if (d->serialize == 0) throw "serialize() has not been registered";
+		  if (d->create == 0  ||  d->serialize == 0)
+		  {
+			sprintf (message, "Please explicitly register: %s", d->name.c_str ());
+			throw message;
+		  }
 		  data = (T *) d->create ();
 		  pointersOut.insert (make_pair (data, pointersOut.size ()));
 		  pointersIn.push_back (data);
@@ -255,6 +262,11 @@ namespace fl
 			(*this) & c->second->version;
 		  }
 
+		  if (c->second->serialize == 0)
+		  {
+			sprintf (message, "Please explicitly register: %s", typeidName.c_str ());
+			throw message;
+		  }
 		  c->second->serialize (data, *this, c->second->version);
 		}
 	  }
@@ -269,18 +281,9 @@ namespace fl
 	  if (in)
 	  {
 		if (in->bad ()) throw "stream bad";
-		data.reserve (data.size () + count);
-		for (uint32_t i = 0; i < count; i++)
-		{
-		  T temp;
-		  (*this) & temp;
-		  data.push_back (temp);
-		}
+		data.resize (count);  // possibly blow away existing data
 	  }
-	  else
-	  {
-		for (uint32_t i = 0; i < count; i++) (*this) & data[i];
-	  }
+	  for (uint32_t i = 0; i < count; i++) (*this) & data[i];
 	  return (*this);
 	}
 
