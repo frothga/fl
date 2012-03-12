@@ -14,6 +14,7 @@ add_library (flBase
   ../../include/fl/parms.h
   ../../include/fl/pointer.h
   ../../include/fl/string.h
+  ../../include/fl/thread.h
   ../../include/fl/time.h
   Archive.cc
   Metadata.cc
