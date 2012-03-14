@@ -63,7 +63,12 @@ namespace fl
 	   collection already contains entries, then the newly detected points
 	   will be appended to the end.
 	 **/
-	virtual void run (const Image & image, InterestPointSet & result) = 0;
+	virtual void run (ImageCache & cache, InterestPointSet & result) = 0;
+	/**
+	   Convenience function that calls run() using the internal shared cache.
+	   NOT thread-safe!
+	 **/
+	void run (const Image & image, InterestPointSet & result);
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
@@ -77,7 +82,8 @@ namespace fl
   public:
 	InterestHarris (int neighborhood = 5, int maxPoints = 5000, float thresholdFactor = 0.02);
 
-	virtual void run (const Image & image, InterestPointSet & result);
+	virtual void run (ImageCache & cache, InterestPointSet & result);
+	using InterestOperator::run;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
@@ -94,7 +100,8 @@ namespace fl
 	InterestHarrisLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);
 	void init ();
 
-	virtual void run (const Image & image, InterestPointSet & result);
+	virtual void run (ImageCache & cache, InterestPointSet & result);
+	using InterestOperator::run;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
@@ -115,7 +122,8 @@ namespace fl
   public:
 	InterestLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);  ///< neighborhood >= 0 means fixed size (min = 1 pixel); neighborhood < 0 means multiple of scale.
 
-	virtual void run (const Image & image, InterestPointSet & result);
+	virtual void run (ImageCache & cache, InterestPointSet & result);
+	using InterestOperator::run;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
@@ -138,7 +146,8 @@ namespace fl
   public:
 	InterestHessian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);  ///< neighborhood >= 0 means fixed size (min = 1 pixel); neighborhood < 0 means multiple of scale.
 
-	virtual void run (const Image & image, InterestPointSet & result);
+	virtual void run (ImageCache & cache, InterestPointSet & result);
+	using InterestOperator::run;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
@@ -163,7 +172,8 @@ namespace fl
   public:
 	InterestDOG (float firstScale = 1.6f, float lastScale = INFINITY, int extraSteps = 3);  ///< extraSteps gives the number of sub-levels between octaves.
 
-	virtual void run (const Image & image, InterestPointSet & result);
+	virtual void run (ImageCache & cache, InterestPointSet & result);
+	using InterestOperator::run;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;
@@ -186,7 +196,8 @@ namespace fl
   public:
 	InterestMSER (int delta = 5, float sizeRatio = 0.9f);
 
-	virtual void run (const Image & image, InterestPointSet & result);
+	virtual void run (ImageCache & cache, InterestPointSet & result);
+	using InterestOperator::run;
 
 	virtual void read (std::istream & stream);
 	virtual void write (std::ostream & stream) const;

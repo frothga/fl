@@ -66,6 +66,13 @@ InterestOperator::~InterestOperator ()
 }
 
 void
+InterestOperator::run (const Image & image, InterestPointSet & result)
+{
+  ImageCache::shared.setOriginal (image);
+  run (ImageCache::shared, result);
+}
+
+void
 InterestOperator::read (istream & stream)
 {
 }

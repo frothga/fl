@@ -3,7 +3,7 @@ Author: Fred Rothganger
 Created 5/31/2005
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -445,13 +445,9 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, vector<PointMSER *> 
 }
 
 void
-InterestMSER::run (const Image & image, InterestPointSet & result)
+InterestMSER::run (ImageCache & cache, InterestPointSet & result)
 {
-  if (*image.format != GrayChar)
-  {
-	run (image * GrayChar, result);
-	return;
-  }
+  Image image = cache.get (new EntryPyramid (GrayChar))->image;
 
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
   if (! imageBuffer) throw "InterestMSER only handles packed buffers for now";

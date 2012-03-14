@@ -122,6 +122,10 @@ namespace fl
 						   double sigmaMinus,
 						   const BorderMode mode = Crop,
 						   const PixelFormat & format = GrayFloat);
+
+	static double crossover (double a, double b);  ///< Returns the characteristic scale of a maximally responding patch, given a pair of sigmas.
+
+	double scale;  ///< The characteristic scale of a patch responding maximally to this particular DoG.
   };
 
   class SHARED GaussianDerivativeFirst : public ConvolutionDiscrete2D
@@ -169,7 +173,7 @@ namespace fl
 
 	virtual void serialize (Archive & archive, uint32_t version);
 
-	double sigma;
+	double sigma;  ///< Used to create this filter.  Note that the characteristic scale of a maximally responding patch is sqrt(2)*sigma.
   };
 
 

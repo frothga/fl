@@ -48,7 +48,11 @@ add_library (flImage
   PixelFormat.cc
   PixelBuffer.cc
   Point.cc
+
+  # Image cache
   ImageCache.cc
+  EntryFiniteDifference.cc
+  EntryDOG.cc
 
   # Image file formats
   ImageFileFormat.cc

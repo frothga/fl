@@ -25,7 +25,6 @@ using namespace fl;
 
 DescriptorCombo::DescriptorCombo ()
 {
-  lastBuffer = 0;
 }
 
 DescriptorCombo::~DescriptorCombo ()
@@ -46,23 +45,13 @@ DescriptorCombo::add (Descriptor * descriptor)
 }
 
 Vector<float>
-DescriptorCombo::value (const Image & image, const PointAffine & point)
+DescriptorCombo::value (ImageCache & cache, const PointAffine & point)
 {
-  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
-  if (! imageBuffer) throw "DescriptorCombo only handles packed buffers for now";
-
-  if ((void *) imageBuffer->memory != lastBuffer  ||  image.timestamp != lastTime)
-  {
-	grayImage = image * GrayFloat;
-	lastBuffer = (void *) imageBuffer->memory;
-	lastTime = image.timestamp;
-  }
-
   Vector<float> result (dimension);
   int r = 0;
   for (int i = 0; i < descriptors.size (); i++)
   {
-	Vector<float> value = descriptors[i]->value (descriptors[i]->monochrome ? grayImage : image, point);
+	Vector<float> value = descriptors[i]->value (cache, point);
 	result.region (r) = value;
 	r += value.rows ();
   }
@@ -70,13 +59,13 @@ DescriptorCombo::value (const Image & image, const PointAffine & point)
 }
 
 Vector<float>
-DescriptorCombo::value (const Image & image)
+DescriptorCombo::value (ImageCache & cache)
 {
   Vector<float> result (dimension);
   int r = 0;
   for (int i = 0; i < descriptors.size (); i++)
   {
-	Vector<float> value = descriptors[i]->value (image);
+	Vector<float> value = descriptors[i]->value (cache);
 	result.region (r) = value;
 	r += value.rows ();
   }

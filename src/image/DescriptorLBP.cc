@@ -25,6 +25,83 @@ using namespace fl;
 using namespace std;
 
 
+// class EntryLBP -------------------------------------------------------------
+
+class EntryLBP : public ImageCacheEntry
+{
+public:
+  EntryLBP (DescriptorLBP & descriptor)
+  : descriptor (descriptor)
+  {
+  }
+
+  virtual void generate (ImageCache & cache)
+  {
+	ImageOf<float> grayImage = cache.get (new EntryPyramid (GrayFloat))->image;
+	image.format = &GrayChar;
+	image.resize (grayImage.width, grayImage.height);
+
+	const int   P = descriptor.P;
+	const float R = descriptor.R;
+	vector<DescriptorLBP::Interpolate> & interpolates = descriptor.interpolates;
+
+	vector<bool> bits (P);
+
+	int sourceL = (int) ceilf (R);
+	int sourceR = (int) floorf (image.width  - 1 - R);
+	int sourceT = sourceL;
+	int sourceB = (int) floorf (image.height - 1 - R);
+	for (int y = sourceT; y <= sourceB; y++)
+	{
+	  for (int x = sourceL; x <= sourceR; x++)
+	  {
+		int ones = 0;
+
+		float center = grayImage(x,y);
+		for (int i = 0; i < P; i++)
+		{
+		  float p;
+		  DescriptorLBP::Interpolate & t = interpolates[i];
+		  if (t.exact)
+		  {
+			p = grayImage(x + t.xl, y + t.yl);
+		  }
+		  else
+		  {
+			int xl = x + t.xl;
+			int yl = y + t.yl;
+			int xh = x + t.xh;
+			int yh = y + t.yh;
+			p = grayImage(xl,yl) * t.wll + grayImage(xh,yl) * t.whl + grayImage(xl,yh) * t.wlh + grayImage(xh,yh) * t.whh;
+		  }
+		  bool sign = p >= center;
+		  bits[i] = sign;
+		  if (sign) ones++;
+		}
+
+		int transitions = bits.back () == bits.front () ? 0 : 1;
+		for (int i = 1; i < P; i++)
+		{
+		  if (bits[i-1] != bits[i])
+		  {
+			transitions++;
+		  }
+		}
+
+		if (transitions > 2)
+		{
+		  ones = P + 1;
+		}
+
+		image(x,y) = ones;
+	  }
+	}
+  }
+
+   DescriptorLBP & descriptor;
+};
+
+
 // class DescriptorLBP --------------------------------------------------------
 
 DescriptorLBP::DescriptorLBP (int P, float R, float supportRadial, int supportPixel)
@@ -41,7 +118,6 @@ void
 DescriptorLBP::initialize ()
 {
   dimension = P + 2;
-  lastBuffer = 0;
 
   interpolates.resize (P);
   for (int i = 0; i < P; i++)
@@ -76,79 +152,11 @@ DescriptorLBP::initialize ()
   }
 }
 
-inline void
-DescriptorLBP::preprocess (const Image & image)
-{
-  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
-  if (! imageBuffer) throw "DescriptorLBP only handles packed buffers for now";
-
-  if (lastBuffer == (void *) imageBuffer->memory  &&  lastTime == image.timestamp)
-  {
-	return;
-  }
-  lastBuffer = (void *) imageBuffer->memory;
-  lastTime = image.timestamp;
-
-  ImageOf<float> grayImage = image * GrayFloat;
-  categoryImage.format = &GrayChar;
-  categoryImage.resize (image.width, image.height);
-
-  vector<bool> bits (P);
-
-  int sourceL = (int) ceilf (R);
-  int sourceR = (int) floorf (image.width - 1 - R);
-  int sourceT = sourceL;
-  int sourceB = (int) floorf (image.height - 1 - R);
-  for (int y = sourceT; y <= sourceB; y++)
-  {
-	for (int x = sourceL; x <= sourceR; x++)
-	{
-	  int ones = 0;
-
-	  float center = grayImage(x,y);
-	  for (int i = 0; i < P; i++)
-	  {
-		float p;
-		Interpolate & t = interpolates[i];
-		if (t.exact)
-		{
-		  p = grayImage(x + t.xl, y + t.yl);
-		}
-		else
-		{
-		  int xl = x + t.xl;
-		  int yl = y + t.yl;
-		  int xh = x + t.xh;
-		  int yh = y + t.yh;
-		  p = grayImage(xl,yl) * t.wll + grayImage(xh,yl) * t.whl + grayImage(xl,yh) * t.wlh + grayImage(xh,yh) * t.whh;
-		}
-		bool sign = p >= center;
-		bits[i] = sign;
-		if (sign) ones++;
-	  }
-
-	  int transitions = bits.back () == bits.front () ? 0 : 1;
-	  for (int i = 1; i < P; i++)
-	  {
-		if (bits[i-1] != bits[i])
-		{
-		  transitions++;
-		}
-	  }
-
-	  if (transitions > 2)
-	  {
-		ones = P + 1;
-	  }
-
-	  categoryImage(x,y) = ones;
-	}
-  }
-}
-
 Vector<float>
-DescriptorLBP::value (const Image & image, const PointAffine & point)
+DescriptorLBP::value (ImageCache & cache, const PointAffine & point)
 {
+  Image image = cache.get (new EntryPyramid (GrayFloat))->image;
+
   Matrix<double> S = ! point.rectification ();
   S(2,0) = 0;
   S(2,1) = 0;
@@ -158,6 +166,7 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
   int sourceL;
   int sourceB;
   int sourceR;
+  ImageOf<uint8_t> categoryImage;
   if (S(0,1) == 0  &&  S(1,0) == 0)  // Special case: indicates that point describes a rectangular region in the image, rather than a patch.
   {
 	double h = fabs (S(0,0) * supportRadial);
@@ -166,7 +175,7 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
 	sourceR = (int) roundp (min (S(0,2) + h, (double) image.width - 1 - R));
 	sourceT = (int) roundp (max (S(1,2) - v, (double) R));
 	sourceB = (int) roundp (min (S(1,2) + v, (double) image.height - 1 - R));
-	preprocess (image);
+	categoryImage = cache.get (new EntryLBP (*this))->image;
   }
   else  // Shape change, so we must compute a transformed patch
   {
@@ -175,7 +184,9 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
 	Transform t (S, scale);
 	t.setWindow (0, 0, patchSize, patchSize);
 	Image patch = image * t;
-	preprocess (patch);
+	ImageCache tempCache;
+	tempCache.setOriginal (patch);
+	categoryImage = tempCache.get (new EntryLBP (*this))->image;
 
 	sourceT = (int) ceilf (R);
 	sourceL = sourceT;
@@ -198,14 +209,14 @@ DescriptorLBP::value (const Image & image, const PointAffine & point)
 }
 
 Vector<float>
-DescriptorLBP::value (const Image & image)
+DescriptorLBP::value (ImageCache & cache)
 {
-  double start = getTimestamp ();
-  preprocess (image);
+  Image image = cache.original->image;
+  ImageOf<uint8_t> categoryImage = cache.get (new EntryLBP (*this))->image;
   int sourceL = (int) ceilf (R);
-  int sourceR = (int) floorf (image.width - 1 - R);
+  int sourceR = (int) floorf (categoryImage.width - 1 - R);
   int sourceT = sourceL;
-  int sourceB = (int) floorf (image.height - 1 - R);
+  int sourceB = (int) floorf (categoryImage.height - 1 - R);
   Vector<float> result (P + 2);
   result.clear ();
   for (int y = sourceT; y <= sourceB; y++)
@@ -220,7 +231,6 @@ DescriptorLBP::value (const Image & image)
   }
   cerr << "before normalization = " << result << " = " << result.norm (1) << endl;
   result /= result.norm (1);
-  cerr << "time = " << getTimestamp () - start << endl;
   return result;
 }
 

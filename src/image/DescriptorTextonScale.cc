@@ -26,6 +26,37 @@ using namespace fl;
 using namespace std;
 
 
+// class EntryTextonScale -----------------------------------------------------
+
+class EntryTextonScale : public ImageCacheEntry
+{
+public:
+  EntryTextonScale (int i, int width, int height)
+  : i (i)
+  {
+	image.width  = width;
+	image.height = height;
+  }
+
+  virtual void generate (ImageCache & cache)
+  {
+	image.format = &GrayFloat;
+	image.resize (image.width, image.height);
+	image.clear ();
+  }
+
+  virtual bool compare (const ImageCacheEntry & that)
+  {
+	if (typeid (*this).before (typeid (that))) return true;
+	const EntryTextonScale * o = dynamic_cast<const EntryTextonScale *> (&that);
+	if (! o) return false;
+	return i < o->i;
+  }
+
+  int i;  ///< Used only to distinguish one entry from another.
+};
+
+
 // class DescriptorTextonScale ------------------------------------------------
 
 DescriptorTextonScale::DescriptorTextonScale (int angles, float firstScale, float lastScale, int extraSteps)
@@ -36,146 +67,104 @@ DescriptorTextonScale::DescriptorTextonScale (int angles, float firstScale, floa
   this->steps      = extraSteps;
 
   supportRadial = 1.0f;  // On the assumption that interest points exactly specify the desired region.
+}
 
-  initialize ();
+DescriptorTextonScale::~DescriptorTextonScale ()
+{
+  clear ();
+}
+
+void
+DescriptorTextonScale::clear ()
+{
+  for (int i = 0; i < filters.size (); i++) delete filters[i];
+  filters.clear ();
+  scales.clear ();
 }
 
 void
 DescriptorTextonScale::initialize ()
 {
-  lastBuffer = 0;
-  filters.clear ();
+  clear ();
 
-  const float dogRatio = 1.33f;
   const float enlongation = 3.0f;
 
   scaleRatio = powf (2.0f, 1.0f / steps);
-  float sigma = firstScale;
-  while (sigma <= lastScale)
-  {
-	DifferenceOfGaussians d (sigma * dogRatio, sigma / dogRatio);
-	d *= Normalize ();
-	filters.push_back (d);
-	for (int j = 0; j < angles; j++)
-	{
-	  float angle = (M_PI / angles) * j;
-	  GaussianDerivativeSecond e (1, 1, enlongation * sigma, sigma, angle);
-	  e *= Normalize ();
-	  filters.push_back (e);
-	  GaussianDerivativeFirst o (1, enlongation * sigma, sigma, angle);
-	  o *= Normalize ();
-	  filters.push_back (o);
-	}
-
-	sigma *= scaleRatio;
-  }
-
-  bankSize = 1 + 2 * angles;
-  responses.resize (bankSize);
-  for (int i = 0; i < bankSize; i++)
-  {
-	responses[i].format = &GrayFloat;
-  }
-
-  dimension = 2 * bankSize;
-}
-
-void
-DescriptorTextonScale::preprocess (const Image & image)
-{
-  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
-  if (! imageBuffer) throw "DescriptorTextonScale only handles packed buffers for now";
-
-  if (lastBuffer == (void *) imageBuffer->memory  &&  lastTime == image.timestamp)
-  {
-	return;
-  }
-  lastBuffer = (void *) imageBuffer->memory;
-  lastTime = image.timestamp;
-
-  ImageOf<float> work;
-  if (*image.format == GrayFloat)
-  {
-	work.copyFrom (image);  // duplicates image.buffer
-  }
-  else
-  {
-	work = image * GrayFloat;  // should create a new buffer different than image.buffer
-  }
-  if (firstScale != 0.5f)  // The blur level of a raw image is defined to be 0.5
-  {
-	Gaussian1D blur (sqrt (firstScale * firstScale - 0.25), Boost, GrayFloat, Horizontal);
-	work *= blur;
-	blur.direction = Vertical;
-	work *= blur;
-  }
-
-  ImageOf<float> nextWork;
-  ImageOf<unsigned int> scales (image.width, image.height, RGBAChar);  // RGBAChar just provides a pixel of size 4 bytes.  We are really using the pixels as integer indices into the filter bank.
-  ImageOf<float> maxima (image.width, image.height, GrayFloat);
-  scales.clear ();
-  maxima.clear ();
-
-  ImageOf<float> octaveImage = work;
-
   float scale = firstScale;
-  unsigned int l = 0;  // scale level
+  scales.push_back (scale);
   while (scale <= lastScale)
   {
 	float nextScale = scale * scaleRatio;
-	Gaussian1D blur (sqrt (nextScale * nextScale - scale * scale), Boost, GrayFloat, Horizontal);  // Construction of the blur kernels can be pulled into initialize() to make handling multiple images more efficient.
-	nextWork = work * blur;
-	blur.direction = Vertical;
-	nextWork *= blur;
+	DifferenceOfGaussians * d = new DifferenceOfGaussians (nextScale, scale);
+	(*d) *= Normalize ();
+	filters.push_back (d);
 
-	// Scan thru the current scale level and the next scale level.  Compute
-	// the difference image and compare to the maxima image.  For any new
-	// maximum, store the current scale level.
-	unsigned int * s = (unsigned int *) ((PixelBufferPacked *) scales.buffer)->memory;
-	float * w = (float *) ((PixelBufferPacked *) work.buffer)->memory;
-	float * n = (float *) ((PixelBufferPacked *) nextWork.buffer)->memory;
-	float * m = (float *) ((PixelBufferPacked *) maxima.buffer)->memory;
-	float * end = m + image.width * image.height;
-	while (m < end)
+	float sigma = d->scale;
+	for (int j = 0; j < angles; j++)
 	{
-	  float d = fabsf (*w++ - *n++);
-	  if (d > *m)
-	  {
-		*s = l;
-		*m = d;
-	  }
-	  s++;
-	  m++;
+	  float angle = (M_PI / angles) * j;
+	  GaussianDerivativeSecond * e = new GaussianDerivativeSecond (1, 1, enlongation * sigma, sigma, angle);
+	  (*e) *= Normalize ();
+	  filters.push_back (e);
+	  GaussianDerivativeFirst * o = new GaussianDerivativeFirst (1, enlongation * sigma, sigma, angle);
+	  (*o) *= Normalize ();
+	  filters.push_back (o);
 	}
 
 	scale = nextScale;
-	work = nextWork;
-	l++;
+	scales.push_back (scale);
   }
 
-  // With scales in hand, process the whole image thru the filter bank
-  for (int i = 0; i < bankSize; i++)
+  bankSize = 1 + 2 * angles;
+  dimension = 2 * bankSize;
+}
+
+inline void
+DescriptorTextonScale::processPixel (Image & image, ImageOf<float> & scaleImage, vector<ImageOf<float> > & dogs, vector<ImageOf<float> > & responses, int x, int y)
+{
+  // Determine scale
+  int bestScale = 0;
+  int bestResponse = dogs[0](x,y);
+  for (int i = 1; i < dogs.size (); i++)
   {
-	responses[i].resize (image.width, image.height);
-  }
-  for (int y = 0; y < image.height; y++)
-  {
-	for (int x = 0; x < image.width; x++)
+	float response = abs (dogs[i](x,y));
+	if (response > bestResponse)
 	{
-	  unsigned int f = scales(x,y) * bankSize;
-	  for (int i = 0; i < bankSize; i++)
-	  {
-		responses[i](x,y) = filters[f++].response (octaveImage, Point (x, y));
-	  }
+	  bestResponse = response;
+	  bestScale = i;
 	}
-	cerr << ".";
+  }
+  scaleImage(x,y) = bestScale + 1;
+
+  // Compute other filter responses
+  responses[0](x,y) = bestResponse;
+  unsigned int f = bestScale * bankSize + 1;
+  for (int i = 1; i < bankSize; i++)
+  {
+	responses[i](x,y) = filters[f++]->response (image, Point (x, y));
   }
 }
 
 Vector<float>
-DescriptorTextonScale::value (const Image & image, const PointAffine & point)
+DescriptorTextonScale::value (ImageCache & cache, const PointAffine & point)
 {
-  preprocess (image);
+  if (filters.size () == 0) initialize ();
+
+  // Collect all working images
+  Image image = cache.get (new EntryPyramid (GrayFloat))->image;
+  const int width  = image.width;
+  const int height = image.height;
+  ImageOf<float> scaleImage = cache.get (new EntryTextonScale (-1, width, height))->image;
+  vector<ImageOf<float> > dogs (scales.size () - 1);
+  for (int i = 0; i < dogs.size (); i++)
+  {
+	dogs[i] = cache.get (new EntryDOG (scales[i+1], scales[i], width))->image;
+  }
+  vector<ImageOf<float> > responses (bankSize);
+  for (int i = 0; i < bankSize; i++)
+  {
+	responses[i] = cache.get (new EntryTextonScale (i, width, height))->image;
+  }
 
   // Project the patch into the image.
 
@@ -226,6 +215,7 @@ DescriptorTextonScale::value (const Image & image, const PointAffine & point)
 	  if (fabsf (q.x) <= 1.0f  &&  fabsf (q.y) <= 1.0f)
 	  {
 		count++;
+		if (scaleImage(x,y) == 0) processPixel (image, scaleImage, dogs, responses, x, y);
 		for (int i = 0; i < bankSize; i++)
 		{
 		  result(i,0) += responses[i](x,y);
@@ -260,9 +250,25 @@ DescriptorTextonScale::value (const Image & image, const PointAffine & point)
 }
 
 Vector<float>
-DescriptorTextonScale::value (const Image & image)
+DescriptorTextonScale::value (ImageCache & cache)
 {
-  preprocess (image);
+  if (filters.size () == 0) initialize ();
+
+  // Collect all working images
+  Image image = cache.get (new EntryPyramid (GrayFloat))->image;
+  const int width  = image.width;
+  const int height = image.height;
+  ImageOf<float> scaleImage = cache.get (new EntryTextonScale (-1, width, height))->image;
+  vector<ImageOf<float> > dogs (scales.size () - 1);
+  for (int i = 0; i < dogs.size (); i++)
+  {
+	dogs[i] = cache.get (new EntryDOG (scales[i+1], scales[i], width))->image;
+  }
+  vector<ImageOf<float> > responses (bankSize);
+  for (int i = 0; i < bankSize; i++)
+  {
+	responses[i] = cache.get (new EntryTextonScale (i, width, height))->image;
+  }
 
   Matrix<float> result (bankSize, 2);
   result.clear ();
@@ -275,6 +281,7 @@ DescriptorTextonScale::value (const Image & image)
 	  if (image.getAlpha (x,y))
 	  {
 		count++;
+		if (scaleImage(x,y) == 0) processPixel (image, scaleImage, dogs, responses, x, y);
 		for (int i = 0; i < bankSize; i++)
 		{
 		  result(i,0) += responses[i](x,y);
@@ -312,15 +319,15 @@ DescriptorTextonScale::patch (const Vector<float> & value)
 {
   Image result (GrayFloat);
 
-  result.bitblt (filters[0] * value[0]);
+  result.bitblt (*filters[0] * value[0]);
 
   int x = 0;
   int y = result.height;
   for (int i = 0; i < angles; i++)
   {
 	int index = 1 + 2 * i;
-	result.bitblt (filters[index] * value[index], x, y);
-	x += filters[index].width;
+	result.bitblt (*filters[index] * value[index], x, y);
+	x += filters[index]->width;
   }
 
   x = 0;
@@ -328,8 +335,8 @@ DescriptorTextonScale::patch (const Vector<float> & value)
   for (int i = 0; i < angles; i++)
   {
 	int index = 2 + 2 * i;
-	result.bitblt (filters[index] * value[index], x, y);
-	x += filters[index].width;
+	result.bitblt (*filters[index] * value[index], x, y);
+	x += filters[index]->width;
   }
 
   return result;

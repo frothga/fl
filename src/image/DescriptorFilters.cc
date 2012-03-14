@@ -65,12 +65,12 @@ DescriptorFilters::prepareFilterMatrix ()
 }
 
 Vector<float>
-DescriptorFilters::value (const Image & image, const PointAffine & point)
+DescriptorFilters::value (ImageCache & cache, const PointAffine & point)
 {
   Vector<float> result (filters.size ());
   for (int i = 0; i < filters.size (); i++)
   {
-	result[i] = filters[i].response (image, point);
+	result[i] = filters[i].response (cache.original->image, point);
   }
   return result;
 }

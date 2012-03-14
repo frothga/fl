@@ -63,9 +63,9 @@ DescriptorSchmid::~DescriptorSchmid ()
 }
 
 Vector<float>
-DescriptorSchmid::value (const Image & image, const PointAffine & point)
+DescriptorSchmid::value (ImageCache & cache, const PointAffine & point)
 {
-  return findScale (point.scale)->value (image, point);
+  return findScale (point.scale)->value (cache, point);
 }
 
 Image

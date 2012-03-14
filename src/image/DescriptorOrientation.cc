@@ -65,7 +65,7 @@ DescriptorOrientation::initialize ()
 }
 
 Vector<float>
-DescriptorOrientation::value (const Image & image, const PointAffine & point)
+DescriptorOrientation::value (ImageCache & cache, const PointAffine & point)
 {
   int patchSize = 2 * supportPixel + 1;
   double scale = supportPixel / supportRadial;
@@ -78,7 +78,7 @@ DescriptorOrientation::value (const Image & image, const PointAffine & point)
 
   Transform rectify (S, scale);
   rectify.setWindow (0, 0, patchSize, patchSize);
-  Image patch = image * rectify;
+  Image patch = cache.original->image * rectify;
   patch *= *Gx.format;
 
   Vector<float> result (1);

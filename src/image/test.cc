@@ -1245,6 +1245,8 @@ testDescriptorFilters ()
 // DescriptorLBP
 // DescriptorPatch
 // DescriptorTextonScale
+// DescriptorOrientation
+// DescriptorOrientationHistogram
 void
 testDescriptors ()
 {
@@ -1305,6 +1307,22 @@ testDescriptors ()
 # else
   cout << "WARNING: DescriptorPatch, DescriptorLBP and DescriptorTextonScale not tested due to lack of LAPACK" << endl;
 # endif
+
+  DescriptorOrientation orientation;
+  value = orientation.value (image, pa);
+  if (value.rows () != 1) throw "Unexpected default size for orientation descriptor.";
+  if (abs (value[0] - M_PI / 4) > 1e-4) throw "Unexpected orientation";
+  cout << "DescriptorOrientation passes" << endl;
+
+  image.clear ();
+  image.drawFilledRectangle (Point (180, 0), Point (320, 240));
+  ImageCache::shared.clear ();
+
+  DescriptorOrientationHistogram doh;
+  value = doh.value (image, pa);
+  if (value.rows () != 1) throw "Unexpected default size for orientation descriptor.";
+  if (abs (value[0]) > 1e-1) throw "Unexpected orientation";
+  cout << "DescriptorOrientationHistogram passes" << endl;
 }
 
 // Assumes that both images are pretty much in raw RGB, with little conversion

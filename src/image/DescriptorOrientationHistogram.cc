@@ -33,111 +33,66 @@ DescriptorOrientationHistogram::DescriptorOrientationHistogram (float supportRad
   this->bins          = bins;
 
   cutoff = 0.8f;
-
-  lastBuffer = 0;
-}
-
-void
-DescriptorOrientationHistogram::computeGradient (const Image & image)
-{
-  PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
-  if (! imageBuffer) throw "DescriptorOrientationHistogram only handles packed buffers for now";
-
-  if (lastBuffer == (void *) imageBuffer->memory  &&  lastTime == image.timestamp)
-  {
-	return;
-  }
-  lastBuffer = (void *) imageBuffer->memory;
-  lastTime = image.timestamp;
-
-  Image work = image * GrayFloat;
-  I_x = work * FiniteDifference (Horizontal);
-  I_y = work * FiniteDifference (Vertical);
 }
 
 Vector<float>
-DescriptorOrientationHistogram::value (const Image & image, const PointAffine & point)
+DescriptorOrientationHistogram::value (ImageCache & cache, const PointAffine & point)
 {
-  // First, prepeare the derivative images I_x and I_y.
-  int sourceT;
-  int sourceL;
-  int sourceB;
-  int sourceR;
-  Point center;
+  // First, grab the patch and prepare the derivative images I_x and I_y.
+
+  // Find or generate gray image at appropriate blur level
+  const float scaleTolerance = pow (2.0f, -1.0f / 6);  // TODO: parameterize "6", should be 2 * octaveSteps
+  EntryPyramid * entry = (EntryPyramid *) cache.getClosest (new EntryPyramid (GrayFloat, point.scale));
+  if (! entry  ||  scaleTolerance > (entry->scale > point.scale ? point.scale / entry->scale : entry->scale / point.scale))
+  {
+	entry = (EntryPyramid *) cache.getLE (new EntryPyramid (GrayFloat, point.scale));
+	if (! entry)  // No smaller image exists, which means base level image (scale == 0.5) does not exist.
+	{
+	  entry = (EntryPyramid *) cache.get (new EntryPyramid (GrayFloat));
+	}
+  }
+  const float octave = (float) cache.original->image.width / entry->image.width;
+  PointAffine p = point;
+  p.x = (p.x + 0.5f) / octave - 0.5f;
+  p.y = (p.y + 0.5f) / octave - 0.5f;
+  p.scale /= octave;
+
+  Image patch;
   float sigma;
   float radius;
-  if (point.A(0,0) == 1.0f  &&  point.A(0,1) == 0.0f  &&  point.A(1,0) == 0.0f  &&  point.A(1,1) == 1.0f)  // No shape change, so we can work in context of original image.
+  if (entry->image.width == entry->image.height  &&  p.angle == 0  &&  fabs (2.0f * p.scale * supportRadial - entry->image.width) < 0.5)
   {
-	ImageCache::shared.setOriginal (image);
-	ImageCacheEntry * entry = ImageCache::shared.get (new EntryPyramid (GrayFloat, point.scale));
-	if (! entry) throw "Could not find cached image";
-	float octave = (float) image.width / entry->image.width;
-	PointAffine p = point;
-	p.x = (p.x + 0.5f) / octave - 0.5f;
-	p.y = (p.y + 0.5f) / octave - 0.5f;
-	p.scale /= octave;
-
-	computeGradient (entry->image);
-
+	// patch == entire image, so no need to transform
+	// Note that the test above should also verify that p is at the center
+	// of the image.  However, if the other tests pass, then this is almost
+	// certainly the case.
+	patch = entry->image;
 	radius = p.scale * supportRadial;
-	sourceL = (int) floorf (p.x - radius);
-	sourceR = (int) ceilf  (p.x + radius);
-	sourceT = (int) floorf (p.y - radius);
-	sourceB = (int) ceilf  (p.y + radius);
-
-	sourceL = max (sourceL, 0);
-	sourceR = min (sourceR, I_x.width - 1);
-	sourceT = max (sourceT, 0);
-	sourceB = min (sourceB, I_x.height - 1);
-
-	center = p;
 	sigma = p.scale;
   }
-  else  // Shape change, so we must compute a transformed patch
+  else
   {
 	int patchSize = 2 * supportPixel;
-	double scale = supportPixel / supportRadial;
-	Transform t (point.projection (), scale);
+	const double patchScale = supportPixel / supportRadial;
+	Transform t (p.projection (), patchScale);
 	t.setWindow (0, 0, patchSize, patchSize);
-	Image patch = image * t;
-	patch *= GrayFloat;
-
-	// Add necessary blur.  Assume blur level in source image is 0.5.
-	// The current blur level in the transformed patch depends on
-	// the ratio of scale to point.scale.
-	double currentBlur = scale * 0.5 / point.scale;
-	currentBlur = max (currentBlur, 0.5);
-	double targetBlur = supportPixel / kernelSize;
-	if (currentBlur < targetBlur)
-	{
-	  Gaussian1D blur (sqrt (targetBlur * targetBlur - currentBlur * currentBlur), Boost, GrayFloat, Horizontal);
-	  patch *= blur;
-	  blur.direction = Vertical;
-	  patch *= blur;
-	}
-
-	lastBuffer = 0;
-	computeGradient (patch);
-
-	sourceT = 0;
-	sourceL = 0;
-	sourceB = patchSize - 1;
-	sourceR = sourceB;
-
-	center.x = supportPixel - 0.5f;
-	center.y = center.x;
-	sigma = supportPixel / supportRadial;
+	patch = entry->image * t;
 	radius = supportPixel;
+	sigma = supportPixel / supportRadial;
   }
+
+  ImageOf<float> I_x = patch * FiniteDifference (Horizontal);
+  ImageOf<float> I_y = patch * FiniteDifference (Vertical);
 
   // Second, gather up the gradient histogram.
   float * histogram = new float[bins];
   memset (histogram, 0, bins * sizeof (float));
   float radius2 = radius * radius;
   float sigma2 = 2.0 * sigma * sigma;
-  for (int y = sourceT; y <= sourceB; y++)
+  Point center ((patch.width - 1) / 2.0, (patch.height - 1) / 2.0);
+  for (int y = 0; y < patch.height; y++)
   {
-	for (int x = sourceL; x <= sourceR; x++)
+	for (int x = 0; x < patch.width; x++)
 	{
 	  float cx = x - center.x;
 	  float cy = y - center.y;

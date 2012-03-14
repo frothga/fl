@@ -70,8 +70,10 @@ DescriptorSchmidScale::~DescriptorSchmidScale ()
 }
 
 Vector<float>
-DescriptorSchmidScale::value (const Image & image, const PointAffine & point)
+DescriptorSchmidScale::value (ImageCache & cache, const PointAffine & point)
 {
+  Image image = cache.get (new EntryPyramid (GrayFloat))->image;
+
   Vector<float> result (9);
 
   float L = G.response (image, point);

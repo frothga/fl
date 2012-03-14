@@ -131,14 +131,13 @@ difference (const Image & a, const Image & b)
 }
 
 void
-InterestDOG::run (const Image & image, InterestPointSet & result)
+InterestDOG::run (ImageCache & cache, InterestPointSet & result)
 {
   Stopwatch timer;
 
-  ImageCache::shared.setOriginal (image);
   multiset<PointInterest> sorted;
 
-  EntryPyramid * entry = (EntryPyramid *) ImageCache::shared.get (new EntryPyramid (GrayFloat));
+  EntryPyramid * entry = (EntryPyramid *) cache.get (new EntryPyramid (GrayFloat));
   ImageOf<float> work = entry->image;
   if (firstScale != 0.5f)  // The blur level of a raw image is defined to be 0.5
   {
@@ -146,7 +145,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 	work *= blur;
 	blur.direction = Vertical;
 	work *= blur;
-	ImageCache::shared.get (new EntryPyramid (work, firstScale));
+	cache.get (new EntryPyramid (work, firstScale));
   }
 
   // Make a set of blurring kernels, one for each step of blurring while
@@ -184,7 +183,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 		  blur.direction = Vertical;
 		  work *= blur;
 		  dogs[i] = difference (blurred[i], work);
-		  ImageCache::shared.get (new EntryPyramid (work, octave * firstScale * powf (scaleRatio, i+1)));
+		  cache.get (new EntryPyramid (work, octave * firstScale * powf (scaleRatio, i+1)));
 		}
 	  }
 	  else
@@ -201,7 +200,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 		  blur.direction = Vertical;
 		  work *= blur;
 		  dogs[i] = difference (blurred[i], work);
-		  ImageCache::shared.get (new EntryPyramid (work, octave * firstScale * powf (scaleRatio, i+1)));
+		  cache.get (new EntryPyramid (work, octave * firstScale * powf (scaleRatio, i+1)));
 		}
 	  }
 	  int w = work.width;
@@ -217,10 +216,10 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 		work *= blur;
 		smalldogs[i-steps] = difference (blurred[i], work);
 		dogs[i] = smalldogs[i-steps] * DoubleSize (w % 2, h % 2);
-		ImageCache::shared.get (new EntryPyramid (blurred[i], octave * firstScale * powf (scaleRatio, i)));
+		cache.get (new EntryPyramid (blurred[i], octave * firstScale * powf (scaleRatio, i)));
 	  }
 	  blurred[steps+2] = work;
-	  ImageCache::shared.get (new EntryPyramid (work, octave * firstScale * powf (scaleRatio, steps+2)));
+	  cache.get (new EntryPyramid (work, octave * firstScale * powf (scaleRatio, steps+2)));
 	}
 	else  // more repeatable, but slower
 	{
@@ -236,7 +235,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 		  work *= blur;
 		  blurred[i] = work;
 		  dogs[i-1] = difference (blurred[i-1], blurred[i]);
-		  ImageCache::shared.get (new EntryPyramid (blurred[i], octave * firstScale * powf (scaleRatio, i)));
+		  cache.get (new EntryPyramid (blurred[i], octave * firstScale * powf (scaleRatio, i)));
 		}
 	  }
 	  else
@@ -254,7 +253,7 @@ InterestDOG::run (const Image & image, InterestPointSet & result)
 		  work *= blur;
 		  blurred[i] = work;
 		  dogs[i-1] = difference (blurred[i-1], blurred[i]);
-		  ImageCache::shared.get (new EntryPyramid (blurred[i], octave * firstScale * powf (scaleRatio, i)));
+		  cache.get (new EntryPyramid (blurred[i], octave * firstScale * powf (scaleRatio, i)));
 		}
 	  }
 	}

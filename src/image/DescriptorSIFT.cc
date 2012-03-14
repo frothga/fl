@@ -100,23 +100,22 @@ DescriptorSIFT::getKernel (int size)
 }
 
 Vector<float>
-DescriptorSIFT::value (const Image & image, const PointAffine & point)
+DescriptorSIFT::value (ImageCache & cache, const PointAffine & point)
 {
   // First, grab the patch and prepeare the derivative images I_x and I_y.
 
   // Find or generate gray image at appropriate blur level
   const float scaleTolerance = pow (2.0f, -1.0f / 6);  // TODO: parameterize "6", should be 2 * octaveSteps
-  ImageCache::shared.setOriginal (image);
-  EntryPyramid * entry = (EntryPyramid *) ImageCache::shared.getClosest (new EntryPyramid (GrayFloat, point.scale));
+  EntryPyramid * entry = (EntryPyramid *) cache.getClosest (new EntryPyramid (GrayFloat, point.scale));
   if (! entry  ||  scaleTolerance > (entry->scale > point.scale ? point.scale / entry->scale : entry->scale / point.scale))
   {
-	entry = (EntryPyramid *) ImageCache::shared.getLE (new EntryPyramid (GrayFloat, point.scale));
+	entry = (EntryPyramid *) cache.getLE (new EntryPyramid (GrayFloat, point.scale));
 	if (! entry)  // No smaller image exists, which means base level image (scale == 0.5) does not exist.
 	{
-	  entry = (EntryPyramid *) ImageCache::shared.get (new EntryPyramid (GrayFloat));
+	  entry = (EntryPyramid *) cache.get (new EntryPyramid (GrayFloat));
 	}
   }
-  const float octave = (float) image.width / entry->image.width;
+  const float octave = (float) cache.original->image.width / entry->image.width;
   PointAffine p = point;
   p.x = (p.x + 0.5f) / octave - 0.5f;
   p.y = (p.y + 0.5f) / octave - 0.5f;
@@ -155,8 +154,8 @@ DescriptorSIFT::value (const Image & image, const PointAffine & point)
 	}
   */
 
-  I_x = patch * fdX;
-  I_y = patch * fdY;
+  ImageOf<float> I_x = patch * fdX;
+  ImageOf<float> I_y = patch * fdY;
 
   const float keyScale = (float) width / patch.width;
   const float keyOffset = 0.5f * keyScale - 0.5f;

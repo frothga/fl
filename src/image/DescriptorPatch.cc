@@ -35,7 +35,7 @@ DescriptorPatch::~DescriptorPatch ()
 }
 
 Vector<float>
-DescriptorPatch::value (const Image & image, const PointAffine & point)
+DescriptorPatch::value (ImageCache & cache, const PointAffine & point)
 {
   float half = width / 2.0;
 
@@ -47,7 +47,7 @@ DescriptorPatch::value (const Image & image, const PointAffine & point)
 
   TransformGauss reduce (point.A * R / (half / (supportRadial * point.scale)), true);
   reduce.setPeg (point.x, point.y, width, width);
-  ImageOf<float> patch = image * GrayFloat * reduce;
+  ImageOf<float> patch = cache.get (new EntryPyramid (GrayFloat))->image * reduce;
 
   Vector<float> result (((PixelBufferPacked *) patch.buffer)->memory, width * width);
 

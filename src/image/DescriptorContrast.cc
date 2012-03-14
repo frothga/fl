@@ -31,7 +31,7 @@ DescriptorContrast::DescriptorContrast (float supportRadial, int supportPixel)
 }
 
 Vector<float>
-DescriptorContrast::value (const Image & image, const PointAffine & point)
+DescriptorContrast::value (ImageCache & cache, const PointAffine & point)
 {
   int patchSize = 2 * supportPixel;
   double scale = supportPixel / supportRadial;
@@ -47,13 +47,13 @@ DescriptorContrast::value (const Image & image, const PointAffine & point)
   {
 	Transform rectify (S, scale);
 	rectify.setWindow (0, 0, patchSize, patchSize);
-	patch = image * rectify;
+	patch = cache.original->image * rectify;
   }
   else
   {
 	TransformGauss rectify (S, scale);
 	rectify.setWindow (0, 0, patchSize, patchSize);
-	patch = image * rectify;
+	patch = cache.original->image * rectify;
   }
   patch *= GrayFloat;
   ImageOf<float> I_x = patch * FiniteDifference (Horizontal);

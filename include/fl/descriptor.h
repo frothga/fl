@@ -24,6 +24,7 @@ for details.
 #include "fl/canvas.h"
 #include "fl/metric.h"
 #include "fl/archive.h"
+#include "fl/imagecache.h"
 
 #include <iostream>
 #include <vector>
@@ -160,8 +161,10 @@ namespace fl
 	Descriptor ();
 	virtual ~Descriptor ();
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point) = 0;  ///< Returns a vector of floats that describe the image patch near the interest point.
-	virtual Vector<float> value (const Image & image);  ///< Describe entire region that has non-zero alpha values.  Descriptor may treat all non-zero alpha values the same, or use them to weight the pixels.  This method is only available in Descriptors that don't require a specific point of reference.  IE: a spin image must have a central point, so it can't implement this method.
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point) = 0;  ///< Returns a vector of floats that describe the image patch near the interest point.
+	virtual Vector<float> value (ImageCache & cache);  ///< Describe entire region that has non-zero alpha values.  Descriptor may treat all non-zero alpha values the same, or use them to weight the pixels.  This method is only available in Descriptors that don't require a specific point of reference.  IE: a spin image must have a central point, so it can't implement this method.
+	Vector<float> value (const Image & image, const PointAffine & point);
+	Vector<float> value (const Image & image);
 	virtual Image patch (const Vector<float> & value) = 0;  ///< Return a graphical representation of the descriptor.  Preferrably an image patch that would stimulate this descriptor to return the given value.
 	virtual Comparison * comparison ();  ///< Return an instance of the recommended Comparison for feature vectors from this type of Descriptor.  Caller is responsible to destroy instance.
 
@@ -184,18 +187,15 @@ namespace fl
 	virtual ~DescriptorCombo ();  ///< Delete all descriptors we are holding.
 
 	void add (Descriptor * descriptor);  ///< Append another descriptor to the list.  This object takes responsibility for the pointer.
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
-	virtual Vector<float> value (const Image & image);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	Image patch (int index, const Vector<float> & value);  ///< Returns a visualization of one specific feature vector in the set.
 	virtual Comparison * comparison ();
 	void serialize (Archive & archive, uint32_t version);
 
 	std::vector<Descriptor *> descriptors;
-
-	void * lastBuffer;  ///< For detecting change in cached image.
-	double lastTime;  ///< For detecting change in cached image.
-	Image grayImage;
   };
 
   /**
@@ -208,7 +208,8 @@ namespace fl
 	virtual ~DescriptorScale ();
 	void initialize ();
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 
 	void serialize (Archive & archive, uint32_t version);
@@ -229,7 +230,8 @@ namespace fl
 	DescriptorOrientation (float supportRadial = 6.0f, int supportPixel = 32, float kernelSize = 2.5f);
 	void initialize ();
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	void serialize (Archive & archive, uint32_t version);
 
@@ -250,7 +252,8 @@ namespace fl
 
 	void computeGradient (const Image & image);
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);  ///< Returns one or more angle hypotheses, listed in order of descending strength.  That is, the strongest angle hypothesis will be in row 0.
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	void serialize (Archive & archive, uint32_t version);
 
@@ -258,11 +261,6 @@ namespace fl
 	float kernelSize;  ///< Similar to DescriptorOrientation::kernelSize, except that this class achieves the same effect by raising blur to the appropriate level.  Only applies to patches with shape change.
 	int bins;  ///< Number of orientation bins in histogram.
 	float cutoff;  ///< Ratio of maximum histogram value above which to accept secondary maxima.
-
-	void * lastBuffer;  ///< For detecting change in cached image.
-	double lastTime;  ///< For detecting change in cached image.
-	ImageOf<float> I_x;
-	ImageOf<float> I_y;
   };
 
   /**
@@ -285,7 +283,8 @@ namespace fl
   public:
 	DescriptorContrast (float supportRadial = 6.0f, int supportPixel = 32);
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	void serialize (Archive & archive, uint32_t version);
@@ -301,7 +300,8 @@ namespace fl
 
 	void prepareFilterMatrix ();
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	void serialize (Archive & archive, uint32_t version);
 
@@ -324,7 +324,8 @@ namespace fl
 	DescriptorPatch (std::istream & stream);
 	virtual ~DescriptorPatch ();
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	void serialize (Archive & archive, uint32_t version);
@@ -340,7 +341,8 @@ namespace fl
 	void initialize ();
 	virtual ~DescriptorSchmidScale ();
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	void serialize (Archive & archive, uint32_t version);
 
@@ -365,7 +367,8 @@ namespace fl
 	void initialize (int scaleCount);
 	virtual ~DescriptorSchmid ();
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	void serialize (Archive & archive, uint32_t version);
 
@@ -381,7 +384,8 @@ namespace fl
 	DescriptorSpin (int binsRadial = 5, int binsIntensity = 6, float supportRadial = 3, float supportIntensity = 3);
 	DescriptorSpin (std::istream & stream);
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	void serialize (Archive & archive, uint32_t version);
@@ -405,7 +409,8 @@ namespace fl
 	void init ();  ///< Computes certain working data based on current values of parameters.
 	float * getKernel (int size);  ///< Generates/caches Gaussian weighting kernels for various sizes of rectified patch.
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	void patch (const std::string & fileName, const Vector<float> & value);  ///< Write a visualization of the descriptor to a postscript file.
 	void patch (Canvas * canvas, const Vector<float> & value, int size);  ///< Subroutine used by other patch() methods.
@@ -426,8 +431,6 @@ namespace fl
 	// Storage used for calculating individual descriptor values.  These are
 	// here mainly to avoid repeatedly constructing certain objects.
 	std::map<int, ImageOf<float> *> kernels;  ///< Gaussian weighting kernels for various sizes of rectified patch.
-	ImageOf<float> I_x;  ///< x component of gradient vectors
-	ImageOf<float> I_y;  ///< y component of gradient vectors
 	FiniteDifference fdX;
 	FiniteDifference fdY;
   };
@@ -449,8 +452,9 @@ namespace fl
 	void add (const Image & image, int x, int y);  ///< Add color of image(x,y) to histogram.
 	Vector<float> finish ();  ///< Extract feature vector from the histogram.  Only returns values for bins that map to a valid RGB color.  See member "valid" below.
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
-	virtual Vector<float> value (const Image & image);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	void serialize (Archive & archive, uint32_t version);
@@ -479,8 +483,9 @@ namespace fl
 	void add (const Image & image, int x, int y);  ///< Add color of image(x,y) to histogram.
 	Vector<float> finish ();  ///< Extract feature vector from the histogram.  Only returns values for bins that map to a valid RGB color.  See member "valid" below.
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
-	virtual Vector<float> value (const Image & image);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	void serialize (Archive & archive, uint32_t version);
@@ -500,19 +505,16 @@ namespace fl
   {
   public:
 	DescriptorTextonScale (int angles = 4, float firstScale = 1.0f, float lastScale = 4.0f, int extraSteps = 3);
-	DescriptorTextonScale (std::istream & stream);
+	~DescriptorTextonScale ();
+	void clear ();
 	void initialize ();
 
-	void preprocess (const Image & image);
-
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
-	virtual Vector<float> value (const Image & image);
+	void processPixel (Image & image, ImageOf<float> & scaleImage, std::vector<ImageOf<float> > & dogs, std::vector<ImageOf<float> > & responses, int x, int y);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	void serialize (Archive & archive, uint32_t version);
-
-	void * lastBuffer;  ///< For detecting change in cached image.
-	double lastTime;  ///< For detecting change in cached image.
-	std::vector< ImageOf<float> > responses;  ///< Responses to each filter in the bank over the entire input image.
 
 	int angles;  ///< Number of discrete orientations in the filter bank.
 	float firstScale;  ///< Delimits lower end of scale space.
@@ -521,7 +523,8 @@ namespace fl
 
 	int bankSize;  ///< Number of filters at a given scale level.
 	float scaleRatio;  ///< Ratio between two adjacent scale levels.
-	std::vector<ConvolutionDiscrete2D> filters;
+	std::vector<ConvolutionDiscrete2D *> filters;
+	std::vector<float> scales;
   };
 
   /**
@@ -544,11 +547,11 @@ namespace fl
 	DescriptorLBP (std::istream & stream);
 	void initialize ();
 
-	void preprocess (const Image & image);  ///< Prepare gray version of image.  Subroutine of value().
 	void add (const int x, const int y, Vector<float> & result);  ///< Does the actual LBP calculation for one pixel.  Subroutine of value().
 
-	virtual Vector<float> value (const Image & image, const PointAffine & point);
-	virtual Vector<float> value (const Image & image);
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache);
+	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
 	void serialize (Archive & archive, uint32_t version);
@@ -556,10 +559,6 @@ namespace fl
 	int P;  ///< Number of evenly spaced sample points around center.
 	float R;  ///< Radius of circle of sample points.
 	int supportPixel;  ///< Radius of patch to draw off if point specifies a shape change.
-
-	void * lastBuffer;  ///< For detecting change in cached image.
-	double lastTime;  ///< For detecting change in cached image.
-	ImageOf<unsigned char> categoryImage;  ///< Cached LBP categories for each pixel.  P is limited to 254.
 
 	/**
 	   A structure for storing bilinear interpolation parameters.

@@ -204,8 +204,10 @@ DescriptorColorHistogram3D::finish ()
 }
 
 Vector<float>
-DescriptorColorHistogram3D::value (const Image & image, const PointAffine & point)
+DescriptorColorHistogram3D::value (ImageCache & cache, const PointAffine & point)
 {
+  Image image = cache.original->image;
+
   // Prepare to project patch into image.
 
   Matrix<double> R = point.rectification ();
@@ -263,8 +265,10 @@ DescriptorColorHistogram3D::value (const Image & image, const PointAffine & poin
 }
 
 Vector<float>
-DescriptorColorHistogram3D::value (const Image & image)
+DescriptorColorHistogram3D::value (ImageCache & cache)
 {
+  Image image = cache.original->image;
+
   clear ();
   if (image.format->hasAlpha)
   {

@@ -177,8 +177,8 @@ EntryPyramid::targetWidth (float targetScale, int sourceWidth, float sourceScale
   return sourceWidth / pow (2, w);
 }
 
-static inline float
-ratioDistance (const float & a, const float & b)
+float
+EntryPyramid::ratioDistance (const float & a, const float & b)
 {
   if (a == 0  ||  b == 0) return 0;
   return (a > b ? a / b : b / a) - 1;

@@ -155,8 +155,10 @@ DescriptorColorHistogram2D::finish ()
 }
 
 Vector<float>
-DescriptorColorHistogram2D::value (const Image & image, const PointAffine & point)
+DescriptorColorHistogram2D::value (ImageCache & cache, const PointAffine & point)
 {
+  Image image = cache.original->image;
+
   // Prepare to project patch into image.
 
   Matrix<double> R = point.rectification ();
@@ -214,8 +216,10 @@ DescriptorColorHistogram2D::value (const Image & image, const PointAffine & poin
 }
 
 Vector<float>
-DescriptorColorHistogram2D::value (const Image & image)
+DescriptorColorHistogram2D::value (ImageCache & cache)
 {
+  Image image = cache.original->image;
+
   // Gather color values into histogram
   clear ();
   for (int y = 0; y < image.height; y++)

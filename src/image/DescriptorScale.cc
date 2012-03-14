@@ -55,9 +55,10 @@ DescriptorScale::initialize ()
 }
 
 Vector<float>
-DescriptorScale::value (const Image & image, const PointAffine & point)
+DescriptorScale::value (ImageCache & cache, const PointAffine & point)
 {
   if (laplacians.size () == 0) initialize ();
+  Image image = cache.original->image;
 
   Vector<float> result (1);
   result[0] = 1;

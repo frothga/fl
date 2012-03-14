@@ -26,40 +26,35 @@ using namespace fl;
 DifferenceOfGaussians::DifferenceOfGaussians (double sigmaPlus, double sigmaMinus, const BorderMode mode, const PixelFormat & format)
 : ConvolutionDiscrete2D (format, mode)
 {
-  Gaussian2D plus (sigmaPlus, mode, GrayDouble);
-  Gaussian2D minus (sigmaMinus, mode, GrayDouble);
-  Image temp = plus - minus;
+  const double sigma2plus  = 2 * sigmaPlus  * sigmaPlus;
+  const double sigma2minus = 2 * sigmaMinus * sigmaMinus;
+  const double Cplus  = 1.0 / (M_PI * sigma2plus);
+  const double Cminus = 1.0 / (M_PI * sigma2minus);
 
-  if (format == GrayChar)
+  int h = (int) roundp (Gaussian2D::cutoff * sigmaPlus);  // "half" = distance from middle until cell values become insignificant
+  int s = 2 * h + 1;  // "size" of kernel
+
+  ImageOf<double> temp (s, s, GrayDouble);
+  for (int row = 0; row < s; row++)
   {
-	ImageOf<unsigned char> tempC = temp * GrayChar;
-
-	int top    = tempC.height - 1;
-	int bottom = 0;
-	int left   = tempC.width - 1;
-	int right  = 0;
-
-	for (int x = 0; x < width; x++)
+	for (int column = 0; column < s; column++)
 	{
-	  for (int y = 0; y < height; y++)
-	  {
-		if (tempC (x, y) != 128)  // 128 is the standard bias for char images.
-		{
-		  top    = min (top,    y);
-		  bottom = max (bottom, y);
-		  left   = min (left,   x);
-		  right  = max (right,  x);
-		}
-	  }
+	  double x = column - h;
+	  double y = row - h;
+	  double r2 = x * x + y * y;
+	  temp (column, row) = Cplus * exp (- r2 / sigma2plus) - Cminus * exp (- r2 / sigma2minus);
 	}
+  }
 
-	int w = right - left + 1;
-	int h = bottom - top + 1;
-	bitblt (tempC, 0, 0, left, top, w, h);
-  }
-  else
-  {
-	*this <<= temp * format;
-	normalFloats ();
-  }
+  *this <<= temp * format;
+  normalFloats ();
+  scale = crossover (sigmaPlus, sigmaMinus);
+}
+
+double
+DifferenceOfGaussians::crossover (double a, double b)
+{
+  double a2 = a * a;
+  double b2 = b * b;
+  return sqrt (2 * log (b2 / a2) / (1 / a2 - 1 / b2));
 }

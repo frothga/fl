@@ -65,9 +65,9 @@ InterestLaplacian::InterestLaplacian (int maxPoints, float thresholdFactor, floa
 }
 
 void
-InterestLaplacian::run (const Image & image, InterestPointSet & result)
+InterestLaplacian::run (ImageCache & cache, InterestPointSet & result)
 {
-  ImageOf<float> work = image * GrayFloat;
+  ImageOf<float> work = cache.get (new EntryPyramid (GrayFloat))->image;
   multiset<PointInterest> sorted;
 
   AbsoluteValue abs;

@@ -33,8 +33,10 @@ DescriptorSpin::DescriptorSpin (int binsRadial, int binsIntensity, float support
 }
 
 Vector<float>
-DescriptorSpin::value (const Image & image, const PointAffine & point)
+DescriptorSpin::value (ImageCache & cache, const PointAffine & point)
 {
+  ImageOf<float> image = cache.get (new EntryPyramid (GrayFloat))->image;
+
   // Determine square region in source image to scan
 
   Matrix<double> R = point.rectification ();
@@ -70,7 +72,6 @@ DescriptorSpin::value (const Image & image, const PointAffine & point)
   R.region (0, 0, 1, 2) *= binsRadial / supportRadial;  // Now R maps directly to radial bin values
 
   // Determine mapping between pixel values and intensity bins
-  ImageOf<float> that (image);
   float average = 0;
   float count = 0;
   Point q;
@@ -84,7 +85,7 @@ DescriptorSpin::value (const Image & image, const PointAffine & point)
 	  if (radius < binsRadial)
 	  {
 		float weight = 1.0f - radius / binsRadial;
-		average += that(x,y) * weight;
+		average += image(x,y) * weight;
 		count += weight;
 	  }
 	}
@@ -100,7 +101,7 @@ DescriptorSpin::value (const Image & image, const PointAffine & point)
 	  float radius = (R * q).norm (2);
 	  if (radius < binsRadial)
 	  {
-		float d = that(x,y) - average;
+		float d = image(x,y) - average;
 		float weight = 1.0f - radius / binsRadial;
 		deviation += d * d * weight;
 	  }
@@ -138,7 +139,7 @@ DescriptorSpin::value (const Image & image, const PointAffine & point)
 		}
 		rl = max (rl, 0);
 
-		float df = (that(x,y) - minIntensity) / quantum;
+		float df = (image(x,y) - minIntensity) / quantum;
 		int dl = (int) floorf (df);
 		int dh = dl + 1;
 		df -= dl;

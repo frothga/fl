@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005 Sandia Corporation.
+Copyright 2005, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -37,10 +37,11 @@ InterestHarris::InterestHarris (int neighborhood, int maxPoints, float threshold
 }
 
 void
-InterestHarris::run (const Image & image, InterestPointSet & result)
+InterestHarris::run (ImageCache & cache, InterestPointSet & result)
 {
   int offset = filter.offset;
 
+  Image image = cache.get (new EntryPyramid (GrayFloat))->image;
   ImageOf<float> i = image * filter;
   i *= nms;
   float threshold = nms.average * thresholdFactor;

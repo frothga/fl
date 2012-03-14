@@ -37,9 +37,23 @@ Descriptor::~Descriptor ()
 }
 
 Vector<float>
-Descriptor::value (const Image & image)
+Descriptor::value (ImageCache & cache)
 {
   throw "alpha selected regions not implemented";
+}
+
+Vector<float>
+Descriptor::value (const Image & image, const PointAffine & point)
+{
+  ImageCache::shared.setOriginal (image);
+  return value (ImageCache::shared, point);
+}
+
+Vector<float>
+Descriptor::value (const Image & image)
+{
+  ImageCache::shared.setOriginal (image);
+  return value (ImageCache::shared);
 }
 
 Comparison *

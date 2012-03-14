@@ -15,6 +15,7 @@ for details.
 
 
 #include "fl/image.h"
+#include "fl/convolve.h"
 
 #include <set>
 #include <ostream>
@@ -95,7 +96,7 @@ namespace fl
 	 Sort order is:
 	 <ul>
 	 <li>ascending by PixelFormat::precedence
-	 <li>ascending by scale with respect to original width (that is, image.scale * original.width / image.width)
+	 <li>ascending by scale with respect to original width (that is, (current scale) * original.width / image.width)
 	 <li>descending by width (assume isotropic scaling, so only need to check one dimension)
 	 </ul>
 
@@ -110,7 +111,10 @@ namespace fl
   public:
 	EntryPyramid (const PixelFormat & format, float scale = 0.5f, int width = 0);  ///< Create a query object
 	EntryPyramid (const Image & that, float scale = 0.5f);  ///< Directly store "that"
-	static int targetWidth (float targetScale, int sourceWidth, float sourceScale = 0.5f);  ///< Utility function for calculating desired width of result.  Gives closest power-of-two size.
+
+	// utility functions
+	static int   targetWidth (float targetScale, int sourceWidth, float sourceScale = 0.5f);  ///< Utility function for calculating desired width of result.  Gives closest power-of-two size.
+	static float ratioDistance (const float & a, const float & b);
 
 	virtual void  generate (ImageCache & cache);
 	virtual bool  compare  (const ImageCacheEntry & that) const;
@@ -121,6 +125,35 @@ namespace fl
 
 	float scale;  ///< Stores scale with respect to original width (no consideration for amount of downsampling)
 	static bool fast;  ///< Allows use of BlurDecimate and DoubleSize, which are faster than Transform but also accumulate more error per level.
+  };
+
+  class SHARED EntryFiniteDifference : public ImageCacheEntry
+  {
+  public:
+	EntryFiniteDifference (Direction direction, float scale = 0.5, int width = 0);
+
+	virtual void  generate (ImageCache & cache);
+	virtual bool  compare  (const ImageCacheEntry & that) const;
+	virtual float distance (const ImageCacheEntry & that) const;
+	virtual void  print    (std::ostream & stream) const;
+
+	Direction direction;
+	float scale;
+  };
+
+  class SHARED EntryDOG : public ImageCacheEntry
+  {
+  public:
+	EntryDOG (float sigmaPlus, float sigmaMinus, int width = 0);
+
+	virtual void  generate (ImageCache & cache);
+	virtual bool  compare  (const ImageCacheEntry & that) const;
+	virtual float distance (const ImageCacheEntry & that) const;
+	virtual void  print    (std::ostream & stream) const;
+
+	float sigmaPlus;
+	float sigmaMinus;
+	float scale;  ///< Calculated effective scale.  Used mainly for compare() and distance() operations.
   };
 }
 
