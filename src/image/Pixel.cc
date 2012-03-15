@@ -215,7 +215,7 @@ Pixel::operator << (const Pixel & that)
   result.data.rgbafloat[0] = a1 * thisValue[0] + a * thatValue[0];
   result.data.rgbafloat[1] = a1 * thisValue[1] + a * thatValue[1];
   result.data.rgbafloat[2] = a1 * thisValue[2] + a * thatValue[2];
-  result.data.rgbafloat[3] = thisValue[3];  // Don't know what to do for alpha values themselves
+  result.data.rgbafloat[3] = thatValue[3];  // Don't know what to do for alpha values themselves
 
   return result;
 }
