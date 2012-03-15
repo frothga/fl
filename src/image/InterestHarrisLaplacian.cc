@@ -139,7 +139,7 @@ Stopwatch timer;
 			if (r[j] > r[j-1]  &&  r[j] > r[j+1]  &&  r[j] > p.weight)
 			{
 			  p.weight = r[j];
-			  p.scale = laplacians[j + l].sigma;
+			  p.scale = laplacians[j + l].sigma * M_SQRT2;
 			}
 		  }
 

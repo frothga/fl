@@ -44,10 +44,7 @@ DescriptorScale::initialize ()
   while (true)
   {
 	float scale = firstScale * powf (stepSize, s++);
-	if (scale > lastScale)
-	{
-	  break;
-	}
+	if (scale > lastScale) break;
 	Laplacian * l = new Laplacian (scale);
 	(*l) *= scale * scale;
 	laplacians.push_back (l);
@@ -58,7 +55,7 @@ Vector<float>
 DescriptorScale::value (ImageCache & cache, const PointAffine & point)
 {
   if (laplacians.size () == 0) initialize ();
-  Image image = cache.original->image;
+  Image image = cache.get (new EntryPyramid (GrayFloat))->image;
 
   Vector<float> result (1);
   result[0] = 1;
@@ -71,7 +68,7 @@ DescriptorScale::value (ImageCache & cache, const PointAffine & point)
 	if (response > bestResponse)
 	{
 	  bestResponse = response;
-	  result[0] = (*l)->sigma;
+	  result[0] = (*l)->sigma * M_SQRT2;
 	}
   }
 
@@ -81,13 +78,7 @@ DescriptorScale::value (ImageCache & cache, const PointAffine & point)
 Image
 DescriptorScale::patch (const Vector<float> & value)
 {
-  float scale = value[0];
-  int h = (int) ceilf (scale);
-  int width = 2 * h + 1;
-  CanvasImage result (width, width, RGBAChar);
-  result.clear ();
-  result.drawCircle (Point (h, h), scale, 0xFFFFFF);
-  return result;
+  return Laplacian (value[0] / M_SQRT2);
 }
 
 void
