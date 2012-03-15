@@ -70,8 +70,8 @@ namespace fl
 	 **/
 	void run (const Image & image, InterestPointSet & result);
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
   };
 
 
@@ -85,8 +85,7 @@ namespace fl
 	virtual void run (ImageCache & cache, InterestPointSet & result);
 	using InterestOperator::run;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	NonMaxSuppress nms;
 	FilterHarris filter;
@@ -103,8 +102,7 @@ namespace fl
 	virtual void run (ImageCache & cache, InterestPointSet & result);
 	using InterestOperator::run;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	std::vector<FilterHarris> filters;  ///< FilterHarris clearly outperforms FilterHarrisEigen in tests.
 	std::vector<Laplacian> laplacians;
@@ -125,8 +123,7 @@ namespace fl
 	virtual void run (ImageCache & cache, InterestPointSet & result);
 	using InterestOperator::run;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	std::vector<Laplacian> laplacians;
 	int maxPoints;
@@ -149,8 +146,7 @@ namespace fl
 	virtual void run (ImageCache & cache, InterestPointSet & result);
 	using InterestOperator::run;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	std::vector<FilterHessian> filters;
 	std::vector<Laplacian> laplacians;
@@ -175,8 +171,7 @@ namespace fl
 	virtual void run (ImageCache & cache, InterestPointSet & result);
 	using InterestOperator::run;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	bool isLocalMax (float value, ImageOf<float> & dog, int x, int y);
 	bool notOnEdge (ImageOf<float> & dog, int x, int y);
@@ -199,8 +194,7 @@ namespace fl
 	virtual void run (ImageCache & cache, InterestPointSet & result);
 	using InterestOperator::run;
 
-	virtual void read (std::istream & stream);
-	virtual void write (std::ostream & stream) const;
+	void serialize (Archive & archive, uint32_t version);
 
 	// Parameters
 	int delta;  ///< Amount of gray-level distance above and below current gray-level to check when computing rate of change in region size.

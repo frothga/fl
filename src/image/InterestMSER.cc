@@ -522,11 +522,7 @@ InterestMSER::run (ImageCache & cache, InterestPointSet & result)
 }
 
 void
-InterestMSER::read (istream & stream)
+InterestMSER::serialize (Archive & archive, uint32_t version)
 {
-}
-
-void
-InterestMSER::write (ostream & stream) const
-{
+  archive & *((InterestOperator *) this);
 }

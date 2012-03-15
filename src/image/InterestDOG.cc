@@ -330,25 +330,14 @@ InterestDOG::run (ImageCache & cache, InterestPointSet & result)
 }
 
 void
-InterestDOG::read (istream & stream)
+InterestDOG::serialize (Archive & archive, uint32_t version)
 {
-  stream.read ((char *) &firstScale,    sizeof (firstScale));
-  stream.read ((char *) &lastScale,     sizeof (lastScale));
-  stream.read ((char *) &steps,         sizeof (steps));
-  stream.read ((char *) &crop,          sizeof (crop));
-  stream.read ((char *) &thresholdEdge, sizeof (thresholdEdge));
-  stream.read ((char *) &thresholdPeak, sizeof (thresholdPeak));
-  stream.read ((char *) &fast,          sizeof (fast));
-}
-
-void
-InterestDOG::write (ostream & stream) const
-{
-  stream.write ((char *) &firstScale,    sizeof (firstScale));
-  stream.write ((char *) &lastScale,     sizeof (lastScale));
-  stream.write ((char *) &steps,         sizeof (steps));
-  stream.write ((char *) &crop,          sizeof (crop));
-  stream.write ((char *) &thresholdEdge, sizeof (thresholdEdge));
-  stream.write ((char *) &thresholdPeak, sizeof (thresholdPeak));
-  stream.write ((char *) &fast,          sizeof (fast));
+  archive & *((InterestOperator *) this);
+  archive & firstScale;
+  archive & lastScale;
+  archive & steps;
+  archive & crop;
+  archive & thresholdEdge;
+  archive & thresholdPeak;
+  archive & fast;
 }

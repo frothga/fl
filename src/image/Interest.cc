@@ -61,6 +61,8 @@ InterestPointSet::add (const multiset<PointInterest> & points)
 
 // class InterestOperator -----------------------------------------------------
 
+uint32_t InterestOperator::serializeVersion = 0;
+
 InterestOperator::~InterestOperator ()
 {
 }
@@ -73,11 +75,6 @@ InterestOperator::run (const Image & image, InterestPointSet & result)
 }
 
 void
-InterestOperator::read (istream & stream)
-{
-}
-
-void
-InterestOperator::write (ostream & stream) const
+InterestOperator::serialize (Archive & archive, uint32_t version)
 {
 }

@@ -163,27 +163,16 @@ cerr << " " << timer << endl;
 }
 
 void
-InterestHarrisLaplacian::read (istream & stream)
+InterestHarrisLaplacian::serialize (Archive & archive, uint32_t version)
 {
-  stream.read ((char *) &maxPoints,       sizeof (maxPoints));
-  stream.read ((char *) &thresholdFactor, sizeof (thresholdFactor));
-  stream.read ((char *) &neighborhood,    sizeof (neighborhood));
-  stream.read ((char *) &firstStep,       sizeof (firstStep));
-  stream.read ((char *) &lastStep,        sizeof (lastStep));
-  stream.read ((char *) &extraSteps,      sizeof (extraSteps));
-  stream.read ((char *) &stepSize,        sizeof (stepSize));
+  archive & *((InterestOperator *) this);
+  archive & maxPoints;
+  archive & thresholdFactor;
+  archive & neighborhood;
+  archive & firstStep;
+  archive & lastStep;
+  archive & extraSteps;
+  archive & stepSize;
 
   init ();
-}
-
-void
-InterestHarrisLaplacian::write (ostream & stream) const
-{
-  stream.write ((char *) &maxPoints,       sizeof (maxPoints));
-  stream.write ((char *) &thresholdFactor, sizeof (thresholdFactor));
-  stream.write ((char *) &neighborhood,    sizeof (neighborhood));
-  stream.write ((char *) &firstStep,       sizeof (firstStep));
-  stream.write ((char *) &lastStep,        sizeof (lastStep));
-  stream.write ((char *) &extraSteps,      sizeof (extraSteps));
-  stream.write ((char *) &stepSize,        sizeof (stepSize));
 }

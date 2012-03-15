@@ -73,20 +73,10 @@ InterestHarris::run (ImageCache & cache, InterestPointSet & result)
 }
 
 void
-InterestHarris::read (istream & stream)
+InterestHarris::serialize (Archive & archive, uint32_t version)
 {
-  stream.read ((char *) &maxPoints,       sizeof (maxPoints));
-  stream.read ((char *) &thresholdFactor, sizeof (thresholdFactor));
-  int neighborhood = 1;
-  stream.read ((char *) &neighborhood,    sizeof (neighborhood));
-  nms.half = neighborhood;
-}
-
-void
-InterestHarris::write (ostream & stream) const
-{
-  stream.write ((char *) &maxPoints,       sizeof (maxPoints));
-  stream.write ((char *) &thresholdFactor, sizeof (thresholdFactor));
-  int neighborhood = nms.half;
-  stream.write ((char *) &neighborhood,    sizeof (neighborhood));
+  archive & *((InterestOperator *) this);
+  archive & maxPoints;
+  archive & thresholdFactor;
+  archive & nms.half;
 }

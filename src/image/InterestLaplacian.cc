@@ -146,11 +146,7 @@ cerr << " " << timer << endl;
 }
 
 void
-InterestLaplacian::read (istream & stream)
+InterestLaplacian::serialize (Archive & archive, uint32_t version)
 {
-}
-
-void
-InterestLaplacian::write (ostream & stream) const
-{
+  archive & *((InterestOperator *) this);
 }

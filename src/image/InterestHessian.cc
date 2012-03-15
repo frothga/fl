@@ -204,11 +204,7 @@ cerr << " " << added << " " << timer << endl;
 }
 
 void
-InterestHessian::read (istream & stream)
+InterestHessian::serialize (Archive & archive, uint32_t version)
 {
-}
-
-void
-InterestHessian::write (ostream & stream) const
-{
+  archive & *((InterestOperator *) this);
 }
