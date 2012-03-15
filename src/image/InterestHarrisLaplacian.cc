@@ -53,38 +53,51 @@ InterestHarrisLaplacian::InterestHarrisLaplacian (int maxPoints, float threshold
 
   firstStep = max (0, (int) roundp (logf (firstScale) / logf (stepSize)) - extraSteps);
   lastStep = (int) ceil ((logf (lastScale) / logf (stepSize) - firstStep) / extraSteps) * extraSteps + firstStep;
+}
 
-  init ();
+InterestHarrisLaplacian::~InterestHarrisLaplacian ()
+{
+  clear ();
 }
 
 void
 InterestHarrisLaplacian::init ()
 {
-  filters.clear ();
-  laplacians.clear ();
+  clear ();
 
   // Generate Laplacian filters
   for (int s = firstStep; s <= lastStep; s++)
   {
-	float scale = powf (stepSize, s);
-	Laplacian l (scale);
-	l *= scale * scale;
+	double scale = pow (stepSize, s);
+	Laplacian * l = new Laplacian (scale);
+	(*l) *= scale * scale;
 	laplacians.push_back (l);
   }
 
   // Generate Harris filters
   for (int s = firstStep + extraSteps; s <= lastStep - extraSteps; s += extraSteps)
   {
-	float scale = powf (stepSize, s);
+	double scale = pow (stepSize, s);
 	cerr << "harris scale = " << scale << endl;
-	FilterHarris h (scale * 0.7125, scale);  // sigmaI seems to be the truer representative of characteristic scale
-	filters.push_back (h);
+	filters.push_back (new FilterHarris (scale * 0.7125, scale));  // sigmaI seems to be the truer representative of characteristic scale
   }
+}
+
+void
+InterestHarrisLaplacian::clear ()
+{
+  for (int i = 0; i < filters   .size (); i++) delete filters   [i];
+  for (int i = 0; i < laplacians.size (); i++) delete laplacians[i];
+
+  filters.clear ();
+  laplacians.clear ();
 }
 
 void
 InterestHarrisLaplacian::run (ImageCache & cache, InterestPointSet & result)
 {
+  if (filters.size () == 0) init ();
+
   ImageOf<float> work = cache.get (new EntryPyramid (GrayFloat))->image;
   multiset<PointInterest> sorted;
 
@@ -93,14 +106,14 @@ InterestHarrisLaplacian::run (ImageCache & cache, InterestPointSet & result)
 cerr << "filter " << i;
 Stopwatch timer;
 
-    int offset = filters[i].offset;
+    int offset = filters[i]->offset;
 
-	ImageOf<float> filtered = work * filters[i];
+	ImageOf<float> filtered = work * *filters[i];
 
 	int nmsSize;
 	if (neighborhood < 0)
 	{
-	  nmsSize = (int) ceilf (-neighborhood * filters[i].sigmaI);
+	  nmsSize = (int) ceilf (-neighborhood * filters[i]->sigmaI);
 	}
 	else
 	{
@@ -129,7 +142,7 @@ Stopwatch timer;
 		  vector<float> r (h - l + 1);
 		  for (int j = l; j <= h; j++)
 		  {
-			r[j - l] = fabsf (laplacians[j].response (work, p));
+			r[j - l] = fabsf (laplacians[j]->response (work, p));
 		  }
 
 		  p.weight = 0;
@@ -139,7 +152,7 @@ Stopwatch timer;
 			if (r[j] > r[j-1]  &&  r[j] > r[j+1]  &&  r[j] > p.weight)
 			{
 			  p.weight = r[j];
-			  p.scale = laplacians[j + l].sigma * M_SQRT2;
+			  p.scale = laplacians[j + l]->sigma * M_SQRT2;
 			}
 		  }
 
@@ -174,5 +187,5 @@ InterestHarrisLaplacian::serialize (Archive & archive, uint32_t version)
   archive & extraSteps;
   archive & stepSize;
 
-  init ();
+  if (archive.in) clear ();
 }

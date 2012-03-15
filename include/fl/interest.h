@@ -97,15 +97,17 @@ namespace fl
   {
   public:
 	InterestHarrisLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);
+	~InterestHarrisLaplacian ();
 	void init ();
+	void clear ();
 
 	virtual void run (ImageCache & cache, InterestPointSet & result);
 	using InterestOperator::run;
 
 	void serialize (Archive & archive, uint32_t version);
 
-	std::vector<FilterHarris> filters;  ///< FilterHarris clearly outperforms FilterHarrisEigen in tests.
-	std::vector<Laplacian> laplacians;
+	std::vector<FilterHarris *> filters;  ///< FilterHarris clearly outperforms FilterHarrisEigen in tests.
+	std::vector<Laplacian *> laplacians;
 	int maxPoints;
 	float thresholdFactor;
 	float neighborhood;
