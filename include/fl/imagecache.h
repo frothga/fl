@@ -125,6 +125,7 @@ namespace fl
 
 	float scale;  ///< Stores scale with respect to original width (no consideration for amount of downsampling)
 	static bool fast;  ///< Allows use of BlurDecimate and DoubleSize, which are faster than Transform but also accumulate more error per level.
+	static float toleranceScaleRatio;  ///< How close two scales have to be before they are considered the same, in terms of portion of an octave.
   };
 
   class SHARED EntryFiniteDifference : public ImageCacheEntry

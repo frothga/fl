@@ -1397,7 +1397,26 @@ testImageCache ()
   // Induce a search for best entry to resample
   probeCache (cache, test, *test.format, 6, test.width / 8, 25);
 
-  cerr << cache;
+  cerr << cache << endl;
+
+  // Test automatic octave selection
+  cache.clear ();
+  cache.setOriginal (test);
+  ImageCacheEntry * o = cache.get (new EntryPyramid (GrayFloat, 8.1));
+  if (cache.cache.size () != 6) throw "Unexpected number of entries in cache.";
+  if (o->image.width != 20) throw "Unexpected size of result image.";
+
+  // Test tolerance for very similar scales
+  ImageCacheEntry * e = cache.get (new EntryPyramid (GrayFloat, 8.11));
+  if (cache.cache.size () != 6) throw "Unexpected number of entries in cache.";
+  if (e != o) throw "Unexpected cache entry";
+
+  // Test detection of sufficiently dissimilar scales
+  e = cache.get (new EntryPyramid (GrayFloat, 8.2));
+  if (cache.cache.size () != 7) throw "Unexpected number of entries in cache.";
+  if (e == 0) throw "Unexpected cache entry";
+
+  cerr << cache << endl;
 
   cout << "ImageCache passes" << endl;
 # else

@@ -39,8 +39,16 @@ EntryFiniteDifference::compare (const ImageCacheEntry & that) const
   if (typeid (*this).before (typeid (that))) return true;
   const EntryFiniteDifference * o = dynamic_cast<const EntryFiniteDifference *> (&that);
   if (! o) return false;
+
   if (direction < o->direction) return true;
-  if (scale        &&  o->scale        &&  scale       < o->scale      ) return true;
+  if (direction > o->direction) return false;
+
+  if (scale  &&  o->scale)
+  {
+	if (o->scale /    scale - 1 > EntryPyramid::toleranceScaleRatio) return true;
+	if (   scale / o->scale - 1 > EntryPyramid::toleranceScaleRatio) return false;
+  }
+
   if (image.width  &&  o->image.width  &&  image.width > o->image.width) return true;
   return false;
 }

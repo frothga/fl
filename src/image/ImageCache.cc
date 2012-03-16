@@ -155,7 +155,8 @@ fl::operator << (ostream & stream, const ImageCache & data)
 
 // class EntryPyramid ---------------------------------------------------------
 
-bool EntryPyramid::fast = false;
+bool  EntryPyramid::fast                = false;
+float EntryPyramid::toleranceScaleRatio = 1e-2;
 
 EntryPyramid::EntryPyramid (const PixelFormat & format, float scale, int width)
 : scale (scale)
@@ -237,8 +238,16 @@ EntryPyramid::generate (ImageCache & cache)
 	}
 	else  // automatic pyramid generation via recursive calls
 	{
-	  int w = targetWidth (minScale, cache.original->image.width, cache.original->scale);
-	  bestEntry = (EntryPyramid *) cache.get (new EntryPyramid (*image.format, minScale, w));
+	  float originalScale = cache.original->scale;
+	  int   originalWidth = cache.original->image.width;
+	  float octave     = log (scale / originalScale) / M_LN2;
+	  float nextOctave = floor (octave);  // quantize to the nearest containing octave
+	  float ratio      = pow (2, octave);
+	  float nextRatio  = pow (2, nextOctave);
+	  if (ratioDistance (ratio, nextRatio) <= toleranceScaleRatio) nextRatio /= 2;  // drop an octave, because we are essentially at the start of the current one
+	  float nextScale  = nextRatio * originalScale;
+	  int   nextWidth  = originalWidth / (int) nextRatio;
+	  bestEntry = (EntryPyramid *) cache.get (new EntryPyramid (*image.format, nextScale, nextWidth));
 	}
   }
 
@@ -251,9 +260,21 @@ EntryPyramid::compare (const ImageCacheEntry & that) const
   if (typeid (*this).before (typeid (that))) return true;
   const EntryPyramid * o = dynamic_cast<const EntryPyramid *> (&that);
   if (! o) return false;
-  if (image.format != 0  &&  o->image.format != 0  &&  image.format->precedence < o->image.format->precedence) return true;
-  if (scale              &&  o->scale              &&  scale                    < o->scale                   ) return true;
-  if (image.width        &&  o->image.width        &&  image.width              > o->image.width             ) return true;
+
+  if (image.format != 0  &&  o->image.format != 0)
+  {
+	if (image.format->precedence < o->image.format->precedence) return true;
+	if (*image.format != *o->image.format) return false;
+  }
+
+  if (scale  &&  o->scale)
+  {
+	if (o->scale /    scale - 1 > toleranceScaleRatio) return true;
+	if (   scale / o->scale - 1 > toleranceScaleRatio) return false;
+  }
+
+  // image.width is in descending order
+  if (image.width  &&  o->image.width  &&  image.width > o->image.width) return true;
   return false;
 }
 
@@ -283,10 +304,10 @@ void
 EntryPyramid::resample (ImageCache & cache, const EntryPyramid * source)
 {
   const int   originalWidth = cache.original->image.width;
-  const int   sourceWidth   = source->image.width;
   const float sourceScale   = source->scale;
-  const int   targetWidth   = image.width == 0 ? sourceWidth : image.width;
-  const float targetScale   = scale       == 0 ? sourceScale : scale;
+  const int   sourceWidth   = source->image.width;
+  const float targetScale   = scale       != 0 ? scale       : sourceScale;
+  const int   targetWidth   = image.width != 0 ? image.width : this->targetWidth (targetScale, sourceWidth, sourceScale);
 
   bool sameWidth = targetWidth == sourceWidth;
   bool sameScale = targetScale == sourceScale;

@@ -42,7 +42,11 @@ EntryDOG::compare (const ImageCacheEntry & that) const
   if (typeid (*this).before (typeid (that))) return true;
   const EntryDOG * o = dynamic_cast<const EntryDOG *> (&that);
   if (! o) return false;
-  if (scale < o->scale) return true;
+
+  // Scale always matters for DOGs
+  if (o->scale /    scale - 1 > EntryPyramid::toleranceScaleRatio) return true;
+  if (   scale / o->scale - 1 > EntryPyramid::toleranceScaleRatio) return false;
+
   if (image.width  &&  o->image.width  &&  image.width > o->image.width) return true;
   return false;
 }
