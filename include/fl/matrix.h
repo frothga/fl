@@ -18,8 +18,8 @@ for details.
 #define fl_matrix_h
 
 
-#include "fl/pointer.h"
 #include "fl/math.h"
+#include "fl/pointer.h"
 #include "fl/archive.h"
 
 #include <iostream>

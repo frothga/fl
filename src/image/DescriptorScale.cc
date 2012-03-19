@@ -14,6 +14,7 @@ for details.
 */
 
 
+#include "fl/math.h"
 #include "fl/descriptor.h"
 #include "fl/canvas.h"
 
