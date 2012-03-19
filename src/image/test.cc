@@ -1386,16 +1386,16 @@ testImageCache ()
   cache.setOriginal (test);
 
   // Construct a pyramid implicitly
-  probeCache (cache, test, *test.format, 8, 20, 9);
+  probeCache (cache, test, *test.format, 8, 20, 10);
 
   // Get a double-sized image
-  probeCache (cache, test, *test.format, 0.25, test.width * 2, 29);  // Just verifying the request works, even though accuracy is terrible.
+  probeCache (cache, test, *test.format, 0.25, test.width * 2, 30);  // Just verifying the request works, even though accuracy is terrible.
 
   // Get a different size image for an existing scale-level
   probeCache (cache, test, *test.format, 4, test.width / 4, 62);
 
   // Induce a search for best entry to resample
-  probeCache (cache, test, *test.format, 6, test.width / 8, 25);
+  probeCache (cache, test, *test.format, 6, test.width / 8, 30);
 
   cerr << cache << endl;
 

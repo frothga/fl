@@ -26,18 +26,21 @@ using namespace fl;
 Gaussian1D::Gaussian1D (double sigma, const BorderMode mode, const PixelFormat & format, const Direction direction)
 : ConvolutionDiscrete1D (mode, GrayDouble, direction)
 {
-  double sigma2 = sigma * sigma;
-  double C = 1.0 / (sqrt (TWOPI) * sigma);
+  double a = 1.0 / (sqrt (2.0) * sigma);
+  double C = 1.0 / sqrt (4.0);
 
   int h = (int) roundp (Gaussian2D::cutoff * sigma);
+  h = max (h, 1);
   resize (2 * h + 1, 1);
 
   double * kernel = (double *) ((PixelBufferPacked *) buffer)->memory;
-  kernel[h] = C;  // * exp (0)
+  double last = erf (0.5 * a);
+  kernel[h] = C * 2.0 * last;
   for (int i = 1; i <= h; i++)
   {
-	double x = i;
-	double value = C * exp (- x * x / (2 * sigma2));
+	double next = erf ((i + 0.5) * a);
+	double value = C * (next - last);
+	last = next;
 	kernel[h + i] = value;
 	kernel[h - i] = value;
   }

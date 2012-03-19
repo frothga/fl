@@ -31,9 +31,22 @@ EntryDOG::EntryDOG (float sigmaPlus, float sigmaMinus, int width)
 void
 EntryDOG::generate (ImageCache & cache)
 {
-  Image imageMinus = cache.get (new EntryPyramid (GrayFloat, sigmaMinus, image     .width))->image;
-  Image imagePlus  = cache.get (new EntryPyramid (GrayFloat, sigmaPlus,  imageMinus.width))->image;  // imagePlus *must* match width of imageMinus.
-  image = imagePlus - imageMinus;
+  Image imageMinus = cache.get (new EntryPyramid (GrayFloat, sigmaMinus, image.width))->image;
+  int w = imageMinus.width;
+  int h = imageMinus.height;
+  Image imagePlus  = cache.get (new EntryPyramid (GrayFloat, sigmaPlus,  w          ))->image;  // imagePlus *must* match width of imageMinus.
+
+  image.format = &GrayFloat;
+  image.resize (w, h);
+
+  float * plus  = (float *) ((PixelBufferPacked *) imagePlus .buffer)->memory;
+  float * minus = (float *) ((PixelBufferPacked *) imageMinus.buffer)->memory;
+  float * dest  = (float *) ((PixelBufferPacked *) image     .buffer)->memory;
+  float * end   = dest + w * h;
+  while (dest < end)
+  {
+	*dest++ = *plus++ - *minus++;
+  }
 }
 
 bool

@@ -177,7 +177,7 @@ namespace fl
 
 	bool isLocalMax (float value, ImageOf<float> & dog, int x, int y);
 	bool notOnEdge (ImageOf<float> & dog, int x, int y);
-	float fitQuadratic (std::vector< ImageOf<float> > & dogs, int s, int x, int y, Vector<float> & result);
+	float fitQuadratic (ImageOf<float> & dog0, ImageOf<float> & dog1, ImageOf<float> & dog2, int x, int y, Vector<float> & result);
 
 	float firstScale;
 	float lastScale;

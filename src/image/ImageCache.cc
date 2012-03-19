@@ -11,6 +11,7 @@ for details.
 */
 
 
+#include "fl/math.h"
 #include "fl/imagecache.h"
 #include "fl/convolve.h"
 
@@ -214,9 +215,9 @@ EntryPyramid::generate (ImageCache & cache)
   float minScale = scale / 2;  // only search within one octave
   EntryPyramid * bestEntry = 0;
   float bestRatio = INFINITY;
-  if (i != cache.cache.end ()) i--;
-  for (; i != cache.cache.end (); i--)
+  while (i != cache.cache.begin ())
   {
+	i--;
 	o = dynamic_cast<EntryPyramid *> (*i);
 	if (! o) break;
 	if (*o->image.format != *image.format) break;
@@ -247,6 +248,7 @@ EntryPyramid::generate (ImageCache & cache)
 	  if (ratioDistance (ratio, nextRatio) <= toleranceScaleRatio) nextRatio /= 2;  // drop an octave, because we are essentially at the start of the current one
 	  float nextScale  = nextRatio * originalScale;
 	  int   nextWidth  = originalWidth / (int) nextRatio;
+	  if (! fast) nextWidth = max (nextWidth, image.width);
 	  bestEntry = (EntryPyramid *) cache.get (new EntryPyramid (*image.format, nextScale, nextWidth));
 	}
   }
@@ -336,10 +338,10 @@ EntryPyramid::resample (ImageCache & cache, const EntryPyramid * source)
   Image work = source->image;
 
   // Blur if needed
-  if (ratio > 1 + epsilon  ||  targetScale > sourceScale)
+  a *= ratio;
+  double s = sqrt (a * a - b * b);
+  if (s > epsilon)
   {
-	a *= ratio;
-	double s = sqrt (a * a - b * b);
 	Gaussian1D blur (s, Boost);
 	blur.direction = Horizontal;
 	work *= blur;
