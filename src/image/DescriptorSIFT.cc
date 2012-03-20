@@ -140,20 +140,6 @@ DescriptorSIFT::value (ImageCache & cache, const PointAffine & point)
   }
   float * g = getKernel (patch.width);
 
-  // ensure standard blur level
-  /*
-	double currentBlur = scale * 0.5 / point.scale;
-	currentBlur = max (currentBlur, 0.5);
-	double targetBlur = scale;
-	if (currentBlur < targetBlur)
-	{
-	  Gaussian1D blur (sqrt (targetBlur * targetBlur - currentBlur * currentBlur), Boost, GrayFloat, Horizontal);
-	  patch *= blur;
-	  blur.direction = Vertical;
-	  patch *= blur;
-	}
-  */
-
   ImageOf<float> I_x = patch * fdX;
   ImageOf<float> I_y = patch * fdY;
 
