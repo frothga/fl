@@ -320,7 +320,7 @@ namespace fl
   class SHARED DescriptorPatch : public Descriptor
   {
   public:
-	DescriptorPatch (int width = 10, float supportRadial = 4.2);
+	DescriptorPatch (int width = 10, float supportRadial = 0);
 	DescriptorPatch (std::istream & stream);
 	virtual ~DescriptorPatch ();
 

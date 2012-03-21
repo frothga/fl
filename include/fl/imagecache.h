@@ -113,6 +113,7 @@ namespace fl
 	EntryPyramid (const Image & that, float scale = 0.5f);  ///< Directly store "that"
 
 	// utility functions
+	static int   octave (float scale, float base = 0.5f);  ///< Indicates nearest containing octave of scale in terms of base.
 	static int   targetWidth (float targetScale, int sourceWidth, float sourceScale = 0.5f);  ///< Utility function for calculating desired width of result.  Gives closest power-of-two size.
 	static float ratioDistance (const float & a, const float & b);
 

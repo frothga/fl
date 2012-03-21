@@ -15,7 +15,7 @@ for details.
 #include "fl/imagecache.h"
 #include "fl/convolve.h"
 
-#include <limits>
+#include <float.h>
 
 
 using namespace fl;
@@ -173,10 +173,20 @@ EntryPyramid::EntryPyramid (const Image & that, float scale)
 }
 
 int
+EntryPyramid::octave (float scale, float base)
+{
+  float octave = log (scale / base) / M_LN2;
+  int o = (int) floor (octave);
+  if (o + 1 - octave < FLT_EPSILON) o++;  // If it was extremely close to, but just short of, and octave boundary then don't drop to lower octave.
+  return o;
+}
+
+int
 EntryPyramid::targetWidth (float targetScale, int sourceWidth, float sourceScale)
 {
-  int w = (int) floor (log (targetScale / sourceScale) / log (2));
-  return sourceWidth / pow (2, w);
+  int o = octave (targetScale, sourceScale);
+  if (o >= 0) return sourceWidth >>  o;
+  else        return sourceWidth << -o;
 }
 
 float
@@ -286,10 +296,9 @@ EntryPyramid::distance (const ImageCacheEntry & that) const
   if (typeid (*this) != typeid (that)) return INFINITY;
   EntryPyramid & o = (EntryPyramid &) that;
 
-  float result = 0;
-  if (*image.format != *o.image.format) result = 1e4;
-  result += ratioDistance (scale, o.scale) * 4 + ratioDistance (image.width, o.image.width);
-  return result;
+  if (*image.format != *o.image.format) return INFINITY;
+
+  return ratioDistance (scale, o.scale) * 4 + ratioDistance (image.width, o.image.width);
 }
 
 void
@@ -311,17 +320,13 @@ EntryPyramid::resample (ImageCache & cache, const EntryPyramid * source)
   const float targetScale   = scale       != 0 ? scale       : sourceScale;
   const int   targetWidth   = image.width != 0 ? image.width : this->targetWidth (targetScale, sourceWidth, sourceScale);
 
-  bool sameWidth = targetWidth == sourceWidth;
-  bool sameScale = targetScale == sourceScale;
-
   // Early-out if only a format change
-  if (sameWidth  &&  sameScale)
+  if (targetWidth == sourceWidth  &&  targetScale == sourceScale)
   {
 	image = source->image * *image.format;
 	return;
   }
 
-  const float epsilon = numeric_limits<float>::epsilon ();
   float ratio = (float) sourceWidth / targetWidth;  // downsampling ratio; values < 1 mean upsampling
   float decimal = abs (ratio - roundp (ratio));
 
@@ -329,7 +334,7 @@ EntryPyramid::resample (ImageCache & cache, const EntryPyramid * source)
   double b = sourceScale * sourceWidth / originalWidth;  // native scale before
 
   // BlurDecimate if applicable
-  if (fast  &&  ratio > 2 - epsilon  &&  decimal < epsilon)  // integer downsample, so decimate is appropriate
+  if (fast  &&  ratio > 2 - FLT_EPSILON  &&  decimal < FLT_EPSILON)  // integer downsample, so decimate is appropriate
   {
 	image = source->image * BlurDecimate ((int) roundp (ratio), b, a) * *image.format;
 	return;
@@ -340,7 +345,7 @@ EntryPyramid::resample (ImageCache & cache, const EntryPyramid * source)
   // Blur if needed
   a *= ratio;
   double s = sqrt (a * a - b * b);
-  if (s > epsilon)
+  if (s > FLT_EPSILON)
   {
 	Gaussian1D blur (s, Boost);
 	blur.direction = Horizontal;
@@ -350,12 +355,12 @@ EntryPyramid::resample (ImageCache & cache, const EntryPyramid * source)
   }
 
   // Resample if needed
-  if (abs (ratio - 1) > epsilon)
+  if (abs (ratio - 1) > FLT_EPSILON)
   {
 	if (fast)
 	{
 	  float ratio1 = (float) source->image.width / (image.width - 1);
-	  if (abs (ratio - 0.5) < epsilon  ||  abs (ratio1 - 0.5) < epsilon)
+	  if (abs (ratio - 0.5) < FLT_EPSILON  ||  abs (ratio1 - 0.5) < FLT_EPSILON)
 	  {
 		int targetHeight = (int) roundp ((float) source->image.height * image.width / source->image.width);
 		work *= DoubleSize (image.width % 2, targetHeight % 2);

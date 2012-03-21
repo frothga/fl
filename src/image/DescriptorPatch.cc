@@ -26,7 +26,8 @@ using namespace fl;
 DescriptorPatch::DescriptorPatch (int width, float supportRadial)
 {
   this->width = width;
-  this->supportRadial = supportRadial;
+  if (supportRadial == 0) this->supportRadial = width;  // causes width to be in natural pixel units at point.scale
+  else                    this->supportRadial = supportRadial;
   dimension = width * width;
 }
 
@@ -37,18 +38,28 @@ DescriptorPatch::~DescriptorPatch ()
 Vector<float>
 DescriptorPatch::value (ImageCache & cache, const PointAffine & point)
 {
+  // Find or generate gray image at appropriate blur level
+  EntryPyramid * entry = (EntryPyramid *) cache.getLE (new EntryPyramid (GrayFloat, point.scale));
+  float originalScale = cache.original->scale;
+  float octave = originalScale * pow (2.0, EntryPyramid::octave (point.scale, originalScale));
+  if (! entry  ||  entry->scale < octave)
+  {
+	entry = (EntryPyramid *) cache.get (new EntryPyramid (GrayFloat, octave));
+  }
+  cerr << point.scale << " " << *entry << endl;
+
+  // Adjust point position to scale of selected image
+  octave = (float) cache.original->image.width / entry->image.width;
+  PointAffine p = point;
+  p.x = (p.x + 0.5f) / octave - 0.5f;
+  p.y = (p.y + 0.5f) / octave - 0.5f;
   float half = width / 2.0;
+  p.scale *= supportRadial / (octave * width);  // apply all three scale adjustments at once
 
-  MatrixFixed<double,2,2> R;
-  R(0,0) = cos (point.angle);
-  R(1,0) = sin (point.angle);
-  R(0,1) = -R(1,0);
-  R(1,1) = R(0,0);
-
-  TransformGauss reduce (point.A * R / (half / (supportRadial * point.scale)), true);
-  reduce.setPeg (point.x, point.y, width, width);
-  ImageOf<float> patch = cache.get (new EntryPyramid (GrayFloat))->image * reduce;
-
+  // Extract patch
+  Transform t (p.projection (), true);
+  t.setWindow (0, 0, width, width);
+  Image patch = entry->image * t;
   Vector<float> result (((PixelBufferPacked *) patch.buffer)->memory, width * width);
 
   return result;
