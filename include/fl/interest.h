@@ -96,7 +96,7 @@ namespace fl
   class SHARED InterestHarrisLaplacian : public InterestOperator
   {
   public:
-	InterestHarrisLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);
+	InterestHarrisLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 0.5, float lastScale = INFINITY, int steps = 2, int extraSteps = 20);
 	~InterestHarrisLaplacian ();
 	void init ();
 	void clear ();
@@ -111,10 +111,10 @@ namespace fl
 	int maxPoints;
 	float thresholdFactor;
 	float neighborhood;
-	int firstStep;
-	int lastStep;
+	float firstScale;
+	float lastScale;
+	int steps;
 	int extraSteps;
-	float stepSize;
   };
 
   class SHARED InterestLaplacian : public InterestOperator
