@@ -46,7 +46,6 @@ DescriptorPatch::value (ImageCache & cache, const PointAffine & point)
   {
 	entry = (EntryPyramid *) cache.get (new EntryPyramid (GrayFloat, octave));
   }
-  cerr << point.scale << " " << *entry << endl;
 
   // Adjust point position to scale of selected image
   octave = (float) cache.original->image.width / entry->image.width;
