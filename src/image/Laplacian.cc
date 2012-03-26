@@ -31,24 +31,57 @@ Laplacian::Laplacian (double sigma, const BorderMode mode, const PixelFormat & f
 
   this->sigma = sigma;
 
-  int half = (int) roundp (Gaussian2D::cutoff * sigma);
-  const int size = 2 * half + 1;
+  const int half = (int) roundp (Gaussian2D::cutoff * sigma);
+  const int kernelSize = 2 * half + 1;
+  const int sampleRatio = 2;
+  const int samplesSize = (half + 1) * sampleRatio + 1;
 
-  ImageOf<double> temp (size, size, GrayDouble);
-
+  // Oversample each pixel in one quadrant
+  Matrix<double> samples (samplesSize, samplesSize);
   double sigma2 = sigma * sigma;
   double sigma4 = sigma2 * sigma2;
   double C = 1.0 / (TWOPI * sigma2);
-  for (int row = 0; row < size; row++)
+  for (int c = 0; c < samplesSize; c++)
   {
-	for (int column = 0; column < size; column++)
+	double x = (double) c / sampleRatio - 0.5;
+	double x2 = x * x;
+	for (int r = 0; r < samplesSize; r++)
 	{
-	  double x = column - half;
-	  double y = row - half;
-	  double x2 = x * x;
+	  double y = (double) r / sampleRatio - 0.5;
 	  double y2 = y * y;
-	  double value = C * exp (- (x2 + y2) / (2 * sigma2)) * ((x2 + y2) / sigma4 - 2 / sigma2);
-	  temp (column, row) = value;
+	  samples(r,c) = C * exp (- (x2 + y2) / (2 * sigma2)) * ((x2 + y2) / sigma4 - 2 / sigma2);
+	}
+  }
+
+  // Average the samples into pixels for one quadrant
+  ImageOf<double> temp (kernelSize, kernelSize, GrayDouble);
+  for (int x = 0; x <= half; x++)
+  {
+	int c = sampleRatio * (half - x) + 1;
+	for (int y = 0; y <= half; y++)
+	{
+	  int r = sampleRatio * (half - y) + 1;
+	  temp(x,y) = (    samples(r-1,c-1) + 2 * samples(r-1,c) +     samples(r-1,c+1) +
+				   2 * samples(r  ,c-1) + 4 * samples(r  ,c) + 2 * samples(r  ,c+1) +
+					   samples(r+1,c-1) + 2 * samples(r+1,c) +     samples(r+1,c+1)) / 16;
+	}
+  }
+
+  // Copy the quadrant to the other three
+  for (int x = half + 1; x < kernelSize; x++)
+  {
+	int fromX = kernelSize - 1 - x;
+	for (int y = 0; y <= half; y++)
+	{
+	  temp(x,y) = temp(fromX,y);
+	}
+  }
+  for (int y = half + 1; y < kernelSize; y++)
+  {
+	int fromY = kernelSize - 1 - y;
+	for (int x = 0; x < kernelSize; x++)
+	{
+	  temp(x,y) = temp(x,fromY);
 	}
   }
 

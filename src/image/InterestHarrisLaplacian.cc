@@ -67,7 +67,7 @@ InterestHarrisLaplacian::init ()
   double stepSize = pow (2.0, 1.0 / octaveSteps);
   for (int s = 0; s < octaveSteps + extraSteps; s++)
   {
-	double scale = pow (stepSize, s);
+	double scale = 0.5 * pow (stepSize, s);
 	Laplacian * l = new Laplacian (scale);
 	(*l) *= scale * scale;
 	laplacians.push_back (l);
