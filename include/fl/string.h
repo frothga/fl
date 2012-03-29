@@ -79,6 +79,8 @@ namespace fl
 
 #ifdef _MSC_VER
 
+#define strtoll _strtoi64
+
 namespace std
 {
   inline int
