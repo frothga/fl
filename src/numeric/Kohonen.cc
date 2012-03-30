@@ -34,7 +34,7 @@ Kohonen::Kohonen (int width, float sigma, float learningRate, float decayRate)
 }
 
 void
-Kohonen::run (const std::vector<Vector<float> > & data)
+Kohonen::run (const vector<Vector<float> > & data, const vector<int> & classes)
 {
   stop = false;
 

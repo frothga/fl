@@ -38,7 +38,7 @@ KMeansTree::clear ()
 }
 
 void
-KMeansTree::run (const std::vector<Vector<float> > & data)
+KMeansTree::run (const vector<Vector<float> > & data, const vector<int> & classes)
 {
   kmeans.run (data);
   cerr << depth;

@@ -47,7 +47,7 @@ GaussianMixtureParallel::GaussianMixtureParallel (const string & clusterFileName
 }
 
 void
-GaussianMixtureParallel::run (const std::vector<Vector<float> > & data)
+GaussianMixtureParallel::run (const vector<Vector<float> > & data, const vector<int> & classes)
 {
   this->data = &data;
 

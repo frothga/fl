@@ -146,7 +146,7 @@ GaussianMixture::GaussianMixture (const string & clusterFileName)
 }
 
 void
-GaussianMixture::run (const std::vector<Vector<float> > & data)
+GaussianMixture::run (const vector<Vector<float> > & data, const vector<int> & classes)
 {
   stop = false;
   initialize (data);

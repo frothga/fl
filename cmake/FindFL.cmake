@@ -149,22 +149,7 @@ find_package (Freetype)
 find_package (X11)
 find_package (OpenGL)
 find_package (FFMPEG)
-
-set (FL_LIBRARIES ${FL_LIBRARIES}
-  ${FFTW_LIBRARIES}
-  ${TIFF_LIBRARIES}
-  ${GTIF_LIBRARIES}
-  ${JPEG_LIBRARIES}
-  ${PNG_LIBRARIES}
-  ${FREETYPE_LIBRARIES}
-  ${X11_LIBRARIES}
-  ${OPENGL_LIBRARIES}
-  ${FFMPEG_LIBRARIES}
-  ${CMAKE_THREAD_LIBS_INIT}
-  ${GCC_LIBRARIES}
-  ${RT_LIBRARIES}
-  ${SOCKET_LIBRARIES}
-)
+find_package (LIBSVM)
 
 if    (CMAKE_USE_PTHREADS_INIT)
   add_definitions (-DHAVE_PTHREAD)
@@ -190,36 +175,57 @@ if    (FFTW_FOUND)
   # added.  However, on HPC systems FFTW gets special treatment so needs
   # special pathing.
   set (FL_INCLUDE_DIRS ${FL_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS})
+  set (FL_LIBRARIES ${FL_LIBRARIES} ${FFTW_LIBRARIES})
 endif (FFTW_FOUND)
 
 if    (TIFF_FOUND)
   add_definitions (-DHAVE_TIFF)
+  set (FL_LIBRARIES ${FL_LIBRARIES} ${TIFF_LIBRARIES})
 endif (TIFF_FOUND)
 
 if    (GTIF_FOUND)
   add_definitions (-DHAVE_GTIF)
+  set (FL_LIBRARIES ${FL_LIBRARIES} ${GTIF_LIBRARIES})
 endif (GTIF_FOUND)
 
 if    (JPEG_FOUND)
   add_definitions (-DHAVE_JPEG)
+  set (FL_LIBRARIES ${FL_LIBRARIES} ${JPEG_LIBRARIES})
 endif (JPEG_FOUND)
 
 if    (PNG_FOUND)
   add_definitions (-DHAVE_PNG)
+  set (FL_LIBRARIES ${FL_LIBRARIES} ${PNG_LIBRARIES})
 endif (PNG_FOUND)
 
 if    (FREETYPE_FOUND)
   add_definitions (-DHAVE_FREETYPE)
   set (FL_INCLUDE_DIRS ${FL_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
+  set (FL_LIBRARIES ${FL_LIBRARIES} ${FREETYPE_LIBRARIES})
 endif (FREETYPE_FOUND)
 
 if    (X11_FOUND)
   add_definitions (-DHAVE_X11)
+  set (FL_LIBRARIES ${FL_LIBRARIES} ${X11_LIBRARIES})
 endif (X11_FOUND)
 
 if    (FFMPEG_FOUND)
   add_definitions (-DHAVE_FFMPEG)
+  set (FL_LIBRARIES ${FL_LIBRARIES} ${FFMPEG_LIBRARIES})
 endif (FFMPEG_FOUND)
+
+if    (LIBSVM_FOUND)
+  add_definitions (-DHAVE_LIBSVM)
+  set (FL_LIBRARIES ${FL_LIBRARIES} ${LIBSVM_LIBRARIES})
+endif (LIBSVM_FOUND)
+
+set (FL_LIBRARIES ${FL_LIBRARIES}
+  ${OPENGL_LIBRARIES}
+  ${CMAKE_THREAD_LIBS_INIT}
+  ${GCC_LIBRARIES}
+  ${RT_LIBRARIES}
+  ${SOCKET_LIBRARIES}
+)
 
 mark_as_advanced (
   FL_INCLUDE_DIRS

@@ -25,7 +25,7 @@ KMeans::KMeans (int K)
 }
 
 void
-KMeans::run (const std::vector<Vector<float> > & data)
+KMeans::run (const vector<Vector<float> > & data, const vector<int> & classes)
 {
   stop = false;
 

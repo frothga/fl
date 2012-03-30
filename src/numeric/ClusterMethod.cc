@@ -26,6 +26,13 @@ using namespace std;
 uint32_t ClusterMethod::serializeVersion = 0;
 
 void
+ClusterMethod::run (const vector<Vector<float> > & data)
+{
+  vector<int> classes;
+  run (data, classes);
+}
+
+void
 ClusterMethod::serialize (Archive & archive, uint32_t version)
 {
 }

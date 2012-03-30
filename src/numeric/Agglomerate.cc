@@ -74,7 +74,7 @@ Agglomerate::~Agglomerate ()
 }
 
 void
-Agglomerate::run (const std::vector< Vector<float> > & data)
+Agglomerate::run (const vector<Vector<float> > & data, const vector<int> & classes)
 {
   stop = false;
 

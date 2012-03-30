@@ -1,14 +1,14 @@
 # - Find FFMPEG library
 # Find the native FFMPEG includes and library
 # This module defines
-#   FFMPEG_FOUND     If false, do not try to use FFMPEG.
-#   FFMPEG_INC       Directory containing the include files
-#   FFMPEG_AVCODEC   Full path to libavcodec, and similarly for each of the
-#   FFMPEG_AVDEVICE  other libraries.
+#   FFMPEG_FOUND       If false, do not try to use FFMPEG.
+#   FFMPEG_INCLUDE_DIR Directory containing the include files
+#   FFMPEG_AVCODEC     Full path to libavcodec, and similarly for each of the
+#   FFMPEG_AVDEVICE    other libraries.
 #   FFMPEG_AVFORMAT
 #   FFMPEG_AVUTIL
 #   FFMPEG_SWSCALE
-#   FFMPEG_LIBRARIES All the available libraries together.
+#   FFMPEG_LIBRARIES   All the available libraries together.
 # FFMPEG is always evolving.  This script makes no attempt to be general
 # across multiple generations of FFMPEG.  Instead, it must be maintained to
 # find the most current directory layout.  An alternative would be to detect
@@ -59,7 +59,7 @@ endif (THREAD_LIB)
 
 mark_as_advanced (
   FFMPEG_INCLUDE_DIR
-  FFMPEG_LIB
+  FFMPEG_LIBRARIES
   FFMPEG_AVFORMAT
   FFMPEG_AVCODEC
   FFMPEG_AVUTIL

@@ -26,6 +26,14 @@ for details.
 #include <iostream>
 #include <vector>
 
+#ifdef HAVE_PTHREAD
+#  include <pthread.h>
+#endif
+
+#ifdef HAVE_LIBSVM
+#  include <libsvm/svm.h>
+#endif
+
 #undef SHARED
 #ifdef _MSC_VER
 #  ifdef flNumeric_EXPORTS
@@ -38,11 +46,6 @@ for details.
 #endif
 
 
-#ifdef HAVE_PTHREAD
-#  include <pthread.h>
-#endif
-
-
 namespace fl
 {
   // Generic clustering interface ---------------------------------------------
@@ -50,8 +53,9 @@ namespace fl
   class SHARED ClusterMethod
   {
   public:
-	virtual void          run (const std::vector< Vector<float> > & data) = 0;  ///< Peform clustering on collection of points.
-	virtual int           classify (const Vector<float> & point) = 0;  ///< Determine the single best class of given point.
+	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes) = 0;  ///< Peform either supervised learning or clustering on collection of points.  @param classes may be arbitrary size, but association with data points starts at index 0.
+	virtual void          run (const std::vector< Vector<float> > & data);  ///< Convenience method for calling run() in unsupervised case.
+	virtual int           classify (const Vector<float> & point) = 0;  ///< Determine the single best class of given point.  Returns -1 if no class is suitable.
 	virtual Vector<float> distribution (const Vector<float> & point) = 0;  ///< Return a probability distribution over the classes.  Row number in the returned Vector corresponds to class number.
 	virtual int           classCount () = 0;  ///< Returns the number of classes.
 	virtual Vector<float> representative (int group) = 0;  ///< Return a representative member of group.  "group" has same semantics as return value of classify (); we just can't use the word "class" because it is a keyword in C++.  :)
@@ -98,7 +102,8 @@ namespace fl
 	GaussianMixture (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");  ///< clusterFileName refers to target file for new clustering data, which is very likely to be different from input file.
 	GaussianMixture (const std::string & clusterFileName = "");
 
-	virtual void          run (const std::vector< Vector<float> > & data);
+	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
+	using ClusterMethod::run;
 	virtual int           classify (const Vector<float> & point);
 	virtual Vector<float> distribution (const Vector<float> & point);
 	virtual int           classCount ();
@@ -133,7 +138,8 @@ namespace fl
 	GaussianMixtureParallel (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");
 	GaussianMixtureParallel (const std::string & clusterFileName = "");
 
-	virtual void run (const std::vector< Vector<float> > & data);
+	virtual void run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
+	using ClusterMethod::run;
 	virtual void processConnection (fl::SocketStream & ss, struct sockaddr_in & clientAddress);
 
 	static void * listenThread (void * arg);
@@ -173,7 +179,8 @@ namespace fl
   public:
 	KMeans (int K = 0);
 
-	virtual void          run (const std::vector< Vector<float> > & data);
+	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
+	using ClusterMethod::run;
 	virtual int           classify (const Vector<float> & point);
 	virtual Vector<float> distribution (const Vector<float> & point);
 	virtual int           classCount ();
@@ -195,7 +202,8 @@ namespace fl
 	~KMeansTree ();
 	void clear ();
 
-	virtual void          run (const std::vector< Vector<float> > & data);
+	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
+	using ClusterMethod::run;
 	virtual int           classify (const Vector<float> & point);
 	virtual Vector<float> distribution (const Vector<float> & point);
 	virtual int           classCount ();
@@ -216,7 +224,8 @@ namespace fl
   public:
 	Kohonen (int width = 10, float sigma = 1.0, float learningRate = 0.1, float decayRate = 0.5);
 
-	virtual void          run (const std::vector< Vector<float> > & data);
+	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
+	using ClusterMethod::run;
 	virtual int           classify (const Vector<float> & point);
 	virtual Vector<float> distribution (const Vector<float> & point);
 	virtual int           classCount ();
@@ -256,7 +265,8 @@ namespace fl
 	Agglomerate (Metric * comparison, float distanceLimit, int minClusters = 1);
 	~Agglomerate ();
 
-	virtual void          run (const std::vector< Vector<float> > & data);
+	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
+	using ClusterMethod::run;
 	virtual int           classify (const Vector<float> & point);
 	virtual Vector<float> distribution (const Vector<float> & point);
 	virtual int           classCount ();
@@ -269,6 +279,37 @@ namespace fl
 	int minClusters;  ///< The target number of clusters at convergence.  Result will be no smaller than this unless there are fewer input data.
 	std::vector<ClusterAgglomerative *> clusters;
   };
+
+
+  // SVM ----------------------------------------------------------------------
+
+#ifdef HAVE_LIBSVM
+  /**
+	 Wrapper for libsvm.
+   **/
+  class SVM : public ClusterMethod
+  {
+  public:
+	SVM ();
+	~SVM ();
+	void clear ();
+
+	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
+	virtual int           classify (const Vector<float> & point);
+	virtual Vector<float> distribution (const Vector<float> & point);
+	virtual int           classCount ();
+	virtual Vector<float> representative (int group);
+
+	static svm_node *    vector2node (const Vector<float> & datum);
+	static Vector<float> node2vector (const svm_node * node);
+
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
+
+	svm_parameter parameters;
+	svm_model *   model;
+  };
+#endif
 }
 
 

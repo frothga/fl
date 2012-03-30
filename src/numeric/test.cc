@@ -938,6 +938,8 @@ testCluster ()
   const int count = 1000;
   const float separation = 2;
   vector<Vector<float> > data;
+  vector<int> classes (dimension * count);
+  int * c = &classes[0];
   for (int d = 0; d < dimension; d++)
   {
 	for (int i = 0; i < count; i++)
@@ -946,6 +948,7 @@ testCluster ()
 	  for (int r = 0; r < dimension; r++) datum[r] = randGaussian ();
 	  datum[d] += separation;
 	  data.push_back (datum);
+	  *c++ = d == 0;
 	}
   }
 
@@ -987,6 +990,40 @@ testCluster ()
   }
   if (unfound.norm (1)) throw "KMeansTree cluster is missing";
 
+  // test SVM
+# ifdef HAVE_LIBSVM
+  SVM svm;
+  svm.run (data, classes);
+
+  if (svm.classCount () != 2) throw "Unexpected class count in SVM";
+  if (svm.classify (svm.representative (0)) != 0) throw "SVM did not classify representative of 0 correctly";
+  if (svm.classify (svm.representative (1)) != 1) throw "SVM did not classify representative of 1 correctly";
+
+  Archive ("test.svm", "w") & svm;
+  svm_save_model ("test.svm1", svm.model);
+  SVM svm2;
+  Archive ("test.svm", "r") & svm2;
+  svm_save_model ("test.svm2", svm2.model);
+
+  ifstream s1 ("test.svm1");
+  ifstream s2 ("test.svm2");
+  while (s1.good ()  &&  s2.good ())
+  {
+	if (s1.get ()  !=  s2.get ()) throw "Restored svm does not match saved one.";
+  }
+
+  int correct = 0;
+  for (int i = 0; i < data.size (); i++)
+  {
+	if (svm2.classify (data[i]) == classes[i]) correct++;
+  }
+  float ratio = (float) correct / data.size ();
+  cerr << "ratio = " << ratio << endl;
+  if (ratio < 0.9) throw "SVM does not classify enough test points correctly.";
+
+
+# endif
+
   cout << "ClusterMethods pass" << endl;
 }
 
@@ -1018,7 +1055,7 @@ main (int argc, char * argv[])
   {
 	cout << "running all tests for float" << endl;
 	testAll<float> ();
-	testCluster ();
+	testCluster ();  // right now, ClusterMethod is only in float
 
 	cout << "running all tests for double" << endl;
 	testAll<double> ();
