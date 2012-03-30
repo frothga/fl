@@ -40,7 +40,7 @@ KMeansTree::clear ()
 void
 KMeansTree::run (const vector<Vector<float> > & data, const vector<int> & classes)
 {
-  kmeans.run (data);
+  kmeans.run (data, classes);
   cerr << depth;
   if (depth <= 1) return;
 
@@ -60,7 +60,7 @@ KMeansTree::run (const vector<Vector<float> > & data, const vector<int> & classe
 	if (partition[i].size ())
 	{
 	  KMeansTree * tree = new KMeansTree (K, depth - 1);
-	  tree->run (partition[i]);
+	  tree->run (partition[i], classes);
 	  subtrees.push_back (tree);
 	}
 	else subtrees.push_back (0);
