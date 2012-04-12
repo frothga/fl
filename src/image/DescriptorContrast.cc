@@ -25,7 +25,6 @@ using namespace std;
 
 DescriptorContrast::DescriptorContrast (float supportRadial, int supportPixel)
 {
-  dimension           = 1;
   this->supportRadial = supportRadial;
   this->supportPixel  = supportPixel;
 }
@@ -91,6 +90,12 @@ Comparison *
 DescriptorContrast::comparison ()
 {
   return new MetricEuclidean;
+}
+
+int
+DescriptorContrast::dimension ()
+{
+  return 1;
 }
 
 void

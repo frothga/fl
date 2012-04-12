@@ -122,6 +122,7 @@ add_library (flImage
   DescriptorPatch.cc
   DescriptorSchmidScale.cc
   DescriptorSchmid.cc
+  DescriptorSpatialPyramid.cc
   DescriptorSpin.cc
   DescriptorSIFT.cc
   DescriptorColorHistogram2D.cc

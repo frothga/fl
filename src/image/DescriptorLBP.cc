@@ -117,8 +117,6 @@ DescriptorLBP::DescriptorLBP (int P, float R, float supportRadial, int supportPi
 void
 DescriptorLBP::initialize ()
 {
-  dimension = P + 2;
-
   interpolates.resize (P);
   for (int i = 0; i < P; i++)
   {
@@ -245,6 +243,12 @@ Comparison *
 DescriptorLBP::comparison ()
 {
   return new ChiSquared;
+}
+
+int
+DescriptorLBP::dimension ()
+{
+  return P + 2;
 }
 
 void

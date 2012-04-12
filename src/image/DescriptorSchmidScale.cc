@@ -33,8 +33,6 @@ DescriptorSchmidScale::DescriptorSchmidScale (float sigma)
 void
 DescriptorSchmidScale::initialize ()
 {
-  dimension = 9;
-
   G = Gaussian2D (sigma);
 
   Gx = GaussianDerivativeFirst (0, sigma);
@@ -194,6 +192,12 @@ DescriptorSchmidScale::patch (const Vector<float> & value)
   }
 
   return result;
+}
+
+int
+DescriptorSchmidScale::dimension ()
+{
+  return 9;
 }
 
 void

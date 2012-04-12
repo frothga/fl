@@ -25,6 +25,7 @@ using namespace fl;
 
 DescriptorCombo::DescriptorCombo ()
 {
+  dim = 0;
 }
 
 DescriptorCombo::~DescriptorCombo ()
@@ -39,15 +40,17 @@ void
 DescriptorCombo::add (Descriptor * descriptor)
 {
   descriptors.push_back (descriptor);
-  dimension += descriptor->dimension;
   monochrome &= descriptor->monochrome;
   supportRadial = max (supportRadial, descriptor->supportRadial);
+  if (descriptor->dimension () == 0) throw "DescriptorCombo only handles fixed-size sub-descriptors at this time.";
+  dim = 0;
 }
 
 Vector<float>
 DescriptorCombo::value (ImageCache & cache, const PointAffine & point)
 {
-  Vector<float> result (dimension);
+  if (! dim) dimension ();
+  Vector<float> result (dim);
   int r = 0;
   for (int i = 0; i < descriptors.size (); i++)
   {
@@ -61,7 +64,8 @@ DescriptorCombo::value (ImageCache & cache, const PointAffine & point)
 Vector<float>
 DescriptorCombo::value (ImageCache & cache)
 {
-  Vector<float> result (dimension);
+  if (! dim) dimension ();
+  Vector<float> result (dim);
   int r = 0;
   for (int i = 0; i < descriptors.size (); i++)
   {
@@ -87,7 +91,7 @@ DescriptorCombo::patch (int index, const Vector<float> & value)
   for (int i = 0; i <= index; i++)
   {
 	r1 = r2;
-	r2 += descriptors[i]->dimension;
+	r2 += descriptors[i]->dimension ();
   }
   r2 -= 1;
   return descriptors[index]->patch (value.region (r1, 0, r2));
@@ -99,9 +103,20 @@ DescriptorCombo::comparison ()
   ComparisonCombo * result = new ComparisonCombo;
   for (int i = 0; i < descriptors.size (); i++)
   {
-	result->add (descriptors[i]->comparison (), descriptors[i]->dimension);
+	result->add (descriptors[i]->comparison (), descriptors[i]->dimension ());
   }
   return result;
+}
+
+int
+DescriptorCombo::dimension ()
+{
+  dim = 0;
+  for (int i = 0; i < descriptors.size (); i++)
+  {
+	dim += descriptors[i]->dimension ();
+  }
+  return dim;
 }
 
 void

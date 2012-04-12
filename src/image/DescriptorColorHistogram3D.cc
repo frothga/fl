@@ -66,7 +66,7 @@ DescriptorColorHistogram3D::initialize ()
   valid     = new bool [width * width * height];
 
   memset (valid, 0, width * width * height * sizeof (bool));
-  dimension = 0;
+  dim = 0;
   bool * vi = valid;
   for (int u = 0; u < width; u++)
   {
@@ -96,7 +96,7 @@ DescriptorColorHistogram3D::initialize ()
 		if (yf >= yl  &&  yf <= yh)
 		{
 		  *vi = true;
-		  dimension++;
+		  dim++;
 		}
 
 		vi++;
@@ -104,7 +104,7 @@ DescriptorColorHistogram3D::initialize ()
 	}
   }
 
-  //cerr << dimension << " / " << width * width * height << endl;
+  //cerr << dim << " / " << width * width * height << endl;
 }
 
 void
@@ -180,7 +180,7 @@ DescriptorColorHistogram3D::add (const Image & image, const int x, const int y)
 Vector<float>
 DescriptorColorHistogram3D::finish ()
 {
-  Vector<float> result (dimension);
+  Vector<float> result (dim);
   int i = 0;
   bool *  vi = valid;
   float * hi = histogram;
@@ -335,6 +335,12 @@ Comparison *
 DescriptorColorHistogram3D::comparison ()
 {
   return new ChiSquared;
+}
+
+int
+DescriptorColorHistogram3D::dimension ()
+{
+  return dim;
 }
 
 void

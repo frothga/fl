@@ -33,7 +33,6 @@ DescriptorSIFT::DescriptorSIFT (int width, int angles)
   this->width = width;
   this->angles = angles;
   angleRange = TWOPIf;
-  dimension = width * width * angles;
 
   supportRadial = 3 * width / 2.0f;  // Causes each bin to cover 3 sigmas.
   supportPixel = (int) ceilf (2 * supportRadial);  // Causes drawn off patch to hold 2 pixels per sigma.
@@ -55,7 +54,6 @@ DescriptorSIFT::~DescriptorSIFT ()
 void
 DescriptorSIFT::init ()
 {
-  dimension = width * width * angles;
   angleStep = (angleRange / angles) + 1e-6;
 
   map<int, ImageOf<float> *>::iterator it;
@@ -315,6 +313,12 @@ Comparison *
 DescriptorSIFT::comparison ()
 {
   return new MetricEuclidean (2.0f);
+}
+
+int
+DescriptorSIFT::dimension ()
+{
+  return width * width * angles;
 }
 
 void

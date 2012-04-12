@@ -90,6 +90,12 @@ DescriptorFilters::patch (const Vector<float> & value)
   return result;
 }
 
+int
+DescriptorFilters::dimension ()
+{
+  return filters.size ();
+}
+
 void
 DescriptorFilters::serialize (Archive & archive, uint32_t version)
 {

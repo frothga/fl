@@ -42,7 +42,7 @@ void
 DescriptorColorHistogram2D::initialize ()
 {
   monochrome = false;
-  dimension = 0;
+  dim = 0;
   valid.resize (width, width);
   valid.clear ();
   for (int u = 0; u < width; u++)
@@ -71,7 +71,7 @@ DescriptorColorHistogram2D::initialize ()
 	  if (yh > yl)
 	  {
 		valid(u,v) = true;
-		dimension++;
+		dim++;
 	  }
 	}
   }
@@ -137,7 +137,7 @@ DescriptorColorHistogram2D::add (const Image & image, const int x, const int y)
 Vector<float>
 DescriptorColorHistogram2D::finish ()
 {
-  Vector<float> result (dimension);
+  Vector<float> result (dim);
   int i = 0;
   for (int u = 0; u < width; u++)
   {
@@ -270,6 +270,12 @@ Comparison *
 DescriptorColorHistogram2D::comparison ()
 {
   return new ChiSquared;
+}
+
+int
+DescriptorColorHistogram2D::dimension ()
+{
+  return dim;
 }
 
 void

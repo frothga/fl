@@ -28,7 +28,6 @@ DescriptorPatch::DescriptorPatch (int width, float supportRadial)
   this->width = width;
   if (supportRadial == 0) this->supportRadial = width;  // causes width to be in natural pixel units at point.scale
   else                    this->supportRadial = supportRadial;
-  dimension = width * width;
 }
 
 DescriptorPatch::~DescriptorPatch ()
@@ -79,12 +78,16 @@ DescriptorPatch::comparison ()
   return new NormalizedCorrelation;
 }
 
+int
+DescriptorPatch::dimension ()
+{
+  return width * width;
+}
+
 void
 DescriptorPatch::serialize (Archive & archive, uint32_t version)
 {
   archive & *((Descriptor *) this);
   archive & width;
   archive & supportRadial;
-
-  dimension = width * width;
 }

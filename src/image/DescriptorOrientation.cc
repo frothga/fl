@@ -28,7 +28,6 @@ DescriptorOrientation::DescriptorOrientation (float supportRadial, int supportPi
 : supportPixel  (supportPixel),
   kernelSize    (kernelSize)
 {
-  dimension = 1;
   this->supportRadial = supportRadial;
   initialize ();
 }
@@ -96,6 +95,12 @@ DescriptorOrientation::patch (const Vector<float> & value)
   Transform t (1, 1);
   t.setPeg (G.width / 2, G.height / 2, patchSize, patchSize);
   return G * t;  // TODO: not sure what the convention is for returning patches.  Should it be in [0,1] or can it be any range?
+}
+
+int
+DescriptorOrientation::dimension ()
+{
+  return 1;
 }
 
 void

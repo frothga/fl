@@ -29,7 +29,6 @@ DescriptorSpin::DescriptorSpin (int binsRadial, int binsIntensity, float support
   this->binsIntensity    = binsIntensity;
   this->supportRadial    = supportRadial;
   this->supportIntensity = supportIntensity;
-  dimension = binsRadial * binsIntensity;
 }
 
 Vector<float>
@@ -196,6 +195,12 @@ DescriptorSpin::comparison ()
   return new ChiSquared;
 }
 
+int
+DescriptorSpin::dimension ()
+{
+  return binsRadial * binsIntensity;
+}
+
 void
 DescriptorSpin::serialize (Archive & archive, uint32_t version)
 {
@@ -204,6 +209,4 @@ DescriptorSpin::serialize (Archive & archive, uint32_t version)
   archive & binsIntensity;
   archive & supportRadial;
   archive & supportIntensity;
-
-  dimension = binsRadial * binsIntensity;
 }

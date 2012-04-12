@@ -116,7 +116,6 @@ DescriptorTextonScale::initialize ()
   }
 
   bankSize = 1 + 2 * angles;
-  dimension = 2 * bankSize;
 }
 
 inline void
@@ -340,6 +339,12 @@ DescriptorTextonScale::patch (const Vector<float> & value)
   }
 
   return result;
+}
+
+int
+DescriptorTextonScale::dimension ()
+{
+  return 2 * bankSize;
 }
 
 void

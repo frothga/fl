@@ -25,6 +25,7 @@ for details.
 #include "fl/metric.h"
 #include "fl/archive.h"
 #include "fl/imagecache.h"
+#include "fl/cluster.h"
 
 #include <iostream>
 #include <vector>
@@ -140,6 +141,24 @@ namespace fl
   };
 
   /**
+	 Measures similarity between histograms arranged in a spatial pyramid,
+	 as described in the paper "Beyond Bags of Features: Spatial Pyramid
+	 Matching for Recognizing Natural Scene Categories" by Svetlana Lazebnik,
+	 et al.  In this version the spatial dimension is fixed at 2 (the usual
+	 for images), and the number of features is inferred from the given
+	 depth L.
+  **/
+  class SHARED PyramidMatchKernel : public Comparison
+  {
+  public:
+	PyramidMatchKernel (int levels = 1) : levels (levels) {}
+
+	virtual float value (const Vector<float> & value1, const Vector<float> & value2) const;
+
+	int levels;
+  };
+
+  /**
 	 Sum up the measure 1 - (a - b)^2 / (a + b) over all the elements of the
 	 two vectors.
    **/
@@ -161,18 +180,18 @@ namespace fl
 	Descriptor ();
 	virtual ~Descriptor ();
 
-	virtual Vector<float> value (ImageCache & cache, const PointAffine & point) = 0;  ///< Returns a vector of floats that describe the image patch near the interest point.
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);  ///< Returns a vector of floats that describe the image patch near the interest point.
 	virtual Vector<float> value (ImageCache & cache);  ///< Describe entire region that has non-zero alpha values.  Descriptor may treat all non-zero alpha values the same, or use them to weight the pixels.  This method is only available in Descriptors that don't require a specific point of reference.  IE: a spin image must have a central point, so it can't implement this method.
 	Vector<float> value (const Image & image, const PointAffine & point);
 	Vector<float> value (const Image & image);
-	virtual Image patch (const Vector<float> & value) = 0;  ///< Return a graphical representation of the descriptor.  Preferrably an image patch that would stimulate this descriptor to return the given value.
+	virtual Image patch (const Vector<float> & value);  ///< Return a graphical representation of the descriptor.  Preferrably an image patch that would stimulate this descriptor to return the given value.
 	virtual Comparison * comparison ();  ///< Return an instance of the recommended Comparison for feature vectors from this type of Descriptor.  Caller is responsible to destroy instance.
+	virtual int dimension ();  ///< Number of elements in result of value().  0 if dimension can change from one call to the next.
 
 	void serialize (Archive & archive, uint32_t version);
 	static uint32_t serializeVersion;
 
 	bool monochrome;  ///< True if this descriptor works only on intensity values.  False if this descriptor uses color channels in some way.
-	int dimension;  ///< Number of elements in result of value().  0 if dimension can change from one call to the next.
 	float supportRadial;  ///< Number of sigmas away from center to include in patch (where 1 sigma = size of characteristic scale).  0 means this descriptor does not depend on characteristic scale.
   };
 
@@ -193,9 +212,11 @@ namespace fl
 	virtual Image patch (const Vector<float> & value);
 	Image patch (int index, const Vector<float> & value);  ///< Returns a visualization of one specific feature vector in the set.
 	virtual Comparison * comparison ();
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	std::vector<Descriptor *> descriptors;
+	int dim;
   };
 
   /**
@@ -211,6 +232,7 @@ namespace fl
 	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
+	virtual int dimension ();
 
 	void serialize (Archive & archive, uint32_t version);
 
@@ -233,6 +255,7 @@ namespace fl
 	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel + 1.
@@ -287,6 +310,7 @@ namespace fl
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	int supportPixel;  ///< Pixel radius of patch.  Patch size = 2 * supportPixel.
@@ -303,6 +327,7 @@ namespace fl
 	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	std::vector<ConvolutionDiscrete2D> filters;
@@ -321,13 +346,13 @@ namespace fl
   {
   public:
 	DescriptorPatch (int width = 10, float supportRadial = 0);
-	DescriptorPatch (std::istream & stream);
 	virtual ~DescriptorPatch ();
 
 	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	int width;
@@ -337,13 +362,13 @@ namespace fl
   {
   public:
 	DescriptorSchmidScale (float sigma = 1.0);
-	DescriptorSchmidScale (std::istream & stream);
 	void initialize ();
 	virtual ~DescriptorSchmidScale ();
 
 	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	float sigma;
@@ -363,13 +388,13 @@ namespace fl
   {
   public:
 	DescriptorSchmid (int scaleCount = 8, float scaleStep = -1);
-	DescriptorSchmid (std::istream & stream);
 	void initialize (int scaleCount);
 	virtual ~DescriptorSchmid ();
 
 	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	DescriptorSchmidScale * findScale (float sigma);
@@ -382,12 +407,12 @@ namespace fl
   {
   public:
 	DescriptorSpin (int binsRadial = 5, int binsIntensity = 6, float supportRadial = 3, float supportIntensity = 3);
-	DescriptorSpin (std::istream & stream);
 
 	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	int   binsRadial;
@@ -403,7 +428,6 @@ namespace fl
   {
   public:
 	DescriptorSIFT (int width = 4, int angles = 8);
-	DescriptorSIFT (std::istream & stream);
 	~DescriptorSIFT ();
 
 	void init ();  ///< Computes certain working data based on current values of parameters.
@@ -415,6 +439,7 @@ namespace fl
 	void patch (const std::string & fileName, const Vector<float> & value);  ///< Write a visualization of the descriptor to a postscript file.
 	void patch (Canvas * canvas, const Vector<float> & value, int size);  ///< Subroutine used by other patch() methods.
 	virtual Comparison * comparison ();  ///< Return a MetricEuclidean, rather than the default (NormalizedCorrelation).
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	// Parameters
@@ -443,7 +468,6 @@ namespace fl
   {
   public:
 	DescriptorColorHistogram2D (int width = 5, float supportRadial = 4.2f);
-	DescriptorColorHistogram2D (std::istream & stream);
 	void initialize ();
 
 	// The following are subroutines used by value(), and also available to client code if the programmer wishes to use a different criterion for selecting pixels to bin.
@@ -457,9 +481,11 @@ namespace fl
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	int width;  ///< Number of bins in the U and V dimensions.
+	int dim;
 	Matrix<bool> valid;  ///< Stores true for every bin that translates to a valid RGB color.
 	Matrix<float> histogram;  ///< Working histogram.  Forces this Descriptor object to be single threaded.
   };
@@ -473,7 +499,6 @@ namespace fl
   {
   public:
 	DescriptorColorHistogram3D (int width = 5, int height = -1, float supportRadial = 4.2f);  ///< height == -1 means use value of width
-	DescriptorColorHistogram3D (std::istream & stream);
 	~DescriptorColorHistogram3D ();
 	void initialize ();
 
@@ -488,8 +513,10 @@ namespace fl
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
+	int dim;
 	int width;  ///< Number of bins in the U and V dimensions.
 	int height;  ///< Number of bins in the Y dimension.
 	bool * valid;  ///< A 3D block of booleans that stores true for every bin that translates to a valid RGB color.
@@ -514,6 +541,7 @@ namespace fl
 	virtual Vector<float> value (ImageCache & cache);
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	int angles;  ///< Number of discrete orientations in the filter bank.
@@ -544,7 +572,6 @@ namespace fl
   {
   public:
 	DescriptorLBP (int P = 8, float R = 1.0f, float supportRadial = 4.2f, int supportPixel = 32);
-	DescriptorLBP (std::istream & stream);
 	void initialize ();
 
 	void add (const int x, const int y, Vector<float> & result);  ///< Does the actual LBP calculation for one pixel.  Subroutine of value().
@@ -554,6 +581,7 @@ namespace fl
 	using Descriptor::value;
 	virtual Image patch (const Vector<float> & value);
 	virtual Comparison * comparison ();
+	virtual int dimension ();
 	void serialize (Archive & archive, uint32_t version);
 
 	int P;  ///< Number of evenly spaced sample points around center.
@@ -576,6 +604,28 @@ namespace fl
 	  bool exact;  ///< If true, then use pixel value at (xl,yl) and ignore all other data in this record.
 	};
 	std::vector<Interpolate> interpolates;  ///< Cached data for doing bilinear interpolation of pixel values along circle.
+  };
+
+  class SHARED DescriptorSpatialPyramid : public Descriptor
+  {
+  public:
+	DescriptorSpatialPyramid (int levels = 1, Descriptor * descriptor = 0, ClusterMethod * cluster = 0);
+	~DescriptorSpatialPyramid ();
+
+	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
+	virtual Vector<float> value (ImageCache & cache);
+	using Descriptor::value;
+	void extract (ImageCache & cache, std::vector<Vector<float> > & descriptors);
+	virtual Comparison * comparison ();
+	virtual int dimension ();
+	void serialize (Archive & archive, uint32_t version);
+
+	int levels;
+	Descriptor * descriptor;
+	ClusterMethod * cluster;
+	float firstScale;
+	float lastScale;
+	int substeps;
   };
 }
 

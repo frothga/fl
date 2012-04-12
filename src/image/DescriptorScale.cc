@@ -30,7 +30,6 @@ DescriptorScale::DescriptorScale (float firstScale, float lastScale, int interQu
   this->firstScale = max (1.0f, firstScale);
   this->lastScale = max (this->firstScale, lastScale);
   stepSize = powf (quantum, 1.0f / interQuanta);
-  dimension = 1;
 }
 
 DescriptorScale::~DescriptorScale ()
@@ -80,6 +79,12 @@ Image
 DescriptorScale::patch (const Vector<float> & value)
 {
   return Laplacian (value[0] / M_SQRT2);
+}
+
+int
+DescriptorScale::dimension ()
+{
+  return 1;
 }
 
 void

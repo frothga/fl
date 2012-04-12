@@ -28,12 +28,17 @@ uint32_t Descriptor::serializeVersion = 0;
 Descriptor::Descriptor ()
 {
   monochrome = true;
-  dimension = 0;
   supportRadial = 0;
 }
 
 Descriptor::~Descriptor ()
 {
+}
+
+Vector<float>
+Descriptor::value (ImageCache & cache, const PointAffine & p)
+{
+  throw "image patches not implemented";
 }
 
 Vector<float>
@@ -56,13 +61,28 @@ Descriptor::value (const Image & image)
   return value (ImageCache::shared);
 }
 
+Image
+Descriptor::patch (const Vector<float> & value)
+{
+  Image result;
+  return result;
+}
+
 Comparison *
 Descriptor::comparison ()
 {
   return new NormalizedCorrelation;
 }
 
+int
+Descriptor::dimension ()
+{
+  return 0;
+}
+
 void
 Descriptor::serialize (Archive & archive, uint32_t version)
 {
+  archive & monochrome;
+  archive & supportRadial;
 }

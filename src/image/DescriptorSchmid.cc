@@ -50,8 +50,6 @@ DescriptorSchmid::initialize (int scaleCount)
     DescriptorSchmidScale * d = new DescriptorSchmidScale (scale);
     descriptors.push_back (d);
   }
-
-  dimension = descriptors[0]->dimension;
 }
 
 DescriptorSchmid::~DescriptorSchmid ()
@@ -93,6 +91,12 @@ DescriptorSchmid::findScale (float sigma)
   }
 
   return result;
+}
+
+int
+DescriptorSchmid::dimension ()
+{
+  return descriptors[0]->dimension ();
 }
 
 void
