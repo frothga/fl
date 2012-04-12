@@ -287,7 +287,7 @@ namespace fl
   /**
 	 Wrapper for libsvm.
    **/
-  class SVM : public ClusterMethod
+  class SHARED SVM : public ClusterMethod
   {
   public:
 	SVM ();
@@ -300,14 +300,18 @@ namespace fl
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
 
-	static svm_node *    vector2node (const Vector<float> & datum);
-	static Vector<float> node2vector (const svm_node * node);
+	svm_node *           vector2kernel (const Vector<float> & datum);
+	static svm_node *    vector2node   (const Vector<float> & datum);
+	static Vector<float> node2vector   (const svm_node * node);
 
 	void serialize (Archive & archive, uint32_t version);
 	static uint32_t serializeVersion;
 
 	svm_parameter parameters;
 	svm_model *   model;
+
+	Metric * metric;  ///< If nonzero, then use precumputed kernel
+	std::vector<Vector<float> > data;  ///< Copy of training data.  Used to form vectors against precomputed kernel, when it is in use.
   };
 #endif
 }

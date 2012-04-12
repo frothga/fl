@@ -24,6 +24,7 @@ uint32_t SVM::serializeVersion = 0;
 SVM::SVM ()
 {
   model = 0;
+  metric = 0;
 
   parameters.svm_type     = C_SVC;
   parameters.kernel_type  = RBF;
@@ -45,13 +46,15 @@ SVM::SVM ()
 SVM::~SVM ()
 {
   clear ();
+  if (metric) delete metric;
 }
 
 void
 SVM::clear ()
 {
-  if (! model) return;
+  data.clear ();
 
+  if (! model) return;
   if (model->free_sv == 0  &&  model->SV)  // meaning that we allocated the support vectors rather than libSVM
   {
 	for (int i = 0; i < model->l; i++) free (model->SV[i]);
@@ -70,10 +73,28 @@ SVM::run (const vector<Vector<float> > & data, const vector<int> & classes)
   problem.l = min (data.size (), classes.size ());
   problem.y = (double *)    malloc (problem.l * sizeof (double));
   problem.x = (svm_node **) malloc (problem.l * sizeof (svm_node *));
-  for (int i = 0; i < problem.l; i++)
+  for (int i = 0; i < problem.l; i++) problem.y[i] = classes[i];
+  if (metric)
   {
-	problem.y[i] = classes[i];
-	problem.x[i] = vector2node (data[i]);
+	MatrixPacked<float> gram (problem.l);
+	for (int i = 0; i < problem.l; i++)
+	{
+	  for (int j = i; j < problem.l; j++)
+	  {
+		gram(i,j) = metric->value (data[i], data[j]);
+	  }
+
+	  Vector<float> d (problem.l + 1);
+	  d[0] = i + 1;  // one-based
+	  d.region (1) = gram.column (i);
+	  problem.x[i] = vector2node (d);
+	}
+	this->data = data;
+	parameters.kernel_type = PRECOMPUTED;
+  }
+  else
+  {
+	for (int i = 0; i < problem.l; i++) problem.x[i] = vector2node (data[i]);
   }
 
   // Solve it
@@ -107,7 +128,7 @@ SVM::classify (const Vector<float> & point)
 {
   if (! model) return 0;
 
-  svm_node * x = vector2node (point);
+  svm_node * x = vector2kernel (point);
   int result = (int) roundp (svm_predict (model, x));
   free (x);
   return result;
@@ -124,7 +145,7 @@ SVM::distribution (const Vector<float> & point)
 	return result;
   }
 
-  svm_node * x = vector2node (point);
+  svm_node * x = vector2kernel (point);
   Vector<double> probabilities (classCount ());
   svm_predict_probability (model, x, &probabilities[0]);
   free (x);
@@ -148,11 +169,45 @@ SVM::representative (int group)
   for (int i = 0; i < group; i++) lo += model->nSV[i];
   int hi = lo + model->nSV[group];
 
-  for (int i = lo; i < hi; i++)
+  if (metric)
   {
-	if (svm_predict (model, model->SV[i]) == group) return node2vector (model->SV[i]);
+	for (int i = lo; i < hi; i++)
+	{
+	  int index = (int) roundp (model->SV[i]->value);
+	  svm_node * x = vector2kernel (data[index]);
+	  if (svm_predict (model, x) == group)
+	  {
+		free (x);
+		return data[index];
+	  }
+	}
+	return data[(int) roundp (model->SV[lo]->value)];
   }
-  return node2vector (model->SV[lo]);
+  else
+  {
+	for (int i = lo; i < hi; i++)
+	{
+	  if (svm_predict (model, model->SV[i]) == group) return node2vector (model->SV[i]);
+	}
+	return node2vector (model->SV[lo]);
+  }
+}
+
+svm_node *
+SVM::vector2kernel (const Vector<float> & datum)
+{
+  if (metric)
+  {
+	int count = data.size ();
+	Vector<float> p (count + 1);
+	p[0] = 0;
+	for (int i = 1; i <= count; i++) p[i] = metric->value (datum, data[i-1]);
+	return vector2node (p);
+  }
+  else
+  {
+	return vector2node (datum);
+  }
 }
 
 svm_node *
@@ -281,4 +336,7 @@ SVM::serialize (Archive & archive, uint32_t version)
   }
 
   model->free_sv = 0;
+
+  archive & metric;
+  archive & data;
 }
