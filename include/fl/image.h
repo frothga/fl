@@ -335,7 +335,7 @@ namespace fl
 	 iterate over the buffer directly using pointers.
    **/
   template<class T>
-  class SHARED ImageOf : public Image
+  class ImageOf : public Image
   {
   public:
 	// These constructors blindly wrap the constructors of Image, without
