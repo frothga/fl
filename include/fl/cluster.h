@@ -300,9 +300,9 @@ namespace fl
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
 
-	svm_node *           vector2kernel (const Vector<float> & datum);
-	static svm_node *    vector2node   (const Vector<float> & datum);
-	static Vector<float> node2vector   (const svm_node * node);
+	svm_node *           vector2precomputed (const Vector<float> & datum);
+	static svm_node *    vector2node        (const Vector<float> & datum);
+	static Vector<float> node2vector        (const svm_node * node);
 
 	void serialize (Archive & archive, uint32_t version);
 	static uint32_t serializeVersion;

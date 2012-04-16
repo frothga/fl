@@ -84,10 +84,16 @@ SVM::run (const vector<Vector<float> > & data, const vector<int> & classes)
 		gram(i,j) = metric->value (data[i], data[j]);
 	  }
 
-	  Vector<float> d (problem.l + 1);
-	  d[0] = i + 1;  // one-based
-	  d.region (1) = gram.column (i);
-	  problem.x[i] = vector2node (d);
+	  svm_node * nodes = (svm_node *) malloc ((problem.l + 2) * sizeof (svm_node));
+	  nodes->index = 0;
+	  nodes->value = i + 1;
+	  for (int j = 1; j <= problem.l; j++)
+	  {
+		nodes[j].index = j;
+		nodes[j].value = gram(i,j-1);
+	  }
+	  nodes[problem.l+1].index = -1;
+	  problem.x[i] = nodes;
 	}
 	this->data = data;
 	parameters.kernel_type = PRECOMPUTED;
@@ -128,7 +134,7 @@ SVM::classify (const Vector<float> & point)
 {
   if (! model) return 0;
 
-  svm_node * x = vector2kernel (point);
+  svm_node * x = vector2precomputed (point);
   int result = (int) roundp (svm_predict (model, x));
   free (x);
   return result;
@@ -145,7 +151,7 @@ SVM::distribution (const Vector<float> & point)
 	return result;
   }
 
-  svm_node * x = vector2kernel (point);
+  svm_node * x = vector2precomputed (point);
   Vector<double> probabilities (classCount ());
   svm_predict_probability (model, x, &probabilities[0]);
   free (x);
@@ -174,7 +180,7 @@ SVM::representative (int group)
 	for (int i = lo; i < hi; i++)
 	{
 	  int index = (int) roundp (model->SV[i]->value);
-	  svm_node * x = vector2kernel (data[index]);
+	  svm_node * x = vector2precomputed (data[index]);
 	  if (svm_predict (model, x) == group)
 	  {
 		free (x);
@@ -194,15 +200,20 @@ SVM::representative (int group)
 }
 
 svm_node *
-SVM::vector2kernel (const Vector<float> & datum)
+SVM::vector2precomputed (const Vector<float> & datum)
 {
   if (metric)
   {
 	int count = data.size ();
-	Vector<float> p (count + 1);
-	p[0] = 0;
-	for (int i = 1; i <= count; i++) p[i] = metric->value (datum, data[i-1]);
-	return vector2node (p);
+	svm_node * nodes = (svm_node *) malloc ((count + 2) * sizeof (svm_node));
+	nodes->index = 0;
+	for (int i = 1; i <= count; i++)
+	{
+	  nodes[i].index = i;
+	  nodes[i].value = metric->value (datum, data[i-1]);
+	}
+	nodes[count+1].index = -1;
+	return nodes;
   }
   else
   {
