@@ -494,6 +494,7 @@ namespace fl
 	MatrixPacked ();
 	MatrixPacked (const int rows);  ///< columns = rows
 	MatrixPacked (const MatrixAbstract<T> & that);
+	void detach ();  ///< Set the state of this matrix as if it has no data.  Releases any memory.
 	virtual uint32_t classID () const;
 
 	virtual MatrixAbstract<T> * clone (bool deep = false) const;

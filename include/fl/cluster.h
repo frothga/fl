@@ -30,10 +30,6 @@ for details.
 #  include <pthread.h>
 #endif
 
-#ifdef HAVE_LIBSVM
-#  include <libsvm/svm.h>
-#endif
-
 #undef SHARED
 #ifdef _MSC_VER
 #  ifdef flNumeric_EXPORTS
@@ -283,10 +279,6 @@ namespace fl
 
   // SVM ----------------------------------------------------------------------
 
-#ifdef HAVE_LIBSVM
-  /**
-	 Wrapper for libsvm.
-   **/
   class SHARED SVM : public ClusterMethod
   {
   public:
@@ -300,20 +292,68 @@ namespace fl
 	virtual int           classCount ();
 	virtual Vector<float> representative (int group);
 
-	svm_node *           vector2precomputed (const Vector<float> & datum);
-	static svm_node *    vector2node        (const Vector<float> & datum);
-	static Vector<float> node2vector        (const svm_node * node);
+	void project (const Vector<float> & point, MatrixPacked<float> & result);
 
 	void serialize (Archive & archive, uint32_t version);
 	static uint32_t serializeVersion;
 
-	svm_parameter parameters;
-	svm_model *   model;
+	class Cluster
+	{
+	public:
+	  void strip ();
+	  void serialize (Archive & archive, uint32_t version);
+	  static uint32_t serializeVersion;
 
-	Metric * metric;  ///< If nonzero, then use precumputed kernel
-	std::vector<Vector<float> > data;  ///< Copy of training data.  Used to form vectors against precomputed kernel, when it is in use.
+	  // Runtime data
+	  int index;
+	  std::vector<Vector<float> > support;
+
+	  // Temporary training data
+	  Vector<bool> used;  ///< Same dimension as support.  Indicates which vectors are needed by at least one Decision
+	};
+
+	class Train
+	{
+	public:
+	  Train (int index, Vector<float> & x, float y);
+
+	  int index;  ///< Position in Q.  Each dimension contains all "I" support vectors, then all "J" vectors.  These never move in this version.
+	  float alpha;
+	  float p;
+	  Vector<float> * x;  ///< input data point
+	  float y;  ///< Category.  Always +1 or -1
+	  float g;  ///< Gradient
+	};
+
+	class Decision
+	{
+	public:
+	  void train (SVM * svm);
+	  float selectWorkingSet (Train * & i, Train * & j);  ///< @return true if we are already optimal
+	  void strip ();
+
+	  void serialize (Archive & archive, uint32_t version);
+	  static uint32_t serializeVersion;
+
+	  // Runtime data
+	  Cluster * I;
+	  Cluster * J;
+	  Vector<float> alphaI;  ///< weights for support vectors in first class
+	  Vector<float> alphaJ;  ///< weights for support vectors in second class
+	  float rho;  ///< decision boundary
+	  Vector<float> p;  ///< probability coefficients
+
+	  // Temporary training data
+	  std::vector<Train *> trainset;
+	  MatrixPacked<float> Q;
+	  static float tau;
+	};
+
+	std::vector<Cluster *> clusters;
+	std::vector<Decision *> decisions;
+	Metric * metric;
+	float epsilon;  ///< convergence threshold
   };
-#endif
 }
 
 

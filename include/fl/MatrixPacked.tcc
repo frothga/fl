@@ -56,6 +56,14 @@ namespace fl
   }
 
   template<class T>
+  void
+  MatrixPacked<T>::detach ()
+  {
+	data.detach ();
+	rows_ = 0;
+  }
+
+  template<class T>
   uint32_t
   MatrixPacked<T>::classID () const
   {

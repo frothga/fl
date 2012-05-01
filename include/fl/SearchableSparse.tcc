@@ -107,6 +107,13 @@ namespace fl
   }
 
   template<class T>
+  Search<T> *
+  SearchableSparse<T>::search ()
+  {
+	return new LevenbergMarquardtSparseBK<T>;
+  }
+
+  template<class T>
   void
   SearchableSparse<T>::gradient (const Vector<T> & point, Vector<T> & result, const Vector<T> * currentValue)
   {

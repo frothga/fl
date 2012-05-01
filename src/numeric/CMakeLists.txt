@@ -58,10 +58,6 @@ if (FFTW_FOUND)
   )
 endif (FFTW_FOUND)
 
-if (LIBSVM_FOUND)
-  set (maybeSVM SVM.cc)
-endif (LIBSVM_FOUND)
-
 add_library (flNumeric
   ../../include/fl/math.h
   ../../include/fl/random.h
@@ -167,7 +163,7 @@ add_library (flNumeric
   KMeans.cc
   KMeansTree.cc
   Kohonen.cc
-  ${maybeSVM}
+  SVM.cc
 
   # Neural Networks
   ../../include/fl/neural.h

@@ -36,6 +36,20 @@ namespace fl
   }
 
   template<class T>
+  Search<T> *
+  SearchableNumeric<T>::search ()
+  {
+	return new LevenbergMarquardt<T>;
+  }
+
+  template<class T>
+  void
+  SearchableNumeric<T>::start (Vector<T> & point)
+  {
+	point.clear ();
+  }
+
+  template<class T>
   void
   SearchableNumeric<T>::gradient (const Vector<T> & point, Vector<T> & result, const Vector<T> * currentValue)
   {

@@ -149,7 +149,6 @@ find_package (Freetype)
 find_package (X11)
 find_package (OpenGL)
 find_package (FFMPEG)
-find_package (LIBSVM)
 
 if    (CMAKE_USE_PTHREADS_INIT)
   add_definitions (-DHAVE_PTHREAD)
@@ -213,11 +212,6 @@ if    (FFMPEG_FOUND)
   add_definitions (-DHAVE_FFMPEG)
   set (FL_LIBRARIES ${FL_LIBRARIES} ${FFMPEG_LIBRARIES})
 endif (FFMPEG_FOUND)
-
-if    (LIBSVM_FOUND)
-  add_definitions (-DHAVE_LIBSVM)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${LIBSVM_LIBRARIES})
-endif (LIBSVM_FOUND)
 
 set (FL_LIBRARIES ${FL_LIBRARIES}
   ${OPENGL_LIBRARIES}

@@ -38,6 +38,8 @@ namespace fl
 {
   // General search interface -------------------------------------------------
 
+  template<class T> class SHARED Search;
+
   /**
 	 Encapsulates a vector function.
 	 Depending on what search method you choose, it may be a value function
@@ -49,6 +51,8 @@ namespace fl
   public:
 	virtual ~Searchable () {}
 
+	virtual Search<T> * search () = 0;  ///< @return The best search method for the current problem, or at least a reasonable choice.  The caller is responsible for destroying the object.
+	virtual void        start (Vector<T> & point) = 0;  ///< @return a reasonable starting point for the search.  If this class accepts difference search space dimensionalities, then point must be pre-sized correctly.  Otherwise it is resized automatically.
 	/**
 	   Determine the number of elements in the result of value(), and
 	   configure this object accordingly.  A Search will call this function
@@ -79,6 +83,8 @@ namespace fl
   public:
 	SearchableNumeric (T perturbation = -1);
 
+	virtual Search<T> * search ();  ///< Return LevenbergMarquardt
+	virtual void start    (      Vector<T> & point);  ///< Zeros whatever point is passed in.
 	virtual void gradient (const Vector<T> & point, Vector<T> &       result, const Vector<T> * currentValue = NULL);  ///< Uses sum of squares to reduce this to a single-valued function.
 	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);
 	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);
@@ -108,6 +114,7 @@ namespace fl
 	virtual MatrixSparse<bool> interaction () = 0;
 	virtual void cover ();  ///< Compute a structurally orthogonal cover of the Jacobian based on the interaction matrix.  Called automatically by jacobian() whenever the current cover is stale.
 
+	virtual Search<T> * search ();  ///< Return LevenbergMarquardtSparseBK
 	virtual void gradient (const Vector<T> & point, Vector<T> &       result, const Vector<T> * currentValue = NULL);  ///< Compute gradient as 2 * ~jacobian * value.  In a sparse system, this should require fewer calls to value() than the direct method.
 	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);  ///< Compute the Jacobian using the cover.
 	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);  ///< Ditto, but omit zero entries.
