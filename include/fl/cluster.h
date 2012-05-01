@@ -318,6 +318,7 @@ namespace fl
 	  Train (int index, Vector<float> & x, float y);
 
 	  int index;  ///< Position in Q.  Each dimension contains all "I" support vectors, then all "J" vectors.  These never move in this version.
+	  bool computed;  ///< Indicates that associated column in Q exists.
 	  float alpha;
 	  float p;
 	  Vector<float> * x;  ///< input data point
@@ -330,6 +331,7 @@ namespace fl
 	public:
 	  void train (SVM * svm);
 	  float selectWorkingSet (Train * & i, Train * & j);  ///< @return true if we are already optimal
+	  void computeColumn (Train * i);  ///< compute associated column in Q
 	  void strip ();
 
 	  void serialize (Archive & archive, uint32_t version);
@@ -344,6 +346,7 @@ namespace fl
 	  Vector<float> p;  ///< probability coefficients
 
 	  // Temporary training data
+	  SVM * svm;
 	  std::vector<Train *> trainset;
 	  MatrixPacked<float> Q;
 	  static float tau;

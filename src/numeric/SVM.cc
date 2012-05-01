@@ -281,6 +281,7 @@ SVM::Train::Train (int index, Vector<float> & x, float y)
   x (&x),
   y (y)
 {
+  computed = false;
   alpha = 0;
   p = -1;
   g = p;
@@ -432,6 +433,7 @@ void
 SVM::Decision::train (SVM * svm)
 {
   // Initialize structures
+  this->svm = svm;
   const int countI = I->support.size ();
   const int countJ = J->support.size ();
   const int total  = countI + countJ;
@@ -439,14 +441,11 @@ SVM::Decision::train (SVM * svm)
   for (int i = 0;      i < countI; i++) trainset[i] = new Train (i, I->support[i],         1);
   for (int i = countI; i < total;  i++) trainset[i] = new Train (i, J->support[i-countI], -1);
   Q.resize (total);
+  Q.clear (NAN);
   for (int i = 0; i < total; i++)
   {
 	Train * a = trainset[i];
-	for (int j = i; j < total; j++)
-	{
-	  Train * b = trainset[j];
-	  Q(i,j) = a->y * b->y * svm->metric->value (*a->x, *b->x);
-	}
+	Q(i,i) = svm->metric->value (*a->x, *a->x);
   }
 
   // Optimization loop
@@ -460,6 +459,9 @@ SVM::Decision::train (SVM * svm)
 	Train * i;
 	Train * j;
 	if (selectWorkingSet (i, j) < svm->epsilon) break;
+
+	computeColumn (i);
+	computeColumn (j);
 
 	float deltaI = i->alpha;
 	float deltaJ = j->alpha;
@@ -642,6 +644,7 @@ SVM::Decision::selectWorkingSet (Train * & i, Train * & j)
 	}
   }
 
+  computeColumn (i);
   float Gmax2 = -INFINITY;
   float Omin = INFINITY;
   for (int k = 0; k < trainset.size (); k++)
@@ -690,6 +693,20 @@ SVM::Decision::selectWorkingSet (Train * & i, Train * & j)
   }
 
   return Gmax + Gmax2;
+}
+
+void
+SVM::Decision::computeColumn (Train * i)
+{
+  if (i->computed) return;
+  i->computed = true;
+
+  for (int k = 0; k < trainset.size (); k++)
+  {
+	Train * j = trainset[k];
+	float & q = Q(i->index,j->index);
+	if (isnan (q)) q = i->y * j->y * svm->metric->value (*i->x, *j->x);
+  }
 }
 
 void
