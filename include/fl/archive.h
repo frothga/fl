@@ -16,6 +16,7 @@ for details.
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <set>
 #include <map>
 #include <typeinfo>
 #include <iostream>
@@ -284,6 +285,33 @@ namespace fl
 		data.resize (count);  // possibly blow away existing data
 	  }
 	  for (uint32_t i = 0; i < count; i++) (*this) & data[i];
+	  return (*this);
+	}
+
+	template<class T>
+	Archive & operator & (std::set<T> & data)
+	{
+	  uint32_t count = data.size ();
+	  (*this) & count;
+	  if (in)
+	  {
+		data.clear ();  // blow away existing data
+		for (uint32_t i = 0; i < count; i++)
+		{
+		  T item;
+		  (*this) & item;
+		  data.insert (data.end (), item);
+		}
+	  }
+	  else
+	  {
+		typename std::set<T>::iterator it;
+		for (it = data.begin (); it != data.end (); it++)
+		{
+		  T item = *it;
+		  (*this) & item;
+		}
+	  }
 	  return (*this);
 	}
 
