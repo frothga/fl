@@ -19,6 +19,7 @@ for details.
 
 #include <set>
 #include <ostream>
+#include <stddef.h>
 
 #undef SHARED
 #ifdef _MSC_VER
@@ -69,6 +70,7 @@ namespace fl
 	ImageCache ();
 	~ImageCache ();
 	void clear ();
+	void clear (ImageCacheEntry * query);  ///< Remove all entries that have equivalent ordering to query.  query itself will also be deleted.
 
 	void setOriginal (const Image & image, float scale = 0.5f);  ///< Compares image to original.  If same, does nothing.  If different, flushes cache and sets new original.
 	ImageCacheEntry * get        (ImageCacheEntry * query);  ///< Ensures that the desired datum exists.  Assumes ownership of the query object.  Result will be equivalent, but may or may not be the same as the query object.
@@ -83,6 +85,7 @@ namespace fl
 	  }
 	};
 
+	ptrdiff_t memory;  ///< Total amount of memory used by entries.  Must be maintained any time an entry is added or removed.
 	EntryPyramid * original;  ///< Base image from which all others are derived
 	typedef std::set<ImageCacheEntry *, EntryCompare> cacheType;
 	cacheType cache;

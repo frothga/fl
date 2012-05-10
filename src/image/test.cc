@@ -1418,6 +1418,12 @@ testImageCache ()
 
   cerr << cache << endl;
 
+  // Test clear(query)
+  cache.clear (new EntryPyramid (GrayFloat, 8.11));
+  if (cache.cache.size () != 6) throw "Failed to remove entry from cache.";
+
+  cerr << cache << endl;
+
   cout << "ImageCache passes" << endl;
 # else
   cout << "WARNING: ImageCache not tested due to lack of JPEG." << endl;

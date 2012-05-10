@@ -65,6 +65,7 @@ ImageCache ImageCache::shared;  // instantiate the global cache
 ImageCache::ImageCache ()
 {
   original = 0;
+  memory = 0;
 }
 
 ImageCache::~ImageCache ()
@@ -82,6 +83,21 @@ ImageCache::clear ()
   }
   cache.clear ();
   original = 0;
+  memory = 0;
+}
+
+void
+ImageCache::clear (ImageCacheEntry * query)
+{
+  cacheType::iterator i = cache.find (query);
+  while (i != cache.end ())
+  {
+	memory -= (ptrdiff_t) ceil ((*i)->image.width * (*i)->image.height * (*i)->image.format->depth);
+	delete *i;
+	cache.erase (i);
+	i = cache.find (query);
+  }
+  delete query;
 }
 
 void
@@ -94,6 +110,7 @@ ImageCache::setOriginal (const Image & image, float scale)
   }
   original = new EntryPyramid (image, scale);
   cache.insert (original);
+  memory += (ptrdiff_t) ceil (image.width * image.height * image.format->depth);
 }
 
 ImageCacheEntry *
@@ -107,6 +124,7 @@ ImageCache::get (ImageCacheEntry * query)
   }
   query->generate (*this);
   cache.insert (i, query);
+  memory += (ptrdiff_t) ceil (query->image.width * query->image.height * query->image.format->depth);
   return query;
 }
 
