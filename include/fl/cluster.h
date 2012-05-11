@@ -49,6 +49,8 @@ namespace fl
   class SHARED ClusterMethod
   {
   public:
+	virtual ~ClusterMethod ();
+
 	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes) = 0;  ///< Peform either supervised learning or clustering on collection of points.  @param classes may be arbitrary size, but association with data points starts at index 0.
 	virtual void          run (const std::vector< Vector<float> > & data);  ///< Convenience method for calling run() in unsupervised case.
 	virtual int           classify (const Vector<float> & point) = 0;  ///< Determine the single best class of given point.  Returns -1 if no class is suitable.
@@ -195,7 +197,7 @@ namespace fl
   {
   public:
 	KMeansTree (int K = 0, int depth = 1);
-	~KMeansTree ();
+	virtual ~KMeansTree ();
 	void clear ();
 
 	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
@@ -259,7 +261,7 @@ namespace fl
   public:
 	Agglomerate ();
 	Agglomerate (Metric * comparison, float distanceLimit, int minClusters = 1);
-	~Agglomerate ();
+	virtual ~Agglomerate ();
 
 	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
 	using ClusterMethod::run;
@@ -283,7 +285,7 @@ namespace fl
   {
   public:
 	SVM ();
-	~SVM ();
+	virtual ~SVM ();
 	void clear ();
 
 	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);

@@ -25,6 +25,10 @@ using namespace std;
 
 uint32_t ClusterMethod::serializeVersion = 0;
 
+ClusterMethod::~ClusterMethod ()
+{
+}
+
 void
 ClusterMethod::run (const vector<Vector<float> > & data)
 {
