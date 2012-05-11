@@ -106,7 +106,8 @@ DescriptorSpatialPyramid::value (ImageCache & cache)
   }
 
   // Normalize
-  result /= result.region (0, 0, classCount-1, 0).norm (1);
+  float total = result.region (0, 0, classCount-1, 0).norm (1);
+  if (total) result /= total;
   int base = 0;
   int increment = 1;
   float weight = pow (2.0, 1 - levels);
