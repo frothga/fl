@@ -35,9 +35,9 @@ for details.
 
 namespace fl
 {
-  class ImageCacheEntry;
-  class ImageCache;
-  class EntryPyramid;
+  class SHARED ImageCacheEntry;
+  class SHARED ImageCache;
+  class SHARED EntryPyramid;
 
   /**
 	 Stores the result of a completed computation on an image.
