@@ -344,8 +344,8 @@ public:
 	for (int i = 0; i < dim; i++)
 	{
 	  float & a = fApB[i];
-	  if (a >= 0) result[i] =  t[i]      * a + log1p (exp (-a));
-	  else        result[i] = (t[i] - 1) * a + log1p (exp ( a));
+	  if (a >= 0) result[i] =  t[i]      * a + log (1 + exp (-a));
+	  else        result[i] = (t[i] - 1) * a + log (1 + exp ( a));
 	}
   }
   virtual void gradient (const Vector<float> & point, Vector<float> & result, const Vector<float> * currentValue = NULL)
