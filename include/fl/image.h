@@ -635,6 +635,15 @@ namespace fl
 	virtual void          setGray (void * pixel, float gray) const;
   };
 
+  class SHARED PixelFormatGrayAlphaChar : public PixelFormat
+  {
+  public:
+	PixelFormatGrayAlphaChar ();
+
+	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
+  };
+
   class SHARED PixelFormatGrayShort : public PixelFormat
   {
   public:
@@ -659,6 +668,15 @@ namespace fl
 
 	unsigned short grayMask;  ///< Indicates what (contiguous) bit in the pixel actually carry intensity info.
 	int grayShift;  ///< How many bits to shift grayMask to align the msb with bit 15.
+  };
+
+  class SHARED PixelFormatGrayAlphaShort : public PixelFormat
+  {
+  public:
+	PixelFormatGrayAlphaShort ();
+
+	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
   };
 
   class SHARED PixelFormatGrayFloat : public PixelFormat
@@ -926,7 +944,9 @@ namespace fl
   };
 
   extern SHARED PixelFormatGrayChar           GrayChar;
+  extern SHARED PixelFormatGrayAlphaChar      GrayAlphaChar;
   extern SHARED PixelFormatGrayShort          GrayShort;
+  extern SHARED PixelFormatGrayAlphaShort     GrayAlphaShort;
   extern SHARED PixelFormatGrayFloat          GrayFloat;
   extern SHARED PixelFormatGrayDouble         GrayDouble;
   extern SHARED PixelFormatRGBAChar           RGBAChar;

@@ -77,7 +77,9 @@ PixelFormatPackedYUV::YUVindex tableUYVYUYVYYYYY[] =
 
 
 PixelFormatGrayChar           fl::GrayChar;
+PixelFormatGrayAlphaChar      fl::GrayAlphaChar;
 PixelFormatGrayShort          fl::GrayShort;
+PixelFormatGrayAlphaShort     fl::GrayAlphaShort;
 PixelFormatGrayFloat          fl::GrayFloat;
 PixelFormatGrayDouble         fl::GrayDouble;
 PixelFormatRGBAChar           fl::RGBAChar;
@@ -115,27 +117,29 @@ PixelFormatRGBABits fl::BGRAChar (4, 0xFF00,   0xFF0000, 0xFF000000, 0xFF);
 // when the last external reference releases them.
 static int incrementRefcount ()
 {
-  GrayChar    .PointerPolyReferenceCount++;
-  GrayShort   .PointerPolyReferenceCount++;
-  GrayFloat   .PointerPolyReferenceCount++;
-  GrayDouble  .PointerPolyReferenceCount++;
-  RGBAChar    .PointerPolyReferenceCount++;
-  RGBAShort   .PointerPolyReferenceCount++;
-  RGBAFloat   .PointerPolyReferenceCount++;
-  RGBChar     .PointerPolyReferenceCount++;
-  RGBShort    .PointerPolyReferenceCount++;
-  UYVY        .PointerPolyReferenceCount++;
-  YUYV        .PointerPolyReferenceCount++;
-  UYV         .PointerPolyReferenceCount++;
-  UYYVYY      .PointerPolyReferenceCount++;
-  UYVYUYVYYYYY.PointerPolyReferenceCount++;
-  YUV420      .PointerPolyReferenceCount++;
-  YUV411      .PointerPolyReferenceCount++;
-  HLSFloat    .PointerPolyReferenceCount++;
-  B5G5R5      .PointerPolyReferenceCount++;
-  BGRChar     .PointerPolyReferenceCount++;
-  BGRChar4    .PointerPolyReferenceCount++;
-  BGRAChar    .PointerPolyReferenceCount++;
+  GrayChar      .PointerPolyReferenceCount++;
+  GrayAlphaChar .PointerPolyReferenceCount++;
+  GrayShort     .PointerPolyReferenceCount++;
+  GrayAlphaShort.PointerPolyReferenceCount++;
+  GrayFloat     .PointerPolyReferenceCount++;
+  GrayDouble    .PointerPolyReferenceCount++;
+  RGBAChar      .PointerPolyReferenceCount++;
+  RGBAShort     .PointerPolyReferenceCount++;
+  RGBAFloat     .PointerPolyReferenceCount++;
+  RGBChar       .PointerPolyReferenceCount++;
+  RGBShort      .PointerPolyReferenceCount++;
+  UYVY          .PointerPolyReferenceCount++;
+  YUYV          .PointerPolyReferenceCount++;
+  UYV           .PointerPolyReferenceCount++;
+  UYYVYY        .PointerPolyReferenceCount++;
+  UYVYUYVYYYYY  .PointerPolyReferenceCount++;
+  YUV420        .PointerPolyReferenceCount++;
+  YUV411        .PointerPolyReferenceCount++;
+  HLSFloat      .PointerPolyReferenceCount++;
+  B5G5R5        .PointerPolyReferenceCount++;
+  BGRChar       .PointerPolyReferenceCount++;
+  BGRChar4      .PointerPolyReferenceCount++;
+  BGRAChar      .PointerPolyReferenceCount++;
 
   return 1;
 }
@@ -1229,6 +1233,36 @@ PixelFormatGrayChar::setGray (void * pixel, float gray) const
 }
 
 
+// class PixelFormatGrayAlphaChar ---------------------------------------------
+
+PixelFormatGrayAlphaChar::PixelFormatGrayAlphaChar ()
+{
+  planes     = 1;
+  depth      = 2;
+  precedence = 2;  // same as GrayShort
+  monochrome = true;
+  hasAlpha   = true;
+}
+
+unsigned int
+PixelFormatGrayAlphaChar::getRGBA (void * pixel) const
+{
+  uint32_t t = *((unsigned char *) pixel);
+  return (t << 24) | (t << 16) | (t << 8) | *((unsigned char *) pixel + 1);
+}
+
+void
+PixelFormatGrayAlphaChar::setRGBA (void * pixel, unsigned int rgba) const
+{
+  uint32_t r = (rgba & 0xFF000000) >> 16;
+  uint32_t g = (rgba &   0xFF0000) >>  8;
+  uint32_t b =  rgba &     0xFF00;
+  uint32_t a =  rgba &       0xFF;
+
+  *((uint16_t *) pixel) = (a << 8) | (((r * redWeight + g * greenWeight + b * blueWeight) / totalWeight + 0x80) >> 8);
+}
+
+
 // class PixelFormatGrayShort -------------------------------------------------
 
 PixelFormatGrayShort::PixelFormatGrayShort (unsigned short grayMask)
@@ -1461,6 +1495,38 @@ PixelFormatGrayShort::setGray (void * pixel, float gray) const
 {
   gray = min (max (gray, 0.0f), 1.0f);
   *((unsigned short *) pixel) = (unsigned short) (grayMask * gray);
+}
+
+
+// class PixelFormatGrayAlphaShort --------------------------------------------
+
+PixelFormatGrayAlphaShort::PixelFormatGrayAlphaShort ()
+{
+  planes     = 1;
+  depth      = 4;
+  precedence = 2;  // same as GrayShort
+  monochrome = true;
+  hasAlpha   = true;
+}
+
+unsigned int
+PixelFormatGrayAlphaShort::getRGBA (void * pixel) const
+{
+  uint32_t t = lutFloat2Char[*(uint16_t *) pixel];
+  uint32_t a = *((uint16_t *) pixel + 1);
+  return (t << 24) | (t << 16) | (t << 8) | (a >> 8);
+}
+
+void
+PixelFormatGrayAlphaShort::setRGBA (void * pixel, unsigned int rgba) const
+{
+  float r = lutChar2Float[ rgba             >> 24];
+  float g = lutChar2Float[(rgba & 0xFF0000) >> 16];
+  float b = lutChar2Float[(rgba &   0xFF00) >>  8];
+  uint32_t a =             rgba &     0xFF;
+
+  float t = r * redToY + g * greenToY + b * blueToY;
+  *((uint32_t *) pixel) = (0x1010000 * a) | ((uint16_t) (0xFFFF * t));
 }
 
 

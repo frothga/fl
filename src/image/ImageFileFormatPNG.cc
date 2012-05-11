@@ -142,7 +142,8 @@ ImageFileDelegatePNG::read (Image & image, int x, int y, int width, int height)
 		else if (depth == 16) format = &RGBAShort;
 		break;
 	  case PNG_COLOR_TYPE_GRAY_ALPHA:
-		// Currently no PixelFormat defined to support this
+		if      (depth == 8)  format = &GrayAlphaChar;
+		else if (depth == 16) format = &GrayAlphaShort;
 		break;
 	}
   }
