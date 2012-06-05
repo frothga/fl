@@ -36,6 +36,11 @@ IntensityStatistics::IntensityStatistics (bool ignoreZeros)
 Image
 IntensityStatistics::filter (const Image & image)
 {
+  if (*image.format != GrayChar  &&  *image.format != GrayFloat  &&  *image.format != GrayDouble)
+  {
+	return filter (image * GrayFloat);
+  }
+
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
   if (! imageBuffer) throw "IntensityStatistics can only handle packed buffers for now";
 
@@ -100,10 +105,6 @@ IntensityStatistics::filter (const Image & image)
   else if (*image.format == GrayChar)
   {
 	addup (unsigned char);
-  }
-  else
-  {
-	filter (image * GrayFloat);
   }
 
   average       = s1 / n;
