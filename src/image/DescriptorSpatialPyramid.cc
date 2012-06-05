@@ -63,19 +63,19 @@ DescriptorSpatialPyramid::value (ImageCache & cache)
   for (p.scale = firstScale; p.scale <= lastScale; p.scale *= 2)
   {
 	// Tesselate image
-	float sp = descriptor->supportRadial * p.scale * 2;
-	float l = sp - 0.5;
-	float t = sp - 0.5;
-	float r = w - 0.5 - sp;
-	float b = h - 0.5 - sp;
+	double sp = descriptor->supportRadial * p.scale * 2;
+	double l = sp - 0.5;
+	double t = sp - 0.5;
+	double r = w - 0.5 - sp;
+	double b = h - 0.5 - sp;
 	if (r < l  ||  b < t) break;
-	float step = sp / substeps;
-	float stepsX = ceil ((r - l) / step);
-	float stepX  = (r - l) / stepsX;
-	float stepsY = ceil ((b - t) / step);
-	float stepY  = (b - t) / stepsY;
-	r += FLT_EPSILON;  // for rouding errors during loop below
-	b += FLT_EPSILON;
+	double step = sp / substeps;
+	double stepsX = ceil ((r - l) / step);
+	double stepX  = (r - l) / stepsX;
+	double stepsY = ceil ((b - t) / step);
+	double stepY  = (b - t) / stepsY;
+	r += 1e-6;  // for rouding errors during loop below
+	b += 1e-6;
 	//cerr << p.scale << " " << l << " " << t << " " << r << " " << b << " " << stepX << " " << stepY << " " << stepsX << " " << stepsY << endl;
 
 	// Gather descriptors and increment histogram bins
