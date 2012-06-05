@@ -168,14 +168,8 @@ testFactory ()
   Factory<A>::add<B> ("b");
   Factory<A>::add<C> ("c");
 
-  B b;
-  ofstream ofs ("testBaseFile", ios::binary);
-  Factory<A>::write (ofs, b);
-  ofs.close ();
-
-  ifstream ifs ("testBaseFile", ios::binary);
-  A * a = Factory<A>::read (ifs);
-  if (typeid (*a) != typeid (b))
+  A * a = Factory<A>::create ("b");
+  if (typeid (*a) != typeid (B))
   {
 	cerr << "Unexpected class retrieved from stream" << endl;
 	throw "Factory fails";

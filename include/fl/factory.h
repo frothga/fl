@@ -164,15 +164,6 @@ namespace fl
 	  return (B *) (*entry->second) ();
 	}
 
-	static B * read (std::istream & stream)
-	{
-	  std::string name;
-	  getline (stream, name);
-	  B * result = (B *) create (name);
-	  result->read (stream);  // Since read() is virtual, this will call the appropriate stream extractor for the derived class.
-	  return result;
-	}
-
 	static const char * classID (const B & data)
 	{
 	  std::string name = typeid (data).name ();
@@ -184,12 +175,6 @@ namespace fl
 		throw error.c_str ();
 	  }
 	  return entry->second.c_str ();
-	}
-
-	static void write (std::ostream & stream, const B & data)
-	{
-	  stream << classID (data) << std::endl;
-	  data.write (stream);  // Since "data" is a reference, this should call write() on the derived class rather than the base class.
 	}
 
 	static productRegistry registry;
