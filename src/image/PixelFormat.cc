@@ -622,7 +622,7 @@ PixelFormatPalette::PixelFormatPalette (unsigned char * r, unsigned char * g, un
   planes     = -1;
   depth      = bits / 8.0f;
   precedence = 0;  // Below everything.
-  monochrome = false;
+  monochrome = true;  // will be evaluated as palette is scanned
   hasAlpha   = false;
   this->bits = bits;
   bytes      = 1;
@@ -650,6 +650,7 @@ PixelFormatPalette::PixelFormatPalette (unsigned char * r, unsigned char * g, un
   while (p < end)
   {
 	*p++ = (*r << 24) | (*g << 16) | (*b << 8) | 0xFF;
+	if (*r != *g  ||  *g != *b) monochrome = false;
 	r += stride;
 	g += stride;
 	b += stride;
