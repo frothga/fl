@@ -145,7 +145,7 @@ namespace fl
 
 	// Run it
 	execute (cachedPlan, (typename traitsFFTW<T>::complex *) Idata, (typename traitsFFTW<T>::complex *) Odata);
-	if (normalize) O /= std::sqrt (rows * cols);
+	if (normalize) O /= std::sqrt ((T) rows * cols);
   }
 
   template<class T>
@@ -237,7 +237,7 @@ namespace fl
 
 	// Run it
 	execute (cachedPlan, (T *) Idata, (typename traitsFFTW<T>::complex *) Odata);
-	if (normalize) O /= std::sqrt (rows * cols);
+	if (normalize) O /= std::sqrt ((T) rows * cols);
   }
 
   template<class T>
@@ -337,7 +337,7 @@ namespace fl
 
 	// Run it
 	execute (cachedPlan, (typename traitsFFTW<T>::complex *) Idata, (T *) Odata);
-	if (normalize) O /= std::sqrt (rows * cols);
+	if (normalize) O /= std::sqrt ((T) rows * cols);
   }
 
   template<class T>
