@@ -73,6 +73,6 @@ GaussianDerivativeSecond::GaussianDerivativeSecond (int xy1, int xy2, double sig
 
   // When (if) adding code for GrayChar, be sure to keep size at least 3 * sigma.
 
-  *this <<= temp * format;
+  *((Image *) this) = temp * format;
   normalFloats ();
 }

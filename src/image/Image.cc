@@ -111,18 +111,6 @@ Image::write (ostream & stream, const std::string & formatName) const
   file.write (*this);
 }
 
-Image &
-Image::operator <<= (const Image & that)
-{
-  buffer    = that.buffer;
-  format    = that.format;
-  width     = that.width;
-  height    = that.height;
-  timestamp = that.timestamp;
-
-  return *this;
-}
-
 void
 Image::copyFrom (const Image & that)
 {

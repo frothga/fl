@@ -105,6 +105,6 @@ GaussianDerivativeThird::GaussianDerivativeThird (int xy1, int xy2, int xy3, dou
 	}
   }
 
-  *this <<= temp * format;
+  *((Image *) this) = temp * format;
   normalFloats ();
 }

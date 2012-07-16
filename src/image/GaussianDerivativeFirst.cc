@@ -65,6 +65,6 @@ GaussianDerivativeFirst::GaussianDerivativeFirst (int xy, double sigmaX, double 
 	}
   }
 
-  *this <<= temp * format;
+  *((Image *) this) = temp * format;
   normalFloats ();
 }

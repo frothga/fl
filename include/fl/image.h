@@ -66,7 +66,6 @@ namespace fl
 	void write (const std::string & fileName, const std::string & formatName = "") const;  ///< Write image to fileName.
 	void write (std::ostream & stream, const std::string & formatName = "pgm") const;
 
-	Image & operator <<= (const Image & that);  ///< Direct assignment by shallow copy.  Same semantics as "=".  By using a different operator than "=", we allow subclasses to inherit this function.
 	void copyFrom (const Image & that);  ///< Duplicates another Image.  Copy all raster info into private buffer, and copy all other metadata.
 	void copyFrom (void * block, int width, int height, const PixelFormat & format);  ///< Copy from a non-Image source.  Determine size of buffer in bytes as width x height x depth.
 	void attach (void * block, int width, int height, const PixelFormat & format);  ///< Binds to an external block of memory.
@@ -343,15 +342,20 @@ namespace fl
 	ImageOf ()
 	{
 	  memory = 0;
+	  stride = 0;
 	}
+
 	ImageOf (const PixelFormat & format) : Image (format)
 	{
 	  memory = 0;
+	  stride = 0;
 	}
+
 	ImageOf (int width, int height) : Image (width, height)
 	{
-	  memory = (T *) buffer->pixel (0, 0);
+	  selfBind ();
 	}
+
 	ImageOf (int width, int height, const PixelFormat & format) : Image (width, height, format)
 	{
 	  if (! (PixelBufferPacked *) buffer)
@@ -363,8 +367,9 @@ namespace fl
 		}
 		throw "Can't wrap non-packed type images";
 	  }
-	  memory = (T *) buffer->pixel (0, 0);
+	  selfBind ();
 	}
+
 	ImageOf (const Image & that) : Image (that)
 	{
 	  if (! (PixelBufferPacked *) buffer)
@@ -376,65 +381,67 @@ namespace fl
 		}
 		throw "Can't wrap non-packed type images";
 	  }
-	  memory = (T *) buffer->pixel (0, 0);
+	  selfBind ();
+	}
+
+	void selfBind ()
+	{
+  	  memory = (char *) buffer->pixel (0, 0);
+	  PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
+	  if (! pbp) throw "Can't wrap non-packed type images";
+	  stride = pbp->stride;
 	}
 
 	void read (const std::string & fileName)
 	{
 	  Image::read (fileName);
-  	  memory = (T *) buffer->pixel (0, 0);
+	  selfBind ();
 	}
 
 	void read (std::istream & stream)
 	{
 	  Image::read (stream);
-  	  memory = (T *) buffer->pixel (0, 0);
+	  selfBind ();
 	}
 
 	ImageOf<T> & operator = (const Image & that)
 	{
 	  Image::operator = (that);
-  	  memory = (T *) buffer->pixel (0, 0);
-	  return *this;
-	}
-
-	ImageOf<T> & operator <<= (const Image & that)
-	{
-	  Image::operator <<= (that);
-  	  memory = (T *) buffer->pixel (0, 0);
+	  selfBind ();
 	  return *this;
 	}
 
 	void copyFrom (const Image & that)
 	{
 	  Image::copyFrom (that);
-  	  memory = (T *) buffer->pixel (0, 0);
+	  selfBind ();
 	}
 
 	void copyFrom (void * block, int width, int height, const PixelFormat & format)
 	{
 	  Image::copyFrom (block, width, height, format);
-  	  memory = (T *) buffer->pixel (0, 0);
+	  selfBind ();
 	}
 
 	void attach (void * block, int width, int height, const PixelFormat & format)
 	{
 	  Image::attach (buffer, width, height, format);
-  	  memory = (T *) buffer->pixel (0, 0);
+	  selfBind ();
 	}
 
 	void resize (int width, int height, bool preserve = false)
 	{
 	  Image::resize (width, height, preserve);
-	  memory = (T *) buffer->pixel (0, 0);
+	  selfBind ();
 	}
 
 	T & operator () (int x, int y) const
 	{
-	  return memory[y * width + x];
+	  return ((T *) (memory + y * stride))[x];
 	}
 
-	T * memory;  ///< Points to the memory block held by Image::buffer, and must be constructed from it.
+	char * memory;  ///< Points to the memory block held by Image::buffer, and must be constructed from it.
+	int stride;
   };
 
   template<class T>

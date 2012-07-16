@@ -45,6 +45,6 @@ Gaussian2D::Gaussian2D (double sigma, const BorderMode mode, const PixelFormat &
 	}
   }
 
-  *this <<= temp * format;
+  *((Image *) this) = temp * format;
   normalFloats ();
 }

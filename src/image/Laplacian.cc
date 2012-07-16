@@ -85,7 +85,7 @@ Laplacian::Laplacian (double sigma, const BorderMode mode, const PixelFormat & f
 	}
   }
 
-  *this <<= temp * format;
+  *((Image *) this) = temp * format;
   normalFloats ();
 }
 

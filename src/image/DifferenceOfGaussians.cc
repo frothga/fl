@@ -46,7 +46,7 @@ DifferenceOfGaussians::DifferenceOfGaussians (double sigmaPlus, double sigmaMinu
 	}
   }
 
-  *this <<= temp * format;
+  *((Image *) this) = temp * format;
   normalFloats ();
   scale = crossover (sigmaPlus, sigmaMinus);
 }
