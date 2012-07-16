@@ -31,6 +31,12 @@ ImageCacheEntry::generate (ImageCache & cache)
   // construction time.
 }
 
+ptrdiff_t
+ImageCacheEntry::memory () const
+{
+  return (ptrdiff_t) ceil (image.width * image.height * image.format->depth);
+}
+
 bool
 ImageCacheEntry::compare (const ImageCacheEntry & that) const
 {
@@ -92,7 +98,7 @@ ImageCache::clear (ImageCacheEntry * query)
   cacheType::iterator i = cache.find (query);
   while (i != cache.end ())
   {
-	memory -= (ptrdiff_t) ceil ((*i)->image.width * (*i)->image.height * (*i)->image.format->depth);
+	memory -= (*i)->memory ();
 	delete *i;
 	cache.erase (i);
 	i = cache.find (query);
@@ -110,7 +116,7 @@ ImageCache::setOriginal (const Image & image, float scale)
   }
   original = new EntryPyramid (image, scale);
   cache.insert (original);
-  memory += (ptrdiff_t) ceil (image.width * image.height * image.format->depth);
+  memory += original->memory ();
 }
 
 ImageCacheEntry *
@@ -124,7 +130,7 @@ ImageCache::get (ImageCacheEntry * query)
   }
   query->generate (*this);
   cache.insert (i, query);
-  memory += (ptrdiff_t) ceil (query->image.width * query->image.height * query->image.format->depth);
+  memory += query->memory ();
   return query;
 }
 
