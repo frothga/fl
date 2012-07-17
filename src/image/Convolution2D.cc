@@ -68,7 +68,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 		ImageOf<float> result (image.width, image.height, *format);
 		result.clear ();
 		ImageOf<float> that (image);
-		float * buffer = (float *) pbp->memory;
+		float * buffer = (float *) pbp->base ();
 
 		for (int y = midY; y < result.height - midY; y++)
 		{
@@ -93,7 +93,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 		ImageOf<double> result (image.width, image.height, *format);
 		result.clear ();
 		ImageOf<double> that (image);
-		double * buffer = (double *) pbp->memory;
+		double * buffer = (double *) pbp->base ();
 
 		for (int y = midY; y < result.height - midY; y++)
 		{
@@ -124,7 +124,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<float> result (image.width, image.height, *format);
 		ImageOf<float> that (image);
-		float * buffer = (float *) pbp->memory;
+		float * buffer = (float *) pbp->base ();
 
 		for (int y = 0; y < result.height; y++)
 		{
@@ -153,7 +153,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<double> result (image.width, image.height, *format);
 		ImageOf<double> that (image);
-		double * buffer = (double *) pbp->memory;
+		double * buffer = (double *) pbp->base ();
 
 		for (int y = midY; y < result.height - midY; y++)
 		{
@@ -189,7 +189,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<float> result (image.width, image.height, *format);
 		ImageOf<float> that (image);
-		float * buffer = (float *) pbp->memory;
+		float * buffer = (float *) pbp->base ();
 
 		for (int y = 0; y < result.height; y++)
 		{
@@ -221,7 +221,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<double> result (image.width, image.height, *format);
 		ImageOf<double> that (image);
-		double * buffer = (double *) pbp->memory;
+		double * buffer = (double *) pbp->base ();
 
 		for (int y = midY; y < result.height - midY; y++)
 		{
@@ -266,7 +266,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<float> result (image.width - lastH, image.height - lastV, *format);
 		ImageOf<float> that (image);
-		float * buffer = (float *) pbp->memory;
+		float * buffer = (float *) pbp->base ();
 
 		for (int y = 0; y < result.height; y++)
 		{
@@ -290,7 +290,7 @@ ConvolutionDiscrete2D::filter (const Image & image)
 	  {
 		ImageOf<double> result (image.width - lastH, image.height - lastV, *format);
 		ImageOf<double> that (image);
-		double * buffer = (double *) pbp->memory;
+		double * buffer = (double *) pbp->base ();
 
 		for (int y = 0; y < result.height; y++)
 		{
@@ -364,7 +364,7 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 	if (*format == GrayFloat)
 	{
 	  ImageOf<float> that (image);
-	  float * buffer = (float *) pbp->memory;
+	  float * buffer = (float *) pbp->base ();
 	  float result = 0;
 	  float weight = 0;
 	  for (int v = vl; v <= vh; v++)
@@ -381,7 +381,7 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 	else if (*format == GrayDouble)
 	{
 	  ImageOf<double> that (image);
-	  double * buffer = (double *) pbp->memory;
+	  double * buffer = (double *) pbp->base ();
 	  double result = 0;
 	  double weight = 0;
 	  for (int v = vl; v <= vh; v++)
@@ -405,7 +405,7 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 	if (*format == GrayFloat)
 	{
 	  ImageOf<float> that (image);
-	  float * buffer = (float *) pbp->memory;
+	  float * buffer = (float *) pbp->base ();
 	  float result = 0;
 	  for (int v = vl; v <= vh; v++)
 	  {
@@ -419,7 +419,7 @@ ConvolutionDiscrete2D::response (const Image & image, const Point & p) const
 	else if (*format == GrayDouble)
 	{
 	  ImageOf<double> that (image);
-	  double * buffer = (double *) pbp->memory;
+	  double * buffer = (double *) pbp->base ();
 	  double result = 0;
 	  for (int v = vl; v <= vh; v++)
 	  {
@@ -445,7 +445,7 @@ ConvolutionDiscrete2D::normalFloats ()
 
   if (*format == GrayFloat)
   {
-	float * a   = (float *) pbp->memory;
+	float * a   = (float *) pbp->base ();
 	float * end = a + width * height;
 	while (a < end)
 	{
@@ -458,7 +458,7 @@ ConvolutionDiscrete2D::normalFloats ()
   }
   else if (*format == GrayDouble)
   {
-	double * a   = (double *) pbp->memory;
+	double * a   = (double *) pbp->base ();
 	double * end = a + width * height;
 	while (a < end)
 	{
@@ -486,11 +486,11 @@ ConvolutionDiscrete2D::serialize (Archive & archive, uint32_t version)
 	else         format = &GrayDouble;
 	resize (width, height);  // should still work, even though width and height are unchanged
 	PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
-	archive.in->read ((char *) pbp->memory, height * pbp->stride);
+	archive.in->read ((char *) pbp->base (), height * pbp->stride);
   }
   else
   {
 	PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
-	archive.out->write ((char *) pbp->memory, height * pbp->stride);
+	archive.out->write ((char *) pbp->base (), height * pbp->stride);
   }
 }

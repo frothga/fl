@@ -306,7 +306,7 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
   if (pixelsOffset < count) throw "Invalid pixel offset";
   if (pixelsOffset > count) in->ignore (pixelsOffset - count);
   uint8_t * buffer;
-  if      (PixelBufferPacked * pbp = (PixelBufferPacked *) image.buffer) buffer = (uint8_t *) pbp->memory;
+  if      (PixelBufferPacked * pbp = (PixelBufferPacked *) image.buffer) buffer = (uint8_t *) pbp->base ();
   else if (PixelBufferGroups * pbg = (PixelBufferGroups *) image.buffer) buffer = (uint8_t *) pbg->memory;
   else    throw "Unexpected buffer type";
   if (compression == 0  ||  compression == 3)  // BI_RGB, BI_BITFIELDS
@@ -544,7 +544,7 @@ ImageFileDelegateBMP::write (const Image & image, int ignorex, int ignorey)
 	}
 	PixelBufferPacked * pbp = (PixelBufferPacked *) image.buffer;
 	assert (pbp);
-	buffer = (char *) pbp->memory;
+	buffer = (char *) pbp->base ();
 	stride = pbp->stride;
   }
   else if (const PixelFormatPalette * pf = (const PixelFormatPalette *) image.format)

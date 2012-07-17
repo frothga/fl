@@ -831,11 +831,11 @@ ConvolutionDiscrete1D::filter (const Image & image)
   {
 	if (*format == GrayFloat)
 	{
-	  convolveH ((float *) k->memory, (float *) i->memory, (float *) o->memory, mode, width, image.width, image.height, i->stride, o->stride);
+	  convolveH ((float *) k->base (), (float *) i->base (), (float *) o->base (), mode, width, image.width, image.height, i->stride, o->stride);
 	}
 	else if (*format == GrayDouble)
 	{
-	  convolveH ((double *) k->memory, (double *) i->memory, (double *) o->memory, mode, width, image.width, image.height, i->stride, o->stride);
+	  convolveH ((double *) k->base (), (double *) i->base (), (double *) o->base (), mode, width, image.width, image.height, i->stride, o->stride);
 	}
 	else
 	{
@@ -846,11 +846,11 @@ ConvolutionDiscrete1D::filter (const Image & image)
   {
 	if (*format == GrayFloat)
 	{
-	  convolveV ((float *) k->memory, (float *) i->memory, (float *) o->memory, mode, width, image.width, image.height, i->stride, o->stride);
+	  convolveV ((float *) k->base (), (float *) i->base (), (float *) o->base (), mode, width, image.width, image.height, i->stride, o->stride);
 	}
 	else if (*format == GrayDouble)
 	{
-	  convolveV ((double *) k->memory, (double *) i->memory, (double *) o->memory, mode, width, image.width, image.height, i->stride, o->stride);
+	  convolveV ((double *) k->base (), (double *) i->base (), (double *) o->base (), mode, width, image.width, image.height, i->stride, o->stride);
 	}
 	else
 	{
@@ -882,12 +882,12 @@ ConvolutionDiscrete1D::response (const Image & image, const Point & p) const
 
   PixelBufferPacked * kernelBuffer = (PixelBufferPacked *) buffer;
   if (! kernelBuffer) throw "kernel must be a packed buffer";
-  Pointer kernel = kernelBuffer->memory;
+  void * kernel = kernelBuffer->base ();
 
   if (image.width == 0  ||  image.height == 0) return 0;
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
   if (! imageBuffer) throw "Convolution1D only handles packed buffers for now";
-  char * input = (char *) imageBuffer->memory;
+  char * input = (char *) imageBuffer->base ();
 
   int last = width - 1;
   int mid = width / 2;
@@ -999,7 +999,7 @@ ConvolutionDiscrete1D::normalFloats ()
 {
   if (*format == GrayFloat)
   {
-	float * a   = (float *) ((PixelBufferPacked *) buffer)->memory;
+	float * a   = (float *) ((PixelBufferPacked *) buffer)->base ();
 	float * end = a + width;
 	while (a < end)
 	{
@@ -1012,7 +1012,7 @@ ConvolutionDiscrete1D::normalFloats ()
   }
   else if (*format == GrayDouble)
   {
-	double * a   = (double *) ((PixelBufferPacked *) buffer)->memory;
+	double * a   = (double *) ((PixelBufferPacked *) buffer)->base ();
 	double * end = a + width;
 	while (a < end)
 	{

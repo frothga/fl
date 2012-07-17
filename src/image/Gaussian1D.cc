@@ -33,7 +33,7 @@ Gaussian1D::Gaussian1D (double sigma, const BorderMode mode, const PixelFormat &
   h = max (h, 1);
   resize (2 * h + 1, 1);
 
-  double * kernel = (double *) ((PixelBufferPacked *) buffer)->memory;
+  double * kernel = (double *) ((PixelBufferPacked *) buffer)->base ();
   double last = erf (0.5 * a);
   kernel[h] = C * 2.0 * last;
   for (int i = 1; i <= h; i++)

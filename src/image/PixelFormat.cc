@@ -358,12 +358,12 @@ PixelFormat::fromAny (const Image & image, Image & result) const
   PixelBufferPacked * i = (PixelBufferPacked *) central.buffer;
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i);
-  unsigned int * source = (unsigned int *) i->memory;
+  unsigned int * source = (unsigned int *) i->base ();
   const int step        = i->stride - central.width * sizeof (unsigned int);
   if (o)
   {
 	const int destDepth    = (int) depth;
-	unsigned char * dest   = (unsigned char *) o->memory;
+	unsigned char * dest   = (unsigned char *) o->base ();
 	unsigned char * end    = dest + o->stride * result.height;
 	unsigned char * rowEnd = dest + result.width * destDepth;
 	while (dest < end)
@@ -874,8 +874,8 @@ PixelFormatGrayChar::fromGrayShort (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned short * fromPixel = (unsigned short *) i->memory;
-  unsigned char *  toPixel   = (unsigned char *)  o->memory;
+  unsigned short * fromPixel = (unsigned short *) i->base ();
+  unsigned char *  toPixel   = (unsigned char *)  o->base ();
   unsigned char *  end       = toPixel + result.width * result.height;
   const int grayShift = ((const PixelFormatGrayShort *) image.format)->grayShift;
   const int step = i->stride - image.width * sizeof (short);
@@ -897,8 +897,8 @@ PixelFormatGrayChar::fromGrayFloat (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  float *         fromPixel = (float *)         i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  float *         fromPixel = (float *)         i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (float);
   while (toPixel < end)
@@ -920,8 +920,8 @@ PixelFormatGrayChar::fromGrayDouble (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  double *        fromPixel = (double *)        i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  double *        fromPixel = (double *)        i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (double);
   while (toPixel < end)
@@ -943,8 +943,8 @@ PixelFormatGrayChar::fromRGBAChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * 4;
   while (toPixel < end)
@@ -984,8 +984,8 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 
   #define RGBBits2GrayChar(fromSize) \
   { \
-    unsigned fromSize * fromPixel = (unsigned fromSize *) i->memory; \
-    unsigned char * toPixel       = (unsigned char *)     o->memory; \
+    unsigned fromSize * fromPixel = (unsigned fromSize *) i->base (); \
+    unsigned char * toPixel       = (unsigned char *)     o->base (); \
     unsigned char * end           = toPixel + result.width * result.height; \
 	const int step = i->stride - image.width * sizeof (fromSize); \
     while (toPixel < end) \
@@ -1018,8 +1018,8 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 	{
 	  const int step = i->stride - image.width * 3;
 #     if BYTE_ORDER == LITTLE_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->memory + i->stride * image.height - step - 3;
-	  unsigned char * begin     = (unsigned char *) o->memory;
+	  unsigned char * fromPixel = (unsigned char *) i->base () + i->stride * image.height - step - 3;
+	  unsigned char * begin     = (unsigned char *) o->base ();
 	  unsigned char * toPixel   = begin + result.width * result.height;
 	  unsigned char * rowBegin  = toPixel - result.width;
 	  // process last pixel
@@ -1055,8 +1055,8 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 		rowBegin -= result.width;
 	  }
 #     elif BYTE_ORDER == BIG_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->memory;
-	  unsigned char * toPixel   = (unsigned char *) o->memory;
+	  unsigned char * fromPixel = (unsigned char *) i->base ();
+	  unsigned char * toPixel   = (unsigned char *) o->base ();
 	  unsigned char * end       = toPixel + result.width * result.height;
 	  unsigned char * rowEnd    = toPixel + result.width;
 	  // process first pixel
@@ -1107,7 +1107,7 @@ PixelFormatGrayChar::fromYCbCr (const Image & image, Image & result) const
   assert (i  &&  o);
 
   unsigned char * fromPixel = (unsigned char *) i->plane0;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height;
   const int step = i->stride0 - image.width;
   while (toPixel < end)
@@ -1124,13 +1124,13 @@ PixelFormatGrayChar::fromYCbCr (const Image & image, Image & result) const
 void
 PixelFormatGrayChar::fromAny (const Image & image, Image & result) const
 {
-  unsigned char * dest = (unsigned char *) ((PixelBufferPacked *) result.buffer)->memory;
+  unsigned char * dest = (unsigned char *) ((PixelBufferPacked *) result.buffer)->base ();
   const PixelFormat * sourceFormat = image.format;
 
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->memory;
+	unsigned char * source = (unsigned char *) i->base ();
 	const int sourceDepth = (int) sourceFormat->depth;
 	const int step = i->stride - image.width * sourceDepth;
 	unsigned char * end = dest + result.width * result.height;
@@ -1322,8 +1322,8 @@ PixelFormatGrayShort::fromGrayChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char *  fromPixel = (unsigned char *)  i->memory;
-  unsigned short * toPixel   = (unsigned short *) o->memory;
+  unsigned char *  fromPixel = (unsigned char *)  i->base ();
+  unsigned short * toPixel   = (unsigned short *) o->base ();
   unsigned short * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width;
   while (toPixel < end)
@@ -1344,8 +1344,8 @@ PixelFormatGrayShort::fromGrayFloat (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  float *          fromPixel = (float *)          i->memory;
-  unsigned short * toPixel   = (unsigned short *) o->memory;
+  float *          fromPixel = (float *)          i->base ();
+  unsigned short * toPixel   = (unsigned short *) o->base ();
   unsigned short * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (float);
   while (toPixel < end)
@@ -1367,8 +1367,8 @@ PixelFormatGrayShort::fromGrayDouble (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  double *         fromPixel = (double *)         i->memory;
-  unsigned short * toPixel   = (unsigned short *) o->memory;
+  double *         fromPixel = (double *)         i->base ();
+  unsigned short * toPixel   = (unsigned short *) o->base ();
   unsigned short * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (double);
   while (toPixel < end)
@@ -1386,13 +1386,13 @@ PixelFormatGrayShort::fromGrayDouble (const Image & image, Image & result) const
 void
 PixelFormatGrayShort::fromAny (const Image & image, Image & result) const
 {
-  unsigned short * dest = (unsigned short *) ((PixelBufferPacked *) result.buffer)->memory;
+  unsigned short * dest = (unsigned short *) ((PixelBufferPacked *) result.buffer)->base ();
   const PixelFormat * sourceFormat = image.format;
 
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->memory;
+	unsigned char * source = (unsigned char *) i->base ();
 	const int sourceDepth = (int) sourceFormat->depth;
 	const int step = i->stride - image.width * sourceDepth;
 	unsigned short * end = dest + image.width * image.height;
@@ -1600,8 +1600,8 @@ PixelFormatGrayFloat::fromGrayChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  float *         toPixel   = (float *)         o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  float *         toPixel   = (float *)         o->base ();
   float *         end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width;
   while (toPixel < end)
@@ -1622,8 +1622,8 @@ PixelFormatGrayFloat::fromGrayShort (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned short * fromPixel = (unsigned short *) i->memory;
-  float *          toPixel   = (float *)          o->memory;
+  unsigned short * fromPixel = (unsigned short *) i->base ();
+  float *          toPixel   = (float *)          o->base ();
   float *          end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (short);
   const float grayMask = ((const PixelFormatGrayShort *) image.format)->grayMask;
@@ -1645,8 +1645,8 @@ PixelFormatGrayFloat::fromGrayDouble (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  double * fromPixel = (double *) i->memory;
-  float *  toPixel   = (float *)  o->memory;
+  double * fromPixel = (double *) i->base ();
+  float *  toPixel   = (float *)  o->base ();
   float *  end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (double);
   while (toPixel < end)
@@ -1667,8 +1667,8 @@ PixelFormatGrayFloat::fromRGBAChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  float *         toPixel   = (float *)         o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  float *         toPixel   = (float *)         o->base ();
   float *         end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * 4;
   while (toPixel < end)
@@ -1693,8 +1693,8 @@ PixelFormatGrayFloat::fromRGBChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  float *         toPixel   = (float *)         o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  float *         toPixel   = (float *)         o->base ();
   float *         end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * 3;
   while (toPixel < end)
@@ -1732,8 +1732,8 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 
   #define RGBBits2GrayFloat(imageSize) \
   { \
-    unsigned imageSize * fromPixel = (unsigned imageSize *) i->memory; \
-    float *              toPixel   = (float *)              o->memory; \
+    unsigned imageSize * fromPixel = (unsigned imageSize *) i->base (); \
+    float *              toPixel   = (float *)              o->base (); \
     float *              end       = toPixel + result.width * result.height; \
 	const int step = i->stride - image.width * sizeof (imageSize); \
 	while (toPixel < end) \
@@ -1766,8 +1766,8 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 	{
 	  const int step = i->stride - image.width * 3;
 #     if BYTE_ORDER == LITTLE_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->memory + i->stride * image.height - step - 3;
-	  float *         begin     = (float *)         o->memory;
+	  unsigned char * fromPixel = (unsigned char *) i->base () + i->stride * image.height - step - 3;
+	  float *         begin     = (float *)         o->base ();
 	  float *         toPixel   = begin + result.width * result.height;
 	  float *         rowBegin  = toPixel - result.width;
 	  // Process last pixel
@@ -1803,8 +1803,8 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 		rowBegin -= result.width;
 	  }
 #     elif BYTE_ORDER == BIG_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->memory;
-	  float *         toPixel   = (float *)         o->memory;
+	  unsigned char * fromPixel = (unsigned char *) i->base ();
+	  float *         toPixel   = (float *)         o->base ();
 	  float *         end       = toPixel + result.width * result.height;
 	  float *         rowEnd    = toPixel + result.width;
 	  // Process first pixel
@@ -1855,7 +1855,7 @@ PixelFormatGrayFloat::fromYCbCr (const Image & image, Image & result) const
   assert (i  &&  o);
 
   unsigned char * fromPixel = (unsigned char *) i->plane0;
-  float *         toPixel   = (float *)         o->memory;
+  float *         toPixel   = (float *)         o->base ();
   float *         end       = toPixel + result.width * result.height;
   const int step = i->stride0 - image.width;
   while (toPixel < end)
@@ -1872,13 +1872,13 @@ PixelFormatGrayFloat::fromYCbCr (const Image & image, Image & result) const
 void
 PixelFormatGrayFloat::fromAny (const Image & image, Image & result) const
 {
-  float * dest = (float *) ((PixelBufferPacked *) result.buffer)->memory;
+  float * dest = (float *) ((PixelBufferPacked *) result.buffer)->base ();
   const PixelFormat * sourceFormat = image.format;
 
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->memory;
+	unsigned char * source = (unsigned char *) i->base ();
 	const int sourceDepth = (int) sourceFormat->depth;
 	const int step = i->stride - image.width * sourceDepth;
 	float * end = dest + image.width * image.height;
@@ -2047,8 +2047,8 @@ PixelFormatGrayDouble::fromGrayChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  double *        toPixel   = (double *)        o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  double *        toPixel   = (double *)        o->base ();
   double *        end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width;
   while (toPixel < end)
@@ -2069,8 +2069,8 @@ PixelFormatGrayDouble::fromGrayShort (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned short * fromPixel = (unsigned short *) i->memory;
-  double *         toPixel   = (double *)         o->memory;
+  unsigned short * fromPixel = (unsigned short *) i->base ();
+  double *         toPixel   = (double *)         o->base ();
   double *         end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (short);
   const double grayMask = ((const PixelFormatGrayShort *) image.format)->grayMask;
@@ -2092,8 +2092,8 @@ PixelFormatGrayDouble::fromGrayFloat (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  float *  fromPixel = (float *)  i->memory;
-  double * toPixel   = (double *) o->memory;
+  float *  fromPixel = (float *)  i->base ();
+  double * toPixel   = (double *) o->base ();
   double * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (float);
   while (toPixel < end)
@@ -2114,8 +2114,8 @@ PixelFormatGrayDouble::fromRGBAChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  double *        toPixel   = (double *)        o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  double *        toPixel   = (double *)        o->base ();
   double *        end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * 4;
   while (toPixel < end)
@@ -2140,8 +2140,8 @@ PixelFormatGrayDouble::fromRGBChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  double *        toPixel   = (double *)        o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  double *        toPixel   = (double *)        o->base ();
   double *        end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * 3;
   while (toPixel < end)
@@ -2179,8 +2179,8 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 
   #define RGBBits2GrayDouble(imageSize) \
   { \
-    unsigned imageSize * fromPixel = (unsigned imageSize *) i->memory; \
-    double *             toPixel   = (double *)             o->memory; \
+    unsigned imageSize * fromPixel = (unsigned imageSize *) i->base (); \
+    double *             toPixel   = (double *)             o->base (); \
     double *             end       = toPixel + result.width * result.height; \
 	const int step = i->stride - image.width * sizeof (imageSize); \
 	while (toPixel < end) \
@@ -2213,8 +2213,8 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 	{
 	  const int step = i->stride - image.width * 3;
 #     if BYTE_ORDER == LITTLE_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->memory + i->stride * image.height - step - 3;
-	  double *        begin     = (double *)        o->memory;
+	  unsigned char * fromPixel = (unsigned char *) i->base () + i->stride * image.height - step - 3;
+	  double *        begin     = (double *)        o->base ();
 	  double *        toPixel   = begin + result.width * result.height;
 	  double *        rowBegin  = toPixel - result.width;
 	  // Process lasst pixel
@@ -2250,8 +2250,8 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 		rowBegin -= result.width;
 	  }
 #     elif BYTE_ORDER == BIG_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->memory;
-	  double *        toPixel   = (double *)        o->memory;
+	  unsigned char * fromPixel = (unsigned char *) i->base ();
+	  double *        toPixel   = (double *)        o->base ();
 	  double *        end       = toPixel + result.width * result.height;
 	  double *        rowEnd    = toPixel + result.width;
 	  // Process first pixel
@@ -2302,7 +2302,7 @@ PixelFormatGrayDouble::fromYCbCr (const Image & image, Image & result) const
   assert (i  &&  o);
 
   unsigned char * fromPixel = (unsigned char *) i->plane0;
-  double *        toPixel   = (double *)        o->memory;
+  double *        toPixel   = (double *)        o->base ();
   double *        end       = toPixel + result.width * result.height;
   const int step = i->stride0 - image.width;
   while (toPixel < end)
@@ -2319,13 +2319,13 @@ PixelFormatGrayDouble::fromYCbCr (const Image & image, Image & result) const
 void
 PixelFormatGrayDouble::fromAny (const Image & image, Image & result) const
 {
-  double * dest = (double *) ((PixelBufferPacked *) result.buffer)->memory;
+  double * dest = (double *) ((PixelBufferPacked *) result.buffer)->base ();
   const PixelFormat * sourceFormat = image.format;
 
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->memory;
+	unsigned char * source = (unsigned char *) i->base ();
 	const int sourceDepth = (int) sourceFormat->depth;
 	const int step = i->stride - image.width * sourceDepth;
 	double * end = dest + image.width * image.height;
@@ -2499,8 +2499,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define Bits2Bits(fromSize,toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned fromSize * fromPixel = (unsigned fromSize *) i->memory; \
-  unsigned toSize *   toPixel   = (unsigned toSize *)   o->memory; \
+  unsigned fromSize * fromPixel = (unsigned fromSize *) i->base (); \
+  unsigned toSize *   toPixel   = (unsigned toSize *)   o->base (); \
   unsigned toSize *   end       = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
@@ -2523,8 +2523,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define GrayFloat2Bits(fromSize,toSize) \
 { \
-  fromSize *        fromPixel = (fromSize *)        i->memory; \
-  unsigned toSize * toPixel   = (unsigned toSize *) o->memory; \
+  fromSize *        fromPixel = (fromSize *)        i->base (); \
+  unsigned toSize * toPixel   = (unsigned toSize *) o->base (); \
   unsigned toSize * end       = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
@@ -2548,8 +2548,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define OddBits2Bits(toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned char *   fromPixel = (unsigned char *)   i->memory + i->stride * image.height - step - 3; \
-  unsigned toSize * begin     = (unsigned toSize *) o->memory; \
+  unsigned char *   fromPixel = (unsigned char *)   i->base () + i->stride * image.height - step - 3; \
+  unsigned toSize * begin     = (unsigned toSize *) o->base (); \
   unsigned toSize * toPixel   = begin + result.width * result.height; \
   unsigned toSize * rowBegin  = toPixel - result.width; \
   toPixel--; \
@@ -2588,8 +2588,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define Bits2OddBits(fromSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned fromSize * fromPixel = (unsigned fromSize *) i->memory; \
-  unsigned char *     toPixel   = (unsigned char *)     o->memory; \
+  unsigned fromSize * fromPixel = (unsigned fromSize *) i->base (); \
+  unsigned char *     toPixel   = (unsigned char *)     o->base (); \
   unsigned char *     end       = toPixel + o->stride * result.height - 3; \
   unsigned int r; \
   unsigned int g; \
@@ -2630,8 +2630,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define OddBits2OddBits(fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned char * fromPixel = (unsigned char *) i->memory; \
-  unsigned char * toPixel   = (unsigned char *) o->memory; \
+  unsigned char * fromPixel = (unsigned char *) i->base (); \
+  unsigned char * toPixel   = (unsigned char *) o->base (); \
   unsigned char * end       = toPixel + o->stride * result.height - 3; \
   unsigned int r; \
   unsigned int g; \
@@ -2676,8 +2676,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define GrayFloat2OddBits(fromSize) \
 { \
-  fromSize *      fromPixel = (fromSize *)      i->memory; \
-  unsigned char * toPixel   = (unsigned char *) o->memory; \
+  fromSize *      fromPixel = (fromSize *)      i->base (); \
+  unsigned char * toPixel   = (unsigned char *) o->base (); \
   unsigned char * end       = toPixel + o->stride * result.height - 3; \
   fromSize v; \
   while (toPixel < end) \
@@ -2712,8 +2712,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define OddBits2Bits(toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned char *   fromPixel = (unsigned char *)   i->memory; \
-  unsigned toSize * toPixel   = (unsigned toSize *) o->memory; \
+  unsigned char *   fromPixel = (unsigned char *)   i->base (); \
+  unsigned toSize * toPixel   = (unsigned toSize *) o->base (); \
   unsigned toSize * end       = toPixel + result.width * result.height; \
   unsigned toSize * rowEnd    = toPixel + result.width; \
   Int2Char t; \
@@ -2751,8 +2751,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define Bits2OddBits(fromSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned fromSize * fromPixel = (unsigned fromSize *) ((char *) i->memory + i->stride * image.height - step) - 1; \
-  unsigned char *     begin     = (unsigned char *) o->memory; \
+  unsigned fromSize * fromPixel = (unsigned fromSize *) ((char *) i->base () + i->stride * image.height - step) - 1; \
+  unsigned char *     begin     = (unsigned char *) o->base (); \
   unsigned char *     toPixel   = begin + o->stride * result.height - 4; \
   unsigned int r; \
   unsigned int g; \
@@ -2794,8 +2794,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define OddBits2OddBits(fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned char * fromPixel = (unsigned char *) i->memory + i->stride * image.height - step - 4; \
-  unsigned char * begin     = (unsigned char *) o->memory; \
+  unsigned char * fromPixel = (unsigned char *) i->base () + i->stride * image.height - step - 4; \
+  unsigned char * begin     = (unsigned char *) o->base (); \
   unsigned char * toPixel   = begin + o->stride * result.height - 4; \
   unsigned int r; \
   unsigned int g; \
@@ -2841,8 +2841,8 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define GrayFloat2OddBits(fromSize) \
 { \
-  fromSize *      fromPixel = (fromSize *) ((char *) i->memory + i->stride * image.height - step) - 1; \
-  unsigned char * begin     = (unsigned char *) o->memory; \
+  fromSize *      fromPixel = (fromSize *) ((char *) i->base () + i->stride * image.height - step) - 1; \
+  unsigned char * begin     = (unsigned char *) o->base (); \
   unsigned char * toPixel   = begin + o->stride * result.height; \
   while (toPixel > begin) \
   { \
@@ -2936,8 +2936,8 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
 
 # define GrayShort2Bits(toSize) \
   { \
-    unsigned short *  fromPixel = (unsigned short *)  i->memory; \
-	unsigned toSize * toPixel   = (unsigned toSize *) o->memory; \
+    unsigned short *  fromPixel = (unsigned short *)  i->base (); \
+	unsigned toSize * toPixel   = (unsigned toSize *) o->base (); \
 	unsigned toSize * end       = toPixel + result.width * result.height; \
 	while (toPixel < end) \
 	{ \
@@ -2965,8 +2965,8 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
     case 3:
 	{
 #     if BYTE_ORDER == LITTLE_ENDIAN
-	  unsigned short * fromPixel = (unsigned short *) i->memory;
-	  unsigned char *  toPixel   = (unsigned char *)  o->memory;
+	  unsigned short * fromPixel = (unsigned short *) i->base ();
+	  unsigned char *  toPixel   = (unsigned char *)  o->base ();
 	  unsigned char *  end       = toPixel + o->stride * result.height - 3;
 	  while (toPixel < end)
 	  {
@@ -2993,8 +2993,8 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
 	  toPixel[1] = t.piece1;
 	  toPixel[2] = t.piece2;
 #     elif BYTE_ORDER == BIG_ENDIAN
-	  unsigned short * fromPixel = (unsigned short *) ((char *) i->memory + i->stride * image.height - step) - 1;
-	  unsigned char *  begin     = (unsigned char *) o->memory;
+	  unsigned short * fromPixel = (unsigned short *) ((char *) i->base () + i->stride * image.height - step) - 1;
+	  unsigned char *  begin     = (unsigned char *) o->base ();
 	  unsigned char *  toPixel   = end + o->stride * result.height - 4;
 	  while (toPixel > begin)
 	  {
@@ -3239,7 +3239,7 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
 
 #define YCbCr2Bits(toSize) \
 { \
-  unsigned toSize * toPixel = (unsigned toSize *) o->memory; \
+  unsigned toSize * toPixel = (unsigned toSize *) o->base (); \
   unsigned toSize * end     = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
@@ -3295,7 +3295,7 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
 	  toBlockRowStep *= 3;
 	  toBlockStep *= 3;
 	  toStep *= 3;
-	  unsigned char * toPixel = (unsigned char *) o->memory;
+	  unsigned char * toPixel = (unsigned char *) o->base ();
 	  unsigned char * end     = toPixel + result.width * result.height * 3;
 	  while (toPixel < end)
 	  {
@@ -3652,8 +3652,8 @@ PixelFormatRGBAChar::fromGrayChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height * 4;
   const int step = i->stride - image.width;
   while (toPixel < end)
@@ -3679,8 +3679,8 @@ PixelFormatRGBAChar::fromGrayFloat (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  float *         fromPixel = (float *)         i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  float *         fromPixel = (float *)         i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height * 4;
   const int step = i->stride - image.width * sizeof (float);
   while (toPixel < end)
@@ -3707,8 +3707,8 @@ PixelFormatRGBAChar::fromGrayDouble (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  double *        fromPixel = (double *)        i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  double *        fromPixel = (double *)        i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height * 4;
   const int step = i->stride - image.width * sizeof (double);
   while (toPixel < end)
@@ -3735,8 +3735,8 @@ PixelFormatRGBAChar::fromRGBChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height * 4;
   const int step = i->stride - image.width * 3;
   while (toPixel < end)
@@ -3769,7 +3769,7 @@ PixelFormatRGBAChar::fromPackedYUV (const Image & image, Image & result) const
 
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (o);
-  unsigned int *       toPixel  = (unsigned int *) o->memory;
+  unsigned int *       toPixel  = (unsigned int *) o->base ();
   const unsigned int * end      = (unsigned int *) ((char *) toPixel + o->stride * result.height);
   const int            rowWidth = (int) roundp (result.width * depth);
   const int            toStep   = o->stride - rowWidth;
@@ -3815,13 +3815,13 @@ PixelFormatRGBAChar::fromAny (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (o);
 
-  unsigned int * dest = (unsigned int *) o->memory;
+  unsigned int * dest = (unsigned int *) o->base ();
 
   if (i)
   {
 	unsigned int * end     = dest + result.width * result.height;
 	unsigned int * rowEnd  = dest + result.width;  // Output of this conversion must have stride == row length.
-	unsigned char * source = (unsigned char *) i->memory;
+	unsigned char * source = (unsigned char *) i->base ();
 	const int sourceDepth  = (int) sourceFormat->depth;
 	const int step         = i->stride - image.width * sourceDepth;
 	while (dest < end)
@@ -3953,8 +3953,8 @@ PixelFormatRGBChar::fromGrayChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height * 3;
   const int step = i->stride - image.width;
   while (toPixel < end)
@@ -3979,8 +3979,8 @@ PixelFormatRGBChar::fromGrayShort (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned short * fromPixel = (unsigned short *) i->memory;
-  unsigned char *  toPixel   = (unsigned char *)  o->memory;
+  unsigned short * fromPixel = (unsigned short *) i->base ();
+  unsigned char *  toPixel   = (unsigned char *)  o->base ();
   unsigned char *  end       = toPixel + result.width * result.height * 3;
   const int grayShift = ((const PixelFormatGrayShort *) image.format)->grayShift;
   const int step = i->stride - image.width * sizeof (short);
@@ -4006,8 +4006,8 @@ PixelFormatRGBChar::fromGrayFloat (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  float *         fromPixel = (float *)         i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  float *         fromPixel = (float *)         i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height * 3;
   const int step = i->stride - image.width * sizeof (float);
   while (toPixel < end)
@@ -4033,8 +4033,8 @@ PixelFormatRGBChar::fromGrayDouble (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  double *        fromPixel = (double *)        i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  double *        fromPixel = (double *)        i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height * 3;
   const int step = i->stride - image.width * sizeof (double);
   while (toPixel < end)
@@ -4060,8 +4060,8 @@ PixelFormatRGBChar::fromRGBAChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->memory;
-  unsigned char * toPixel   = (unsigned char *) o->memory;
+  unsigned char * fromPixel = (unsigned char *) i->base ();
+  unsigned char * toPixel   = (unsigned char *) o->base ();
   unsigned char * end       = toPixel + result.width * result.height * 3;
   const int step = i->stride - image.width * 4;
   while (toPixel < end)
@@ -4327,7 +4327,7 @@ PixelFormatPackedYUV::fromAny (const Image & image, Image & result) const
 
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->memory;
+	unsigned char * source = (unsigned char *) i->base ();
 	const int fromStep = i->stride - image.width * sourceDepth;
 
 	while (address < end)
@@ -4588,7 +4588,7 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
 
 	if (i)
 	{
-	  unsigned char * source = (unsigned char *) i->memory;
+	  unsigned char * source = (unsigned char *) i->base ();
 
 	  const int fromStep         = i->stride * ratioV - image.width * sourceDepth;
 	  const int fromBlockStep    = ratioH * sourceDepth - i->stride * ratioV;
@@ -4684,7 +4684,7 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
 
 	if (i)
 	{
-	  unsigned char * source = (unsigned char *) i->memory;
+	  unsigned char * source = (unsigned char *) i->base ();
 
 	  rowWidth      *= sourceDepth;
 	  blockRowWidth *= sourceDepth;
@@ -4927,7 +4927,7 @@ PixelFormatPlanarYCbCr::fromAny (const Image & image, Image & result) const
 
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->memory;
+	unsigned char * source = (unsigned char *) i->base ();
 	const int sourceDepth = (int) sourceFormat->depth;
 
 	const int fromStep         = i->stride * ratioV - image.width * sourceDepth;

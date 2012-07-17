@@ -1223,7 +1223,7 @@ public:
 	  image.resize (width, height);
 	  if (! width  ||  ! height) return;
 
-	  char * imageMemory = (char *) buffer->memory;
+	  char * imageMemory = (char *) buffer->base ();
 
 	  // If the requested image is anything other than exactly the union of a
 	  // set of blocks in the file, then must use temporary storage to read in
@@ -1231,7 +1231,7 @@ public:
 	  Image block (*image.format);
 	  if (x % NPPBH  ||  y % NPPBV  ||  width != NPPBH  ||  height % NPPBV) block.resize (NPPBH, NPPBV);
 	  int blockSize = (int) roundp (NPPBH * NPPBV * format->depth);
-	  char * blockBuffer = (char *) ((PixelBufferPacked *) block.buffer)->memory;
+	  char * blockBuffer = (char *) ((PixelBufferPacked *) block.buffer)->base ();
 
 	  for (int oy = 0; oy < height;)  // output y: position in output image
 	  {

@@ -32,7 +32,7 @@ GaussianDerivativeSecond1D::GaussianDerivativeSecond1D (double sigma, const Bord
   int h = (int) roundp (Gaussian2D::cutoff * sigma);
   resize (2 * h + 1, 1);
 
-  double * kernel = (double *) ((PixelBufferPacked *) buffer)->memory;
+  double * kernel = (double *) ((PixelBufferPacked *) buffer)->base ();
   for (int i = 0; i <= h; i++)
   {
 	double x2 = i * i;

@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -145,7 +145,7 @@ Transform::filter (const Image & image)
 	{
 	  ImageOf<float> result (w, h, GrayFloat);
 	  ImageOf<float> that (image);
-	  float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
+	  float * r = (float *) ((PixelBufferPacked *) result.buffer)->base ();
 
 	  for (int toY = 0; toY < result.height; toY++)
 	  {
@@ -223,7 +223,7 @@ Transform::filter (const Image & image)
 	{
 	  ImageOf<double> result (w, h, GrayDouble);
 	  ImageOf<double> that (image);
-	  double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
+	  double * r = (double *) ((PixelBufferPacked *) result.buffer)->base ();
 
 	  for (int toY = 0; toY < result.height; toY++)
 	  {
@@ -395,7 +395,7 @@ Transform::filter (const Image & image)
 	{
 	  ImageOf<float> result (w, h, GrayFloat);
 	  ImageOf<float> that (image);
-	  float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
+	  float * r = (float *) ((PixelBufferPacked *) result.buffer)->base ();
 
 	  for (int toY = 0; toY < result.height; toY++)
 	  {
@@ -464,7 +464,7 @@ Transform::filter (const Image & image)
 	{
 	  ImageOf<double> result (w, h, GrayDouble);
 	  ImageOf<double> that (image);
-	  double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
+	  double * r = (double *) ((PixelBufferPacked *) result.buffer)->base ();
 
 	  for (int toY = 0; toY < result.height; toY++)
 	  {

@@ -152,7 +152,7 @@ ImageFileDelegateMatlab::read (Image & image, int x, int y, int width, int heigh
   const int depth = (int) image.format->depth;
   for (int x = 0; x < columns; x++)
   {
-	char * p = (char *) buffer->memory;
+	char * p = (char *) buffer->base ();
 	p += x * depth;
 	for (int y = 0; y < rows; y++)
 	{
@@ -165,7 +165,7 @@ ImageFileDelegateMatlab::read (Image & image, int x, int y, int width, int heigh
   // specialty PixelFormats.
   if (numericType == 2)  // Convert int to float
   {
-	float * i = (float *) buffer->memory;
+	float * i = (float *) buffer->base ();
 	int * j = (int *) i;
 	float * end = i + image.width * image.height;
 	while (i < end)
@@ -226,7 +226,7 @@ ImageFileDelegateMatlab::write (const Image & image, int x, int y)
   const int depth = (int) image.format->depth;
   for (int x = 0; x < image.width; x++)
   {
-	char * p = (char *) buffer->memory;
+	char * p = (char *) buffer->base ();
 	p += x * depth;
 	for (int y = 0; y < image.height; y++)
 	{

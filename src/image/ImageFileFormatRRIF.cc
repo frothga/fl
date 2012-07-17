@@ -76,7 +76,7 @@ ImageFileDelegateRRIF::read (Image & image, int x, int y, int ignorewidth, int i
   if (! buffer) image.buffer = buffer = new PixelBufferPacked;
   image.format = &GrayChar;
   image.resize (width, height);
-  in->read ((char *) buffer->memory, width * height);
+  in->read ((char *) buffer->base (), width * height);
 }
 
 void
@@ -98,11 +98,11 @@ ImageFileDelegateRRIF::write (const Image & image, int x, int y)
   // Body
   if (buffer->stride == width)
   {
-	out->write ((char *) buffer->memory, width * height);
+	out->write ((char *) buffer->base (), width * height);
   }
   else
   {
-	char * row = (char *) buffer->memory;
+	char * row = (char *) buffer->base ();
 	for (uint32_t y = 0; y < height; y++)
 	{
 	  out->write (row, width);

@@ -52,7 +52,7 @@ IntensityStatistics::filter (const Image & image)
 
   #define addup(size) \
   { \
-	size * pixel = (size *) imageBuffer->memory; \
+	size * pixel = (size *) imageBuffer->base ();	\
 	size * end   = pixel + n; \
 	int    step  = imageBuffer->stride - image.width * sizeof (size); \
 	if (ignoreZeros) \

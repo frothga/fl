@@ -461,7 +461,7 @@ InterestMSER::run (ImageCache & cache, InterestPointSet & result)
   //   Pass 1 -- Determine size of each gray-level list
   int listSizes[257];  // includes a 0 at the end to help set up stop points
   memset (listSizes, 0, 257 * sizeof (int));
-  unsigned char * start = (unsigned char *) imageBuffer->memory;
+  unsigned char * start = (unsigned char *) imageBuffer->base ();
   unsigned char * end = start + imageSize;
   unsigned char * pixel = start;
   while (pixel < end)

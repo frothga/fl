@@ -306,7 +306,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   int stride;
   if (PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer)
   {
-	imageMemory = (unsigned char *) buffer->memory;
+	imageMemory = (unsigned char *) buffer->base ();
 	stride = buffer->stride;
   }
   else if (PixelBufferGroups * buffer = (PixelBufferGroups *) image.buffer)
@@ -355,7 +355,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 			block.resize (blockWidth, blockHeight);
 			if (PixelBufferPacked * buffer = (PixelBufferPacked *) block.buffer)
 			{
-			  blockBuffer = (tdata_t) buffer->memory;
+			  blockBuffer = (tdata_t) buffer->base ();
 			}
 			else if (PixelBufferGroups * buffer = (PixelBufferGroups *) block.buffer)
 			{
@@ -398,7 +398,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		  block.resize (imageWidth, rowsPerStrip);
 		  if (PixelBufferPacked * buffer = (PixelBufferPacked *) block.buffer)
 		  {
-			blockBuffer = (tdata_t) buffer->memory;
+			blockBuffer = (tdata_t) buffer->base ();
 		  }
 		  else if (PixelBufferGroups * buffer = (PixelBufferGroups *) block.buffer)
 		  {
@@ -550,7 +550,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 
   PixelBufferPacked * buffer = (PixelBufferPacked *) work.buffer;
   if (! buffer) throw "TIFF only handles packed buffers for now";
-  unsigned char * workBuffer = (unsigned char *) buffer->memory;
+  unsigned char * workBuffer = (unsigned char *) buffer->base ();
 
   uint32 imageWidth  = 0;
   uint32 imageHeight = 0;
@@ -614,7 +614,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 		  if (! blockBuffer)
 		  {
 			block.resize (blockWidth, blockHeight);
-			blockBuffer = (unsigned char *) ((PixelBufferPacked *) block.buffer)->memory;
+			blockBuffer = (unsigned char *) ((PixelBufferPacked *) block.buffer)->base ();
 		  }
 		  block.bitblt (work, ox, oy, ix, iy, w, h);
 		  fillBlock (blockBuffer, blockStride, (int) format->depth, blockWidth, blockHeight, ox, ox + w, oy, oy + h);
@@ -670,7 +670,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 		if (! blockBuffer)
 		{
 		  block.resize (imageWidth, rowsPerStrip);
-		  blockBuffer = (unsigned char *) ((PixelBufferPacked *) block.buffer)->memory;
+		  blockBuffer = (unsigned char *) ((PixelBufferPacked *) block.buffer)->base ();
 		}
 		block.bitblt (work, x, oy, 0, iy, width, h);
 		fillBlock (blockBuffer, blockStride, (int) format->depth, imageWidth, rows, x, x + width, oy, oy + h);

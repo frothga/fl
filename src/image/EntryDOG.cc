@@ -39,9 +39,9 @@ EntryDOG::generate (ImageCache & cache)
   image.format = &GrayFloat;
   image.resize (w, h);
 
-  float * plus  = (float *) ((PixelBufferPacked *) imagePlus .buffer)->memory;
-  float * minus = (float *) ((PixelBufferPacked *) imageMinus.buffer)->memory;
-  float * dest  = (float *) ((PixelBufferPacked *) image     .buffer)->memory;
+  float * plus  = (float *) ((PixelBufferPacked *) imagePlus .buffer)->base ();
+  float * minus = (float *) ((PixelBufferPacked *) imageMinus.buffer)->base ();
+  float * dest  = (float *) ((PixelBufferPacked *) image     .buffer)->base ();
   float * end   = dest + w * h;
   while (dest < end)
   {

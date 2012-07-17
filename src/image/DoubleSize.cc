@@ -35,10 +35,10 @@ DoubleSize::filter (const Image & image)
   Image source = image * GrayFloat;  // This filter only does GrayFloat
 
   Image result (width, height, GrayFloat);
-  float * resultBuffer = (float *) ((PixelBufferPacked *) result.buffer)->memory;
+  float * resultBuffer = (float *) ((PixelBufferPacked *) result.buffer)->base ();
 
   // Double the main body of the source
-  float * p00 = (float *) ((PixelBufferPacked *) source.buffer)->memory;
+  float * p00 = (float *) ((PixelBufferPacked *) source.buffer)->base ();
   float * p10 = p00 + 1;
   float * p01 = p00 + source.width;
   float * p11 = p01 + 1;

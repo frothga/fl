@@ -91,6 +91,7 @@ PixelBuffer::operator == (const PixelBuffer & that) const
 PixelBufferPacked::PixelBufferPacked (int depth)
 {
   planes      = 1;
+  offset      = 0;
   stride      = 0;
   this->depth = depth;
 }
@@ -99,6 +100,7 @@ PixelBufferPacked::PixelBufferPacked (int stride, int height, int depth)
 : memory (stride * height)
 {
   planes       = 1;
+  offset       = 0;
   this->stride = stride;
   this->depth  = depth;
 }
@@ -106,14 +108,16 @@ PixelBufferPacked::PixelBufferPacked (int stride, int height, int depth)
 PixelBufferPacked::PixelBufferPacked (void * buffer, int stride, int height, int depth)
 {
   planes       = 1;
+  offset       = 0;
   this->stride = stride;
   this->depth  = depth;
   this->memory.attach (buffer, stride * height);
 }
 
-PixelBufferPacked::PixelBufferPacked (const Pointer & buffer, int stride, int depth)
+PixelBufferPacked::PixelBufferPacked (const Pointer & buffer, int stride, int depth, int offset)
 {
   planes       = 1;
+  this->offset = offset;
   this->stride = stride;
   this->depth  = depth;
   this->memory = buffer;
@@ -126,7 +130,7 @@ PixelBufferPacked::~PixelBufferPacked ()
 void *
 PixelBufferPacked::pixel (int x, int y)
 {
-  return & ((char *) memory)[y * stride + x * depth];
+  return & ((char *) memory)[offset + y * stride + x * depth];
 }
 
 void
@@ -134,14 +138,16 @@ PixelBufferPacked::resize (int width, int height, const PixelFormat & format, bo
 {
   if (width <= 0  ||  height <= 0)
   {
+	offset = 0;
 	stride = 0;
 	depth  = (int) format.depth;
 	memory.detach ();
 	return;
   }
 
-  if (! preserve  ||  format.depth != depth)
+  if (! preserve  ||  format.depth != depth  ||  offset)
   {
+	offset = 0;
 	depth  = (int) format.depth;
 	stride = width * depth;
 	memory.grow (stride * height + (depth == 3 ? 1 : 0));
@@ -156,7 +162,9 @@ PixelBuffer *
 PixelBufferPacked::duplicate () const
 {
   PixelBufferPacked * result = new PixelBufferPacked (depth);
-  result->memory.copyFrom (memory);
+  ptrdiff_t size = memory.size () - offset;
+  if (size > 0) result->memory.copyFrom (((char *) memory) + offset, size);
+  result->offset = 0;
   result->stride = stride;
   return result;
 }
@@ -173,6 +181,7 @@ PixelBufferPacked::operator == (const PixelBuffer & that) const
   const PixelBufferPacked * p = dynamic_cast<const PixelBufferPacked *> (&that);
   // If p exists, then implicitly the number of planes is 1.
   return    p
+         && offset == p->offset
          && stride == p->stride
          && depth  == p->depth
          && memory == p->memory;
@@ -182,8 +191,15 @@ void
 PixelBufferPacked::copyFrom (void * buffer, int stride, int height, int depth)
 {
   this->memory.copyFrom (buffer, stride * height);
+  offset       = 0;
   this->stride = stride;
   this->depth  = depth;
+}
+
+void *
+PixelBufferPacked::base () const
+{
+  return ((char *) memory) + offset;
 }
 
 

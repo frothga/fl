@@ -56,7 +56,7 @@ DescriptorFilters::prepareFilterMatrix ()
 	int oy = (patchHeight - filters[j].height) / 2;
 	temp.bitblt (filters[j], ox, oy);
 	temp *= rotation;
-	float * buffer = (float *) ((PixelBufferPacked *) temp.buffer)->memory;
+	float * buffer = (float *) ((PixelBufferPacked *) temp.buffer)->base ();
 	for (int k = 0; k < patchWidth * patchHeight; k++)
 	{
 	  filterMatrix (j, k) = buffer[k];

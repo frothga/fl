@@ -86,7 +86,7 @@ TransformGauss::filter (const Image & image)
   {
 	prepareG ();
   }
-  float * g = (float *) ((PixelBufferPacked *) G.buffer)->memory;
+  float * g = (float *) ((PixelBufferPacked *) G.buffer)->base ();
 
   MatrixFixed<double,3,3> H;  // homography from destination image to source image
   int w;
@@ -125,11 +125,11 @@ TransformGauss::filter (const Image & image)
 	if (*image.format == GrayFloat)
 	{
 	  PixelBufferPacked * fromBuffer = (PixelBufferPacked *) image.buffer;
-	  float * fromMemory = (float *) fromBuffer->memory;
+	  float * fromMemory = (float *) fromBuffer->base ();
 	  int fromStride = fromBuffer->stride;
 
 	  ImageOf<float> result (w, h, GrayFloat);  // result is guaranteed to be dense because we construct it ourselves, therefore don't need to worry about stride
-	  float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
+	  float * r = (float *) ((PixelBufferPacked *) result.buffer)->base ();
 
 	  for (int toY = 0; toY < result.height; toY++)
 	  {
@@ -195,11 +195,11 @@ TransformGauss::filter (const Image & image)
 	else if (*image.format == GrayDouble)
 	{
 	  PixelBufferPacked * fromBuffer = (PixelBufferPacked *) image.buffer;
-	  double * fromMemory = (double *) fromBuffer->memory;
+	  double * fromMemory = (double *) fromBuffer->base ();
 	  int fromStride = fromBuffer->stride;
 
 	  ImageOf<double> result (w, h, GrayDouble);
-	  double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
+	  double * r = (double *) ((PixelBufferPacked *) result.buffer)->base ();
 
 	  for (int toY = 0; toY < result.height; toY++)
 	  {

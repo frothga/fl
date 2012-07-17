@@ -221,7 +221,7 @@ namespace fl
 	PixelBufferPacked (int depth = 1);
 	PixelBufferPacked (int stride, int height, int depth);
 	PixelBufferPacked (void * buffer, int stride, int height, int depth);  ///< Binds to an external block of memory.
-	PixelBufferPacked (const Pointer & buffer, int stride, int depth);
+	PixelBufferPacked (const Pointer & buffer, int stride, int depth, int offset = 0);
 	virtual ~PixelBufferPacked ();
 
 	virtual void * pixel (int x, int y);
@@ -231,7 +231,9 @@ namespace fl
 	virtual bool operator == (const PixelBuffer & that) const;
 
 	void copyFrom (void * buffer, int stride, int height, int depth);  ///< Makes a duplicate of the block of memory.
+	void * base () const;
 
+	int offset;
 	int stride;
 	int depth;
 	Pointer memory;

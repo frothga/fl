@@ -159,7 +159,7 @@ ImageFileDelegatePNG::read (Image & image, int x, int y, int width, int height)
   rows = (png_bytep *) malloc (totalHeight * sizeof (png_bytep));
   if (PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer)
   {
-	png_bytep pixel = (png_bytep) buffer->memory;
+	png_bytep pixel = (png_bytep) buffer->base ();
 	for (int y = 0; y < totalHeight; y++)
 	{
 	  rows[y] = pixel;
@@ -257,7 +257,7 @@ ImageFileDelegatePNG::write (const Image & image, int x, int y)
   rows = (png_bytep *) malloc (work.height * sizeof (png_bytep));
   if (PixelBufferPacked * buffer = (PixelBufferPacked *) work.buffer)
   {
-	png_bytep pixel = (png_bytep) buffer->memory;
+	png_bytep pixel = (png_bytep) buffer->base ();
 	for (int y = 0; y < work.height; y++)
 	{
 	  rows[y] = pixel;

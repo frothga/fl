@@ -120,9 +120,9 @@ public:
   Convoluter1D (const Image & image, const Image & kernel, BorderMode mode, bool horizontal)
   {
 	doubleImage = image * GrayDouble;  // assumes image is not double already, and that PixelFormat conversion results in packed buffer with gap between rows
-	this->image  = (double *) ((PixelBufferPacked *) doubleImage.buffer) ->memory;
+	this->image  = (double *) ((PixelBufferPacked *) doubleImage.buffer) ->base ();
 	doubleKernel = kernel * GrayDouble;
-	this->kernel = (double *) ((PixelBufferPacked *) doubleKernel.buffer)->memory;
+	this->kernel = (double *) ((PixelBufferPacked *) doubleKernel.buffer)->base ();
 
 	imageWidth = image.width;
 	lastX = image.width - 1;
@@ -1258,9 +1258,9 @@ testDescriptors ()
   PointAffine pa;
   pa.x = 160;
   pa.y = 120;
-  pa.A(0,0) = 1;
-  pa.A(1,1) = 1;
-  pa.scale = 5;
+  pa.A(0,0) = 10;
+  pa.A(1,1) = 10;
+  pa.scale = 0.5;
 
   DescriptorSIFT sift;
   Vector<float> value = sift.value (image, pa);
@@ -1510,6 +1510,19 @@ testIntensityFilters ()
   cout << "IntensityStatistics and IntensityHistogram pass" << endl;
 }
 
+void
+testInterest (InterestOperator & i, const Image & image, int expected)
+{
+  InterestPointSet points;
+  i.run (image, points);
+  if ((float) abs (points.size () - expected) / expected > 0.1)
+  {
+	cerr << "While testing " << typeid (i).name () << endl;
+	cerr << "  got " << points.size () << " rather than " << expected << endl;
+	throw "InterestOperator fails";
+  }
+}
+
 // Gaussian1D
 // GaussianDerivative1D
 // GaussianDerivativeSecond1D
@@ -1525,33 +1538,22 @@ testInterest ()
   image *= GrayChar;
 
   InterestMSER mser;
+  testInterest (mser, image, 205);
+
   InterestHarrisLaplacian hl;
+  testInterest (hl, image, 841);
+
   InterestHessian s;
+  testInterest (s, image, 5000);
+
 # ifdef HAVE_LAPACK
   InterestDOG dog;
-# endif
-
-  InterestPointSet points;
-  mser.run (image, points);
-  hl  .run (image, points);
-  s   .run (image, points);
-# ifdef HAVE_LAPACK
-  dog .run (image, points);
-  const int expected = 5808;
+  testInterest (dog, image, 58);
 # else
-  const int expected = 5687;
   cout << "WARNING: InterestDOG not tested due to lack of LAPACK" << endl;
 # endif
 
-  int count = points.size ();
-  cerr << "count = " << count << endl;
-  if (abs (count - expected) > 50)
-  {
-	cout << "unexpected point count " << count << "   rather than " << expected << endl;
-	throw "failure in one or more of {InterestDOG, InterestMSER, InterestHarrisLaplacian, InterestHessian} or their dependencies";
-  }
-
-  cout << "InterestDOG, InterestMSER, InterestHarrisLaplacian and InterestHessian pass" << endl;
+  cout << "InterestOperators pass" << endl;
 # else
   cout << "WARNING: Interest operators not tested due to lack of JPEG" << endl;
 # endif

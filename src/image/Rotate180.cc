@@ -39,8 +39,8 @@ Rotate180::filter (const Image & image)
 
   #define transfer(size) \
   { \
-	size * dest   = (size *) ((PixelBufferPacked *) result.buffer)->memory; \
-	size * end    = (size *) imageBuffer->memory; \
+	size * dest   = (size *) ((PixelBufferPacked *) result.buffer)->base (); \
+	size * end    = (size *) imageBuffer->base (); \
 	size * source = end + (image.width * image.height - 1); \
 	while (source >= end) \
 	{ \

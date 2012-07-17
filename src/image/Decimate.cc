@@ -36,8 +36,8 @@ Decimate::filter (const Image & image)
 
   PixelBufferPacked * pbpSource = (PixelBufferPacked *) source.buffer;
   PixelBufferPacked * pbpResult = (PixelBufferPacked *) result.buffer;
-  float * fromPixel = (float *) pbpSource->memory;
-  float * toPixel   = (float *) pbpResult->memory;
+  float * fromPixel = (float *) pbpSource->base ();
+  float * toPixel   = (float *) pbpResult->base ();
   float * end       = toPixel + result.width * result.height;
   int ratioStep = pbpSource->stride * ratioY;
 

@@ -143,7 +143,7 @@ ImageFileDelegatePGM::read (Image & image, int x, int y, int ignorewidth, int ig
   PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
   if (! buffer) image.buffer = buffer = new PixelBufferPacked;
   image.resize (width, height);
-  in->read ((char *) buffer->memory, buffer->stride * height);
+  in->read ((char *) buffer->base (), buffer->stride * height);
 }
 
 void
@@ -183,11 +183,11 @@ ImageFileDelegatePGM::write (const Image & image, int x, int y)
   int rowBytes = image.width * (int) image.format->depth;
   if (buffer->stride == rowBytes)
   {
-	out->write ((char *) buffer->memory, rowBytes * image.height);
+	out->write ((char *) buffer->base (), rowBytes * image.height);
   }
   else
   {
-	char * row = (char *) buffer->memory;
+	char * row = (char *) buffer->base ();
 	for (int y = 0; y < image.height; y++)
 	{
 	  out->write (row, rowBytes);

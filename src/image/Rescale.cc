@@ -40,7 +40,7 @@ Rescale::Rescale (const Image & image, bool useFullRange)
 	b = 0;
 	return;
   }
-  void * start = (void *) imageBuffer->memory;
+  void * start = (void *) imageBuffer->base ();
 
   double lo = INFINITY;
   double hi = -INFINITY;
@@ -97,12 +97,12 @@ Rescale::filter (const Image & image)
 {
   PixelBufferPacked * imageBuffer = (PixelBufferPacked *) image.buffer;
   if (! imageBuffer) return Image (image);
-  void * start = (void *) imageBuffer->memory;
+  void * start = (void *) imageBuffer->base ();
 
   if (*image.format == GrayFloat)
   {
 	Image result (image.width, image.height, *image.format);
-	float * r = (float *) ((PixelBufferPacked *) result.buffer)->memory;
+	float * r = (float *) ((PixelBufferPacked *) result.buffer)->base ();
 	float * i = (float *) start;
 	float * end = i + image.width * image.height;
 	while (i < end)
@@ -114,7 +114,7 @@ Rescale::filter (const Image & image)
   else if (*image.format == GrayDouble)
   {
 	Image result (image.width, image.height, *image.format);
-	double * r = (double *) ((PixelBufferPacked *) result.buffer)->memory;
+	double * r = (double *) ((PixelBufferPacked *) result.buffer)->base ();
 	double * i = (double *) start;
 	double * end = i + image.width * image.height;
 	while (i < end)

@@ -152,10 +152,6 @@ Image::detach ()
 /**
    @todo Deeper support would come from creating a format->roi() function
    similar to format->attach().
-   @todo Deeper support would also come from adding a memory base pointer
-   in buffer separate from the Pointer object.  That way, the buffer could
-   hold on to memory even when the original image is destroyed, and yet
-   have a proper offset to the start of the ROI.
  **/
 Image
 Image::roi (int fromX, int fromY, int width, int height)
@@ -168,8 +164,16 @@ Image::roi (int fromX, int fromY, int width, int height)
   fromY = min (this->height - 1, fromY);
   if (width  < 0) width  = this->width  - fromX;
   if (height < 0) height = this->height - fromY;
-  Image result (buffer->pixel (fromX, fromY), width, height, *format);
-  ((PixelBufferPacked *) result.buffer)->stride = pbp->stride;
+  Image result (*format);
+  result.width  = width;
+  result.height = height;
+  result.buffer = new PixelBufferPacked
+  (
+    pbp->memory,
+	pbp->stride,
+	pbp->depth,
+	pbp->offset + pbp->stride * fromY + pbp->depth * fromX
+  );
   return result;
 }
 
@@ -273,8 +277,8 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
     {
       if (offsetY < 0)  // backward x and y
 	  {
-		toByte   = (char *) toBuffer  ->memory + (toY   + height - 1) * toBuffer  ->stride + (toX   + width) * toBuffer  ->depth - 1;
-		fromByte = (char *) fromBuffer->memory + (fromY + height - 1) * fromBuffer->stride + (fromX + width) * fromBuffer->depth - 1;
+		toByte   = (char *) toBuffer  ->base () + (toY   + height - 1) * toBuffer  ->stride + (toX   + width) * toBuffer  ->depth - 1;
+		fromByte = (char *) fromBuffer->base () + (fromY + height - 1) * fromBuffer->stride + (fromX + width) * fromBuffer->depth - 1;
 		end      = fromByte - height * fromBuffer->stride;
 		toStep     *= -1;
 		fromStep   *= -1;
@@ -282,8 +286,8 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
       }
       else  // backward x forward y
       {
-		toByte   = (char *) toBuffer  ->memory + toY   * toBuffer  ->stride + (toX   + width) * toBuffer  ->depth - 1;
-		fromByte = (char *) fromBuffer->memory + fromY * fromBuffer->stride + (fromX + width) * fromBuffer->depth - 1;
+		toByte   = (char *) toBuffer  ->base () + toY   * toBuffer  ->stride + (toX   + width) * toBuffer  ->depth - 1;
+		fromByte = (char *) fromBuffer->base () + fromY * fromBuffer->stride + (fromX + width) * fromBuffer->depth - 1;
 		end      = fromByte + height * fromBuffer->stride;
 		toStep   = toBuffer->stride   + width * toBuffer  ->depth;
 		fromStep = fromBuffer->stride + width * fromBuffer->depth;
@@ -295,8 +299,8 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
     {
 	  if (offsetY < 0)  // forward x backward y
 	  {
-		toByte   = (char *) toBuffer  ->memory + (toY   + height - 1) * toBuffer  ->stride + toX   * toBuffer  ->depth;
-		fromByte = (char *) fromBuffer->memory + (fromY + height - 1) * fromBuffer->stride + fromX * fromBuffer->depth;
+		toByte   = (char *) toBuffer  ->base () + (toY   + height - 1) * toBuffer  ->stride + toX   * toBuffer  ->depth;
+		fromByte = (char *) fromBuffer->base () + (fromY + height - 1) * fromBuffer->stride + fromX * fromBuffer->depth;
 		end      = fromByte - height * fromBuffer->stride;
 		toStep   -= 2 * toBuffer  ->stride;
 		fromStep -= 2 * fromBuffer->stride;
@@ -304,8 +308,8 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
 	  }
       else  // forward x forward y
       {
-		toByte   = (char *) toBuffer  ->memory + toY   * toBuffer  ->stride + toX   * toBuffer  ->depth;
-		fromByte = (char *) fromBuffer->memory + fromY * fromBuffer->stride + fromX * fromBuffer->depth;
+		toByte   = (char *) toBuffer  ->base () + toY   * toBuffer  ->stride + toX   * toBuffer  ->depth;
+		fromByte = (char *) fromBuffer->base () + fromY * fromBuffer->stride + fromX * fromBuffer->depth;
 		end      = fromByte + height * fromBuffer->stride;
       }
 	  rowEnd = fromByte + width  * fromBuffer->depth;

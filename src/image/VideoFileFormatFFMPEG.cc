@@ -795,7 +795,7 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   }
   else if (PixelBufferPacked * pb = (PixelBufferPacked *) converted.buffer)
   {
-	dest.data[0] = (unsigned char *) pb->memory;
+	dest.data[0] = (unsigned char *) pb->base ();
 	dest.linesize[0] = pb->stride;
   }
   else throw "Unhandled buffer type";

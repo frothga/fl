@@ -47,8 +47,8 @@ Median::filter (const Image & image)
 	PixelBufferPacked * resultBuffer = (PixelBufferPacked *) result.buffer;
 
 	split (image.width, image.height,
-		   (uint8_t *) imageBuffer->memory,  1, imageBuffer->stride,
-		   (uint8_t *) resultBuffer->memory, 1, resultBuffer->stride);
+		   (uint8_t *) imageBuffer ->base (), 1, imageBuffer->stride,
+		   (uint8_t *) resultBuffer->base (), 1, resultBuffer->stride);
 	return result;
   }
 
@@ -63,8 +63,8 @@ Median::filter (const Image & image)
 	Image result (image.width, image.height, *image.format);
 	PixelBufferPacked * resultBuffer = (PixelBufferPacked *) result.buffer;
 
-	uint8_t * in   = (uint8_t *) imageBuffer ->memory;
-	uint8_t * out  = (uint8_t *) resultBuffer->memory;
+	uint8_t * in   = (uint8_t *) imageBuffer ->base ();
+	uint8_t * out  = (uint8_t *) resultBuffer->base ();
 	int inStrideV  =             imageBuffer ->stride;
 	int outStrideV =             resultBuffer->stride;
 	int strideH    = (int) roundp (format->depth);

@@ -32,7 +32,7 @@ GaussianDerivative1D::GaussianDerivative1D (double sigma, const BorderMode mode,
   int h = (int) roundp (Gaussian2D::cutoff * sigma);
   resize (2 * h + 1, 1);
 
-  double * kernel = (double *) ((PixelBufferPacked *) buffer)->memory;
+  double * kernel = (double *) ((PixelBufferPacked *) buffer)->base ();
   kernel[h] = 0;
   for (int i = 1; i <= h; i++)
   {

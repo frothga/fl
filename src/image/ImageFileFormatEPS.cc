@@ -99,7 +99,7 @@ ImageFileDelegateEPS::write (const Image & image, int x, int y)
 
   // Dump image as hex
   (*out) << hex;
-  unsigned char * begin = (unsigned char *) buffer->memory;
+  unsigned char * begin = (unsigned char *) buffer->base ();
   int end = image.width * image.height;
   for (int i = 0; i < end; i++)
   {

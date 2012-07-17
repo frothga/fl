@@ -105,6 +105,7 @@ CanvasImage::initialize ()
   scaleX = 1;
   scaleY = 1;
 
+  lineWidth = 0;
   setLineWidth (1);
   setPointSize (2);
 
@@ -797,7 +798,7 @@ CanvasImage::drawMSER (const PointMSER & point, const Image & image, unsigned in
   Image grayImage = image * GrayChar;
   PixelBufferPacked * buffer = (PixelBufferPacked *) grayImage.buffer;
   if (! buffer) throw "Can't draw MSER on anything besides a packed buffer for now.";
-  unsigned char * g = (unsigned char *) buffer->memory;
+  unsigned char * g = (unsigned char *) buffer->base ();
 
   int width = image.width;
   int height = image.height;
@@ -806,7 +807,7 @@ CanvasImage::drawMSER (const PointMSER & point, const Image & image, unsigned in
 
   Image visited (width, height, GrayChar);
   visited.clear ();
-  unsigned char * v = (unsigned char *) ((PixelBufferPacked *) visited.buffer)->memory;
+  unsigned char * v = (unsigned char *) ((PixelBufferPacked *) visited.buffer)->base ();
 
   vector<int> frontier;
   vector<int> newFrontier;

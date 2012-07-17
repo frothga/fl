@@ -272,7 +272,7 @@ ImageFileDelegateJPEG::read (Image & image, int x, int y, int width, int height)
   image.resize (dinfo.output_width, dinfo.output_height);
 
   // Read image
-  char * p = (char *) buffer->memory;
+  char * p = (char *) buffer->base ();
   JSAMPROW row[1];
   while (dinfo.output_scanline < dinfo.output_height)
   {
@@ -328,7 +328,7 @@ ImageFileDelegateJPEG::write (const Image & image, int x, int y)
   if (comments.size ()) jpeg_write_marker (&cinfo, JPEG_COM, (JOCTET *) comments.c_str (), comments.size ());
 
   // Write image data
-  char * p = (char *) buffer->memory;
+  char * p = (char *) buffer->base ();
   JSAMPROW row[1];
   while (cinfo.next_scanline < cinfo.image_height)
   {
