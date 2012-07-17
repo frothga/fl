@@ -77,9 +77,14 @@ FiniteDifference::filter (const Image & image)
 	float * m = & work(0,0);
 	float * c = & result(0,1);
 	end = &result(lastX,penY) + 1;
+	int stride = ((PixelBufferPacked *) work.buffer)->stride;
+	int step = stride - image.width * sizeof (float);
 	while (c < end)
 	{
-	  *c++ = *p++ - *m++;
+	  float * rowEnd = c + image.width;
+	  while (c < rowEnd) *c++ = *p++ - *m++;
+	  p = (float *) ((char *) p + step);
+	  m = (float *) ((char *) m + step);
 	}
   }
 
