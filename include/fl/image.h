@@ -20,6 +20,7 @@ for details.
 
 #include "fl/pointer.h"
 #include "fl/metadata.h"
+#include "fl/time.h"
 
 #include <iostream>
 #include <string>
@@ -59,6 +60,8 @@ namespace fl
 	Image (int width, int height, const PixelFormat & format);  ///< Same as above, but with given PixelFormat
 	Image (const Image & that);  ///< Points our buffer to same location as "that" and copies all of its metadata.
 	Image (void * block, int width, int height, const PixelFormat & format);  ///< Binds to an external block of memory.  Implies PixelBufferPacked.
+	Image (const MatrixAbstract<float>  & A);  ///< Binds to the given matrix if possible.  Otherwise copies from it.
+	Image (const MatrixAbstract<double> & A);  ///< Binds to the given matrix if possible.  Otherwise copies from it.
 	Image (const std::string & fileName);  ///< Create image initialized with contents of file.
 
 	void read (const std::string & fileName);  ///< Read image from fileName.  Format will be determined automatically.
@@ -69,8 +72,13 @@ namespace fl
 	void copyFrom (const Image & that);  ///< Duplicates another Image.  Copy all raster info into private buffer, and copy all other metadata.
 	void copyFrom (void * block, int width, int height, const PixelFormat & format);  ///< Copy from a non-Image source.  Determine size of buffer in bytes as width x height x depth.
 	void attach (void * block, int width, int height, const PixelFormat & format);  ///< Binds to an external block of memory.
+	void attach (const MatrixStrided<float>  & A);
+	void attach (const MatrixStrided<double> & A);
 	void detach ();  ///< Set the state of this image as if it has no buffer.  Releases (but only frees if appropriate) any memory.
 	Image roi (int fromX = 0, int fromY = 0, int width = -1, int height = -1);  ///< Limited support for region-of-interest processing.  This image must have a packed buffer type, and must remain in existence as long as the returned image exists.  Parameters have similar semantics to bitblt().
+
+	template<class T> MatrixResult<T> toMatrix () const;  ///< Bind the buffer to a matrix.  Unfortunately you must know a priori what numeric type to use.
+	template<class T> void attach (const MatrixStrided<T> & A, const PixelFormat & format);  ///< Binds to the contents of the given matrix.  width and height are taken from rows() and columns() respectively.
 
 	void resize (int width, int height, bool preserve = false);
 	void bitblt (const Image & that, int toX = 0, int toY = 0, int fromX = 0, int fromY = 0, int width = -1, int height = -1);  ///< -1 for width or height means "maximum possible value"
@@ -1296,6 +1304,35 @@ namespace fl
 
 
   // Image inlines ------------------------------------------------------------
+
+  template<class T>
+  inline void
+  Image::attach (const MatrixStrided<T> & A, const PixelFormat & format)
+  {
+	timestamp    = getTimestamp ();
+	width        = A.rows ();
+	height       = A.columns ();
+	this->format = &format;
+	if (A.strideR == 1)
+	{
+	  buffer     = new PixelBufferPacked (A.data, A.strideC * sizeof (T), sizeof (T), A.offset * sizeof (T));
+	}
+	else if (A.strideC == 1)
+	{
+	  std::swap (width, height);
+	  buffer     = new PixelBufferPacked (A.data, A.strideR * sizeof (T), sizeof (T), A.offset * sizeof (T));
+	}
+	else throw "One dimension of the given matrix must have a stride of 1";
+  }
+
+  template<class T>
+  inline MatrixResult<T>
+  Image::toMatrix () const
+  {
+	PixelBufferPacked * pbp = (PixelBufferPacked *) buffer;
+	if (! pbp) throw "toMatrix only handles packed buffers";
+	return new MatrixStrided<T> (pbp->memory, pbp->offset / sizeof (T), width, height, 1, pbp->stride / sizeof (T));
+  }
 
   inline bool
   Image::operator == (const Image & that) const

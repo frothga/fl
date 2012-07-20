@@ -58,9 +58,8 @@ DescriptorPatch::value (ImageCache & cache, const PointAffine & point)
   Transform t (p.projection (), true);
   t.setWindow (0, 0, width, width);
   Image patch = entry->image * t;
-  Vector<float> result ((float *) ((PixelBufferPacked *) patch.buffer)->base (), width * width);
 
-  return result;
+  return patch.toMatrix<float> ();
 }
 
 Image
