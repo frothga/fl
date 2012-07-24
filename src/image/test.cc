@@ -1515,7 +1515,7 @@ testInterest (InterestOperator & i, const Image & image, int expected)
 {
   InterestPointSet points;
   i.run (image, points);
-  if ((float) abs (points.size () - expected) / expected > 0.1)
+  if ((float) abs ((int) points.size () - expected) / expected > 0.1)
   {
 	cerr << "While testing " << typeid (i).name () << endl;
 	cerr << "  got " << points.size () << " rather than " << expected << endl;
