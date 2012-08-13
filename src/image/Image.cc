@@ -491,7 +491,7 @@ Image::operator * (double factor)
 	float * fromPixel = (float *) p->base ();
 	float * toPixel   = (float *) q->base ();
 	float * end       = toPixel + width * height;
-	while (fromPixel < end)
+	while (toPixel < end)
 	{
 	  *toPixel++ = *fromPixel++ * factor;
 	}
@@ -501,7 +501,7 @@ Image::operator * (double factor)
 	double * fromPixel = (double *) p->base ();
 	double * toPixel   = (double *) q->base ();
 	double * end       = toPixel + width * height;
-	while (fromPixel < end)
+	while (toPixel < end)
 	{
 	  *toPixel++ = *fromPixel++ * factor;
 	}
@@ -512,7 +512,7 @@ Image::operator * (double factor)
 	unsigned char * fromPixel = (unsigned char *) p->base ();
 	unsigned char * toPixel   = (unsigned char *) q->base ();
 	unsigned char * end       = toPixel + width * height;
-	while (fromPixel < end)
+	while (toPixel < end)
 	{
 	  *toPixel++ = (*fromPixel * ifactor) >> 16;
 	}
