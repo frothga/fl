@@ -92,7 +92,7 @@ namespace fl
 	  }
 	  else
 	  {
-		operator = (MS);
+		this->operator = (MS);
 	  }
 	}
 	else

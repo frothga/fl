@@ -119,7 +119,7 @@ namespace fl
   {
 	Vector<T> y;
 	if (currentValue) y = *currentValue;
-	else              value (point, y);
+	else              this->value (point, y);
 
 	MatrixSparse<T> J;
 	jacobian (point, J, &y);
@@ -138,7 +138,7 @@ namespace fl
 	}
 	else
 	{
-	  value (point, oldValue);
+	  this->value (point, oldValue);
 	}
 
 	const int m = oldValue.rows ();
@@ -168,7 +168,7 @@ namespace fl
 		p[k] = h;
 	  }
 
-	  value (point + p, column);
+	  this->value (point + p, column);
 
 	  std::map<int,int> & C = (*parameters.data)[i];
 	  std::map<int,int>::iterator j = C.begin ();
@@ -193,7 +193,7 @@ namespace fl
 	}
 	else
 	{
-	  value (point, oldValue);
+	  this->value (point, oldValue);
 	}
 
 	const int m = oldValue.rows ();
@@ -223,7 +223,7 @@ namespace fl
 		p[k] = h;
 	  }
 
-	  value (point + p, column);
+	  this->value (point + p, column);
 
 	  std::map<int,int> & C = (*parameters.data)[i];
 	  std::map<int,int>::iterator j = C.begin ();

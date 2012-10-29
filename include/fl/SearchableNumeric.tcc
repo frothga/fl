@@ -68,7 +68,7 @@ namespace fl
 	}
 	else
 	{
-	  value (point, v);
+	  this->value (point, v);
 	  v0 = v.sumSquares ();
 	}
 
@@ -78,7 +78,7 @@ namespace fl
 	  T h = perturbation * std::fabs (temp);
 	  if (h == 0) h = perturbation;
 	  perturbedPoint[i] += h;
-	  value (perturbedPoint, v);
+	  this->value (perturbedPoint, v);
 	  perturbedPoint[i] = temp;
 	  T v1 = v.sumSquares ();
 
@@ -100,7 +100,7 @@ namespace fl
 	}
 	else
 	{
-	  value (point, oldValue);
+	  this->value (point, oldValue);
 	}
 
 	int m = oldValue.rows ();
@@ -115,7 +115,7 @@ namespace fl
 	  T h = perturbation * std::fabs (temp);
 	  if (h == 0) h = perturbation;
 	  perturbedPoint[i] += h;
-	  value (perturbedPoint, column);
+	  this->value (perturbedPoint, column);
 	  perturbedPoint[i] = temp;
 
 	  result.column (i) = (column - oldValue) / h;
@@ -136,7 +136,7 @@ namespace fl
 	}
 	else
 	{
-	  value (point, oldValue);
+	  this->value (point, oldValue);
 	}
 
 	int m = oldValue.rows ();
@@ -151,7 +151,7 @@ namespace fl
 	  T h = perturbation * std::fabs (temp);
 	  if (h == 0) h = perturbation;
 	  perturbedPoint[i] += h;
-	  value (perturbedPoint, column);
+	  this->value (perturbedPoint, column);
 	  perturbedPoint[i] = temp;
 
 	  for (int j = 0; j < m; j++)
@@ -191,7 +191,7 @@ namespace fl
 	}
 	else
 	{
-	  value (point00, v);
+	  this->value (point00, v);
 	  v00 = v.sumSquares ();
 	}
 
@@ -200,12 +200,12 @@ namespace fl
 	  T & deltaI = deltas[i];
 
 	  point10[i] += deltaI;
-	  value (point10, v);
+	  this->value (point10, v);
 	  T v10 = v.sumSquares ();
 
 	  // Diagonals -- use central differences
 	  point00[i] -= deltaI;
-	  value (point00, v);
+	  this->value (point00, v);
 	  point00[i] = point[i];
 	  result(i,i) = ((v10 - v00) / deltaI - (v00 - v.sumSquares ()) / deltaI) / deltaI;
 
@@ -215,13 +215,13 @@ namespace fl
 		T deltaJ = deltas[j];
 
 		point00[j] += deltaJ;
-		value (point00, v);
+		this->value (point00, v);
 		point00[j] = point[j];
 		T v01 = v.sumSquares ();
 
 		T temp = point10[j];
 		point10[j] += deltaJ;
-		value (point10, v);
+		this->value (point10, v);
 		point10[j] = temp;
 		T v11 = v.sumSquares ();
 

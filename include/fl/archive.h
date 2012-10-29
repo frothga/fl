@@ -132,14 +132,14 @@ namespace fl
 		ClassDescription * info = new ClassDescription;
 		info->index   = 0xFFFFFFFF;
 		info->version = T::serializeVersion;
-		c = classesOut.insert (make_pair (typeidName, info)).first;
+		c = classesOut.insert (std::make_pair (typeidName, info)).first;
 	  }
 	  c->second->create    = Product::create;
 	  c->second->serialize = Product::serialize;
 	  c->second->name      = (name.size () == 0) ? typeidName : name;
 
 	  // Add or reassign alias for initial lookup when reading from stream
-	  alias.insert (make_pair (c->second->name, c->second));
+	  alias.insert (std::make_pair (c->second->name, c->second));
 	}
 
 	template<class T>
@@ -156,7 +156,7 @@ namespace fl
 		info->name      = typeidName;
 		info->index     = 0xFFFFFFFF;
 		info->version   = T::serializeVersion;
-		c = classesOut.insert (make_pair (typeidName, info)).first;
+		c = classesOut.insert (std::make_pair (typeidName, info)).first;
 		// No need for alias, unless class is also treated polymorphically.
 	  }
 
@@ -180,7 +180,7 @@ namespace fl
 	  // currently don't want to spend the space resources on it.
 	  if (pointersOut.find (&data) == pointersOut.end ())
 	  {
-		pointersOut.insert (make_pair (&data, pointersOut.size ()));
+		pointersOut.insert (std::make_pair (&data, pointersOut.size ()));
 		if (in) pointersIn.push_back (&data);
 	  }
 
@@ -227,7 +227,7 @@ namespace fl
 			throw message;
 		  }
 		  data = (T *) d->create ();
-		  pointersOut.insert (make_pair (data, pointersOut.size ()));
+		  pointersOut.insert (std::make_pair (data, pointersOut.size ()));
 		  pointersIn.push_back (data);
 		  d->serialize (data, *this, d->version);
 		}

@@ -776,7 +776,7 @@ namespace fl
   {
 	if (that.classID () & MatrixStridedID)
 	{
-	  operator = ((const MatrixStrided<T> &) that);
+	  this->operator = ((const MatrixStrided<T> &) that);
 	}
 	else
 	{
@@ -1583,7 +1583,7 @@ namespace fl
   MatrixAbstract<T> &
   MatrixStrided<T>::operator *= (const MatrixAbstract<T> & B)
   {
-	if (B.classID () & MatrixStridedID) return operator = (operator * ((const MatrixStrided &) B));
+	if (B.classID () & MatrixStridedID) return this->operator = (operator * ((const MatrixStrided &) B));
 	return MatrixAbstract<T>::operator *= (B);
   }
 
@@ -1983,7 +1983,7 @@ namespace fl
 	  const Matrix & M = (const Matrix &) (that);
 	  if (! deep)
 	  {
-		operator = (M);
+		this->operator = (M);
 		return;
 	  }
 
@@ -2255,7 +2255,7 @@ namespace fl
   MatrixRegion<T> &
   MatrixRegion<T>::operator = (const MatrixRegion<T> & that)
   {
-	copyFrom (that);
+	this->copyFrom (that);
 	return *this;
   }
 

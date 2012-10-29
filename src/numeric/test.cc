@@ -88,7 +88,7 @@ public:
 	  result[i] = y[i] - (x[0] + t0 / (x[1] * t1 + x[2] * t2));
 	}
 
-	update (result.norm (2), x);
+	this->update (result.norm (2), x);
 
 	cerr << ".";
   }

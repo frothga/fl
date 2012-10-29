@@ -97,7 +97,7 @@ namespace fl
 	  }
 	  else
 	  {
-		operator = (MP);
+		this->operator = (MP);
 	  }
 	}
 	else
