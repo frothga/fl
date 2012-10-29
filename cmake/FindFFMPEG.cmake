@@ -1,14 +1,14 @@
 # - Find FFMPEG library
 # Find the native FFMPEG includes and library
 # This module defines
-#   FFMPEG_FOUND       If false, do not try to use FFMPEG.
-#   FFMPEG_INCLUDE_DIR Directory containing the include files
-#   FFMPEG_AVCODEC     Full path to libavcodec, and similarly for each of the
-#   FFMPEG_AVDEVICE    other libraries.
+#   FFMPEG_FOUND        If false, do not try to use FFMPEG.
+#   FFMPEG_INCLUDE_DIRS Directories containing the include files
+#   FFMPEG_AVCODEC      Full path to libavcodec, and similarly for each of the
+#   FFMPEG_AVDEVICE     other libraries.
 #   FFMPEG_AVFORMAT
 #   FFMPEG_AVUTIL
 #   FFMPEG_SWSCALE
-#   FFMPEG_LIBRARIES   All the available libraries together.
+#   FFMPEG_LIBRARIES    All the available libraries together.
 # FFMPEG is always evolving.  This script makes no attempt to be general
 # across multiple generations of FFMPEG.  Instead, it must be maintained to
 # find the most current directory layout.  An alternative would be to detect
@@ -20,7 +20,10 @@
 find_package (ZLIB)
 find_package (BZip2)
 
-find_path (FFMPEG_INCLUDE_DIR libavformat/avformat.h)
+find_path (FFMPEG_INCLUDE_DIRS libavformat/avformat.h
+  PATH_SUFFIXES
+    ffmpeg
+)
 
 find_library (FFMPEG_AVFORMAT avformat)
 find_library (FFMPEG_AVCODEC  avcodec)
@@ -31,7 +34,7 @@ find_library (FFMPEG_SWSCALE  swscale)
 # handle the QUIETLY and REQUIRED arguments and set FFMPEG_FOUND to TRUE if 
 # all listed variables are TRUE
 include (FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(FFMPEG  DEFAULT_MSG  FFMPEG_INCLUDE_DIR FFMPEG_AVFORMAT FFMPEG_AVCODEC FFMPEG_AVUTIL)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(FFMPEG  DEFAULT_MSG  FFMPEG_INCLUDE_DIRS FFMPEG_AVFORMAT FFMPEG_AVCODEC FFMPEG_AVUTIL)
 
 if (FFMPEG_FOUND)
   set (FFMPEG_LIBRARIES ${FFMPEG_AVFORMAT} ${FFMPEG_AVCODEC} ${FFMPEG_AVUTIL})
