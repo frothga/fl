@@ -325,45 +325,52 @@ public:
   }
   virtual Search<float> * search ()
   {
-	return new NewtonRaphson<float>;
+	return new LevenbergMarquardt<float>;
   }
-  virtual void start (Vector<float> & point)
+  virtual MatrixResult<float> start ()
   {
-	point.resize (2);
-	point[0] = 0;
-	point[1] = B;
+	Vector<float> * result = new Vector<float> (2);
+	(*result)[0] = 0;
+	(*result)[1] = B;
+	return result;
   }
   virtual int dimension (const Vector<float> & point)
   {
 	return dim;
   }
-  virtual void value (const Vector<float> & point, Vector<float> & result)
+  virtual MatrixResult<float> value (const Vector<float> & point)
   {
 	computeValue (point);
-	result.resize (dim);
+	Vector<float> * result = new Vector<float> (dim);
 	for (int i = 0; i < dim; i++)
 	{
 	  float & a = fApB[i];
-	  if (a >= 0) result[i] =  t[i]      * a + log (1 + exp (-a));
-	  else        result[i] = (t[i] - 1) * a + log (1 + exp ( a));
+	  if (a >= 0) (*result)[i] =  t[i]      * a + log (1 + exp (-a));
+	  else        (*result)[i] = (t[i] - 1) * a + log (1 + exp ( a));
 	}
+	cerr << "point = " << point << " " << result->norm (1) << endl;
+	return result;
   }
-  virtual void gradient (const Vector<float> & point, Vector<float> & result, const Vector<float> * currentValue = NULL)
+  virtual MatrixResult<float> gradient (const Vector<float> & point, const Vector<float> * currentValue = NULL)
   {
 	computeGradient (point);
-	result.copyFrom (g);
+	Vector<float> * result = new Vector<float>;
+	result->copyFrom (g);
+	return result;
   }
-  virtual void hessian (const Vector<float> & point, Matrix<float> & result, const Vector<float> * currentValue = NULL)
+  virtual MatrixResult<float> hessian (const Vector<float> & point, const Vector<float> * currentValue = NULL)
   {
 	computeGradient (point);
-	result.copyFrom (h);
+	Matrix<float> * result = new Matrix<float>;
+	result->copyFrom (h);
+	return result;
   }
   void computeValue (const Vector<float> & point)
   {
 	if (atValue != point)
 	{
 	  atValue.copyFrom (point);
-	  fApB = f.column (0) * point[0] + point[1];
+	  fApB = f * point[0] + point[1];
 	}
   }
   void computeGradient (const Vector<float> & point)
@@ -609,7 +616,7 @@ SVM::Decision::train (SVM * svm)
   //   Solve coefficients for sigmoid function
   SigmoidFunction problem (trainset, f);
   Search<float> * solver = problem.search ();
-  problem.start (p);
+  p = problem.start ();
   solver->search (problem, p);
   delete solver;
 

@@ -51,9 +51,8 @@ namespace fl
 	  patience = 1;
 	}
 
-	Vector<T> value;
 	searchable.dimension (point);
-	searchable.value (point, value);
+	Vector<T> value = searchable.value (point);
 	T lastDistance = value.norm (2);
 	int gotBetter = 0;
 	int gotWorse = 0;
@@ -72,7 +71,7 @@ namespace fl
 
 	  // Evaluate distance from guess to value
 	  searchable.dimension (guess);  // always call dimension(), because we can tolerate any change in dimensionality
-	  searchable.value (guess, value);
+	  value = searchable.value (guess);
 	  T distance = value.norm (2);
 	  bool improved;
 	  if (minimize)

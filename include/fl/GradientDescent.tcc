@@ -53,11 +53,10 @@ namespace fl
 	{
 	  searchable.dimension (point);
 
-	  if (value.rows () == 0) searchable.value (point, value);
+	  if (value.rows () == 0) value = searchable.value (point);
 
 	  // Find gradient
-	  Vector<T> gradient;
-	  searchable.gradient (point, gradient, &value);
+	  Vector<T> gradient = searchable.gradient (point, &value);
 	  if (greedy  &&  greedy->bestResidual < bestResidual)
 	  {
 		bestResidual = greedy->bestResidual;
@@ -68,7 +67,7 @@ namespace fl
 	  while (true)
 	  {
 		Vector<T> newPoint = point + gradient * stepSize;
-		searchable.value (newPoint, value);
+		value = searchable.value (newPoint);
 		T residual = value.norm (2);
 
 		if (residual < bestResidual)

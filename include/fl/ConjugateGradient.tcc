@@ -47,19 +47,17 @@ namespace fl
 	T bestResidual = INFINITY;
 
 	Vector<T> d;
-	Vector<T> r;
 	Vector<T> s;
 	searchable.dimension (point);
-	searchable.gradient (point, r);
+	Vector<T> r = searchable.gradient (point);
 	if (greedy  &&  greedy->bestResidual < bestResidual)
 	{
 	  bestResidual = greedy->bestResidual;
 	  point        = greedy->bestPoint;
 	}
 	r *= -1;
-	bool doScaling = scales.rows () == r.rows ();
-	if (doScaling) s = r & scales;
-	else           s = r;
+	Vector<T> scales = searchable.scales (point);
+	s = r & scales;
 	d = s;
 
 	T beta = 0;
@@ -91,8 +89,7 @@ namespace fl
 	  }
 
 	  // Update direction
-	  Vector<T> r;  // Construct a new r to avoid aliasing with s.  s must remain distinct from r until after deltaMid is calculated.
-	  searchable.gradient (point, r);
+	  Vector<T> r = searchable.gradient (point);  // Construct a new r to avoid aliasing with s.  s must remain distinct from r until after deltaMid is calculated.
 	  if (greedy  &&  greedy->bestResidual < bestResidual)
 	  {
 		bestResidual = greedy->bestResidual;
@@ -101,8 +98,8 @@ namespace fl
 	  r *= -1;
 	  T deltaOld = delta;
 	  T deltaMid = r.dot (s);
-	  if (doScaling) s = r & scales;
-	  else           s = r;
+	  scales = searchable.scales (point);  // Do we really need to update scales every time?
+	  s = r & scales;
 	  delta = r.dot (s);
 	  beta = (delta - deltaMid) / deltaOld;
 	  if ((i  &&  i % restartIterations == 0)  ||  beta <= 0)

@@ -47,7 +47,6 @@ template<class T>
 class TestFunction
 {
 public:
-  Vector<T> startPoint;
   Vector<T> endPoint;
   T         endResidual;
 };
@@ -62,11 +61,15 @@ public:
   MinpackTestFunction (T perturbation = -1)
   : SearchableNumeric<T> (perturbation)
   {
-	TestFunction<T>::startPoint   = Vector<T> ("[0 1 2]");
 	TestFunction<T>::endPoint     = Vector<T> ("[0.08241058  1.133037  2.343695]");
 	TestFunction<T>::endResidual  = 0.09063596;
 
 	SearchableGreedy<T>::bestResidual = INFINITY;
+  }
+
+  virtual MatrixResult<T> start ()
+  {
+	return new Vector<T> ("[0 1 2]");
   }
 
   virtual int dimension (const Vector<T> & x)
@@ -74,23 +77,23 @@ public:
 	return 15;
   }
 
-  virtual void value (const Vector<T> & x, Vector<T> & result)
+  virtual MatrixResult<T> value (const Vector<T> & x)
   {
 	const T y[] = {0.14, 0.18, 0.22, 0.25, 0.29, 0.32, 0.35, 0.39,
 				   0.37, 0.58, 0.73, 0.96, 1.34, 2.10, 4.39};
 
-	result.resize (15);
+	Vector<T> * result = new Vector<T> (15);
 	for (int i = 0; i < 15; i++)
 	{
 	  T t0 = i + 1;
 	  T t1 = 15 - i;
 	  T t2 = i > 7 ? t1 : t0;
-	  result[i] = y[i] - (x[0] + t0 / (x[1] * t1 + x[2] * t2));
+	  (*result)[i] = y[i] - (x[0] + t0 / (x[1] * t1 + x[2] * t2));
 	}
 
-	this->update (result.norm (2), x);
-
+	this->update (result->norm (2), x);
 	cerr << ".";
+	return result;
   }
 };
 
@@ -111,12 +114,16 @@ public:
 	degree (degree),
 	SearchableNumeric<T> (perturbation)
   {
-	TestFunction<T>::startPoint   = Vector<T> ("[10 10 10]");  // starting far away seems to help
 	TestFunction<T>::endPoint     = Vector<T> ("[1 2 3]");
 	TestFunction<T>::endResidual  = 0;  // by design, this problem can be solved exactly
 
-	A = makeMatrix (rows, (degree + 1) * TestFunction<T>::startPoint.rows ());
+	A = makeMatrix (rows, (degree + 1) * start ().rows ());
 	correctValue = f (TestFunction<T>::endPoint);
+  }
+
+  virtual MatrixResult<T> start ()
+  {
+	return new Vector<T> ("[10 10 10]");  // starting far away seems to help
   }
 
   virtual int dimension (const Vector<T> & x)
@@ -124,10 +131,10 @@ public:
 	return rows;
   }
 
-  virtual void value (const Vector<T> & x, Vector<T> & result)
+  virtual MatrixResult<T> value (const Vector<T> & x)
   {
-	result = f (x) - correctValue;
 	cerr << ".";
+	return f (x) - correctValue;
   }
 
   MatrixResult<T> f (const Vector<T> & x)
@@ -157,9 +164,13 @@ public:
   SparseTestFunction (T perturbation = -1)
   : SearchableSparse<T> (perturbation)
   {
-	TestFunction<T>::startPoint   = Vector<T> ("[0 1 2]");
 	TestFunction<T>::endPoint     = Vector<T> ("[0.08241058  1.133037  2.343695]");
 	TestFunction<T>::endResidual  = 0;
+  }
+
+  virtual MatrixResult<T> start ()
+  {
+	return new Vector<T> ("[0 1 2]");
   }
 
   virtual int dimension (const Vector<T> & x)
@@ -167,16 +178,17 @@ public:
 	return 15;
   }
 
-  virtual void value (const Vector<T> & x, Vector<T> & result)
+  virtual MatrixResult<T> value (const Vector<T> & x)
   {
-	result.resize (15);
+	Vector<T> * result = new Vector<T> (15);
 	for (int i = 0; i < 15; i++)
 	{
 	  int j = i / 5;
-	  result[i] = pow (abs (x[j] - TestFunction<T>::endPoint[j]), (T) (1.0 + i / 15));
+	  (*result)[i] = pow (abs (x[j] - TestFunction<T>::endPoint[j]), (T) (1.0 + i / 15));
 	}
 	cerr << ".";
 	//cerr << result.norm (2) << endl;
+	return result;
   }
 
   virtual MatrixSparse<bool> interaction ()
@@ -204,7 +216,6 @@ public:
 	SearchableConstriction<T>::a = t->endPoint / 2;
 	SearchableConstriction<T>::b = t->endPoint;
 
-	TestFunction<T>::startPoint   = Vector<T> ("[0]");
 	TestFunction<T>::endPoint     = Vector<T> ("[0.5]");
 	TestFunction<T>::endResidual  = t->endResidual;
   }
@@ -276,17 +287,15 @@ testSearch ()
 		continue;
 	  }
 
-	  if (greedy) greedy->bestResidual = INFINITY;
+	  if (greedy) greedy->bestResidual = INFINITY;  // Have to reset this, because we are reusing the object.
 	  srand (seed);
 
-	  Vector<T> point;
-	  point.copyFrom (t->startPoint);
+	  Vector<T> point = function->start ();
 
 	  s->search (*function, point);
 	  cerr << endl;
 
-	  Vector<T> error;
-	  function->value (point, error);
+	  Vector<T> error = function->value (point);
 	  double e = error.norm (2);
 	  double d = e - t->endResidual;
 	  cerr << "distance to best residual = " << d << " = " << e << " - " << t->endResidual << endl;

@@ -114,22 +114,21 @@ namespace fl
   }
 
   template<class T>
-  void
-  SearchableSparse<T>::gradient (const Vector<T> & point, Vector<T> & result, const Vector<T> * currentValue)
+  MatrixResult<T>
+  SearchableSparse<T>::gradient (const Vector<T> & point, const Vector<T> * currentValue)
   {
 	Vector<T> y;
 	if (currentValue) y = *currentValue;
-	else              this->value (point, y);
+	else              y = this->value (point);
 
-	MatrixSparse<T> J;
-	jacobian (point, J, &y);
+	MatrixSparse<T> J = jacobian (point, &y);
 
-	result = ((T) 2) * J.transposeMultiply (y);
+	return ((T) 2) * J.transposeMultiply (y);
   }
 
   template<class T>
-  void
-  SearchableSparse<T>::jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue)
+  MatrixResult<T>
+  SearchableSparse<T>::jacobian (const Vector<T> & point, const Vector<T> * currentValue)
   {
 	Vector<T> oldValue;
 	if (currentValue)
@@ -138,7 +137,7 @@ namespace fl
 	}
 	else
 	{
-	  this->value (point, oldValue);
+	  oldValue = this->value (point);
 	}
 
 	const int m = oldValue.rows ();
@@ -146,8 +145,7 @@ namespace fl
 
 	if (m != coveredDimension) cover ();
 
-	result.resize (m, n);
-	result.clear ();
+	MatrixSparse<T> * result = new MatrixSparse<T> (m, n);
 
 	Vector<T> column (m);
 	Vector<T> p (n);
@@ -168,62 +166,7 @@ namespace fl
 		p[k] = h;
 	  }
 
-	  this->value (point + p, column);
-
-	  std::map<int,int> & C = (*parameters.data)[i];
-	  std::map<int,int>::iterator j = C.begin ();
-	  while (j != C.end ())
-	  {
-		int r = j->first;
-		int c = j->second - 1;  // Offset by 1 due to needs of sparse representation.
-		result(r,c) = (column[r] - oldValue[r]) / p[c];
-		j++;
-	  }
-	}
-  }
-
-  template<class T>
-  void
-  SearchableSparse<T>::jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue)
-  {
-	Vector<T> oldValue;
-	if (currentValue)
-	{
-	  oldValue = *currentValue;
-	}
-	else
-	{
-	  this->value (point, oldValue);
-	}
-
-	const int m = oldValue.rows ();
-	const int n = point.rows ();
-
-	if (m != coveredDimension) cover ();
-
-	result.resize (m, n);
-	result.clear ();
-
-	Vector<T> column (m);
-	Vector<T> p (n);
-	for (int i = 0; i < parms.size (); i++)
-	{
-	  std::vector<int> & parmList = parms[i];
-
-	  p.clear ();
-	  for (int j = 0; j < parmList.size (); j++)
-	  {
-		int k = parmList[j];
-
-		T h = this->perturbation * std::fabs (point[k]);
-		if (h == 0)
-		{
-		  h = this->perturbation;
-		}
-		p[k] = h;
-	  }
-
-	  this->value (point + p, column);
+	  column = this->value (point + p);
 
 	  std::map<int,int> & C = (*parameters.data)[i];
 	  std::map<int,int>::iterator j = C.begin ();
@@ -231,10 +174,12 @@ namespace fl
 	  {
 		int r = j->first;
 		int c = j->second - 1;
-		result.set (r, c, (column[r] - oldValue[r]) / p[c]);
+		result->set (r, c, (column[r] - oldValue[r]) / p[c]);
 		j++;
 	  }
 	}
+
+	return result;
   }
 }
 

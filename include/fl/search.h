@@ -51,22 +51,23 @@ namespace fl
   public:
 	virtual ~Searchable () {}
 
-	virtual Search<T> * search () = 0;  ///< @return The best search method for the current problem, or at least a reasonable choice.  The caller is responsible for destroying the object.
-	virtual void        start (Vector<T> & point) = 0;  ///< @return a reasonable starting point for the search.  If this class accepts difference search space dimensionalities, then point must be pre-sized correctly.  Otherwise it is resized automatically.
+	virtual Search<T> *     search    () = 0;  ///< @return The best search method for the current problem, or at least a reasonable choice.  The caller is responsible for destroying the object.
+	virtual MatrixResult<T> start     () = 0;  ///< @return A reasonable starting point for the search.
+	virtual void            finish    (const Vector<T> & point) = 0;  ///< Permanently apply the values in the given point to the underlying object, if one exists.
+	virtual MatrixResult<T> scales    (const Vector<T> & point) = 0;  ///< Sensitivity along each of the dimensions of the input space.
 	/**
 	   Determine the number of elements in the result of value(), and
 	   configure this object accordingly.  A Search will call this function
 	   once at the beginning, before the first call to one of {value(),
 	   gradient(), jacobian(), hessian()}.  After that, this object must
 	   keep the same size unless it receives another call to dimension(),
-	   at which point it may reconfigure itself.
+	   at which time it may reconfigure itself.
 	**/
-	virtual int  dimension (const Vector<T> & point) = 0;
-	virtual void value     (const Vector<T> & point, Vector<T> &       result) = 0;  ///< Returns the value of the function at a given point.  Must throw an exception if point is out of domain.
-	virtual void gradient  (const Vector<T> & point, Vector<T> &       result, const Vector<T> * currentValue = NULL) = 0;  ///< Treat this as a single-valued function and return the first derivative vector.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by hessian().
-	virtual void jacobian  (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
-	virtual void jacobian  (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL) = 0;  ///< Same as above, except omits all zero entries in Jacobian.
-	virtual void hessian   (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL) = 0;  ///< Treat this as a single-valued function and return the second derivative matrix.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by gradient().
+	virtual int             dimension (const Vector<T> & point) = 0;
+	virtual MatrixResult<T> value     (const Vector<T> & point) = 0;  ///< @return The value of the function at a given point.  Must throw an exception if point is out of domain.
+	virtual MatrixResult<T> gradient  (const Vector<T> & point, const Vector<T> * currentValue = NULL) = 0;  ///< Treat this as a single-valued function and return the first derivative vector.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by hessian().
+	virtual MatrixResult<T> jacobian  (const Vector<T> & point, const Vector<T> * currentValue = NULL) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
+	virtual MatrixResult<T> hessian   (const Vector<T> & point, const Vector<T> * currentValue = NULL) = 0;  ///< Treat this as a single-valued function and return the second derivative matrix.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by gradient().
   };
 
   /**
@@ -74,7 +75,7 @@ namespace fl
 	 Regarding the name: "Numeric" as opposed to "Analytic", which would be
 	 computed directly.  To make an analytic searchable, derive from this
 	 class and override appropriate functions.
-	 The programmer must implement at least the dimension() and value()
+	 The programmer must implement at least the start(), dimension() and value()
 	 functions to instantiate a subclass.
   **/
   template<class T>
@@ -83,12 +84,12 @@ namespace fl
   public:
 	SearchableNumeric (T perturbation = -1);
 
-	virtual Search<T> * search ();  ///< Return LevenbergMarquardt
-	virtual void start    (      Vector<T> & point);  ///< Zeros whatever point is passed in.
-	virtual void gradient (const Vector<T> & point, Vector<T> &       result, const Vector<T> * currentValue = NULL);  ///< Uses sum of squares to reduce this to a single-valued function.
-	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);
-	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);
-	virtual void hessian  (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);  ///< Uses sum of squares to reduce this to a single-valued function.
+	virtual Search<T> *     search   ();  ///< Return LevenbergMarquardt
+	virtual void            finish   (const Vector<T> & point);  ///< Ignores the given point.
+	virtual MatrixResult<T> scales   (const Vector<T> & point);  ///< Return a vector of ones
+	virtual MatrixResult<T> gradient (const Vector<T> & point, const Vector<T> * currentValue = NULL);  ///< Uses sum of squares to reduce this to a single-valued function.
+	virtual MatrixResult<T> jacobian (const Vector<T> & point, const Vector<T> * currentValue = NULL);
+	virtual MatrixResult<T> hessian  (const Vector<T> & point, const Vector<T> * currentValue = NULL);  ///< Uses sum of squares to reduce this to a single-valued function.
 
 	T perturbation;  ///< Amount to perturb a variable for finding any of the derivatives by finite differences.
   };
@@ -112,14 +113,13 @@ namespace fl
 	   row of the Jacobian).
 	**/
 	virtual MatrixSparse<bool> interaction () = 0;
-	virtual void cover ();  ///< Compute a structurally orthogonal cover of the Jacobian based on the interaction matrix.  Called automatically by jacobian() whenever the current cover is stale.
+	virtual void               cover       ();  ///< Compute a structurally orthogonal cover of the Jacobian based on the interaction matrix.  Called automatically by jacobian() whenever the current cover is stale.
 
-	virtual Search<T> * search ();  ///< Return LevenbergMarquardtSparseBK
-	virtual void gradient (const Vector<T> & point, Vector<T> &       result, const Vector<T> * currentValue = NULL);  ///< Compute gradient as 2 * ~jacobian * value.  In a sparse system, this should require fewer calls to value() than the direct method.
-	virtual void jacobian (const Vector<T> & point, Matrix<T> &       result, const Vector<T> * currentValue = NULL);  ///< Compute the Jacobian using the cover.
-	virtual void jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue = NULL);  ///< Ditto, but omit zero entries.
+	virtual Search<T> *     search   ();  ///< Return LevenbergMarquardtSparseBK
+	virtual MatrixResult<T> gradient (const Vector<T> & point, const Vector<T> * currentValue = NULL);  ///< Compute gradient as 2 * ~jacobian * value.  In a sparse system, this should require fewer calls to value() than the direct method.
+	virtual MatrixResult<T> jacobian (const Vector<T> & point, const Vector<T> * currentValue = NULL);  ///< Compute the Jacobian using the cover.
 
-	// These two members represent the cover in a way that is easy to execute.
+	// These members represent the cover in a way that is easy to execute.
 	int coveredDimension;  ///< The size of the result of value() in force when the last call to cover() ocurred.  If -1, then cover() has not yet been called.
 	MatrixSparse<int> parameters;  ///< If parameters(i,j) == k, then compute Jacobian(i,k) during the jth call to the function (by perturbing the kth parameter).
 	std::vector< std::vector<int> > parms;  ///< The jth entry gives in compact form the parameters that need to be perturbed during the jth call.
@@ -136,8 +136,14 @@ namespace fl
   public:
 	SearchableConstriction (Searchable<T> & searchable, const Vector<T> & a, const Vector<T> & b) : searchable (searchable), a (a), b (b) {}
 
-	virtual int  dimension (const Vector<T> & point)                    {return searchable.dimension (point);}
-	virtual void value     (const Vector<T> & point, Vector<T> & value) {searchable.value (a + b * point[0], value);}
+	virtual MatrixResult<T> start ()
+	{
+	  Vector<T> * result = new Vector<T> (1);
+	  result->clear ();
+	  return result;
+	}
+	virtual int             dimension (const Vector<T> & point) {return searchable.dimension (point);}
+	virtual MatrixResult<T> value     (const Vector<T> & point) {return searchable.value (a + b * point[0]);}
 
 	Searchable<T> & searchable;
 	Vector<T> a;
@@ -147,7 +153,9 @@ namespace fl
   /**
 	 Interface that allows a Search to opportunistically move to a better
 	 position if one is detected during the construction of gradient, jacobian,
-	 or hessian.  A Searchable class that inherits this interface promises
+	 or hessian.  A Searchable class that inherits this interface need only
+	 call update() at the end of its value() function in order to fulfill
+	 its promises.  In particular, a class that inherits this interface promises
 	 to initialize bestResidual to INFINITY, and to update both bestResidual
 	 and bestPoint each time value() is called.  bestPoint need not be valid
 	 until bestResidual is less than INFINITY.  The subclass should make no
@@ -295,7 +303,6 @@ namespace fl
 	T toleranceA;  ///< Stop line search when the movement along the direction vector is less than this proportion of its length.
 	int restartIterations;
 	int maxIterations;
-	Vector<T> scales;  ///< Amount by which to scale (multiply) each element of gradient.  If not set or does not match dimension of gradient, then do not scale (or equivalently, scale all elements by 1).
   };
 
   template<class T>

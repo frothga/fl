@@ -40,15 +40,24 @@ namespace fl
   template<class T>
   MatrixSparse<T>::MatrixSparse (const MatrixAbstract<T> & that)
   {
-	data.initialize ();
-	int m = that.rows ();
-	int n = that.columns ();
-	resize (m, n);
-	for (int c = 0; c < n; c++)
+	if (that.classID () & MatrixSparseID)
 	{
-	  for (int r = 0; r < m; r++)
+	  const MatrixSparse<T> & S = (const MatrixSparse<T> &) that;
+	  rows_ = S.rows_;
+	  data  = S.data;
+	}
+	else
+	{
+	  data.initialize ();
+	  int m = that.rows ();
+	  int n = that.columns ();
+	  resize (m, n);
+	  for (int c = 0; c < n; c++)
 	  {
-		set (r, c, that(r,c));
+		for (int r = 0; r < m; r++)
+		{
+		  set (r, c, that(r,c));
+		}
 	  }
 	}
   }

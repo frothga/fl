@@ -44,21 +44,29 @@ namespace fl
 
   template<class T>
   void
-  SearchableNumeric<T>::start (Vector<T> & point)
+  SearchableNumeric<T>::finish (const Vector<T> & point)
   {
-	point.clear ();
   }
 
   template<class T>
-  void
-  SearchableNumeric<T>::gradient (const Vector<T> & point, Vector<T> & result, const Vector<T> * currentValue)
+  MatrixResult<T>
+  SearchableNumeric<T>::scales (const Vector<T> & point)
+  {
+	Vector<T> * result = new Vector<T> (point.rows ());
+	result->clear (1);
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  SearchableNumeric<T>::gradient (const Vector<T> & point, const Vector<T> * currentValue)
   {
 	Vector<T> perturbedPoint;
 	perturbedPoint.copyFrom (point);
 
 	int n = point.rows ();
 
-	result.resize (n);
+	Vector<T> * result = new Vector<T> (n);
 
 	T v0;
 	Vector<T> v;
@@ -68,7 +76,7 @@ namespace fl
 	}
 	else
 	{
-	  this->value (point, v);
+	  v = this->value (point);
 	  v0 = v.sumSquares ();
 	}
 
@@ -78,17 +86,19 @@ namespace fl
 	  T h = perturbation * std::fabs (temp);
 	  if (h == 0) h = perturbation;
 	  perturbedPoint[i] += h;
-	  this->value (perturbedPoint, v);
+	  v = this->value (perturbedPoint);
 	  perturbedPoint[i] = temp;
 	  T v1 = v.sumSquares ();
 
-	  result[i] = (v1 - v0) / h;
+	  (*result)[i] = (v1 - v0) / h;
 	}
+
+	return result;
   }
 
   template<class T>
-  void
-  SearchableNumeric<T>::jacobian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue)
+  MatrixResult<T>
+  SearchableNumeric<T>::jacobian (const Vector<T> & point, const Vector<T> * currentValue)
   {
 	Vector<T> perturbedPoint;
 	perturbedPoint.copyFrom (point);
@@ -100,13 +110,13 @@ namespace fl
 	}
 	else
 	{
-	  this->value (point, oldValue);
+	  oldValue = this->value (point);
 	}
 
 	int m = oldValue.rows ();
 	int n = point.rows ();
 
-	result.resize (m, n);
+	Matrix<T> * result = new Matrix<T> (m, n);
 
 	Vector<T> column (m);
 	for (int i = 0; i < n; i++)
@@ -115,55 +125,18 @@ namespace fl
 	  T h = perturbation * std::fabs (temp);
 	  if (h == 0) h = perturbation;
 	  perturbedPoint[i] += h;
-	  this->value (perturbedPoint, column);
+	  column = this->value (perturbedPoint);
 	  perturbedPoint[i] = temp;
 
-	  result.column (i) = (column - oldValue) / h;
+	  result->column (i) = (column - oldValue) / h;
 	}
+
+	return result;
   }
 
   template<class T>
-  void
-  SearchableNumeric<T>::jacobian (const Vector<T> & point, MatrixSparse<T> & result, const Vector<T> * currentValue)
-  {
-	Vector<T> perturbedPoint;
-	perturbedPoint.copyFrom (point);
-
-	Vector<T> oldValue;
-	if (currentValue)
-	{
-	  oldValue = *currentValue;
-	}
-	else
-	{
-	  this->value (point, oldValue);
-	}
-
-	int m = oldValue.rows ();
-	int n = point.rows ();
-
-	result.resize (m, n);
-
-	Vector<T> column (m);
-	for (int i = 0; i < n; i++)
-	{
-	  T temp = point[i];
-	  T h = perturbation * std::fabs (temp);
-	  if (h == 0) h = perturbation;
-	  perturbedPoint[i] += h;
-	  this->value (perturbedPoint, column);
-	  perturbedPoint[i] = temp;
-
-	  for (int j = 0; j < m; j++)
-	  {
-		result.set (j, i, (column[j] - oldValue[j]) / h);
-	  }
-	}
-  }
-
-  template<class T>
-  void
-  SearchableNumeric<T>::hessian (const Vector<T> & point, Matrix<T> & result, const Vector<T> * currentValue)
+  MatrixResult<T>
+  SearchableNumeric<T>::hessian (const Vector<T> & point, const Vector<T> * currentValue)
   {
 	T perturbation2 = std::sqrt (perturbation);  // because hessian takes second derivative, we need to keep denominator from getting too small
 
@@ -173,7 +146,7 @@ namespace fl
 	point10.copyFrom (point);
 
 	int n = point.rows ();
-	result.resize (n, n);
+	Matrix<T> * result = new Matrix<T> (n, n);
 
 	Vector<T> deltas (n);
 	for (int i = 0; i < n; i++)
@@ -184,15 +157,13 @@ namespace fl
 	}
 
 	T v00;
-	Vector<T> v;
 	if (currentValue)
 	{
 	  v00 = currentValue->sumSquares ();
 	}
 	else
 	{
-	  this->value (point00, v);
-	  v00 = v.sumSquares ();
+	  v00 = this->value (point00).sumSquares ();
 	}
 
 	for (int i = 0; i < n; i++)
@@ -200,14 +171,13 @@ namespace fl
 	  T & deltaI = deltas[i];
 
 	  point10[i] += deltaI;
-	  this->value (point10, v);
-	  T v10 = v.sumSquares ();
+	  T v10 = this->value (point10).sumSquares ();
 
 	  // Diagonals -- use central differences
 	  point00[i] -= deltaI;
-	  this->value (point00, v);
+	  T v = this->value (point00).sumSquares ();
 	  point00[i] = point[i];
-	  result(i,i) = ((v10 - v00) / deltaI - (v00 - v.sumSquares ()) / deltaI) / deltaI;
+	  (*result)(i,i) = ((v10 - v00) / deltaI - (v00 - v) / deltaI) / deltaI;
 
 	  // Off-diagonals
 	  for (int j = i + 1; j < n; j++)
@@ -215,23 +185,23 @@ namespace fl
 		T deltaJ = deltas[j];
 
 		point00[j] += deltaJ;
-		this->value (point00, v);
+		T v01 = this->value (point00).sumSquares ();
 		point00[j] = point[j];
-		T v01 = v.sumSquares ();
 
 		T temp = point10[j];
 		point10[j] += deltaJ;
-		this->value (point10, v);
+		T v11 = this->value (point10).sumSquares ();
 		point10[j] = temp;
-		T v11 = v.sumSquares ();
 
 		T h = ((v11 - v10) / deltaJ - (v01 - v00) / deltaJ) / deltaI;  // distribute the division by deltaJ for better scaling
-		result(i,j) = h;
-		result(j,i) = h;
+		(*result)(i,j) = h;
+		(*result)(j,i) = h;
 	  }
 
 	  point10[i] = point[i];
 	}
+
+	return result;
   }
 }
 

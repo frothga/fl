@@ -61,7 +61,7 @@ namespace fl
 	{
 	  point[0] = xs[j];
 	  searchable.dimension (point);
-	  searchable.value (point, value);
+	  value = searchable.value (point);
 	  T y = value.norm (2);
 	  ys[j] = y;
 	  if (y < bestY)
@@ -167,7 +167,7 @@ namespace fl
 
 	  point[0] = x;
 	  searchable.dimension (point);
-	  searchable.value (point, value);
+	  value = searchable.value (point);
 	  T y = value.norm (2);
 	  xs.insert (xs.begin () + it, x);
 	  ys.insert (ys.begin () + it, y);

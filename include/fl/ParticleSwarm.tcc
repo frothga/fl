@@ -58,9 +58,8 @@ namespace fl
 	// Initialize: Probe area around starting point to determine sensitivity.
 	// Then spread initial particles at roughly the 1-sigma distance.
 
-	Vector<T> scales;
 	searchable.dimension (point);
-	searchable.gradient (point, scales);
+	Vector<T> scales = searchable.gradient (point);
 	if (greedy) point = greedy->bestPoint;
 	for (int d = 0; d < dimension; d++)
 	{
@@ -84,7 +83,7 @@ namespace fl
 	  }
 	  p.bestPosition.copyFrom (p.position);
 
-	  searchable.value (p.position, value);
+	  value = searchable.value (p.position);
 	  p.value = value.norm (2) * direction;
 	  p.bestValue = p.value;
 	  if (p.value < bestParticle->value) bestParticle = &p;
@@ -120,7 +119,7 @@ namespace fl
 		if (normP > maxVelocity) p.velocity.normalize (maxVelocity);
 
 		p.position += p.velocity;
-		searchable.value (p.position, value);
+		value = searchable.value (p.position);
 		p.value = value.norm (2) * direction;
 
 		if (p.value < p.bestValue)

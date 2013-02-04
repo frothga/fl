@@ -50,14 +50,9 @@ namespace fl
 	{
 	  searchable.dimension (point);
 
-	  Vector<T> v;
-	  searchable.value (point, v);
-
-	  Vector<T> g;
-	  searchable.gradient (point, g, &v);
-
-	  Matrix<T> H;
-	  searchable.hessian (point, H, &v);
+	  Vector<T> v = searchable.value (point);
+	  Vector<T> g = searchable.gradient (point, &v);
+	  Matrix<T> H = searchable.hessian (point, &v);
 
 	  if (greedy  &&  greedy->bestResidual < bestResidual)
 	  {

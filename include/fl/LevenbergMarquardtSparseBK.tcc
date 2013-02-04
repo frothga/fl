@@ -50,6 +50,7 @@ namespace fl
   public:
 	SparseBK () : MatrixSparse<T> () {}
 	SparseBK (int rows, int columns) : MatrixSparse<T> (rows, columns) {}
+	SparseBK (const MatrixAbstract<T> & A) : MatrixSparse<T> (A) {}
 
 	// Determines largest off-diagonal value in given column
 	// Does not clear return values before search, so this can update results
@@ -926,13 +927,12 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 	  const int m = searchable.dimension (x);
 	  if (m != oldm)  // dimension has changed, so get fresh value of y
 	  {
-		searchable.value (x, y);
+		y = searchable.value (x);
 		ynorm = y.norm (2);
 		oldm = m;
 	  }
 
-	  SparseBK<T> J (m, n);
-	  searchable.jacobian (x, J, &y);
+	  SparseBK<T> J = searchable.jacobian (x, &y);
 	  Vector<T> jacobianNorms (n);
 	  for (int j = 0; j < n; j++) jacobianNorms[j] = J.norm2 (j);
 
@@ -997,8 +997,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 		}
 
 		// evaluate the function at x + p and calculate its norm
-		Vector<T> tempY;
-		searchable.value (xp, tempY);
+		Vector<T> tempY = searchable.value (xp);
 		T ynorm1 = tempY.norm (2);
 
 		// compute the scaled actual reduction
