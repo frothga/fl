@@ -156,6 +156,7 @@ add_library (flNumeric
 
   # Clustering
   ../../include/fl/cluster.h
+  ../../include/fl/neighbor.h
   Agglomerate.cc
   ClusterMethod.cc
   GaussianMixture.cc
@@ -163,6 +164,7 @@ add_library (flNumeric
   KMeans.cc
   KMeansTree.cc
   Kohonen.cc
+  Neighbor.cc
   SVM.cc
 
   # Neural Networks
