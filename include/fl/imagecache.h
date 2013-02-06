@@ -52,7 +52,9 @@ namespace fl
   class SHARED ImageCacheEntry
   {
   public:
-	virtual void      generate (ImageCache & cache);  ///< Fill the image member.
+	virtual ~ImageCacheEntry ();
+
+	virtual void      generate (ImageCache & cache);  ///< Fill the image member.  Note on thread-safety: cache always locks its mutex before calling this function.
 	virtual ptrdiff_t memory   () const;  ///< @return an estimate of how many bytes this entry uses.  Need only account for large things like the pixel buffer itself.
 	virtual bool      compare  (const ImageCacheEntry & that) const;
 	virtual float     distance (const ImageCacheEntry & that) const;  ///< Returns zero if that is exactly same as this, otherwise a positive number that indicates how different they are.  Returns INFINITY if that is not same class as this, or otherwise not substitutable.
@@ -86,6 +88,7 @@ namespace fl
 	  }
 	};
 
+	pthread_mutex_t mutex;  ///< All accesses that change or depend on the cache structure must be thread-safe.
 	ptrdiff_t memory;  ///< Total amount of memory used by entries.  Must be maintained any time an entry is added or removed.
 	EntryPyramid * original;  ///< Base image from which all others are derived
 	typedef std::set<ImageCacheEntry *, EntryCompare> cacheType;

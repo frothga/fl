@@ -24,6 +24,10 @@ using namespace std;
 
 // class ImageCacheEntry ------------------------------------------------------
 
+ImageCacheEntry::~ImageCacheEntry ()
+{
+}
+
 void
 ImageCacheEntry::generate (ImageCache & cache)
 {
@@ -70,6 +74,7 @@ ImageCache ImageCache::shared;  // instantiate the global cache
 
 ImageCache::ImageCache ()
 {
+  pthread_mutex_init (&mutex, 0);
   original = 0;
   memory = 0;
 }
@@ -77,11 +82,13 @@ ImageCache::ImageCache ()
 ImageCache::~ImageCache ()
 {
   clear ();
+  pthread_mutex_destroy (&mutex);
 }
 
 void
 ImageCache::clear ()
 {
+  pthread_mutex_lock (&mutex);
   cacheType::iterator i;
   for (i = cache.begin (); i != cache.end (); i++)
   {
@@ -90,11 +97,13 @@ ImageCache::clear ()
   cache.clear ();
   original = 0;
   memory = 0;
+  pthread_mutex_unlock (&mutex);
 }
 
 void
 ImageCache::clear (ImageCacheEntry * query)
 {
+  pthread_mutex_lock (&mutex);
   cacheType::iterator i = cache.find (query);
   while (i != cache.end ())
   {
@@ -103,34 +112,44 @@ ImageCache::clear (ImageCacheEntry * query)
 	cache.erase (i);
 	i = cache.find (query);
   }
+  pthread_mutex_unlock (&mutex);
   delete query;
 }
 
 void
 ImageCache::setOriginal (const Image & image, float scale)
 {
+  pthread_mutex_lock (&mutex);
   if (original)
   {
-	if (original->image == image) return;  // ignore scale in this case
+	if (original->image == image)  // ignore scale in this case
+	{
+	  pthread_mutex_unlock (&mutex);
+	  return;
+	}
 	clear ();
   }
   original = new EntryPyramid (image, scale);
   cache.insert (original);
   memory += original->memory ();
+  pthread_mutex_unlock (&mutex);
 }
 
 ImageCacheEntry *
 ImageCache::get (ImageCacheEntry * query)
 {
+  pthread_mutex_lock (&mutex);
   cacheType::iterator i = cache.find (query);
   if (i != cache.end ())
   {
+	pthread_mutex_unlock (&mutex);
 	delete query;
 	return *i;
   }
   query->generate (*this);
   cache.insert (i, query);
   memory += query->memory ();
+  pthread_mutex_unlock (&mutex);
   return query;
 }
 
@@ -138,12 +157,14 @@ ImageCacheEntry *
 ImageCache::getClosest (ImageCacheEntry * query)
 {
   ImageCacheEntry * result = 0;
-  cacheType::iterator i = cache.lower_bound (query);
-  cacheType::iterator j = i--;  // postdecrement, so j comes after i in sequence
   float di = INFINITY;
   float dj = INFINITY;
+  pthread_mutex_lock (&mutex);
+  cacheType::iterator i = cache.lower_bound (query);
+  cacheType::iterator j = i--;  // postdecrement, so j comes after i in sequence
   if (i != cache.end ()) di = query->distance (**i);
   if (j != cache.end ()) dj = query->distance (**j);
+  pthread_mutex_unlock (&mutex);
   if      (dj < di)        result = *j;
   else if (di != INFINITY) result = *i;
   delete query;
@@ -154,12 +175,14 @@ ImageCacheEntry *
 ImageCache::getLE (ImageCacheEntry * query)
 {
   ImageCacheEntry * result = 0;
-  cacheType::iterator i = cache.lower_bound (query);
-  cacheType::iterator j = i--;
   float di = INFINITY;
   float dj = INFINITY;
+  pthread_mutex_lock (&mutex);
+  cacheType::iterator i = cache.lower_bound (query);
+  cacheType::iterator j = i--;
   if (i != cache.end ()) di = query->distance (**i);
   if (j != cache.end ()) dj = query->distance (**j);
+  pthread_mutex_unlock (&mutex);
   if      (dj == 0)        result = *j;  // only use j if it exactly equals the query
   else if (di != INFINITY) result = *i;
   delete query;
