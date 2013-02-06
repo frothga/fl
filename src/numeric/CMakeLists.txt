@@ -130,7 +130,7 @@ add_library (flNumeric
   ../../include/fl/ConjugateGradient.tcc
   ../../include/fl/GradientDescent.tcc
   ../../include/fl/LevenbergMarquardt.tcc
-  ../../include/fl/LevenbergMarquardtSparseBK.tcc
+  ../../include/fl/LevenbergMarquardtSparse.tcc
   ../../include/fl/LineSearch.tcc
   ../../include/fl/NewtonRaphson.tcc
   ../../include/fl/ParticleSwarm.tcc
@@ -140,7 +140,7 @@ add_library (flNumeric
   #   Double
   AnnealingAdaptiveDouble.cc
   GradientDescentDouble.cc
-  LevenbergMarquardtSparseBKDouble.cc
+  LevenbergMarquardtSparseDouble.cc
   LineSearchDouble.cc
   ParticleSwarmDouble.cc
   SearchableNumericDouble.cc
@@ -148,7 +148,7 @@ add_library (flNumeric
   #   Float
   AnnealingAdaptiveFloat.cc
   GradientDescentFloat.cc
-  LevenbergMarquardtSparseBKFloat.cc
+  LevenbergMarquardtSparseFloat.cc
   LineSearchFloat.cc
   ParticleSwarmFloat.cc
   SearchableNumericFloat.cc

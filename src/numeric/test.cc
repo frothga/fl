@@ -238,7 +238,7 @@ testSearch ()
   vector<Search<T> *> searches;
   searches.push_back (new AnnealingAdaptive<T>);  // Stochastic search along a single dimension doesn't seem to work so well.
   searches.push_back (new GradientDescent<T> (1e-4));  // The default toleranceX for double is too tight.
-  searches.push_back (new LevenbergMarquardtSparseBK<T>);
+  searches.push_back (new LevenbergMarquardtSparse<T>);
   searches.push_back (new ParticleSwarm<T>);
 # ifdef HAVE_LAPACK
   searches.push_back (new LevenbergMarquardt<T>);

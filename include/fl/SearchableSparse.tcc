@@ -110,7 +110,7 @@ namespace fl
   Search<T> *
   SearchableSparse<T>::search ()
   {
-	return new LevenbergMarquardtSparseBK<T>;
+	return new LevenbergMarquardtSparse<T>;
   }
 
   template<class T>

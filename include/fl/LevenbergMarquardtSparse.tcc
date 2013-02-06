@@ -14,8 +14,8 @@ for details.
 */
 
 
-#ifndef fl_levenberg_marquardt_sparse_bk_tcc
-#define fl_levenberg_marquardt_sparse_bk_tcc
+#ifndef fl_levenberg_marquardt_sparse_tcc
+#define fl_levenberg_marquardt_sparse_tcc
 
 
 #include "fl/search.h"
@@ -887,10 +887,10 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
   }
 
 
-  // class LevenbergMarquardtSparseBK -----------------------------------------
+  // class LevenbergMarquardtSparse -------------------------------------------
 
   template<class T>
-  LevenbergMarquardtSparseBK<T>::LevenbergMarquardtSparseBK (T toleranceF, T toleranceX, int maxIterations, int maxPivot)
+  LevenbergMarquardtSparse<T>::LevenbergMarquardtSparse (T toleranceF, T toleranceX, int maxIterations, int maxPivot)
   {
 	if (toleranceF < (T) 0) toleranceF = std::sqrt (std::numeric_limits<T>::epsilon ());
 	this->toleranceF = toleranceF;
@@ -907,7 +907,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
   **/
   template<class T>
   void
-  LevenbergMarquardtSparseBK<T>::search (Searchable<T> & searchable, Vector<T> & x)
+  LevenbergMarquardtSparse<T>::search (Searchable<T> & searchable, Vector<T> & x)
   {
 	const T toleranceG = (T) 0;
 	const T epsilon = std::numeric_limits<T>::epsilon ();

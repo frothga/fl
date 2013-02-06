@@ -339,13 +339,14 @@ namespace fl
   };
 
   /**
-	 LM based on Bunch-Kaufman decomposition with sparse implementation.
+	 LM based on solving the squared Jacobian (~J*J, or JTJ), rather than factorizing it
+	 directly.  Several different methods are available for solving JTJ.
   **/
   template<class T>
-  class SHARED LevenbergMarquardtSparseBK : public Search<T>
+  class SHARED LevenbergMarquardtSparse : public Search<T>
   {
   public:
-	LevenbergMarquardtSparseBK (T toleranceF = -1, T toleranceX = -1, int maxIterations = 200, int maxPivot = 20);
+	LevenbergMarquardtSparse (T toleranceF = -1, T toleranceX = -1, int maxIterations = 200, int maxPivot = 20);
 
 	virtual void search (Searchable<T> & searchable, Vector<T> & point);
 
