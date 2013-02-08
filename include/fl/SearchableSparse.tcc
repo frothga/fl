@@ -123,7 +123,7 @@ namespace fl
 
 	MatrixSparse<T> J = jacobian (point, &y);
 
-	return ((T) 2) * J.transposeMultiply (y);
+	return ((T) 2) * J.transposeTimes (y);
   }
 
   template<class T>

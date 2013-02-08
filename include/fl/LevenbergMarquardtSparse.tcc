@@ -42,22 +42,286 @@ for details.
 
 namespace fl
 {
-  // class SparseBK -----------------------------------------------------------
-
   template<class T>
-  class SHARED SparseBK : public MatrixSparse<T>
+  class SHARED FactorizationBKsparse : public Factorization<T>
   {
   public:
-	SparseBK () : MatrixSparse<T> () {}
-	SparseBK (int rows, int columns) : MatrixSparse<T> (rows, columns) {}
-	SparseBK (const MatrixAbstract<T> & A) : MatrixSparse<T> (A) {}
+	FactorizationBKsparse ()
+	{
+	  maxPivot = INT_MAX;
+	}
+
+	int maxPivot;
+	MatrixSparse<T> A;
+	Vector<int> pivots;
+
+	/// Factorize A as U*D*U' using the upper triangle of A
+	virtual void factorize (const MatrixAbstract<T> & inputA, bool destroyA = false)
+	{
+	  const T alpha = (1.0 + std::sqrt (17.0)) / 8.0;
+	  int n = inputA.columns ();
+	  pivots.resize (n);
+
+	  // Only copy the upper triangular region
+	  A.clear ();
+	  A.resize (n, n);
+	  for (int c = 0; c < n; c++)
+	  {
+		for (int r = 0; r <= c; r++)
+		{
+		  T element = inputA(r,c);
+		  if (element) A.set (r, c, element);
+		}
+	  }
+
+	  // K is the main loop index, decreasing from N to 1 in steps of
+	  // 1 or 2
+	  int k = n - 1;
+	  while (k >= 0)
+	  {
+		// Determine rows and columns to be interchanged and whether
+		// a 1-by-1 or 2-by-2 pivot block will be used
+
+		int kstep = 1;
+
+		T absakk = std::fabs (A(k,k));
+
+		// IMAX is the row-index of the largest off-diagonal element in
+		// column K, and COLMAX is its absolute value
+		int imax = 0;
+		T colmax = 0;
+		this->colmax (k, imax, colmax);
+
+		int kp;
+		if (! (std::max (absakk, colmax) > 0))
+		{
+		  throw -k;
+		  // kp = k;
+		}
+		else
+		{
+		  if ((k - imax) > maxPivot  ||  absakk >= alpha * colmax)
+		  {
+			// no interchange, use 1-by-1 pivot block
+			kp = k;
+		  }
+		  else
+		  {
+			// JMAX is the column-index of the largest off-diagonal
+			// element in row IMAX, and ROWMAX is its absolute value
+			int jmax = 0;
+			T rowmax = 0;
+			this->colmax (imax, jmax, rowmax);
+			for (int j = imax + 1; j <= k; j++)
+			{
+			  // no need to update jmax, because it is not used below
+			  rowmax = std::max (rowmax, std::fabs (A(imax,j)));
+			}
+
+			if (absakk >= alpha * colmax * colmax / rowmax)
+			{
+			  // no interchange, use 1-by-1 pivot block
+			  kp = k;
+			}
+			else if (std::fabs (A(imax,imax)) >= alpha * rowmax)
+			{
+			  // interchange rows and columns K and IMAX, use 1-by-1 pivot block
+			  kp = imax;
+			}
+			else
+			{
+			  // interchange rows and columns K-1 and IMAX, use 2-by-2 pivot block
+			  kp = imax;
+			  kstep = 2;
+			}
+		  }
+
+		  int kk = k - kstep + 1;
+		  if (kp != kk)  // then kp < kk
+		  {
+			// Interchange rows and columns KK and KP in the leading
+			// submatrix A(1:k,1:k)
+			swap (kk, kp, kp - 1);  // exchange columns kk and kp up to row kp-1
+			for (int j = kp + 1; j < kk; j++)
+			{
+			  swap (j, kk, kp, j);  // exchange elements (j,kk) and (kp,j)
+			}
+			swap (kk, kk, kp, kp);
+			if (kstep == 2)
+			{
+			  swap (k-1, k, kp, k);
+			}
+		  }
+
+		  // Update the leading submatrix
+		  if (kstep == 1)
+		  {
+			// 1-by-1 pivot block D(k): column k now holds W(k) = U(k)*D(k)
+			// where U(k) is the k-th column of U
+
+			// Perform a rank-1 update of A(1:k-1,1:k-1) as
+			// A := A - U(k)*D(k)*U(k)' = A - W(k)*1/D(k)*W(k)'
+			// and store U(k) in column k
+			updateRank1 (k);
+		  }
+		  else
+		  {
+			// 2-by-2 pivot block D(k): columns k and k-1 now hold
+			// ( W(k-1) W(k) ) = ( U(k-1) U(k) )*D(k)
+			// where U(k) and U(k-1) are the k-th and (k-1)-th columns of U
+
+			// Perform a rank-2 update of A(1:k-2,1:k-2) as
+			// A := A - ( U(k-1) U(k) )*D(k)*( U(k-1) U(k) )'
+			//    = A - ( W(k-1) W(k) )*inv(D(k))*( W(k-1) W(k) )'
+			updateRank2 (k);
+		  }
+		}
+
+		// Store details of the interchanges in IPIV
+		// Pivot values must be one-based so that negation can work.  The output
+		// of this routine is therefore compatible with dsytf2, etc.
+		kp++;
+		if (kstep == 1)
+		{
+		  pivots[k] = kp;
+		}
+		else
+		{
+		  pivots[k] = -kp;
+		  pivots[k-1] = -kp;
+		}
+
+		// Decrease K
+		k -= kstep;
+	  }
+	}
+
+	/// Solve A*X = B, where A = U*D*U'.
+	virtual MatrixResult<T> solve (const MatrixAbstract<T> & B, bool destroyB = false)
+	{
+	  Matrix<T> * X = new Matrix<T>;
+	  X->copyFrom (B);
+
+	  int n = A.columns ();
+
+	  for (int c = 0; c < X->columns (); c++)
+	  {
+		Vector<T> x (&(*X)(0,c), X->rows ());
+
+		// First solve U*D*X = B
+		// K is the main loop index, decreasing from N-1 to 0 in steps of
+		// 1 or 2, depending on the size of the diagonal blocks.
+		int k = n - 1;
+		while (k >= 0)
+		{
+		  if (pivots[k] > 0)
+		  {
+			// 1 x 1 diagonal block
+
+			// Interchange rows K and IPIV(K).
+			int kp = pivots[k] - 1;
+			if (kp != k)
+			{
+			  std::swap (x[k], x[kp]);
+			}
+
+			// Multiply by inv(U(K)), where U(K) is the transformation
+			// stored in column K of A.
+			minus (k, k - 1, x);
+
+			// Multiply by the inverse of the diagonal block.
+			x[k] /= A(k,k);
+
+			k--;
+		  }
+		  else
+		  {
+			// 2 x 2 diagonal block
+
+			// Interchange rows K-1 and -IPIV(K).
+			int kp = - pivots[k] - 1;
+			if (kp != k - 1)
+			{
+			  std::swap (x[k-1], x[kp]);
+			}
+
+			// Multiply by inv(U(K)), where U(K) is the transformation
+			// stored in columns K-1 and K of A.
+			minus (k,     k - 2, x);
+			minus (k - 1, k - 2, x);
+
+			// Multiply by the inverse of the diagonal block.
+			T akm1k = A(k-1,k);
+			T akm1  = A(k-1,k-1) / akm1k;
+			T ak    = A(k,k)     / akm1k;
+			T denom = akm1 * ak - 1;
+			T bkm1  = x[k-1] / akm1k;
+			T bk    = x[k]   / akm1k;
+			x[k-1] = (ak   * bkm1 - bk)   / denom;
+			x[k]   = (akm1 * bk   - bkm1) / denom;
+
+			k -= 2;
+		  }
+		}
+
+		// Next solve U'*X = B
+		// K is the main loop index, increasing from 0 to N-1 in steps of
+		// 1 or 2, depending on the size of the diagonal blocks.
+		k = 0;
+		while (k < n)
+		{
+		  if (pivots[k] > 0)
+		  {
+			// 1 x 1 diagonal block
+
+			// Multiply by inv(U'(K)), where U(K) is the transformation
+			// stored in column K of A.
+			x[k] -= dot (k, k - 1, x);
+
+			// Interchange rows K and IPIV(K)
+			int kp = pivots[k] - 1;
+			if (kp != k)
+			{
+			  std::swap (x[k], x[kp]);
+			}
+
+			k++;
+		  }
+		  else
+		  {
+			// 2 x 2 diagonal block
+
+			// Multiply by inv(U'(K+1)), where U(K+1) is the transformation
+			// stored in columns K and K+1 of A.
+			x[k]   -= dot (k,     k - 1, x);
+			x[k+1] -= dot (k + 1, k - 1, x);
+
+			// Interchange rows K and -IPIV(K).
+			int kp = - pivots[k] - 1;
+			if (kp != k)
+			{
+			  std::swap (x[k], x[kp]);
+			}
+
+			k += 2;
+		  }
+		}
+	  }
+
+	  return X;
+	}
+
+	virtual MatrixResult<T> inverse ()
+	{
+	  throw "FactorizationBKsparse::inverse() not implemented yet";
+	}
 
 	// Determines largest off-diagonal value in given column
 	// Does not clear return values before search, so this can update results
 	// of a previous search.
 	void colmax (const int column, int & row, T & value) const
 	{
-	  std::map<int,T> & C = (*this->data)[column];
+	  std::map<int,T> & C = (*A.data)[column];
 	  typename std::map<int,T>::iterator i;
 	  for (i = C.begin (); i != C.end ()  &&  i->first < column; i++)
 	  {
@@ -72,8 +336,8 @@ namespace fl
 
 	void swap (const int row1, const int column1, const int row2, const int column2)
 	{
-	  std::map<int,T> & C1 = (*this->data)[column1];
-	  std::map<int,T> & C2 = (*this->data)[column2];
+	  std::map<int,T> & C1 = (*A.data)[column1];
+	  std::map<int,T> & C2 = (*A.data)[column2];
 	  std::pair< typename std::map<int,T>::iterator, bool > r1 = C1.insert (std::make_pair (row1, (T) 0));
 	  std::pair< typename std::map<int,T>::iterator, bool > r2 = C2.insert (std::make_pair (row2, (T) 0));
 	  if (r1.second)  // this(row1,column1) == 0
@@ -105,8 +369,8 @@ namespace fl
 
 	void swap (const int column1, const int column2, const int lastRow)
 	{
-	  std::map<int,T> & C1 = (*this->data)[column1];
-	  std::map<int,T> & C2 = (*this->data)[column2];
+	  std::map<int,T> & C1 = (*A.data)[column1];
+	  std::map<int,T> & C2 = (*A.data)[column2];
 	  typename std::map<int,T>::iterator i1 = C1.begin ();
 	  typename std::map<int,T>::iterator i2 = C2.begin ();
 	  // Assume that there is always another element in each column beyond lastRow.
@@ -139,7 +403,7 @@ namespace fl
 
 	void updateRank1 (const int column)
 	{
-	  std::map<int,T> & Ck = (*this->data)[column];
+	  std::map<int,T> & Ck = (*A.data)[column];
 	  typename std::map<int,T>::reverse_iterator j = Ck.rbegin ();
 	  typename std::map<int,T>::reverse_iterator CkEnd = Ck.rend ();
 	  if (j == CkEnd  ||  j->first != column)
@@ -152,7 +416,7 @@ namespace fl
 	  {
 		T temp = - j->second / alpha;
 
-		std::map<int,T> & Cj = (*this->data)[j->first];
+		std::map<int,T> & Cj = (*A.data)[j->first];
 		typename std::map<int,T>::reverse_iterator ij = Cj.rbegin ();
 		typename std::map<int,T>::reverse_iterator ik = j;
 		typename std::map<int,T>::reverse_iterator CjEnd = Cj.rend ();
@@ -190,8 +454,8 @@ namespace fl
 
 	void updateRank2 (const int column)
 	{
-	  std::map<int,T> & Ck  = (*this->data)[column];
-	  std::map<int,T> & Ck1 = (*this->data)[column - 1];
+	  std::map<int,T> & Ck  = (*A.data)[column];
+	  std::map<int,T> & Ck1 = (*A.data)[column - 1];
 	  typename std::map<int,T>::reverse_iterator jk  = Ck.rbegin ();
 	  typename std::map<int,T>::reverse_iterator jk1 = Ck1.rbegin ();
 	  typename std::map<int,T>::reverse_iterator CkEnd  = Ck.rend ();
@@ -246,7 +510,7 @@ namespace fl
 		T wk1 = (d11 * Ajk1 - Ajk)  / d12;
 		T wk  = (d22 * Ajk  - Ajk1) / d12;
 
-		std::map<int,T> & Cj = (*this->data)[j];
+		std::map<int,T> & Cj = (*A.data)[j];
 		typename std::map<int,T>::reverse_iterator ij = Cj.rbegin ();
 		typename std::map<int,T>::reverse_iterator ik = jk;
 		typename std::map<int,T>::reverse_iterator ik1 = jk1;
@@ -348,7 +612,7 @@ namespace fl
 	  {
 		return;
 	  }
-	  std::map<int,T> & C = (*this->data)[column];
+	  std::map<int,T> & C = (*A.data)[column];
 	  typename std::map<int,T>::iterator i = C.begin ();
 	  while (i->first <= lastRow  &&  i != C.end ())
 	  {
@@ -360,7 +624,7 @@ namespace fl
 	T dot (const int column, const int lastRow, const Vector<T> & x) const
 	{
 	  T result = (T) 0;
-	  std::map<int,T> & C = (*this->data)[column];
+	  std::map<int,T> & C = (*A.data)[column];
 	  typename std::map<int,T>::iterator i = C.begin ();
 	  while (i != C.end ()  &&  i->first <= lastRow)
 	  {
@@ -370,86 +634,15 @@ namespace fl
 	  return result;
 	}
 
-	// Return the upper triangular part of ~this * this in a new matrix.
-	SparseBK transposeSquare () const
-	{
-	  int n = this->data->size ();
-	  SparseBK result (n, n);
-
-	  for (int c = 0; c < n; c++)
-	  {
-		std::map<int,T> & C = (*result.data)[c];
-		typename std::map<int,T>::iterator i = C.begin ();
-		for (int r = 0; r <= c; r++)
-		{
-		  T t = (T) 0;
-		  std::map<int,T> & C1 = (*this->data)[r];
-		  std::map<int,T> & C2 = (*this->data)[c];
-		  typename std::map<int,T>::iterator i1 = C1.begin ();
-		  typename std::map<int,T>::iterator i2 = C2.begin ();
-		  while (i1 != C1.end ()  &&  i2 != C2.end ())
-		  {
-			if (i1->first == i2->first)
-			{
-			  t += i1->second * i2->second;
-			  i1++;
-			  i2++;
-			}
-			else if (i1->first > i2->first)
-			{
-			  i2++;
-			}
-			else  // i1->first < i2->first
-			{
-			  i1++;
-			}
-		  }
-		  if (t != (T) 0)
-		  {
-			i = C.insert (i, std::make_pair (r, t));
-		  }
-		}
-	  }
-
-	  return result;
-	}
-
-	/*  For testing only.  Multiplies x by full matrix, even though stored only as upper triangle.
-	Vector<T> trimult (const Vector<T> & x) const
-	{
-	  const int n = data->size ();
-
-	  Vector<T> result (rows_);
-	  result.clear ();
-
-	  for (int c = 0; c < n; c++)
-	  {
-		std::map<int,T> & C = (*data)[c];
-		typename std::map<int,T>::iterator i = C.begin ();
-		while (i != C.end ())
-		{
-		  result[i->first] += i->second * x[c];
-		  if (i->first < c)
-		  {
-			result[c] += i->second * x[i->first];
-		  }
-		  i++;
-		}
-	  }
-
-	  return result;
-	}
-	*/
-
 	void addDiagonal (const T alpha, const Vector<T> & x)
 	{
-	  int n = this->data->size ();
+	  int n = A.data->size ();
 
 	  for (int j = 0; j < n; j++)
 	  {
 		T value = alpha * x[j] * x[j];
 
-		std::map<int,T> & C = (*this->data)[j];
+		std::map<int,T> & C = (*A.data)[j];
 		typename std::map<int,T>::reverse_iterator i = C.rbegin ();
 		while (i->first > j)  // This should never happen.
 		{
@@ -465,432 +658,13 @@ namespace fl
 		}
 	  }
 	}
-
-	T norm2 (const int column)
-	{
-	  T result = (T) 0;
-	  std::map<int,T> & C = (*this->data)[column];
-	  typename std::map<int,T>::iterator i = C.begin ();
-	  while (i != C.end ())
-	  {
-		result += i->second * i->second;
-		i++;
-	  }
-	  return std::sqrt (result);
-	}
   };
-
-
-  // Support functions --------------------------------------------------------
-
-  /*  For testing only.  Recreates original matrix from factored form.
-  template<class T>
-  void
-  reconstruct (MatrixAbstract<T> & A, Vector<int> & ipiv, Matrix<T> & B)
-  {
-	int n = A.rows ();
-	Matrix<T> U (n, n);
-	U.identity ();
-	Matrix<T> D (n, n);
-	D.clear ();
-	int k = n - 1;
-	while (k >= 0)
-	{
-	  Matrix<T> PUk (n, n);
-	  PUk.identity ();
-	  if (ipiv[k] > 0)
-	  {
-		int j = ipiv[k] - 1;
-		MatrixRegion<T> (PUk, 0, k, k-1, k) <<= MatrixRegion<T> (A, 0, k, k-1, k);
-		if (j != k)
-		{
-		  Matrix<T> temp;
-		  temp <<= PUk.row (k);
-		  PUk.row (k) <<= PUk.row (j);
-		  PUk.row (j) <<= temp;
-		}
-		U *= PUk;
-		D(k,k) = A(k,k);
-		k -= 1;
-	  }
-	  else  // ipiv[k] < 0 and ipiv[k-1] < 0
-	  {
-		int j = -ipiv[k] - 1;
-		MatrixRegion<T> (PUk, 0, k-1, k-2, k) <<= MatrixRegion<T> (A, 0, k-1, k-2, k);
-		if (j != k-1)
-		{
-		  Matrix<T> temp;
-		  temp <<= PUk.row (k-1);
-		  PUk.row (k-1) <<= PUk.row (j);
-		  PUk.row (j) <<= temp;
-		}
-		U *= PUk;
-		D(k,k) = A(k,k);
-		D(k-1,k-1) = A(k-1,k-1);
-		D(k-1,k) = A(k-1,k);
-		D(k,k-1) = D(k-1,k);
-		k -= 2;
-	  }
-	}
-	//cerr << (B - U * D * ~U) << endl << endl;
-	cerr << (B - U * D * ~U).norm (2) << endl;
-  }
-  */
-
-
-  template<class T>
-  static void
-  factorize (const int maxPivot, SparseBK<T> & A, Vector<int> & pivots)
-  {
-	// Factorize A as U*D*U' using the upper triangle of A
-
-	const T alpha = (1.0 + std::sqrt (17.0)) / 8.0;
-	int n = A.columns ();
-
-	pivots.resize (n);
-
-	// K is the main loop index, decreasing from N to 1 in steps of
-	// 1 or 2
-	int k = n - 1;
-	while (k >= 0)
-	{
-	  // Determine rows and columns to be interchanged and whether
-	  // a 1-by-1 or 2-by-2 pivot block will be used
-
-	  int kstep = 1;
-
-	  T absakk = std::fabs (A(k,k));
-
-	  // IMAX is the row-index of the largest off-diagonal element in
-	  // column K, and COLMAX is its absolute value
-	  int imax = 0;
-	  T colmax = 0;
-	  A.colmax (k, imax, colmax);
-
-	  int kp;
-	  if (! (std::max (absakk, colmax) > 0))
-	  {
-		throw -k;
-		// kp = k;
-	  }
-	  else
-	  {
-		if ((k - imax) > maxPivot  ||  absakk >= alpha * colmax)
-		{
-		  // no interchange, use 1-by-1 pivot block
-		  kp = k;
-		}
-		else
-		{
-		  // JMAX is the column-index of the largest off-diagonal
-		  // element in row IMAX, and ROWMAX is its absolute value
-		  int jmax = 0;
-		  T rowmax = 0;
-		  A.colmax (imax, jmax, rowmax);
-		  for (int j = imax + 1; j <= k; j++)
-		  {
-			// no need to update jmax, because it is not used below
-			rowmax = std::max (rowmax, std::fabs (A(imax,j)));
-		  }
-
-		  if (absakk >= alpha * colmax * colmax / rowmax)
-		  {
-			// no interchange, use 1-by-1 pivot block
-			kp = k;
-		  }
-		  else if (std::fabs (A(imax,imax)) >= alpha * rowmax)
-		  {
-			// interchange rows and columns K and IMAX, use 1-by-1 pivot block
-			kp = imax;
-		  }
-		  else
-		  {
-			// interchange rows and columns K-1 and IMAX, use 2-by-2 pivot block
-			kp = imax;
-			kstep = 2;
-		  }
-		}
-
-		int kk = k - kstep + 1;
-		if (kp != kk)  // then kp < kk
-		{
-		  // Interchange rows and columns KK and KP in the leading
-		  // submatrix A(1:k,1:k)
-		  A.swap (kk, kp, kp - 1);  // exchange columns kk and kp up to row kp-1
-		  for (int j = kp + 1; j < kk; j++)
-		  {
-			A.swap (j, kk, kp, j);  // exchange elements (j,kk) and (kp,j)
-		  }
-		  A.swap (kk, kk, kp, kp);
-		  if (kstep == 2)
-		  {
-			A.swap (k-1, k, kp, k);
-		  }
-		}
-
-		// Update the leading submatrix
-		if (kstep == 1)
-		{
-		  // 1-by-1 pivot block D(k): column k now holds W(k) = U(k)*D(k)
-		  // where U(k) is the k-th column of U
-
-		  // Perform a rank-1 update of A(1:k-1,1:k-1) as
-		  // A := A - U(k)*D(k)*U(k)' = A - W(k)*1/D(k)*W(k)'
-		  // and store U(k) in column k
-		  A.updateRank1 (k);
-		}
-		else
-		{
-		  // 2-by-2 pivot block D(k): columns k and k-1 now hold
-		  // ( W(k-1) W(k) ) = ( U(k-1) U(k) )*D(k)
-		  // where U(k) and U(k-1) are the k-th and (k-1)-th columns of U
-
-		  // Perform a rank-2 update of A(1:k-2,1:k-2) as
-		  // A := A - ( U(k-1) U(k) )*D(k)*( U(k-1) U(k) )'
-		  //    = A - ( W(k-1) W(k) )*inv(D(k))*( W(k-1) W(k) )'
-		  A.updateRank2 (k);
-		}
-	  }
-
-	  // Store details of the interchanges in IPIV
-	  // Pivot values must be one-based so that negation can work.  The output
-	  // of this routine is therefore compatible with dsytf2, etc.
-	  kp++;
-	  if (kstep == 1)
-	  {
-		pivots[k] = kp;
-	  }
-	  else
-	  {
-		pivots[k] = -kp;
-		pivots[k-1] = -kp;
-	  }
-
-	  // Decrease K
-	  k -= kstep;
-	}
-  }
-
-  template<class T>
-  static void
-  solve (const SparseBK<T> & A, const Vector<int> & pivots, Vector<T> & x, const Vector<T> & b)
-  {
-	// Solve A*X = B, where A = U*D*U'.
-
-	int n = A.columns ();
-
-	x.copyFrom (b);
-
-	// First solve U*D*X = B
-	// K is the main loop index, decreasing from N-1 to 0 in steps of
-	// 1 or 2, depending on the size of the diagonal blocks.
-	int k = n - 1;
-	while (k >= 0)
-	{
-	  if (pivots[k] > 0)
-	  {
-		// 1 x 1 diagonal block
-
-		// Interchange rows K and IPIV(K).
-		int kp = pivots[k] - 1;
-		if (kp != k)
-		{
-		  std::swap (x[k], x[kp]);
-		}
-
-		// Multiply by inv(U(K)), where U(K) is the transformation
-		// stored in column K of A.
-		A.minus (k, k - 1, x);
-
-		// Multiply by the inverse of the diagonal block.
-		x[k] /= A(k,k);
-
-		k--;
-	  }
-	  else
-	  {
-		// 2 x 2 diagonal block
-
-		// Interchange rows K-1 and -IPIV(K).
-		int kp = - pivots[k] - 1;
-		if (kp != k - 1)
-		{
-		  std::swap (x[k-1], x[kp]);
-		}
-
-		// Multiply by inv(U(K)), where U(K) is the transformation
-		// stored in columns K-1 and K of A.
-		A.minus (k,     k - 2, x);
-		A.minus (k - 1, k - 2, x);
-
-		// Multiply by the inverse of the diagonal block.
-		T akm1k = A(k-1,k);
-		T akm1  = A(k-1,k-1) / akm1k;
-		T ak    = A(k,k)     / akm1k;
-		T denom = akm1 * ak - 1;
-		T bkm1  = x[k-1] / akm1k;
-		T bk    = x[k]   / akm1k;
-		x[k-1] = (ak   * bkm1 - bk)   / denom;
-		x[k]   = (akm1 * bk   - bkm1) / denom;
-
-		k -= 2;
-	  }
-	}
-
-	// Next solve U'*X = B
-	// K is the main loop index, increasing from 0 to N-1 in steps of
-	// 1 or 2, depending on the size of the diagonal blocks.
-	k = 0;
-	while (k < n)
-	{
-	  if (pivots[k] > 0)
-	  {
-		// 1 x 1 diagonal block
-
-		// Multiply by inv(U'(K)), where U(K) is the transformation
-		// stored in column K of A.
-		x[k] -= A.dot (k, k - 1, x);
-
-		// Interchange rows K and IPIV(K)
-		int kp = pivots[k] - 1;
-		if (kp != k)
-		{
-		  std::swap (x[k], x[kp]);
-		}
-
-		k++;
-	  }
-	  else
-	  {
-		// 2 x 2 diagonal block
-
-		// Multiply by inv(U'(K+1)), where U(K+1) is the transformation
-		// stored in columns K and K+1 of A.
-		x[k]   -= A.dot (k,     k - 1, x);
-		x[k+1] -= A.dot (k + 1, k - 1, x);
-
-		// Interchange rows K and -IPIV(K).
-		int kp = - pivots[k] - 1;
-		if (kp != k)
-		{
-		  std::swap (x[k], x[kp]);
-		}
-
-		k += 2;
-	  }
-	}
-  }
-
-  template<class T>
-  static void
-  lmpar (const SparseBK<T> & J, const Vector<T> & scales, const Vector<T> & y, const int maxPivot, T delta, T & par, Vector<T> & x)
-  {
-	const T minimum = std::numeric_limits<T>::min ();
-	const int n = J.columns ();
-
-	// Compute and store in x the gauss-newton direction.
-	// ~J * J * x = ~J * y
-	Vector<T> Jy = J.transposeMultiply (y);
-	SparseBK<T> JJ = J.transposeSquare ();
-	SparseBK<T> factoredJJ;
-	factoredJJ.copyFrom (JJ);
-	Vector<int> pivots;
-	factorize (maxPivot, factoredJJ, pivots);
-	solve (factoredJJ, pivots, x, Jy);
-
-	// Evaluate the function at the origin, and test
-	// for acceptance of the gauss-newton direction.
-	Vector<T> dx = x & scales;
-	T dxnorm = dx.norm (2);
-	T fp = dxnorm - delta;
-std::cerr << "fp=" << fp << " " << dxnorm << " " << delta << std::endl;
-	if (fp <= (T) 0.1 * delta)
-	{
-	  par = 0;
-	  return;
-	}
-
-	// The jacobian is required to have full rank, so the newton
-	// step provides a lower bound, parl, for the zero of
-	// the function.
-	Vector<T> wa1 = dx & scales / dxnorm;
-	Vector<T> wa2;
-	solve (factoredJJ, pivots, wa2, wa1);
-	T parl = std::max ((T) 0, fp / (delta * wa1.dot (wa2)));
-
-	// Calculate an upper bound, paru, for the zero of the function.
-	wa1 = Jy / scales;
-	T gnorm = wa1.norm (2);
-	T paru = gnorm / delta;
-	if (paru == (T) 0)
-	{
-	  paru = minimum / std::min (delta, (T) 0.1);
-	}
-
-	// If the input par lies outside of the interval (parl,paru),
-	// set par to the closer endpoint.
-	par = std::max (par, parl);
-	par = std::min (par, paru);
-	if (par == (T) 0)
-	{
-	  par = gnorm / dxnorm;
-	}
-
-	int iter = 0;
-	while (true)
-	{
-	  iter++;
-
-	  // Evaluate the function at the current value of par.
-	  if (par == (T) 0)
-	  {
-		par = std::min (minimum, (T) 0.001 * paru);
-	  }
-	  factoredJJ.copyFrom (JJ);
-	  factoredJJ.addDiagonal (par, scales);
-	  factorize (maxPivot, factoredJJ, pivots);
-	  solve (factoredJJ, pivots, x, Jy);
-
-	  dx = x & scales;
-	  dxnorm = dx.norm (2);
-	  T oldFp = fp;
-	  fp = dxnorm - delta;
-
-std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << delta << std::endl;
-	  // If the function is small enough, accept the current value
-	  // of par.  Also test for the exceptional cases where parl
-	  // is zero or the number of iterations has reached 10.
-	  if (   std::fabs (fp) <= (T) 0.1 * delta
-		  || (parl == (T) 0  &&  fp <= oldFp  &&  oldFp < (T) 0)
-		  || iter >= 10)
-	  {
-		return;
-	  }
-
-	  // Compute the newton correction.
-	  wa1 = dx & scales / dxnorm;
-	  solve (factoredJJ, pivots, wa2, wa1);
-	  T parc = fp / (delta * wa1.dot (wa2));
-
-	  // Depending on the sign of the function, update parl or paru.
-	  if (fp > (T) 0)
-	  {
-		parl = std::max (parl, par);
-	  }
-	  if (fp < (T) 0)
-	  {
-		paru = std::min (paru, par);
-	  }
-	  // Compute an improved estimate for par.
-	  par = std::max (parl, par + parc);
-	}
-  }
 
 
   // class LevenbergMarquardtSparse -------------------------------------------
 
   template<class T>
-  LevenbergMarquardtSparse<T>::LevenbergMarquardtSparse (T toleranceF, T toleranceX, int maxIterations, int maxPivot)
+  LevenbergMarquardtSparse<T>::LevenbergMarquardtSparse (T toleranceF, T toleranceX, int maxIterations)
   {
 	if (toleranceF < (T) 0) toleranceF = std::sqrt (std::numeric_limits<T>::epsilon ());
 	this->toleranceF = toleranceF;
@@ -899,7 +673,8 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 	this->toleranceX = toleranceX;
 
 	this->maxIterations = maxIterations;
-	this->maxPivot = maxPivot;
+
+	this->method = new FactorizationBKsparse<T>;
   }
 
   /**
@@ -932,9 +707,9 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 		oldm = m;
 	  }
 
-	  SparseBK<T> J = searchable.jacobian (x, &y);
+	  MatrixResult<T> J = searchable.jacobian (x, &y);
 	  Vector<T> jacobianNorms (n);
-	  for (int j = 0; j < n; j++) jacobianNorms[j] = J.norm2 (j);
+	  for (int j = 0; j < n; j++) jacobianNorms[j] = J.column (j).norm (2);
 
 	  // On the first iteration ...
 	  if (iteration == 0)
@@ -957,10 +732,11 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 	  {
 		for (int j = 0; j < n; j++)
 		{
-		  if (jacobianNorms[j] != (T) 0)
+		  T jnorm = jacobianNorms[j];
+		  if (jnorm != (T) 0)
 		  {
-			T temp = J.dot (j, m - 1, y);
-			gnorm = std::max (gnorm, std::fabs (temp / (ynorm * jacobianNorms[j])));
+			T temp = J.column (j).dot (y);
+			gnorm = std::max (gnorm, std::fabs (temp / (ynorm * jnorm)));
 		  }
 		}
 	  }
@@ -984,7 +760,7 @@ std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << 
 	  {
 		// determine the levenberg-marquardt parameter.
 		Vector<T> p (n);
-		lmpar (J, scales, y, maxPivot, delta, par, p);
+		lmpar (J, scales, y, delta, par, p);
 
 		// store the direction p and x + p. calculate the norm of p.
 		Vector<T> xp = x - p;  // p is actually negative
@@ -1093,6 +869,105 @@ std::cerr << "ratio=" << ratio << std::endl;
 	}
 
 	throw (int) 5;  // exceeded maximum iterations
+  }
+
+  template<class T>
+  void
+  LevenbergMarquardtSparse<T>::lmpar (const MatrixAbstract<T> & J, const Vector<T> & scales, const Vector<T> & y, T delta, T & par, Vector<T> & x)
+  {
+	const T minimum = std::numeric_limits<T>::min ();
+	const int n = J.columns ();
+
+	// Compute and store in x the gauss-newton direction.
+	// ~J * J * x = ~J * y
+	MatrixResult<T> Jy = J.transposeTimes (y);
+	MatrixResult<T> JJ = J.transposeSquare ();
+	method->factorize (JJ);
+	x = method->solve (Jy);
+
+	// Evaluate the function at the origin, and test
+	// for acceptance of the gauss-newton direction.
+	Vector<T> dx = x & scales;
+	T dxnorm = dx.norm (2);
+	T fp = dxnorm - delta;
+std::cerr << "fp=" << fp << " " << dxnorm << " " << delta << std::endl;
+	if (fp <= (T) 0.1 * delta)
+	{
+	  par = 0;
+	  return;
+	}
+
+	// The jacobian is required to have full rank, so the newton
+	// step provides a lower bound, parl, for the zero of
+	// the function.
+	Vector<T> wa1 = dx & scales / dxnorm;
+	Vector<T> wa2 = method->solve (wa1);
+	T parl = std::max ((T) 0, fp / (delta * wa1.dot (wa2)));
+
+	// Calculate an upper bound, paru, for the zero of the function.
+	wa1 = Jy / scales;
+	T gnorm = wa1.norm (2);
+	T paru = gnorm / delta;
+	if (paru == (T) 0)
+	{
+	  paru = minimum / std::min (delta, (T) 0.1);
+	}
+
+	// If the input par lies outside of the interval (parl,paru),
+	// set par to the closer endpoint.
+	par = std::max (par, parl);
+	par = std::min (par, paru);
+	if (par == (T) 0)
+	{
+	  par = gnorm / dxnorm;
+	}
+
+	int iter = 0;
+	while (true)
+	{
+	  iter++;
+
+	  // Evaluate the function at the current value of par.
+	  if (par == (T) 0)
+	  {
+		par = std::min (minimum, (T) 0.001 * paru);
+	  }
+	  method->factorize (JJ + MatrixDiagonal<T> (scales & scales * par));
+	  x = method->solve (Jy);
+
+	  dx = x & scales;
+	  dxnorm = dx.norm (2);
+	  T oldFp = fp;
+	  fp = dxnorm - delta;
+
+std::cerr << "par=" << par << " " << parl << " " << paru << " " << fp << " " << delta << std::endl;
+	  // If the function is small enough, accept the current value
+	  // of par.  Also test for the exceptional cases where parl
+	  // is zero or the number of iterations has reached 10.
+	  if (   std::fabs (fp) <= (T) 0.1 * delta
+		  || (parl == (T) 0  &&  fp <= oldFp  &&  oldFp < (T) 0)
+		  || iter >= 10)
+	  {
+		return;
+	  }
+
+	  // Compute the newton correction.
+	  wa1 = dx & scales / dxnorm;
+	  wa2 = method->solve (wa1);
+	  T parc = fp / (delta * wa1.dot (wa2));
+
+	  // Depending on the sign of the function, update parl or paru.
+	  if (fp > (T) 0)
+	  {
+		parl = std::max (parl, par);
+	  }
+	  if (fp < (T) 0)
+	  {
+		paru = std::min (paru, par);
+	  }
+	  // Compute an improved estimate for par.
+	  par = std::max (parl, par + parc);
+	}
   }
 }
 

@@ -338,22 +338,37 @@ namespace fl
 	int maxIterations;
   };
 
+  template<class T>
+  class SHARED Factorization
+  {
+  public:
+	virtual ~Factorization ()
+	{
+	}
+
+	virtual void            factorize (const MatrixAbstract<T> & A, bool destroyA = false) = 0;
+	virtual MatrixResult<T> solve     (const MatrixAbstract<T> & B, bool destroyB = false) = 0;
+	virtual MatrixResult<T> inverse   () = 0;
+  };
+
   /**
-	 LM based on solving the squared Jacobian (~J*J, or JTJ), rather than factorizing it
-	 directly.  Several different methods are available for solving JTJ.
+	 LM based on solving the squared Jacobian (~J*J, aka JJ), rather than factorizing it
+	 directly.  Several different methods are available for solving JJ.
   **/
   template<class T>
   class SHARED LevenbergMarquardtSparse : public Search<T>
   {
   public:
-	LevenbergMarquardtSparse (T toleranceF = -1, T toleranceX = -1, int maxIterations = 200, int maxPivot = 20);
+	LevenbergMarquardtSparse (T toleranceF = -1, T toleranceX = -1, int maxIterations = 200);
 
 	virtual void search (Searchable<T> & searchable, Vector<T> & point);
+
+	void lmpar (const MatrixAbstract<T> & J, const Vector<T> & scales, const Vector<T> & y, T delta, T & par, Vector<T> & x);
 
 	T toleranceF;
 	T toleranceX;
 	int maxIterations;
-	int maxPivot;  ///< Farthest from diagonal to permit a pivot
+	Factorization<T> * method;
   };
 }
 

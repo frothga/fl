@@ -283,7 +283,52 @@ namespace fl
 
   template<class T>
   MatrixResult<T>
-  MatrixSparse<T>::transposeMultiply (const MatrixAbstract<T> & B) const
+  MatrixSparse<T>::transposeSquare () const
+  {
+	int n = this->data->size ();
+	MatrixSparse<T> * result = new MatrixSparse<T> (n, n);
+
+	for (int c = 0; c < n; c++)
+	{
+	  std::map<int,T> & C = (*result->data)[c];
+	  typename std::map<int,T>::iterator i = C.begin ();
+	  for (int r = 0; r <= c; r++)
+	  {
+		T t = (T) 0;
+		std::map<int,T> & C1 = (*this->data)[r];
+		std::map<int,T> & C2 = (*this->data)[c];
+		typename std::map<int,T>::iterator i1 = C1.begin ();
+		typename std::map<int,T>::iterator i2 = C2.begin ();
+		while (i1 != C1.end ()  &&  i2 != C2.end ())
+		{
+		  if (i1->first == i2->first)
+		  {
+			t += i1->second * i2->second;
+			i1++;
+			i2++;
+		  }
+		  else if (i1->first > i2->first)
+		  {
+			i2++;
+		  }
+		  else  // i1->first < i2->first
+		  {
+			i1++;
+		  }
+		}
+		if (t != (T) 0)
+		{
+		  i = C.insert (i, std::make_pair (r, t));
+		}
+	  }
+	}
+
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixSparse<T>::transposeTimes (const MatrixAbstract<T> & B) const
   {
 	int m = this->data->size ();
 	int n = B.columns ();

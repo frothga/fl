@@ -192,6 +192,29 @@ namespace fl
   }
 
   template<class T>
+  MatrixResult<T>
+  MatrixAbstract<T>::transposeSquare () const
+  {
+	int w = columns ();
+	Matrix<T> * result = new Matrix<T> (w, w);
+	for (int c = 0; c < w; c++)
+	{
+	  for (int r = 0; r <= c; r++)
+	  {
+		(*result)(r,c) = this->column (r).dot (this->column (c));
+	  }
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixAbstract<T>::transposeTimes (const MatrixAbstract<T> & B) const
+  {
+	return ~(*this) * B;
+  }
+
+  template<class T>
   void
   MatrixAbstract<T>::normalize (const T scalar)
   {
@@ -1048,6 +1071,32 @@ namespace fl
 
   template<class T>
   MatrixResult<T>
+  MatrixStrided<T>::transposeSquare () const
+  {
+	Matrix<T> * result = new Matrix<T> (columns_, columns_);
+	T * base = (T *) data + offset;
+	for (int i = 0; i < columns_; i++)
+	{
+	  for (int j = i; j < columns_; j++)
+	  {
+		T * ki = base + i * strideC;
+		T * kj = base + j * strideC;
+		T * end = ki + rows_ * strideR;
+		register T sum = (T) 0;
+		while (ki != end)
+		{
+		  sum += (*ki) * (*kj);
+		  ki += strideR;
+		  kj += strideR;
+		}
+		(*result)(i,j) = sum;
+	  }
+	}
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
   MatrixStrided<T>::visit (T (*function) (const T &)) const
   {
 	Matrix<T> * result = new Matrix<T> (rows_, columns_);
@@ -1123,32 +1172,6 @@ namespace fl
 	  {
 		result += (*i) * B[j++];
 		i += strideR;
-	  }
-	}
-	return result;
-  }
-
-  template<class T>
-  MatrixResult<T>
-  MatrixStrided<T>::transposeSquare () const
-  {
-	Matrix<T> * result = new Matrix<T> (columns_, columns_);
-	T * base = (T *) data + offset;
-	for (int i = 0; i < columns_; i++)
-	{
-	  for (int j = i; j < columns_; j++)
-	  {
-		T * ki = base + i * strideC;
-		T * kj = base + j * strideC;
-		T * end = ki + rows_ * strideR;
-		register T sum = (T) 0;
-		while (ki != end)
-		{
-		  sum += (*ki) * (*kj);
-		  ki += strideR;
-		  kj += strideR;
-		}
-		(*result)(i,j) = sum;
 	  }
 	}
 	return result;
