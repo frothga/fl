@@ -31,6 +31,7 @@ if (LAPACK_FOUND)
     dspev.cc
     dsyev.cc
     dsygv.cc
+    dsytrf.cc
     #   Float
     sgeev.cc
     sgelss.cc
@@ -40,6 +41,7 @@ if (LAPACK_FOUND)
     sspev.cc
     ssyev.cc
     ssygv.cc
+	ssytrf.cc
   )
   set (maybeSearch
     LevenbergMarquardtDouble.cc

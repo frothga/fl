@@ -149,6 +149,33 @@ extern "C"
 			   const int &  lwork,
 			   int &        info);
 
+  void dsytrf_ (const char & uplo,
+				const int &  n,
+				double       a[],
+				const int &  lda,
+				int          ipiv[],
+				double       work[],
+				const int &  lwork,
+				int &        info);
+
+  void dsytri_ (const char & uplo,
+				const int &  n,
+				double       a[],
+				const int &  lda,
+				int          ipiv[],
+				double       work[],
+				int &        info);
+
+  void dsytrs_ (const char & uplo,
+				const int &  n,
+				const int &  nrhs,
+				const double a[],
+				const int &  lda,
+				const int    ipiv[],
+				double       b[],
+				const int &  ldb,
+				int &        info);
+
   /// @note This approach to specifying string sizes assumes LAPACK is compiled by g77
   int ilaenv_ (const int &  ispec,
 			   const char * name,
@@ -290,6 +317,33 @@ extern "C"
 			   float        work[],
 			   const int &  lwork,
 			   int &        info);
+
+  void ssytrf_ (const char & uplo,
+				const int &  n,
+				float        a[],
+				const int &  lda,
+				int          ipiv[],
+				float        work[],
+				const int &  lwork,
+				int &        info);
+
+  void ssytri_ (const char & uplo,
+				const int &  n,
+				float        a[],
+				const int &  lda,
+				int          ipiv[],
+				float        work[],
+				int &        info);
+
+  void ssytrs_ (const char & uplo,
+				const int &  n,
+				const int &  nrhs,
+				const float  a[],
+				const int &  lda,
+				const int    ipiv[],
+				float        b[],
+				const int &  ldb,
+				int &        info);
 }
 
 namespace fl
@@ -654,6 +708,84 @@ namespace fl
 		int &        info)
   {
 	ssygv_ (itype, jobz, uplo, n, a, lda, b, ldb, w, work, lwork, info);
+  }
+
+  inline void
+  sytrf (const char & uplo,
+		 const int &  n,
+		 double       a[],
+		 const int &  lda,
+		 int          ipiv[],
+		 double       work[],
+		 const int &  lwork,
+		 int &        info)
+  {
+	dsytrf_ (uplo, n, a, lda, ipiv, work, lwork, info);
+  }
+
+  inline void
+  sytrf (const char & uplo,
+		 const int &  n,
+		 float        a[],
+		 const int &  lda,
+		 int          ipiv[],
+		 float        work[],
+		 const int &  lwork,
+		 int &        info)
+  {
+	ssytrf_ (uplo, n, a, lda, ipiv, work, lwork, info);
+  }
+
+  inline void
+  sytri (const char & uplo,
+		 const int &  n,
+		 double       a[],
+		 const int &  lda,
+		 int          ipiv[],
+		 double       work[],
+		 int &        info)
+  {
+	dsytri_ (uplo, n, a, lda, ipiv, work, info);
+  }
+
+  inline void
+  sytri (const char & uplo,
+		 const int &  n,
+		 float        a[],
+		 const int &  lda,
+		 int          ipiv[],
+		 float        work[],
+		 int &        info)
+  {
+	ssytri_ (uplo, n, a, lda, ipiv, work, info);
+  }
+
+  inline void
+  sytrs (const char & uplo,
+		 const int &  n,
+		 const int &  nrhs,
+		 const double a[],
+		 const int &  lda,
+		 const int    ipiv[],
+		 double       b[],
+		 const int &  ldb,
+		 int &        info)
+  {
+	dsytrs_ (uplo, n, nrhs, a, lda, ipiv, b, ldb, info);
+  }
+
+  inline void
+  sytrs (const char & uplo,
+		 const int &  n,
+		 const int &  nrhs,
+		 const float  a[],
+		 const int &  lda,
+		 const int    ipiv[],
+		 float        b[],
+		 const int &  ldb,
+		 int &        info)
+  {
+	ssytrs_ (uplo, n, nrhs, a, lda, ipiv, b, ldb, info);
   }
 }
 

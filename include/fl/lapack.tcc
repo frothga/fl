@@ -762,6 +762,130 @@ namespace fl
 	if (info) throw info;
   }
 
+
+  // class FactorizationBK ----------------------------------------------------
+
+  template<class T>
+  void
+  FactorizationBK<T>::factorize (const MatrixAbstract<T> & A, bool destroyA)
+  {
+	int m = A.rows ();
+	int n = A.columns ();
+	int minmn = std::min (m, n);
+
+	if (destroyA  &&  (A.classID () & MatrixID))
+	{
+	  this->A = (const Matrix<double> &) A;
+	}
+	else
+	{
+	  // Only need the upper triangle
+	  this->A.resize (minmn, minmn);
+	  for (int c = 0; c < minmn; c++)
+	  {
+		for (int r = 0; r <= c; r++)
+		{
+		  this->A(r,c) = A(r,c);
+		}
+	  }
+	}
+
+	pivots.resize (n);
+	int lwork = -1;
+	T optimalSize;
+	int info = 0;
+
+	// Space query
+	sytrf ('U',
+		   n,
+		   & this->A(0,0),
+		   this->A.strideC,
+		   & pivots[0],
+		   & optimalSize,
+		   lwork,
+		   info);
+
+	if (info) throw info;
+	lwork = (int) optimalSize;
+    T * work = (T *) malloc (lwork * sizeof (T));
+
+	// Do it
+	sytrf ('U',
+		   n,
+		   & this->A(0,0),
+		   this->A.strideC,
+		   & pivots[0],
+		   work,
+		   lwork,
+		   info);
+
+	free (work);
+	if (info) throw info;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  FactorizationBK<T>::solve (const MatrixAbstract<T> & B, bool destroyB)
+  {
+	Matrix<T> * X = new Matrix<T>;
+	if (destroyB  &&  (B.classID () & MatrixID))
+	{
+	  *X = (const Matrix<T> &) B;
+	}
+	else
+	{
+	  X->copyFrom (B);
+	}
+
+	int info;
+
+	sytrs ('U',
+		   A.rows_,
+		   X->columns_,
+		   & A(0,0),
+		   A.strideC,
+		   & pivots[0],
+		   & (*X)(0,0),
+		   X->strideC,
+		   info);
+
+	if (info) throw info;
+	return X;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  FactorizationBK<T>::invert ()
+  {
+    T * work = (T *) malloc (A.rows_ * sizeof (T));
+	int info = 0;
+
+	sytri ('U',
+		   A.rows_,
+		   & A(0,0),
+		   A.strideC,
+		   & pivots[0],
+		   work,
+		   info);
+
+	free (work);
+	if (info) throw info;
+
+	// Fill in the lower triangular portion to complete the inverse
+	for (int c = 0; c < A.columns_ - 1; c++)
+	{
+	  for (int r = c + 1; r < A.rows_; r++)
+	  {
+		A(r,c) = A(c,r);
+	  }
+	}
+
+	return new Matrix<T> (A);
+  }
+
+
+  // Utilities dependent on LAPACK --------------------------------------------
+
   template<class T>
   Matrix<T>
   pinv (const MatrixAbstract<T> & A, T tolerance, T epsilon)

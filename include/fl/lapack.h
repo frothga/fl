@@ -167,6 +167,31 @@ namespace fl
 	gesvd (A, U, S, VT, 'S', 'S', destroyA);
   }
 
+  /// @todo This class should probably be in a separate header.
+  template<class T>
+  class SHARED Factorization
+  {
+  public:
+	virtual ~Factorization () {}
+
+	virtual void            factorize (const MatrixAbstract<T> & A, bool destroyA = false) = 0;
+	virtual MatrixResult<T> solve     (const MatrixAbstract<T> & B, bool destroyB = false) = 0;
+	virtual MatrixResult<T> invert    () = 0;  ///< Leaves internal structures in an undefined state. User should make another call to factorization() to continue using this object.
+  };
+
+  /// Factor a symmetric indefinite matrix using Bunch-Kaufman
+  template<class T>
+  class SHARED FactorizationBK : public Factorization<T>
+  {
+  public:
+	virtual void            factorize (const MatrixAbstract<T> & A, bool destroyA = false);
+	virtual MatrixResult<T> solve     (const MatrixAbstract<T> & B, bool destroyB = false);
+	virtual MatrixResult<T> invert    ();
+
+	Matrix<T> A;
+	Vector<int> pivots;
+  };
+
 
   // General non LAPACK operations the depend on LAPACK -----------------------
 

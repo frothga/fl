@@ -311,7 +311,7 @@ namespace fl
 	  return X;
 	}
 
-	virtual MatrixResult<T> inverse ()
+	virtual MatrixResult<T> invert ()
 	{
 	  throw "FactorizationBKsparse::inverse() not implemented yet";
 	}
@@ -674,7 +674,7 @@ namespace fl
 
 	this->maxIterations = maxIterations;
 
-	this->method = new FactorizationBKsparse<T>;
+	this->method = new FactorizationBK<T>;
   }
 
   /**

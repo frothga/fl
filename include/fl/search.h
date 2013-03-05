@@ -19,6 +19,7 @@ for details.
 
 
 #include "fl/matrix.h"
+#include "fl/lapack.h"
 
 #include <vector>
 
@@ -336,19 +337,6 @@ namespace fl
 	T toleranceF;
 	T toleranceX;
 	int maxIterations;
-  };
-
-  template<class T>
-  class SHARED Factorization
-  {
-  public:
-	virtual ~Factorization ()
-	{
-	}
-
-	virtual void            factorize (const MatrixAbstract<T> & A, bool destroyA = false) = 0;
-	virtual MatrixResult<T> solve     (const MatrixAbstract<T> & B, bool destroyB = false) = 0;
-	virtual MatrixResult<T> inverse   () = 0;
   };
 
   /**
