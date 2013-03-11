@@ -682,27 +682,6 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
   }
 }
 
-// Complete the definition for TIFFField, since this is in TIFF's
-// library-private area.  This is a fragile and temporary solution to handle
-// TIFF 4.x.  Better solution is for the developers of TIFF to give back the
-// ability to reflect on field definitions.  Will negotiate with them for this.
-typedef enum {TIFF_BOGUS1} TIFFSetGetFieldType;
-struct _TIFFField
-{
-  uint32 field_tag;
-  short field_readcount;
-  short field_writecount;
-  TIFFDataType field_type;
-  uint32 reserved;
-  TIFFSetGetFieldType set_field_type;
-  TIFFSetGetFieldType get_field_type;
-  unsigned short field_bit;
-  unsigned char field_oktochange;
-  unsigned char field_passcount;
-  char* field_name;
-  //TIFFFieldArray* field_subfields;
-};
-
 void
 ImageFileDelegateTIFF::get (const string & name, string & value)
 {
@@ -880,18 +859,18 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
   const TIFFField * fi = TIFFFieldWithName (tif, name.c_str ());
   if (fi)
   {
-	if (fi->field_type == TIFF_ASCII)
+	if (TIFFFieldDataType (fi) == TIFF_ASCII)
 	{
 	  uint16 count;
 	  char * v;
-	  if (TIFFGetFieldDefaulted (tif, fi->field_tag, &count, &v)) value = v;
+	  if (TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &count, &v)) value = v;
 	  return;
 	}
 	if (name == "Compression")
 	{
 	  // Attempt to look up codec name
 	  uint16 v;
-	  if (TIFFGetFieldDefaulted (tif, fi->field_tag, &v))
+	  if (TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &v))
 	  {
 		TIFFCodec * codec = TIFFGetConfiguredCODECs ();
 		while (codec->name)
@@ -907,8 +886,8 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	  return;  // We failed to find a name for the compression scheme, but no need to process further.
 	}
 
-	int count = fi->field_readcount;
-	TIFFDataType fieldType = fi->field_type;
+	int count = TIFFFieldReadCount (fi);
+	TIFFDataType fieldType = TIFFFieldDataType (fi);
 
 	// Compensate for differences between field info and actual behavior of TIFFGetField().
 	if (name == "SMinSampleValue"  ||  name == "SMaxSampleValue")
@@ -927,7 +906,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 #     define grabSingle(type) \
 	  { \
 		type v; \
-		if (TIFFGetFieldDefaulted (tif, fi->field_tag, &v)) \
+		if (TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &v)) \
 		{ \
 		  formatted << v; \
 		  value = formatted.str (); \
@@ -961,7 +940,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	}
 
 	int rows = 1;
-	if (fi->field_readcount == TIFF_SPP)
+	if (TIFFFieldReadCount (fi) == TIFF_SPP)
 	{
 	  uint16 spp;
 	  TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLESPERPIXEL, &spp);
@@ -973,20 +952,20 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	bool found = false;
 	if (count > 1)
 	{
-	  found = TIFFGetFieldDefaulted (tif, fi->field_tag, &data);
+	  found = TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &data);
 	}
-	else if (fi->field_passcount)
+	else if (TIFFFieldPassCount (fi))
 	{
-	  if (fi->field_readcount == TIFF_VARIABLE2)
+	  if (TIFFFieldReadCount (fi) == TIFF_VARIABLE2)
 	  {
 		uint32 c;
-		found = TIFFGetFieldDefaulted (tif, fi->field_tag, &c, &data);
+		found = TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &c, &data);
 		count = c;
 	  }
 	  else
 	  {
 		uint16 c;
-		found = TIFFGetFieldDefaulted (tif, fi->field_tag, &c, &data);
+		found = TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &c, &data);
 		count = c;
 	  }
 	}
@@ -1195,9 +1174,9 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
   const TIFFField * fi = TIFFFieldWithName (tif, name.c_str ());
   if (fi)
   {
-	if (fi->field_type == TIFF_ASCII)
+	if (TIFFFieldDataType (fi) == TIFF_ASCII)
 	{
-	  TIFFSetField (tif, fi->field_tag, (char *) value.c_str ());
+	  TIFFSetField (tif, TIFFFieldTag (fi), (char *) value.c_str ());
 	  return;
 	}
 	if (name == "Compression")
@@ -1208,7 +1187,7 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 	  {
 		if (value == codec->name)
 		{
-		  TIFFSetField (tif, fi->field_tag, codec->scheme);
+		  TIFFSetField (tif, TIFFFieldTag (fi), codec->scheme);
 		  return;
 		}
 		codec++;
@@ -1242,7 +1221,7 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 	} \
 	break;
 
-	switch (fi->field_type)
+	switch (TIFFFieldDataType (fi))
 	{
 	  case TIFF_BYTE:
 		writeVector (uint8);
@@ -1271,58 +1250,58 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 		break;
 	}
 
-	if (fi->field_passcount)
+	if (TIFFFieldPassCount (fi))
 	{
-	  if (fi->field_writecount == TIFF_VARIABLE2)
+	  if (TIFFFieldWriteCount (fi) == TIFF_VARIABLE2)
 	  {
-		TIFFSetField (tif, fi->field_tag, (uint32) count, data);
+		TIFFSetField (tif, TIFFFieldTag (fi), (uint32) count, data);
 	  }
 	  else
 	  {
-		TIFFSetField (tif, fi->field_tag, (uint16) count, data);
+		TIFFSetField (tif, TIFFFieldTag (fi), (uint16) count, data);
 	  }
 	}
 	else
 	{
-	  if (fi->field_writecount == 1)
+	  if (TIFFFieldWriteCount (fi) == 1)
 	  {
-		switch (fi->field_type)
+		switch (TIFFFieldDataType (fi))
 		{
 		  case TIFF_BYTE:
-			TIFFSetField (tif, fi->field_tag, *(uint8 * ) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(uint8 * ) data);
 			break;
 		  case TIFF_SBYTE:
-			TIFFSetField (tif, fi->field_tag, *(int8 *  ) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(int8 *  ) data);
 			break;
 		  case TIFF_SHORT:
-			TIFFSetField (tif, fi->field_tag, *(uint16 *) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(uint16 *) data);
 			break;
 		  case TIFF_SSHORT:
-			TIFFSetField (tif, fi->field_tag, *(int16 * ) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(int16 * ) data);
 			break;
 		  case TIFF_LONG:
 		  case TIFF_IFD:
-			TIFFSetField (tif, fi->field_tag, *(uint32 *) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(uint32 *) data);
 			break;
 		  case TIFF_SLONG:
-			TIFFSetField (tif, fi->field_tag, *(int32 * ) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(int32 * ) data);
 			break;
 		  case TIFF_RATIONAL:
 		  case TIFF_SRATIONAL:
 		  case TIFF_FLOAT:
-			TIFFSetField (tif, fi->field_tag, *(float * ) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(float * ) data);
 			break;
 		  case TIFF_DOUBLE:
-			TIFFSetField (tif, fi->field_tag, *(double *) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(double *) data);
 		}
 	  }
 	  else
 	  {
-		TIFFSetField (tif, fi->field_tag, data);
+		TIFFSetField (tif, TIFFFieldTag (fi), data);
 	  }
 	}
 
-	if (data  &&  fi->field_type != TIFF_DOUBLE) free ((void *) data);
+	if (data  &&  TIFFFieldDataType (fi) != TIFF_DOUBLE) free ((void *) data);
 	return;
   }
 
