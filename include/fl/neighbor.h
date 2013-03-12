@@ -56,7 +56,7 @@ namespace fl
 	/**
 	   Helper class for storing an arbitrary object along with the vector.
 	 **/
-	class Entry : public MatrixAbstract<float>
+	class SHARED Entry : public MatrixAbstract<float>
 	{
 	public:
 	  Entry (MatrixAbstract<float> * point, void * item);
