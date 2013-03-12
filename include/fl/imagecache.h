@@ -20,6 +20,7 @@ for details.
 #include <set>
 #include <ostream>
 #include <stddef.h>
+#include <pthread.h>
 
 #undef SHARED
 #ifdef _MSC_VER

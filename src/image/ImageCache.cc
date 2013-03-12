@@ -74,7 +74,12 @@ ImageCache ImageCache::shared;  // instantiate the global cache
 
 ImageCache::ImageCache ()
 {
-  pthread_mutex_init (&mutex, 0);
+  pthread_mutexattr_t attributes;
+  pthread_mutexattr_init (&attributes);
+  pthread_mutexattr_settype (&attributes, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init (&mutex, &attributes);
+  pthread_mutexattr_destroy (&attributes);
+
   original = 0;
   memory = 0;
 }
