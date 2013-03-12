@@ -180,11 +180,6 @@ Modify nmake.opt by uncommenting the lines for JPEG and ZLIB support.  Point eac
 	ZLIB_INCLUDE = -I$(ZLIBDIR)/include
 	ZLIB_LIB = $(ZLIBDIR)/{lib or lib64}/z.lib
 
-Overwrite configuration with vc specific files:  (Note that the names are changed in newer versions of TIFF.  Instructions apply to version 3.8.2)
-
-	libtiff/tiffconf.vc.h   --> libtiff/tiffconf.h
-	libtiff/tif_config.vc.h --> libtiff/tif_config.h
-
 Open a Visual Studio Command Prompt and type:
 
 	cd {mswin}/build/{tiff project directory}
