@@ -12,6 +12,7 @@ for details.
 #ifndef fl_fftwproto_h
 #define fl_fftwproto_h
 
+#ifdef HAVE_FFTW
 
 #include <fftw3.h>
 
@@ -315,5 +316,7 @@ namespace fl
   }
 }
 
+
+#endif   // HAVE_FFTW
 
 #endif

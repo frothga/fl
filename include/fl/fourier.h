@@ -12,6 +12,8 @@ for details.
 #ifndef fl_fourier_h
 #define fl_fourier_h
 
+#ifdef HAVE_FFTW
+
 
 #include "fl/matrix.h"
 #include "fl/fftwproto.h"
@@ -68,5 +70,7 @@ namespace fl
   template<class T> pthread_mutex_t Fourier<T>::mutexPlan = PTHREAD_MUTEX_INITIALIZER;
 }
 
+
+#endif  // HAVE_FFTW
 
 #endif

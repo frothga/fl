@@ -913,6 +913,7 @@ testLAPACK ()
   cout << "LAPACK passes" << endl;
 }
 
+#ifdef HAVE_FFTW
 template<class T>
 void
 testFourier ()
@@ -934,6 +935,7 @@ testFourier ()
   if ((A - B).norm (INFINITY) > epsilon) throw "Excessive difference between elements in round-trip through Fourier.";
   cout << "Fourier passes" << endl;
 }
+#endif
 
 void
 testCluster ()
