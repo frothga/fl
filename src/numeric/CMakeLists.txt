@@ -90,6 +90,7 @@ add_library (flNumeric
   MatrixIdentityDouble.cc
   MatrixDiagonalDouble.cc
   MatrixSparseDouble.cc
+  MatrixBlockDouble.cc
   #   Float
   MatrixFloat.cc
   VectorFloat.cc
@@ -99,6 +100,7 @@ add_library (flNumeric
   MatrixIdentityFloat.cc
   MatrixDiagonalFloat.cc
   MatrixSparseFloat.cc
+  MatrixBlockFloat.cc
   #   Complex Double
   MatrixComplexDouble.cc
   VectorComplexDouble.cc

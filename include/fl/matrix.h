@@ -72,14 +72,16 @@ namespace fl
 
   // Matrix class ID constants
   // This is a hack to avoid the cost of dynamic_cast.
-  #define MatrixAbstractID  0x01
-  #define MatrixStridedID   0x02
-  #define MatrixID          0x04
-  #define MatrixPackedID    0x08
-  #define MatrixSparseID    0x10
-  #define MatrixIdentityID  0x20
-  #define MatrixDiagonalID  0x40
-  #define MatrixFixedID     0x80
+  #define MatrixAbstractID  0x001
+  #define MatrixResultID    0x002
+  #define MatrixStridedID   0x004
+  #define MatrixID          0x008
+  #define MatrixPackedID    0x010
+  #define MatrixSparseID    0x020
+  #define MatrixIdentityID  0x040
+  #define MatrixDiagonalID  0x080
+  #define MatrixFixedID     0x100
+  #define MatrixBlockID     0x200
 
 
   // Matrix general interface -------------------------------------------------
@@ -241,11 +243,18 @@ namespace fl
   class MatrixResult : public MatrixAbstract<T>
   {
   public:
-	MatrixResult (MatrixAbstract<T> * result) : result (result) {}
-	MatrixResult (const MatrixResult<T> & that) : result (that.result) {const_cast<MatrixResult &> (that).result = 0;}
-	~MatrixResult () {if (result) delete result;}
+	MatrixResult (MatrixAbstract<T> * result) : result (result)                {}
+	MatrixResult (const MatrixResult<T> & that) : result (that.result)         {const_cast<MatrixResult &> (that).result = 0;}
+	virtual ~MatrixResult ()                                                   {if (result) delete result;}
+	virtual uint32_t classID () const                                          {return MatrixAbstractID | MatrixResultID;}
 
-	operator MatrixAbstract<T> & () const {return *result;}
+	operator MatrixAbstract<T> & () const                                      {return *result;}
+	MatrixAbstract<T> * relinquish ()
+	{
+	  MatrixAbstract<T> * temp = result;
+	  result = 0;
+	  return temp;
+	}
 
 	virtual MatrixAbstract<T> * clone (bool deep = false) const                {return result->clone (deep);}
 	virtual void copyFrom (const MatrixAbstract<T> & that, bool deep = true)   {       result->copyFrom (that, deep);}
@@ -535,7 +544,7 @@ namespace fl
 	MatrixSparse ();
 	MatrixSparse (const int rows, const int columns);
 	MatrixSparse (const MatrixAbstract<T> & that);
-	~MatrixSparse ();
+	virtual ~MatrixSparse ();
 	virtual uint32_t classID () const;
 
 	virtual MatrixAbstract<T> * clone (bool deep = false) const;
@@ -559,6 +568,62 @@ namespace fl
 
 	int rows_;
 	fl::PointerStruct< std::vector< std::map<int, T> > > data;
+  };
+
+  /**
+	 A matrix where the elements themselves are matrices. Each element is represented
+	 as a pointer to a MatrixAbstract, and can be null. A null entry acts as a block
+	 of zeros for the purpose of matrix operations.
+
+	 All matrices that share a block-column must have the same number of columns,
+	 and all matrices that share the same block-row must have the same number of rows.
+	 In general, the row or column count is the max over all the relevant entries,
+	 and in some cases you may get away with having some undersized matrices.
+  **/
+  template<class T>
+  class SHARED MatrixBlock : public MatrixAbstract<T>
+  {
+  public:
+	MatrixBlock ();
+	MatrixBlock (const MatrixAbstract<T> & that);
+	virtual ~MatrixBlock ();
+	void detach ();  ///< reset to empty and delete all pointers we own
+	virtual uint32_t classID () const;
+
+	virtual MatrixAbstract<T> * clone (bool deep = false) const;
+	virtual void copyFrom (const MatrixAbstract<T> & that, bool deep = true);
+	MatrixAbstract<T> & operator = (const MatrixBlock & that);  ///< Transfers ownership of that contents (in violation of const semantics).
+
+	void                blockSet       (const int blockRow, const int blockColumn,       MatrixAbstract<T> * A);  ///< If A is zero, deletes block. If non-zero, takes ownership of pointer.
+	void                blockSet       (const int blockRow, const int blockColumn, const MatrixAbstract<T> & A);  ///< Clones A.
+	MatrixAbstract<T> * blockGet       (const int blockRow, const int blockColumn) const;
+	void                blockUpdate    (const int blockRow, const int blockColumn);  ///< Maintain row and column counts. Call when a block element has changed size.
+	void                blockUpdateAll ();
+	int                 blockRows      () const;
+	int                 blockColumns   () const;
+	void                blockResize    (const int blockRows, const int blockColumns = 1);  ///< Preserves any existing blocks inside new shape. All new elements are set to null.
+	void                blockDump      () const;  ///< print a structural trace to stderr
+
+	virtual T & operator () (const int row, const int column) const;  ///< Extremely expensive to look up an entry!
+	virtual int rows () const;
+	virtual int columns () const;
+	virtual void resize (const int rows, const int columns = 1);  ///< On reduction, trims any existing blocks that boundary cuts through. On expansion, extends any existing blocks at perimeter.
+
+	virtual void clear (const T scalar = (T) 0);  ///< Calls clear() on all blocks. If scalar is anything besides zero, only clears blocks that exist.
+	virtual T norm (float n) const;  ///< Calls norm() on all blocks, and combines results using proper norm.
+	virtual MatrixResult<T> transposeSquare () const;
+	virtual MatrixResult<T> transposeTimes (const MatrixAbstract<T> & B) const;
+
+	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> operator / (const T scalar)              const;
+	virtual MatrixResult<T> operator - (const MatrixAbstract<T> & B) const;
+
+	void serialize (Archive & archive, uint32_t version);
+
+	std::vector<int> startRows;
+	std::vector<int> startColumns;
+	int blockStride;
+	Pointer data;
   };
 
   /**

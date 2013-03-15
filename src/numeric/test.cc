@@ -329,6 +329,24 @@ testOperator ()
   matrices.push_back (new MatrixTranspose<T> (matrices[0]->clone ()));
   matrices.push_back (new MatrixRegion<T> (*matrices[0], 1, 1, 2, 2));
   matrices.push_back (new MatrixFixed<T,2,2> (*matrices[0]));
+  {
+	MatrixBlock<T> * A = new MatrixBlock<T>;
+	A->blockSet (0, 0, matrices[0]->region (0, 0, 1, 1).clone ());
+	A->blockSet (1, 1, matrices[0]->region (2, 2, 2, 2).clone ());
+	matrices.push_back (A);
+	if (A->startRows   .size () != 3) throw "Wrong number of startRows";
+	if (A->startColumns.size () != 3) throw "Wrong number of startColumns";
+	if (   A->startRows[0] != 0
+		|| A->startRows[1] != 2
+		|| A->startRows[2] != 3
+		|| A->startColumns[0] != 0
+		|| A->startColumns[1] != 2
+		|| A->startColumns[2] != 3)
+	{
+	  throw "Unexpected entry in startRows or startColumns";
+	}
+  }
+  
 
   // Perform every operation between every combination of matrices.
   for (int i = 0; i < matrices.size (); i++)
@@ -383,6 +401,19 @@ testOperator ()
 	  }
 	}
 	
+	//   Transpose Square
+	result = A.transposeSquare ();
+	if (result.rows () != Acols  ||  result.columns () != Acols) throw "A.transposeSquare() dimensions are wrong";
+	for (int c = 0; c < Acols; c++)
+	{
+	  for (int r = 0; r <= c; r++)
+	  {
+		T product = (T) 0;
+		for (int k = 0; k < Arows; k++) product += A(k,r) * A(k,c);
+		if (abs (result(r,c) - product) > epsilon) throw "A.transposeSquare(): unexpected element value";
+	  }
+	}
+
 
 	// Binary operations with scalar
 	{
@@ -460,6 +491,7 @@ testOperator ()
 	  }
 
 	  // TODO: test cross product (^) once it is generalized to any dimension (wedge product)
+	  MatrixResult<T> resultTTimes  = A.transposeTimes (B);
 	  MatrixResult<T> resultElTimes = A & B;
 	  MatrixResult<T> resultTimes   = A * B;
 	  MatrixResult<T> resultOver    = A / B;
@@ -475,6 +507,7 @@ testOperator ()
 	  (*selfOver)    /= B;
 	  (*selfPlus)    += B;
 	  (*selfMinus)   -= B;
+	  if (resultTTimes .rows () != Acols  ||  resultTTimes .columns () != Bcols) throw "A.transposeTimes (B): dimensions are wrong";
 	  if (resultElTimes.rows () != Arows  ||  resultElTimes.columns () != Acols) throw "A & B: dimensions are wrong";
 	  if (resultTimes  .rows () != Arows  ||  resultTimes  .columns () != Bcols) throw "A * B: dimensions are wrong";
 	  if (resultOver   .rows () != Arows  ||  resultOver   .columns () != Acols) throw "A / B: dimensions are wrong";
@@ -485,6 +518,18 @@ testOperator ()
 	  if (selfOver   ->rows () != Arows  ||  selfOver   ->columns () != Acols) throw "A /= B: dimensions are wrong";
 	  if (selfPlus   ->rows () != Arows  ||  selfPlus   ->columns () != Acols) throw "A += B: dimensions are wrong";
 	  if (selfMinus  ->rows () != Arows  ||  selfMinus  ->columns () != Acols) throw "A -= B: dimensions are wrong";
+	  // Test transpose matrix multiply
+	  for (int r = 0; r < Acols; r++)
+	  {
+		const int w = min (Arows, Brows);
+		for (int c = 0; c < Bcols; c++)
+		{
+		  T product = (T) 0;
+		  for (int k = 0; k < w; k++) product += A(k,r) * B(k,c);
+		  if (abs (resultTTimes (r,c) - product) > epsilon) throw "A.transposeTimes (B): unexpected element value";
+		}
+	  }
+	  // All other tests
 	  for (int r = 0; r < Arows; r++)
 	  {
 		// Test standard matrix multiply
@@ -1053,10 +1098,12 @@ main (int argc, char * argv[])
 {
   try
   {
+	cout << "====================================================================" << endl;
 	cout << "running all tests for float" << endl;
 	testAll<float> ();
 	testCluster ();  // right now, ClusterMethod is only in float
 
+	cout << "====================================================================" << endl;
 	cout << "running all tests for double" << endl;
 	testAll<double> ();
   }

@@ -348,6 +348,7 @@ namespace fl
   {
   public:
 	LevenbergMarquardtSparse (T toleranceF = -1, T toleranceX = -1, int maxIterations = 200);
+	~LevenbergMarquardtSparse ();
 
 	virtual void search (Searchable<T> & searchable, Vector<T> & point);
 

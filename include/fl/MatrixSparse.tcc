@@ -330,8 +330,9 @@ namespace fl
   MatrixResult<T>
   MatrixSparse<T>::transposeTimes (const MatrixAbstract<T> & B) const
   {
-	int m = this->data->size ();
-	int n = B.columns ();
+	int m  = this->data->size ();
+	int n  = B.columns ();
+	int bh = B.rows ();
 	Matrix<T> * result = new Matrix<T> (m, n);
 
 	for (int c = 0; c < n; c++)
@@ -341,7 +342,7 @@ namespace fl
 		register T temp = 0;
 		std::map<int,T> & C = (*this->data)[r];
 		typename std::map<int,T>::iterator i = C.begin ();
-		while (i != C.end ())
+		while (i != C.end ()  &&  i->first < bh)
 		{
 		  temp += B(i->first,c) * i->second;
 		  i++;

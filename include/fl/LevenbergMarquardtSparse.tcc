@@ -677,6 +677,12 @@ namespace fl
 	this->method = new FactorizationBK<T>;
   }
 
+  template<class T>
+  LevenbergMarquardtSparse<T>::~LevenbergMarquardtSparse ()
+  {
+	delete method;
+  }
+
   /**
 	 A loose paraphrase the MINPACK function lmdif
   **/
@@ -730,14 +736,11 @@ namespace fl
 	  T gnorm = (T) 0;
 	  if (ynorm != (T) 0)
 	  {
+		MatrixResult<T> Jy = J.transposeTimes (y);
 		for (int j = 0; j < n; j++)
 		{
 		  T jnorm = jacobianNorms[j];
-		  if (jnorm != (T) 0)
-		  {
-			T temp = J.column (j).dot (y);
-			gnorm = std::max (gnorm, std::fabs (temp / (ynorm * jnorm)));
-		  }
+		  if (jnorm != (T) 0) gnorm = std::max (gnorm, std::fabs (Jy[j] / (ynorm * jnorm)));
 		}
 	  }
 
@@ -932,7 +935,9 @@ std::cerr << "fp=" << fp << " " << dxnorm << " " << delta << std::endl;
 	  {
 		par = std::min (minimum, (T) 0.001 * paru);
 	  }
-	  method->factorize (JJ + MatrixDiagonal<T> (scales & scales * par));
+	  Matrix<T> temp (JJ);
+	  for (int i = 0; i < n; i++) temp(i,i) += scales[i] * scales[i] * par;
+	  method->factorize (temp);
 	  x = method->solve (Jy);
 
 	  dx = x & scales;
