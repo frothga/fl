@@ -27,6 +27,15 @@ namespace fl
   }
 
   template<class T>
+  MatrixBlock<T>::MatrixBlock (const int blockRows, const int blockColumns)
+  {
+	startRows.push_back (0);
+	startColumns.push_back (0);
+	blockStride = 0;
+	blockResize (blockRows, blockColumns);
+  }
+
+  template<class T>
   MatrixBlock<T>::MatrixBlock (const MatrixAbstract<T> & that)
   {
 	startRows.push_back (0);
@@ -542,32 +551,51 @@ namespace fl
   MatrixResult<T>
   MatrixBlock<T>::transposeSquare () const
   {
-	int blockRows    = startRows   .size () - 1;
-	int blockColumns = startColumns.size () - 1;
-	MatrixBlock * result = new MatrixBlock;
-	result->blockResize (blockColumns, blockColumns);
+	int AR = startRows   .size () - 1;
+	int AC = startColumns.size () - 1;
+	MatrixBlock * result = new MatrixBlock (AC, AC);
+	if (AC < 1  ||  AR < 1) return result;
 
-	for (int c = 0; c < blockColumns; c++)
+	MatrixAbstract<T> ** Ablocks = (MatrixAbstract<T> **)         data;
+	MatrixAbstract<T> ** Cblocks = (MatrixAbstract<T> **) result->data;
+
+	for (int blockColumn = 0; blockColumn < AC; blockColumn++)
 	{
-	  for (int r = 0; r < c; r++)
+	  // Elements above the diagonal
+	  for (int blockRow = 0; blockRow < blockColumn; blockRow++)
 	  {
-		MatrixAbstract<T> * t = 0;  // "total"
-		for (int k = 0; k < blockRows; k++)
+		MatrixAbstract<T> ** a   = Ablocks + blockRow    * blockStride;
+		MatrixAbstract<T> ** b   = Ablocks + blockColumn * blockStride;
+		MatrixAbstract<T> ** c   = Cblocks + blockColumn * AC + blockRow;
+		MatrixAbstract<T> ** end = b + AR;
+		while (b < end)
 		{
-		  MatrixAbstract<T> * a = blockGet (k, r);
-		  MatrixAbstract<T> * b = blockGet (k, c);
-		  if (a  &&  b)
+		  if (*a  &&  *b)
 		  {
-			if (t) (*t) += a->transposeTimes (*b);
-			else     t   = a->transposeTimes (*b).relinquish ();
+			if (*c) (**c) += (*a)->transposeTimes (**b);
+			else     (*c)  = (*a)->transposeTimes (**b).relinquish ();
 		  }
+		  a++;
+		  b++;
 		}
-		if (t) result->blockSet (r, c, t);
 	  }
 
-	  // r == c
-	  result->blockSet (c, c, blockGet (c, c)->transposeSquare ());
+	  // Element on the diagonal
+	  MatrixAbstract<T> ** a   = Ablocks + blockColumn * blockStride;
+	  MatrixAbstract<T> ** c   = Cblocks + blockColumn * AC + blockColumn;
+	  MatrixAbstract<T> ** end = a + AR;
+	  while (a < end)
+	  {
+		if (*a)
+		{
+		  if (*c) (**c) += (*a)->transposeSquare ();
+		  else     (*c)  = (*a)->transposeSquare ().relinquish ();
+		}
+		a++;
+	  }
 	}
+
+	result->blockUpdateAll ();
 
 	return result;
   }
@@ -587,8 +615,7 @@ namespace fl
 	  int BC = BB.startColumns.size () - 1;
 
 	  const int w = std::min (AR, BR);
-	  MatrixBlock * result = new MatrixBlock;
-	  result->blockResize (AC, BC);
+	  MatrixBlock * result = new MatrixBlock (AC, BC);
 
 	  MatrixAbstract<T> ** Ablocks = (MatrixAbstract<T> **)         data;
 	  MatrixAbstract<T> ** Bblocks = (MatrixAbstract<T> **) BB.     data;
@@ -622,8 +649,7 @@ namespace fl
 	else
 	{
 	  int bh = B.rows ();
-	  MatrixBlock * result = new MatrixBlock;
-	  result->blockResize (AC);
+	  MatrixBlock * result = new MatrixBlock (AC);
 	  result->startRows = startColumns;
 	  result->startColumns[1] = B.columns ();
 
@@ -659,6 +685,58 @@ namespace fl
 
   template<class T>
   MatrixResult<T>
+  MatrixBlock<T>::row (const int r) const
+  {
+	MatrixBlock * result = new MatrixBlock;
+
+	int blockRow = binarySearch (startRows, r);
+	if (blockRow >= 0)
+	{
+	  int r0 = r - startRows[blockRow];
+	  int blockColumns = startColumns.size () - 1;
+	  result->blockResize (1, blockColumns);
+	  MatrixAbstract<T> ** from = ((MatrixAbstract<T> **)         data) + blockRow;
+	  MatrixAbstract<T> ** to   =  (MatrixAbstract<T> **) result->data;
+	  MatrixAbstract<T> ** end  = to + blockColumns;
+	  while (to < end)
+	  {
+		if (*from) *to = (*from)->row (r0).relinquish ();
+		to++;
+		from += blockStride;
+	  }
+	}
+
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  MatrixBlock<T>::column (const int c) const
+  {
+	MatrixBlock * result = new MatrixBlock;
+
+	int blockColumn = binarySearch (startColumns, c);
+	if (blockColumn >= 0)
+	{
+	  int c0 = c - startColumns[blockColumn];
+	  int blockRows = startRows.size () - 1;
+	  result->blockResize (blockRows, 1);
+	  MatrixAbstract<T> ** from = ((MatrixAbstract<T> **)         data) + blockColumn * blockStride;
+	  MatrixAbstract<T> ** to   =  (MatrixAbstract<T> **) result->data;
+	  MatrixAbstract<T> ** end  = to + blockRows;
+	  while (to < end)
+	  {
+		if (*from) *to = (*from)->column (c0).relinquish ();
+		to++;
+		from++;
+	  }
+	}
+
+	return result;
+  }
+
+  template<class T>
+  MatrixResult<T>
   MatrixBlock<T>::operator * (const MatrixAbstract<T> & B) const
   {
 	int AR = startRows   .size () - 1;
@@ -672,8 +750,7 @@ namespace fl
 	  int BC = BB.startColumns.size () - 1;
 
 	  const int w = std::min (AC, BR);
-	  MatrixBlock * result = new MatrixBlock;
-	  result->blockResize (AR, BC);
+	  MatrixBlock * result = new MatrixBlock (AR, BC);
 
 	  MatrixAbstract<T> ** Ablocks = (MatrixAbstract<T> **)         data;
 	  MatrixAbstract<T> ** Bblocks = (MatrixAbstract<T> **) BB.     data;
@@ -707,8 +784,7 @@ namespace fl
 	else
 	{
 	  int bh = B.rows ();
-	  MatrixBlock * result = new MatrixBlock;
-	  result->blockResize (AR);
+	  MatrixBlock * result = new MatrixBlock (AR);
 	  result->startRows = startRows; // force rows to match A, even if B is defficient
 	  result->startColumns[1] = B.columns ();
 
@@ -746,8 +822,7 @@ namespace fl
   {
 	int AR = startRows   .size () - 1;
 	int AC = startColumns.size () - 1;
-	MatrixBlock * result = new MatrixBlock;
-	result->blockResize (AR, AC);
+	MatrixBlock * result = new MatrixBlock (AR, AC);
 	result->startRows    = startRows;
 	result->startColumns = startColumns;
 
@@ -776,8 +851,7 @@ namespace fl
   {
 	int AR = startRows   .size () - 1;
 	int AC = startColumns.size () - 1;
-	MatrixBlock * result = new MatrixBlock;
-	result->blockResize (AR, AC);
+	MatrixBlock * result = new MatrixBlock (AR, AC);
 	result->startRows    = startRows;
 	result->startColumns = startColumns;
 

@@ -585,6 +585,7 @@ namespace fl
   {
   public:
 	MatrixBlock ();
+	MatrixBlock (const int blockRows, const int blockColumns = 1);
 	MatrixBlock (const MatrixAbstract<T> & that);
 	virtual ~MatrixBlock ();
 	void detach ();  ///< reset to empty and delete all pointers we own
@@ -609,10 +610,12 @@ namespace fl
 	virtual int columns () const;
 	virtual void resize (const int rows, const int columns = 1);  ///< On reduction, trims any existing blocks that boundary cuts through. On expansion, extends any existing blocks at perimeter.
 
-	virtual void clear (const T scalar = (T) 0);  ///< Calls clear() on all blocks. If scalar is anything besides zero, only clears blocks that exist.
-	virtual T norm (float n) const;  ///< Calls norm() on all blocks, and combines results using proper norm.
+	virtual void clear                      (const T scalar = (T) 0);  ///< Calls clear() on all blocks. If scalar is anything besides zero, only clears blocks that exist.
+	virtual T norm                          (float n) const;  ///< Calls norm() on all blocks, and combines results using proper norm.
 	virtual MatrixResult<T> transposeSquare () const;
-	virtual MatrixResult<T> transposeTimes (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> transposeTimes  (const MatrixAbstract<T> & B) const;
+	virtual MatrixResult<T> row             (const int r) const;
+	virtual MatrixResult<T> column          (const int c) const;
 
 	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
 	virtual MatrixResult<T> operator / (const T scalar)              const;
