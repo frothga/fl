@@ -140,6 +140,10 @@ add_library (flImage
   ${maybeInterestDOG}
   InterestMSER.cc
 
+  # Matching framework
+  ../../include/fl/match.h
+  Match.cc
+
   # Video
   ../../include/fl/track.h
   KLT.cc

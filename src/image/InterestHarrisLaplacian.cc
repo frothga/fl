@@ -92,7 +92,7 @@ InterestHarrisLaplacian::clear ()
 }
 
 void
-InterestHarrisLaplacian::run (ImageCache & cache, InterestPointSet & result)
+InterestHarrisLaplacian::run (ImageCache & cache, PointSet & result)
 {
   if (filters.size () == 0) init ();
 

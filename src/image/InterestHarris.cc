@@ -37,7 +37,7 @@ InterestHarris::InterestHarris (int neighborhood, int maxPoints, float threshold
 }
 
 void
-InterestHarris::run (ImageCache & cache, InterestPointSet & result)
+InterestHarris::run (ImageCache & cache, PointSet & result)
 {
   int offset = filter.offset;
 

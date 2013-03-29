@@ -104,7 +104,7 @@ InterestHessian::InterestHessian (int maxPoints, float thresholdFactor, float ne
 }
 
 void
-InterestHessian::run (ImageCache & cache, InterestPointSet & result)
+InterestHessian::run (ImageCache & cache, PointSet & result)
 {
   ImageOf<float> work = cache.get (new EntryPyramid (GrayFloat))->image;
   multiset<PointInterest> sorted;

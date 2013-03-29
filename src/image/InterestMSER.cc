@@ -445,7 +445,7 @@ InterestMSER::addGrayLevel (unsigned char level, bool sign, vector<PointMSER *> 
 }
 
 void
-InterestMSER::run (ImageCache & cache, InterestPointSet & result)
+InterestMSER::run (ImageCache & cache, PointSet & result)
 {
   Image image = cache.get (new EntryPyramid (GrayChar))->image;
 

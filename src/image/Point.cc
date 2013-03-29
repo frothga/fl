@@ -23,8 +23,6 @@ using namespace fl;
 
 // class Point ----------------------------------------------------------------
 
-uint32_t Point::serializeVersion = 0;
-
 Point::Point ()
 {
   x = 0;
@@ -35,6 +33,19 @@ Point::Point (double x, double y)
 {
   this->x = x;
   this->y = y;
+}
+
+Point::~Point ()
+{
+}
+
+uint32_t Point::serializeVersion = 0;
+
+void
+Point::serialize (Archive & archive, uint32_t version)
+{
+  archive & x;
+  archive & y;
 }
 
 MatrixAbstract<double> *
@@ -58,17 +69,16 @@ Point::columns () const
 void
 Point::resize (const int rows, const int columns)
 {
-  if (columns != 1  ||  rows != 2)
+  if (columns != 1  ||  rows != this->rows ())
   {
 	throw "Can't resize Point";
   }
 }
 
 void
-Point::serialize (Archive & archive, uint32_t version)
+Point::print (ostream & stream) const
 {
-  archive & x;
-  archive & y;
+  stream << "(" << x << "," << y << ")";
 }
 
 MatrixResult<double>
@@ -79,6 +89,12 @@ Point::homogeneous () const
   (*result)[1] = y;
   (*result)[2] = 1;
   return result;
+}
+
+Vector<float> *
+Point::descriptor () const
+{
+  return 0;
 }
 
 double
@@ -104,11 +120,131 @@ Point::angle () const
 }
 
 
+// class PointSet -----------------------------------------------------
+
+PointSet::~PointSet ()
+{
+  clear (true);
+}
+
+void
+PointSet::clear (bool destruct)
+{
+  if (destruct)
+  {
+	iterator i = begin ();
+	while (i < end ())
+	{
+	  delete *i++;
+	}
+  }
+  vector<Point *>::clear ();
+}
+
+void
+PointSet::add (const multiset<PointInterest> & points)
+{
+  int pointSize = points.size ();
+  if (! pointSize) return;
+
+  int rsize = size ();
+  resize (rsize + pointSize);
+  Point ** r = & at (rsize);
+  multiset<PointInterest>::const_iterator s = points.begin ();
+  while (s != points.end ())
+  {
+	*r++ = new PointInterest (*s++);
+  }
+}
+
+
+// class Point3 ---------------------------------------------------------------
+
+Point3::Point3 ()
+{
+}
+
+Point3::Point3 (double x, double y, double z)
+: Point (x, y),
+  z (z)
+{
+}
+
+void
+Point3::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((Point *) this);
+  archive & z;
+}
+
+MatrixAbstract<double> *
+Point3::clone (bool deep) const
+{
+  return new Point3 (x, y, z);
+}
+
+int
+Point3::rows () const
+{
+  return 3;
+}
+
+void
+Point3::print (ostream & stream) const
+{
+  stream << "(" << x << "," << y << "," << z << ")";
+}
+
+MatrixResult<double>
+Point3::homogeneous () const
+{
+  Vector<double> * result = new Vector<double> (3);
+  (*result)[0] = x;
+  (*result)[1] = y;
+  (*result)[2] = z;
+  (*result)[3] = 1;
+  return result;
+}
+
+
+// class Point3D --------------------------------------------------------------
+
+Point3D::Point3D ()
+{
+  descriptor_ = 0;
+}
+
+Point3D::Point3D (double x, double y, double z)
+: Point3 (x, y, z)
+{
+  descriptor_ = 0;
+}
+
+Point3D::~Point3D ()
+{
+  delete descriptor_;
+}
+
+void
+Point3D::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((Point3 *) this);
+  archive & descriptor_;
+}
+
+Vector<float> *
+Point3D::descriptor () const
+{
+  return descriptor_;
+}
+
+
 // class PointInterest --------------------------------------------------------
 
 PointInterest::PointInterest ()
 : Point ()
 {
+  descriptor_ = 0;
   weight = 0;
   scale = 1;
   detector = Unknown;
@@ -117,6 +253,7 @@ PointInterest::PointInterest ()
 PointInterest::PointInterest (const Point & p)
 : Point (p)
 {
+  descriptor_ = 0;
   weight = 0;
   scale = 1;
   detector = Unknown;
@@ -124,6 +261,7 @@ PointInterest::PointInterest (const Point & p)
 
 PointInterest::~PointInterest ()
 {
+  delete descriptor_;
 }
 
 namespace fl
@@ -142,9 +280,16 @@ void
 PointInterest::serialize (Archive & archive, uint32_t version)
 {
   archive & *((Point *) this);
+  archive & descriptor_;
   archive & weight;
   archive & scale;
   archive & detector;
+}
+
+Vector<float> *
+PointInterest::descriptor () const
+{
+  return descriptor_;
 }
 
 
@@ -179,6 +324,14 @@ PointAffine::PointAffine (const Matrix<double> & S)
   A = S;  // takes upper-left 2x2 region
   A /= scale;
   angle = 0;  // do not attempt to separate rotation from rest of transformation
+}
+
+void
+PointAffine::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PointInterest *) this);
+  archive & A;
+  archive & angle;
 }
 
 Matrix<double>
@@ -222,14 +375,6 @@ PointAffine::projection () const
   result(2,2) = 1;
 
   return result;
-}
-
-void
-PointAffine::serialize (Archive & archive, uint32_t version)
-{
-  archive & *((PointInterest *) this);
-  archive & A;
-  archive & angle;
 }
 
 

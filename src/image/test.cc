@@ -1513,7 +1513,7 @@ testIntensityFilters ()
 void
 testInterest (InterestOperator & i, const Image & image, int expected)
 {
-  InterestPointSet points;
+  PointSet points;
   i.run (image, points);
   if ((float) abs ((int) points.size () - expected) / expected > 0.1)
   {
@@ -1810,7 +1810,7 @@ testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f)
 
   // Find a few interest points
   InterestHarris h (1, 250);
-  InterestPointSet points;
+  PointSet points;
   h.run (image0, points);
 
   // Perturb image, and verify that KLT can find each point in new image

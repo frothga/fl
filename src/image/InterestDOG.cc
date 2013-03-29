@@ -105,7 +105,7 @@ InterestDOG::fitQuadratic (ImageOf<float> & dog0, ImageOf<float> & dog1, ImageOf
 }
 
 void
-InterestDOG::run (ImageCache & cache, InterestPointSet & result)
+InterestDOG::run (ImageCache & cache, PointSet & result)
 {
   Stopwatch timer;
 

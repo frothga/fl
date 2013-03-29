@@ -34,6 +34,13 @@ for details.
 
 namespace fl
 {
+  class SHARED Point;
+  class SHARED PointSet;
+  class SHARED Point3;
+  class SHARED PointInterest;
+  class SHARED PointAffine;
+  class SHARED PointMSER;
+
   /**
 	 A point in a pixel raster.
 
@@ -59,10 +66,12 @@ namespace fl
 	  x = A[0];
 	  y = A[1];
 	}
-	Point (std::istream & stream);
+	virtual ~Point ();
+
+	static uint32_t serializeVersion;
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual MatrixAbstract<double> * clone (bool deep = false) const;
-
 	virtual double & operator () (const int row, const int column) const
 	{
 	  return const_cast<double &> ((&x)[row]);
@@ -75,10 +84,9 @@ namespace fl
 	virtual int columns () const;
 	virtual void resize (const int rows, const int columns = 1);  ///< We only have one size.  This will throw an exception if (rows * columns) != 2.
 
-	void serialize (Archive & archive, uint32_t version);
-	static uint32_t serializeVersion;
-
+	virtual void print (std::ostream & stream) const;
 	virtual MatrixResult<double> homogeneous () const;
+	virtual Vector<float> * descriptor () const;  ///< Zero if this point lacks a descriptor.  Otherwise, a pointer to the vector, which should generally exist as long as this point exists.
 
 	double distance (const Point & that) const;  ///< Euclidean distance between two points
 	double angle (const Point & that) const;  ///< Determines angle of vector (that - this)
@@ -87,17 +95,94 @@ namespace fl
 	double x;
 	double y;
   };
+  inline std::ostream & operator << (std::ostream & stream, const Point & p)
+  {
+	p.print (stream);
+	return stream;
+  }
+
+  /**
+	 A collection of feature points, typically all from the same image.
+	 This collection takes responsibility for the points given to it, and
+	 destucts them when it is destructed.
+   **/
+  class SHARED PointSet : public std::vector<Point *>
+  {
+  public:
+	~PointSet ();  ///< Always destruct our points
+	void clear (bool destruct = true);  ///< Empty this collection, possibly without destructing the contained points.
+
+	void add (const std::multiset<PointInterest> & points);
+  };
+
+  /**
+	 A point in 3D space.
+	 @todo Note the use of the inherited operator[] in this class.  This makes
+	 the fragile assumption that our z will be placed immediately after the
+	 inherited x and y in memory.  May need to change this if a compiler
+	 does something different.
+  **/
+  class SHARED Point3 : public Point
+  {
+  public:
+	Point3 ();
+	Point3 (double x, double y, double z);
+	template<class T>
+	Point3 (const MatrixAbstract<T> & A)
+	{
+	  x = A[0];
+	  y = A[1];
+	  z = A[2];
+	}
+
+	void serialize (Archive & archive, uint32_t version);
+
+	virtual MatrixAbstract<double> * clone (bool deep = false) const;
+	virtual int rows () const;
+
+	virtual void print (std::ostream & stream) const;
+	virtual MatrixResult<double> homogeneous () const;
+
+	double z;
+  };
+
+  /**
+	 Version of Point3 that includes a descriptor.
+   **/
+  class SHARED Point3D : public Point3
+  {
+  public:
+	Point3D ();
+	Point3D (double x, double y, double z);
+	template<class T>
+	Point3D (const MatrixAbstract<T> & A)
+	{
+	  x = A[0];
+	  y = A[1];
+	  z = A[2];
+	  descriptor_ = 0;
+	}
+	virtual ~Point3D ();
+
+	void serialize (Archive & archive, uint32_t version);
+
+	virtual Vector<float> * descriptor () const;
+
+	Vector<float> * descriptor_;
+  };
 
   class SHARED PointInterest : public Point
   {
   public:
 	PointInterest ();
 	PointInterest (const Point & p);
-	PointInterest (std::istream & stream);
 	virtual ~PointInterest ();
 
 	void serialize (Archive & archive, uint32_t version);
 
+	virtual Vector<float> * descriptor () const;
+
+	Vector<float> * descriptor_;
 	float weight;  ///< strength of response of interest operator
 	float scale;  ///< "characteristic scale" of image around interest point
 
@@ -122,13 +207,12 @@ namespace fl
 	PointAffine ();
 	PointAffine (const Point & p);
 	PointAffine (const PointInterest & p);
-	PointAffine (std::istream & stream);
 	PointAffine (const Matrix<double> & S);  ///< Constructs from a patch matrix.  S = ! this->rectification()
+
+	void serialize (Archive & archive, uint32_t version);
 
 	Matrix<double> rectification () const;  ///< Computes the 3x3 (affine) homography from the image patch indicated by this point to the normalized form.
 	Matrix<double> projection () const;  ///< Computes the 3x3 (affine) homography from the normalized form back into the image patch indicated by this point.
-
-	void serialize (Archive & archive, uint32_t version);
 
 	/**
 	   The matrix A is the 2x2 transformation from a rectified patch back to
@@ -147,7 +231,6 @@ namespace fl
 	PointMSER (const PointInterest & p);
 	PointMSER (const PointAffine & p);
 	PointMSER (int index, unsigned char threshold, bool sign = true);
-	PointMSER (std::istream & stream);
 
 	void serialize (Archive & archive, uint32_t version);
 

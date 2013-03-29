@@ -40,17 +40,6 @@ namespace fl
 {
   // General interest operator interface ----------------------------------------
 
-  class SHARED InterestPointSet : public std::vector<PointInterest *>
-  {
-  public:
-	InterestPointSet ();
-	~InterestPointSet ();  ///< Destroy the points if we own them.
-
-	void add (const std::multiset<PointInterest> & points);
-
-	bool ownPoints;  ///< true if we are responsible to destroy the points (default value).
-  };
-
   class SHARED InterestOperator
   {
   public:
@@ -63,12 +52,12 @@ namespace fl
 	   collection already contains entries, then the newly detected points
 	   will be appended to the end.
 	 **/
-	virtual void run (ImageCache & cache, InterestPointSet & result) = 0;
+	virtual void run (ImageCache & cache, PointSet & result) = 0;
 	/**
 	   Convenience function that calls run() using the internal shared cache.
 	   NOT thread-safe!
 	 **/
-	void run (const Image & image, InterestPointSet & result);
+	void run (const Image & image, PointSet & result);
 
 	void serialize (Archive & archive, uint32_t version);
 	static uint32_t serializeVersion;
@@ -82,7 +71,7 @@ namespace fl
   public:
 	InterestHarris (int neighborhood = 5, int maxPoints = 5000, float thresholdFactor = 0.02);
 
-	virtual void run (ImageCache & cache, InterestPointSet & result);
+	virtual void run (ImageCache & cache, PointSet & result);
 	using InterestOperator::run;
 
 	void serialize (Archive & archive, uint32_t version);
@@ -101,7 +90,7 @@ namespace fl
 	void init ();
 	void clear ();
 
-	virtual void run (ImageCache & cache, InterestPointSet & result);
+	virtual void run (ImageCache & cache, PointSet & result);
 	using InterestOperator::run;
 
 	void serialize (Archive & archive, uint32_t version);
@@ -122,7 +111,7 @@ namespace fl
   public:
 	InterestLaplacian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);  ///< neighborhood >= 0 means fixed size (min = 1 pixel); neighborhood < 0 means multiple of scale.
 
-	virtual void run (ImageCache & cache, InterestPointSet & result);
+	virtual void run (ImageCache & cache, PointSet & result);
 	using InterestOperator::run;
 
 	void serialize (Archive & archive, uint32_t version);
@@ -145,7 +134,7 @@ namespace fl
   public:
 	InterestHessian (int maxPoints = 5000, float thresholdFactor = 0.02, float neighborhood = 1, float firstScale = 1, float lastScale = 25, int extraSteps = 20, float stepSize = -1);  ///< neighborhood >= 0 means fixed size (min = 1 pixel); neighborhood < 0 means multiple of scale.
 
-	virtual void run (ImageCache & cache, InterestPointSet & result);
+	virtual void run (ImageCache & cache, PointSet & result);
 	using InterestOperator::run;
 
 	void serialize (Archive & archive, uint32_t version);
@@ -170,7 +159,7 @@ namespace fl
   public:
 	InterestDOG (float firstScale = 1.6f, float lastScale = INFINITY, int extraSteps = 3);  ///< extraSteps gives the number of sub-levels between octaves.
 
-	virtual void run (ImageCache & cache, InterestPointSet & result);
+	virtual void run (ImageCache & cache, PointSet & result);
 	using InterestOperator::run;
 
 	void serialize (Archive & archive, uint32_t version);
@@ -193,7 +182,7 @@ namespace fl
   public:
 	InterestMSER (int delta = 5, float sizeRatio = 0.9f);
 
-	virtual void run (ImageCache & cache, InterestPointSet & result);
+	virtual void run (ImageCache & cache, PointSet & result);
 	using InterestOperator::run;
 
 	void serialize (Archive & archive, uint32_t version);

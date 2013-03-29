@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 210 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -21,44 +21,6 @@ using namespace std;
 using namespace fl;
 
 
-// class InterestPointSet -----------------------------------------------------
-
-InterestPointSet::InterestPointSet ()
-{
-  ownPoints = true;
-}
-
-InterestPointSet::~InterestPointSet ()
-{
-  if (ownPoints)
-  {
-	iterator i = begin ();
-	while (i < end ())
-	{
-	  delete *i++;
-	}
-  }
-}
-
-void
-InterestPointSet::add (const multiset<PointInterest> & points)
-{
-  int pointSize = points.size ();
-  if (! pointSize) return;
-
-  int rsize = size ();
-  resize (rsize + pointSize);
-  PointInterest ** r = & at (rsize);
-  multiset<PointInterest>::const_iterator s = points.begin ();
-  while (s != points.end ())
-  {
-	*r++ = new PointInterest (*s++);
-  }
-
-  ownPoints = true;  // WARNING: Don't mix owned and non-owned points!
-}
-
-
 // class InterestOperator -----------------------------------------------------
 
 uint32_t InterestOperator::serializeVersion = 0;
@@ -68,7 +30,7 @@ InterestOperator::~InterestOperator ()
 }
 
 void
-InterestOperator::run (const Image & image, InterestPointSet & result)
+InterestOperator::run (const Image & image, PointSet & result)
 {
   ImageCache::shared.setOriginal (image);
   run (ImageCache::shared, result);
