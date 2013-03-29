@@ -66,9 +66,9 @@ namespace fl
 	**/
 	virtual int             dimension (const Vector<T> & point) = 0;
 	virtual MatrixResult<T> value     (const Vector<T> & point) = 0;  ///< @return The value of the function at a given point.  Must throw an exception if point is out of domain.
-	virtual MatrixResult<T> gradient  (const Vector<T> & point, const Vector<T> * currentValue = NULL) = 0;  ///< Treat this as a single-valued function and return the first derivative vector.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by hessian().
-	virtual MatrixResult<T> jacobian  (const Vector<T> & point, const Vector<T> * currentValue = NULL) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
-	virtual MatrixResult<T> hessian   (const Vector<T> & point, const Vector<T> * currentValue = NULL) = 0;  ///< Treat this as a single-valued function and return the second derivative matrix.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by gradient().
+	virtual MatrixResult<T> gradient  (const Vector<T> & point, const Vector<T> * currentValue = 0) = 0;  ///< Treat this as a single-valued function and return the first derivative vector.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by hessian().
+	virtual MatrixResult<T> jacobian  (const Vector<T> & point, const Vector<T> * currentValue = 0) = 0;  ///< Return the gradients for all variables.  currentValue is a hint for estimating gradient by finite differences.
+	virtual MatrixResult<T> hessian   (const Vector<T> & point, const Vector<T> * currentValue = 0) = 0;  ///< Treat this as a single-valued function and return the second derivative matrix.  Method of converting multi-valued function to single-valued function is arbitrary, but should be differentiable and same as that used by gradient().
   };
 
   /**
@@ -88,9 +88,9 @@ namespace fl
 	virtual Search<T> *     search   ();  ///< Return LevenbergMarquardt
 	virtual void            finish   (const Vector<T> & point);  ///< Ignores the given point.
 	virtual MatrixResult<T> scales   (const Vector<T> & point);  ///< Return a vector of ones
-	virtual MatrixResult<T> gradient (const Vector<T> & point, const Vector<T> * currentValue = NULL);  ///< Uses sum of squares to reduce this to a single-valued function.
-	virtual MatrixResult<T> jacobian (const Vector<T> & point, const Vector<T> * currentValue = NULL);
-	virtual MatrixResult<T> hessian  (const Vector<T> & point, const Vector<T> * currentValue = NULL);  ///< Uses sum of squares to reduce this to a single-valued function.
+	virtual MatrixResult<T> gradient (const Vector<T> & point, const Vector<T> * currentValue = 0);  ///< Uses sum of squares to reduce this to a single-valued function.
+	virtual MatrixResult<T> jacobian (const Vector<T> & point, const Vector<T> * currentValue = 0);
+	virtual MatrixResult<T> hessian  (const Vector<T> & point, const Vector<T> * currentValue = 0);  ///< Uses sum of squares to reduce this to a single-valued function.
 
 	T perturbation;  ///< Amount to perturb a variable for finding any of the derivatives by finite differences.
   };
@@ -117,8 +117,8 @@ namespace fl
 	virtual void               cover       ();  ///< Compute a structurally orthogonal cover of the Jacobian based on the interaction matrix.  Called automatically by jacobian() whenever the current cover is stale.
 
 	virtual Search<T> *     search   ();  ///< Return LevenbergMarquardtSparseBK
-	virtual MatrixResult<T> gradient (const Vector<T> & point, const Vector<T> * currentValue = NULL);  ///< Compute gradient as 2 * ~jacobian * value.  In a sparse system, this should require fewer calls to value() than the direct method.
-	virtual MatrixResult<T> jacobian (const Vector<T> & point, const Vector<T> * currentValue = NULL);  ///< Compute the Jacobian using the cover.
+	virtual MatrixResult<T> gradient (const Vector<T> & point, const Vector<T> * currentValue = 0);  ///< Compute gradient as 2 * ~jacobian * value.  In a sparse system, this should require fewer calls to value() than the direct method.
+	virtual MatrixResult<T> jacobian (const Vector<T> & point, const Vector<T> * currentValue = 0);  ///< Compute the Jacobian using the cover.
 
 	// These members represent the cover in a way that is easy to execute.
 	int coveredDimension;  ///< The size of the result of value() in force when the last call to cover() ocurred.  If -1, then cover() has not yet been called.
@@ -247,7 +247,7 @@ namespace fl
 	   @param toleranceF Indicates an acceptable value for the searchable
 	   (termination condition), and also indicates whether to minimize or
 	   maximize.  If positive, then minimize.  If negative, then maximize.
-	   Basically, the negative value indicates to flip the sign of the
+	   Basically, the negative tolerance indicates to flip the sign of the
 	   searchable's value.  Since the optimizer always seeks a number
 	   smaller than toleranceF, this effectively changes the problem into
 	   a maximization.  A value of zero means minimize, and use a default
