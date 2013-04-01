@@ -577,7 +577,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 		  rgbaFloatIn[2] = fl::PixelFormat::lutChar2Float[b];
 
 		  // Expectations
-		  float grayExact = rgbaFloatIn[0] * 0.2126f + rgbaFloatIn[1] * 0.7152f + rgbaFloatIn[2] * 0.0722f;
+		  float grayExact = rgbaFloatIn[0] * 0.2126729f + rgbaFloatIn[1] * 0.7151522f + rgbaFloatIn[2] * 0.0721750f;
 		  float grayFloat;
 		  int grayChar;
 		  if (approximate)
@@ -636,24 +636,24 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 
 		  // get/setXYZ
 		  Vector<float> xyzIn (3);
-		  xyzIn[0] = 0.4124f * rgbaFloatIn[0] + 0.3576f * rgbaFloatIn[1] + 0.1805f * rgbaFloatIn[2];
+		  xyzIn[0] = 0.4124564f * rgbaFloatIn[0] + 0.3575761f * rgbaFloatIn[1] + 0.1804375f * rgbaFloatIn[2];
 		  xyzIn[1] = grayExact;
-		  xyzIn[2] = 0.0193f * rgbaFloatIn[0] + 0.1192f * rgbaFloatIn[1] + 0.9505f * rgbaFloatIn[2];
+		  xyzIn[2] = 0.0193339f * rgbaFloatIn[0] + 0.1191920f * rgbaFloatIn[1] + 0.9503041f * rgbaFloatIn[2];
 		  target.setXYZ (0, 0, &xyzIn[0]);
+		  xyzIn[0] = 0.950470f * grayExact;  // adjust our expectations to fit the fact that only monochrome will be remembered, and color must be reconstructed from that
+		  xyzIn[2] = 1.088830f * grayExact;
 		  Vector<float> xyzOut (3);
 		  target.getXYZ (0, 0, &xyzOut[0]);
-		  if (xyzOut[0] != 0  ||  xyzOut[2] != 0)
+		  for (int j = 0; j < 3; j++)
 		  {
-			cout << r << " " << g << " " << b << " getXYZ returned non-gray value: " << xyzOut << endl;
-			throw "PixelFormat failed";
-		  }
-		  ratio = xyzOut[1] / grayExact;
-		  if (ratio < 1.0f) ratio = 1.0f / ratio;
-		  difference = xyzOut[1] - grayExact;
-		  if (ratio > thresholdRatio  &&   difference > thresholdDifference)
-		  {
-			cout << r << " " << g << " " << b << " getXYZ returned unexpected gray value: " << grayExact << " " << xyzOut[1] << endl;
-			throw "PixelFormat failed";
+			ratio = xyzOut[j] / xyzIn[j];
+			if (ratio < 1.0f) ratio = 1.0f / ratio;
+			difference = fabs (xyzOut[j] - xyzIn[j]);
+			if (ratio > thresholdRatio  &&  difference > thresholdDifference)
+			{
+			  cout << r << " " << g << " " << b << " getXYZ returned unexpected value: " << ratio << endl << xyzIn << endl << xyzOut << endl;
+			  throw "PixelFormat fails";
+			}
 		  }
 
 		  // get/setYUV
@@ -743,9 +743,9 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	  int rbits = 8 - min (8, pfbits->redBits);
 	  int gbits = 8 - min (8, pfbits->greenBits);
 	  int bbits = 8 - min (8, pfbits->blueBits);
-	  int xbits = (int) ceil (0.4124f * rbits + 0.3576f * gbits + 0.1805f * bbits);
-	  int ybits = (int) ceil (0.2126f * rbits + 0.7152f * gbits + 0.0722f * bbits);
-	  int zbits = (int) ceil (0.0193f * rbits + 0.1192f * gbits + 0.9505f * bbits);
+	  int xbits = (int) ceil (0.4124564f * rbits + 0.3575761f * gbits + 0.1804375f * bbits);
+	  int ybits = (int) ceil (0.2126729f * rbits + 0.7151522f * gbits + 0.0721750f * bbits);
+	  int zbits = (int) ceil (0.0193339f * rbits + 0.1191920f * gbits + 0.9503041f * bbits);
 
 	  tRed    = max (tRed,   1 << rbits);
 	  tGreen  = max (tGreen, 1 << gbits);
@@ -818,9 +818,9 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 
 		  // get/setXYZ
 		  Vector<float> xyzIn (3);
-		  xyzIn[0] = 0.4124f * rgbaFloatIn[0] + 0.3576f * rgbaFloatIn[1] + 0.1805f * rgbaFloatIn[2];
-		  xyzIn[1] = 0.2126f * rgbaFloatIn[0] + 0.7152f * rgbaFloatIn[1] + 0.0722f * rgbaFloatIn[2];
-		  xyzIn[2] = 0.0193f * rgbaFloatIn[0] + 0.1192f * rgbaFloatIn[1] + 0.9505f * rgbaFloatIn[2];
+		  xyzIn[0] = 0.4124564f * rgbaFloatIn[0] + 0.3575761f * rgbaFloatIn[1] + 0.1804375f * rgbaFloatIn[2];
+		  xyzIn[1] = 0.2126729f * rgbaFloatIn[0] + 0.7151522f * rgbaFloatIn[1] + 0.0721750f * rgbaFloatIn[2];
+		  xyzIn[2] = 0.0193339f * rgbaFloatIn[0] + 0.1191920f * rgbaFloatIn[1] + 0.9503041f * rgbaFloatIn[2];
 		  target.setXYZ (0, 0, &xyzIn[0]);
 		  Vector<float> xyzOut (3);
 		  target.getXYZ (0, 0, &xyzOut[0]);
@@ -917,6 +917,7 @@ testPixelFormat ()
   vector<fl::PixelFormat *> formats;
   formats.push_back (&GrayChar);
   formats.push_back (&GrayShort);
+  formats.push_back (&GrayShortSigned);
   formats.push_back (&GrayFloat);
   formats.push_back (&GrayDouble);
   formats.push_back (&RGBAChar);

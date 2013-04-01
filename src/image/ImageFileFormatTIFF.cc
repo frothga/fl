@@ -173,6 +173,7 @@ FormatMapping formatMap[] =
   {(PixelFormat *) 3, B8(1110000), 1,  4, 1, 0, 1, 0, 0},  // GrayBits
   {&GrayChar,         B8(1110000), 1,  8, 1, 0, 1, 0, 0},  // No-care on photometric: we don't distinguish positive from negative images at this time.
   {(PixelFormat *) 1, B8(1110000), 1, 16, 1, 0, 1, 0, 0},  // GrayShort, with consideration for SMaxSampleValue
+  {&GrayShortSigned,  B8(1110000), 1, 16, 2, 0, 1, 0, 0},
   {&GrayFloat,        B8(1110000), 1, 32, 3, 0, 1, 0, 0},
   {&GrayDouble,       B8(1110000), 1, 64, 3, 0, 1, 0, 0},
   {&RGBChar,          B8(1110100), 3,  8, 1, 2, 1, 0, 0},
@@ -279,6 +280,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 
 	if (format == 0) throw "No PixelFormat available that matches file contents";
   }
+  //cerr << "format = " << typeid (*format).name () << endl;
 
   image.format = format;
   if (image.buffer == 0  ||  image.buffer->planes != image.format->planes) image.buffer = image.format->buffer ();

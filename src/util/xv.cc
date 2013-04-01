@@ -69,6 +69,7 @@ main (int argc, char * argv[])
 	  Image disp;
 	  f.read (disp, x, y, w, h);
 
+	  if (disp.format->monochrome) disp *= GrayFloat;  // necessary for Rescale to work
 	  disp *= Rescale (disp);
 	  window.show (disp);
 	  window.waitForClick ();

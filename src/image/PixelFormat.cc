@@ -79,6 +79,7 @@ PixelFormatPackedYUV::YUVindex tableUYVYUYVYYYYY[] =
 PixelFormatGrayChar           fl::GrayChar;
 PixelFormatGrayAlphaChar      fl::GrayAlphaChar;
 PixelFormatGrayShort          fl::GrayShort;
+PixelFormatGrayShortSigned    fl::GrayShortSigned;
 PixelFormatGrayAlphaShort     fl::GrayAlphaShort;
 PixelFormatGrayFloat          fl::GrayFloat;
 PixelFormatGrayDouble         fl::GrayDouble;
@@ -117,29 +118,30 @@ PixelFormatRGBABits fl::BGRAChar (4, 0xFF00,   0xFF0000, 0xFF000000, 0xFF);
 // when the last external reference releases them.
 static int incrementRefcount ()
 {
-  GrayChar      .PointerPolyReferenceCount++;
-  GrayAlphaChar .PointerPolyReferenceCount++;
-  GrayShort     .PointerPolyReferenceCount++;
-  GrayAlphaShort.PointerPolyReferenceCount++;
-  GrayFloat     .PointerPolyReferenceCount++;
-  GrayDouble    .PointerPolyReferenceCount++;
-  RGBAChar      .PointerPolyReferenceCount++;
-  RGBAShort     .PointerPolyReferenceCount++;
-  RGBAFloat     .PointerPolyReferenceCount++;
-  RGBChar       .PointerPolyReferenceCount++;
-  RGBShort      .PointerPolyReferenceCount++;
-  UYVY          .PointerPolyReferenceCount++;
-  YUYV          .PointerPolyReferenceCount++;
-  UYV           .PointerPolyReferenceCount++;
-  UYYVYY        .PointerPolyReferenceCount++;
-  UYVYUYVYYYYY  .PointerPolyReferenceCount++;
-  YUV420        .PointerPolyReferenceCount++;
-  YUV411        .PointerPolyReferenceCount++;
-  HLSFloat      .PointerPolyReferenceCount++;
-  B5G5R5        .PointerPolyReferenceCount++;
-  BGRChar       .PointerPolyReferenceCount++;
-  BGRChar4      .PointerPolyReferenceCount++;
-  BGRAChar      .PointerPolyReferenceCount++;
+  GrayChar       .PointerPolyReferenceCount++;
+  GrayAlphaChar  .PointerPolyReferenceCount++;
+  GrayShort      .PointerPolyReferenceCount++;
+  GrayShortSigned.PointerPolyReferenceCount++;
+  GrayAlphaShort .PointerPolyReferenceCount++;
+  GrayFloat      .PointerPolyReferenceCount++;
+  GrayDouble     .PointerPolyReferenceCount++;
+  RGBAChar       .PointerPolyReferenceCount++;
+  RGBAShort      .PointerPolyReferenceCount++;
+  RGBAFloat      .PointerPolyReferenceCount++;
+  RGBChar        .PointerPolyReferenceCount++;
+  RGBShort       .PointerPolyReferenceCount++;
+  UYVY           .PointerPolyReferenceCount++;
+  YUYV           .PointerPolyReferenceCount++;
+  UYV            .PointerPolyReferenceCount++;
+  UYYVYY         .PointerPolyReferenceCount++;
+  UYVYUYVYYYYY   .PointerPolyReferenceCount++;
+  YUV420         .PointerPolyReferenceCount++;
+  YUV411         .PointerPolyReferenceCount++;
+  HLSFloat       .PointerPolyReferenceCount++;
+  B5G5R5         .PointerPolyReferenceCount++;
+  BGRChar        .PointerPolyReferenceCount++;
+  BGRChar4       .PointerPolyReferenceCount++;
+  BGRAChar       .PointerPolyReferenceCount++;
 
   return 1;
 }
@@ -315,6 +317,44 @@ prepareDublicate (int & shift, int bits)
 }
 
 
+// Support for HLS conversion -------------------------------------------------
+
+static const float root32    = sqrtf (3.0f) / 2.0f;
+static const float onesixth  = 1.0f / 6.0f;
+static const float onethird  = 1.0f / 3.0f;
+static const float twothirds = 2.0f / 3.0f;
+
+static inline float
+HLSvalue (const float & n1, const float & n2, float h)
+{
+  if (h > 1.0f)
+  {
+	h -= 1.0f;
+  }
+  if (h < 0)
+  {
+	h += 1.0f;
+  }
+
+  if (h < onesixth)
+  {
+    return n1 + (n2 - n1) * h * 6.0f;
+  }
+  else if (h < 0.5f)
+  {
+    return n2;
+  }
+  else if (h < twothirds)
+  {
+    return n1 + (n2 - n1) * (twothirds - h) * 6.0f;
+  }
+  else
+  {
+    return n1;
+  }
+}
+
+
 // class PixelFormat ----------------------------------------------------------
 
 unsigned char * PixelFormat::lutFloat2Char = PixelFormat::buildFloat2Char ();
@@ -452,9 +492,9 @@ PixelFormat::getXYZ (void * pixel, float values[]) const
   getRGBA (pixel, rgbValues);
 
   // Matrix multiply to cast into XYZ space
-  values[0] = 0.4124f * rgbValues[0] + 0.3576f * rgbValues[1] + 0.1805f * rgbValues[2];
-  values[1] = 0.2126f * rgbValues[0] + 0.7152f * rgbValues[1] + 0.0722f * rgbValues[2];
-  values[2] = 0.0193f * rgbValues[0] + 0.1192f * rgbValues[1] + 0.9505f * rgbValues[2];
+  values[0] = 0.4124564f * rgbValues[0] + 0.3575761f * rgbValues[1] + 0.1804375f * rgbValues[2];
+  values[1] = 0.2126729f * rgbValues[0] + 0.7151522f * rgbValues[1] + 0.0721750f * rgbValues[2];
+  values[2] = 0.0193339f * rgbValues[0] + 0.1191920f * rgbValues[1] + 0.9503041f * rgbValues[2];
 }
 
 /**
@@ -517,9 +557,9 @@ PixelFormat::setXYZ (void * pixel, float values[]) const
 
   // Do matrix multiply to get linear RGB values
   float rgbValues[4];
-  rgbValues[0] =  3.2406f * values[0] - 1.5372f * values[1] - 0.4986f * values[2];
-  rgbValues[1] = -0.9689f * values[0] + 1.8758f * values[1] + 0.0415f * values[2];
-  rgbValues[2] =  0.0557f * values[0] - 0.2040f * values[1] + 1.0570f * values[2];
+  rgbValues[0] =  3.2404542f * values[0] - 1.5371385f * values[1] - 0.4985314f * values[2];
+  rgbValues[1] = -0.9692660f * values[0] + 1.8760108f * values[1] + 0.0415560f * values[2];
+  rgbValues[2] =  0.0556434f * values[0] - 0.2040259f * values[1] + 1.0572252f * values[2];
   rgbValues[3] = 1.0f;
 
   setRGBA (pixel, rgbValues);
@@ -543,6 +583,50 @@ PixelFormat::setYUV (void * pixel, unsigned int yuv) const
   unsigned int b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
 
   setRGBA (pixel, ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF);
+}
+
+void
+PixelFormat::setHLS (void * pixel, float values[]) const
+{
+  float rgba[4];
+  float h = values[0];
+  float l = values[1];
+  float s = values[2];
+
+  if (s == 0)  // saturation
+  {
+    rgba[0] = l;  // lightness
+    rgba[1] = l;
+    rgba[2] = l;
+  }
+  else
+  {
+	float m2;
+	if (l <= 0.5f)
+	{
+	  m2 = l + l * s;
+	}
+	else
+	{
+	  m2 = l + s - l * s;
+	}
+	float m1 = 2.0f * l - m2;
+
+	float barf;
+	h = modff (h, &barf);
+	if (h < 0)
+	{
+	  h += 1.0f;
+	}
+
+    rgba[0] = HLSvalue (m1, m2, h + onethird);
+    rgba[1] = HLSvalue (m1, m2, h);
+    rgba[2] = HLSvalue (m1, m2, h - onethird);
+  }
+
+  rgba[3] = 1.0f;
+
+  setRGBA (pixel, rgba);
 }
 
 void
@@ -1185,9 +1269,10 @@ PixelFormatGrayChar::getRGBA (void * pixel) const
 void
 PixelFormatGrayChar::getXYZ (void * pixel, float values[]) const
 {
-  values[0] = 0;
-  values[1] = lutChar2Float[*(unsigned char *) pixel];
-  values[2] = 0;
+  float t = lutChar2Float[*(unsigned char *) pixel];
+  values[0] = 0.950470f * t;
+  values[1] =             t;
+  values[2] = 1.088830f * t;
 }
 
 unsigned char
@@ -1426,9 +1511,9 @@ PixelFormatGrayShort::fromAny (const Image & image, Image & result) const
 bool
 PixelFormatGrayShort::operator == (const PixelFormat & that) const
 {
-  if (typeid (*this) == typeid (that))
+  if (const PixelFormatGrayShort * other = dynamic_cast<const PixelFormatGrayShort *> (& that))
   {
-	return true;
+	return other->grayMask == grayMask;  // grayShift should generally be the same if mask is the same
   }
   if (const PixelFormatRGBABits * other = dynamic_cast<const PixelFormatRGBABits *> (& that))
   {
@@ -1450,9 +1535,10 @@ PixelFormatGrayShort::getRGBA (void * pixel) const
 void
 PixelFormatGrayShort::getXYZ (void * pixel, float values[]) const
 {
-  values[0] = 0;
-  values[1] = *((unsigned short *) pixel) / (float) grayMask;
-  values[2] = 0;
+  float t = *((unsigned short *) pixel) / (float) grayMask;
+  values[0] = 0.950470f * t;
+  values[1] =             t;
+  values[2] = 1.088830f * t;
 }
 
 unsigned char
@@ -1496,6 +1582,92 @@ PixelFormatGrayShort::setGray (void * pixel, float gray) const
 {
   gray = min (max (gray, 0.0f), 1.0f);
   *((unsigned short *) pixel) = (unsigned short) (grayMask * gray);
+}
+
+
+// class PixelFormatGrayShortSigned -------------------------------------------
+
+PixelFormatGrayShortSigned::PixelFormatGrayShortSigned (int32_t bias, int32_t scale)
+: bias (bias),
+  scale (scale)
+{
+  planes     = 1;
+  depth      = 2;
+  precedence = 2;  // Above GrayChar and UYVY, but below everything else
+  monochrome = true;
+  hasAlpha   = false;
+}
+
+bool
+PixelFormatGrayShortSigned::operator == (const PixelFormat & that) const
+{
+  if (const PixelFormatGrayShortSigned * other = dynamic_cast<const PixelFormatGrayShortSigned *> (& that))
+  {
+	return other->bias == bias;
+  }
+  return false;
+}
+
+unsigned int
+PixelFormatGrayShortSigned::getRGBA (void * pixel) const
+{
+  uint32_t t = lutFloat2Char[min (65535, max (0, *(int16_t *) pixel + bias))];
+  return (t << 24) | (t << 16) | (t << 8) | 0xFF;
+}
+
+void
+PixelFormatGrayShortSigned::getRGBA (void * pixel, float values[]) const
+{
+  float gray = (*(int16_t *) pixel + bias) / (float) scale;  // allow float values to go outside [0,1]
+  values[0] = gray;
+  values[1] = gray;
+  values[2] = gray;
+  values[3] = 1.0;
+}
+
+void
+PixelFormatGrayShortSigned::getXYZ (void * pixel, float values[]) const
+{
+  float t = (*(int16_t *) pixel + bias) / (float) scale;
+  values[0] = 0.950470f * t;
+  values[1] =             t;
+  values[2] = 1.088830f * t;
+}
+
+void
+PixelFormatGrayShortSigned::getGray (void * pixel, float & gray) const
+{
+  gray = (*(int16_t *) pixel + bias) / (float) scale;
+}
+
+void
+PixelFormatGrayShortSigned::setRGBA (void * pixel, unsigned int rgba) const
+{
+  float r = lutChar2Float[ rgba             >> 24];
+  float g = lutChar2Float[(rgba & 0xFF0000) >> 16];
+  float b = lutChar2Float[(rgba &   0xFF00) >>  8];
+
+  float t = r * redToY + g * greenToY + b * blueToY;
+  *((int16_t *) pixel) = (int16_t) min (32767, max (-32768, ((int32_t) (t * scale) - bias)));
+}
+
+void
+PixelFormatGrayShortSigned::setRGBA (void * pixel, float values[]) const
+{
+  float t = values[0] * redToY + values[1] * greenToY + values[2] * blueToY;
+  *((int16_t *) pixel) = (int16_t) min (32767, max (-32768, ((int32_t) (t * scale) - bias)));
+}
+
+void
+PixelFormatGrayShortSigned::setXYZ (void * pixel, float values[]) const
+{
+  *((int16_t *) pixel) = (int16_t) min (32767, max (-32768, ((int32_t) (values[1] * scale) - bias)));
+}
+
+void
+PixelFormatGrayShortSigned::setGray (void * pixel, float gray) const
+{
+  *((int16_t *) pixel) = (int16_t) min (32767, max (-32768, ((int32_t) (gray * scale) - bias)));
 }
 
 
@@ -1926,9 +2098,10 @@ PixelFormatGrayFloat::getRGBA (void * pixel, float values[]) const
 void
 PixelFormatGrayFloat::getXYZ (void * pixel, float values[]) const
 {
-  values[0] = 0;
-  values[1] = *((float *) pixel);
-  values[2] = 0;
+  float t = *((float *) pixel);
+  values[0] = 0.950470f * t;
+  values[1] =             t;
+  values[2] = 1.088830f * t;
 }
 
 unsigned char
@@ -2377,9 +2550,10 @@ PixelFormatGrayDouble::getRGBA (void * pixel, float values[]) const
 void
 PixelFormatGrayDouble::getXYZ (void * pixel, float values[]) const
 {
-  values[0] = 0;
-  values[1] = *((double *) pixel);
-  values[2] = 0;
+  float t = *((double *) pixel);
+  values[0] = 0.950470f * t;
+  values[1] =             t;
+  values[2] = 1.088830f * t;
 }
 
 unsigned char
@@ -4188,6 +4362,44 @@ PixelFormatRGBAFloat::PixelFormatRGBAFloat ()
   hasAlpha   = true;
 }
 
+void
+PixelFormatRGBAFloat::fromAny (const Image & image, Image & result) const
+{
+  float * dest = (float *) ((PixelBufferPacked *) result.buffer)->base ();
+  const PixelFormat * sourceFormat = image.format;
+
+  PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
+  if (i)
+  {
+	unsigned char * source = (unsigned char *) i->base ();
+	const int sourceDepth = (int) sourceFormat->depth;
+	const int step = i->stride - image.width * sourceDepth;
+	float * end = dest + image.width * image.height * 4;
+	while (dest < end)
+	{
+	  float * rowEnd = dest + result.width * 4;
+	  while (dest < rowEnd)
+	  {
+		sourceFormat->getRGBA (source, dest);
+		source += sourceDepth;
+		dest += 4;
+	  }
+	  source += step;
+	}
+  }
+  else
+  {
+	for (int y = 0; y < image.height; y++)
+	{
+	  for (int x = 0; x < image.width; x++)
+	  {
+		sourceFormat->getRGBA (image.buffer->pixel (x, y), dest);
+		dest += 4;
+	  }
+	}
+  }
+}
+
 unsigned int
 PixelFormatRGBAFloat::getRGBA (void * pixel) const
 {
@@ -5146,11 +5358,6 @@ PixelFormatPlanarYCbCr::setGray (void * pixel, float gray) const
 
 // class PixelFormatHLSFloat --------------------------------------------------
 
-const float root32 = sqrtf (3.0f) / 2.0f;
-const float onesixth = 1.0f / 6.0f;
-const float onethird = 1.0f / 3.0f;
-const float twothirds = 2.0f / 3.0f;
-
 PixelFormatHLSFloat::PixelFormatHLSFloat ()
 {
   planes     = 1;
@@ -5170,36 +5377,6 @@ PixelFormatHLSFloat::getRGBA (void * pixel) const
   unsigned int b = lutFloat2Char[(unsigned short) (65535 * rgbaValues[2])];
   unsigned int a = (unsigned int) (255 * rgbaValues[3]);
   return (r << 24) | (g << 16) | (b << 8) | a;
-}
-
-inline float
-PixelFormatHLSFloat::HLSvalue (const float & n1, const float & n2, float h) const
-{
-  if (h > 1.0f)
-  {
-	h -= 1.0f;
-  }
-  if (h < 0)
-  {
-	h += 1.0f;
-  }
-
-  if (h < onesixth)
-  {
-    return n1 + (n2 - n1) * h * 6.0f;
-  }
-  else if (h < 0.5f)
-  {
-    return n2;
-  }
-  else if (h < twothirds)
-  {
-    return n1 + (n2 - n1) * (twothirds - h) * 6.0f;
-  }
-  else
-  {
-    return n1;
-  }
 }
 
 void
@@ -5228,8 +5405,8 @@ PixelFormatHLSFloat::getRGBA (void * pixel, float values[]) const
 	}
 	float m1 = 2.0f * l - m2;
 
-	double barf;
-	h = modf (h, &barf);
+	float barf;
+	h = modff (h, &barf);
 	if (h < 0)
 	{
 	  h += 1.0f;
@@ -5297,4 +5474,12 @@ PixelFormatHLSFloat::setRGBA (void * pixel, float values[]) const
   ((float *) pixel)[0] = h;
   ((float *) pixel)[1] = l;
   ((float *) pixel)[2] = s;
+}
+
+void
+PixelFormatHLSFloat::setHLS (void * pixel, float values[]) const
+{
+  ((float *) pixel)[0] = values[0];
+  ((float *) pixel)[1] = values[1];
+  ((float *) pixel)[2] = values[2];
 }

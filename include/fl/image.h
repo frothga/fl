@@ -105,6 +105,7 @@ namespace fl
 	void          setRGBA  (int x, int y, float values[]);
 	void          setXYZ   (int x, int y, float values[]);
 	void          setYUV   (int x, int y, unsigned int yuv);
+	void          setHLS   (int x, int y, float values[]);
 	void          setGray  (int x, int y, unsigned char gray);
 	void          setGray  (int x, int y, float gray);
 	void          setAlpha (int x, int y, unsigned char alpha);
@@ -542,6 +543,7 @@ namespace fl
 	virtual void          setRGBA  (void * pixel, float values[]) const;  ///< Each value must be in [0,1].  Values outside this range will be clamped and modified directly in the array.
 	virtual void          setXYZ   (void * pixel, float values[]) const;
 	virtual void          setYUV   (void * pixel, unsigned int yuv) const;
+	virtual void          setHLS   (void * pixel, float values[]) const;
 	virtual void          setGray  (void * pixel, unsigned char gray) const;
 	virtual void          setGray  (void * pixel, float gray) const;
 	virtual void          setAlpha (void * pixel, unsigned char alpha) const;  ///< Ignored by default.  Formats that actually have an alpha channel must override this method.
@@ -685,6 +687,30 @@ namespace fl
 
 	unsigned short grayMask;  ///< Indicates what (contiguous) bit in the pixel actually carry intensity info.
 	int grayShift;  ///< How many bits to shift grayMask to align the msb with bit 15.
+  };
+
+  /**
+	 Pixels are 16-bit signed integers.
+  **/
+  class SHARED PixelFormatGrayShortSigned : public PixelFormat
+  {
+  public:
+	PixelFormatGrayShortSigned (int32_t bias = 0x8000, int32_t scale = 0xFFFF);
+
+	virtual bool operator == (const PixelFormat & that) const;
+
+	virtual unsigned int  getRGBA (void * pixel) const;
+	virtual void          getRGBA (void * pixel, float values[]) const;
+	virtual void          getXYZ  (void * pixel, float values[]) const;
+	virtual void          getGray (void * pixel, float & gray) const;
+	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
+	virtual void          setRGBA (void * pixel, float values[]) const;
+	virtual void          setXYZ  (void * pixel, float values[]) const;
+	virtual void          setGray (void * pixel, float gray) const;
+
+
+	int32_t bias;  ///< The value to add when converting to an unsigned integer: u = s + bias. Negative results are clipped to zero. Maximum positive result is 0xFFFF. In some cases the result may exceed this, but only when converting to floating-point formats.
+	int32_t scale;  ///< The unsigned value of maximum brightness when converting to floating-point: f = (s + bias) * scale. WARNING: Changing the default will produce semantic differences between float and integer results.
   };
 
   class SHARED PixelFormatGrayAlphaShort : public PixelFormat
@@ -852,6 +878,8 @@ namespace fl
   public:
 	PixelFormatRGBAFloat ();
 
+	virtual void fromAny (const Image & image, Image & result) const;  ///< This method is necessary because the default conversion goes through RGBAChar, sometimes producing uncecessary information loss.
+
 	virtual unsigned int  getRGBA  (void * pixel) const;
 	virtual void          getRGBA  (void * pixel, float values[]) const;
 	virtual unsigned char getAlpha (void * pixel) const;
@@ -956,13 +984,13 @@ namespace fl
 	virtual void          getRGBA (void * pixel, float values[]) const;
 	virtual void          setRGBA (void * pixel, unsigned int rgba) const;
 	virtual void          setRGBA (void * pixel, float values[]) const;
-
-	float HLSvalue (const float & n1, const float & n2, float h) const;  ///< Subroutine of getRGBA(floats).
+	virtual void          setHLS  (void * pixel, float values[]) const;
   };
 
   extern SHARED PixelFormatGrayChar           GrayChar;
   extern SHARED PixelFormatGrayAlphaChar      GrayAlphaChar;
   extern SHARED PixelFormatGrayShort          GrayShort;
+  extern SHARED PixelFormatGrayShortSigned    GrayShortSigned;
   extern SHARED PixelFormatGrayAlphaShort     GrayAlphaShort;
   extern SHARED PixelFormatGrayFloat          GrayFloat;
   extern SHARED PixelFormatGrayDouble         GrayDouble;
@@ -1433,6 +1461,13 @@ namespace fl
   {
 	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
 	format->setYUV (buffer->pixel (x, y), yuv);
+  }
+
+  inline void
+  Image::setHLS (int x, int y, float values[])
+  {
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->setHLS (buffer->pixel (x, y), values);
   }
 
   inline void
