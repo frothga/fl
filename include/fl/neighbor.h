@@ -54,7 +54,7 @@ namespace fl
 	virtual void find (const MatrixAbstract<float> & query, std::vector<MatrixAbstract<float> *> & result) const = 0;
 
 	/**
-	   Helper class for storing an arbitrary object along with the vector.
+	   Helper class for storing an arbitrary object along with an arbitrary matrix.
 	 **/
 	class SHARED Entry : public MatrixAbstract<float>
 	{
@@ -97,11 +97,14 @@ namespace fl
 
 	virtual void set  (const std::vector<MatrixAbstract<float> *> & data);
 	virtual void find (const MatrixAbstract<float> & query, std::vector<MatrixAbstract<float> *> & result) const;
+	virtual void dump (std::ostream & out, const std::string & pad = "") const;
 
+	/// Internal helper class for passing search-related info down the tree.
 	class Query
 	{
 	public:
 	  int k;
+	  float radius;
 	  float oneEpsilon;  ///< (1+epsilon)^2
 	  const MatrixAbstract<float> * point;
 	  std::multimap<float, MatrixAbstract<float> *> sorted;
@@ -112,6 +115,7 @@ namespace fl
 	public:
 	  virtual ~Node ();
 	  virtual void search (float distance, Query & q) const = 0;
+	  virtual void dump (std::ostream & out, const std::string & pad = "") const = 0;
 	};
 
 	class Branch : public Node
@@ -119,6 +123,7 @@ namespace fl
 	public:
 	  virtual ~Branch ();
 	  virtual void search (float distance, Query & q) const;
+	  virtual void dump (std::ostream & out, const std::string & pad = "") const;
 
 	  int dimension;
 	  float lo;  ///< Lowest value along the dimension
@@ -132,6 +137,7 @@ namespace fl
 	{
 	public:
 	  virtual void search (float distance, Query & q) const;
+	  virtual void dump (std::ostream & out, const std::string & pad = "") const;
 
 	  std::vector<MatrixAbstract<float> *> points;
 	};
@@ -145,7 +151,8 @@ namespace fl
 
 	int bucketSize;
 	int k;
-	float epsilon;  ///< We prune the search when the nearest rectangle is farther than (1+epsilon).
+	float radius;  ///< Maximum distance between query point and any result point. Initially set to INFINITY by constructor.
+	float epsilon;  ///< We prune the search when the nearest rectangle is farther than (1+epsilon)*limit, where limit is either radius or distance to nearest point found so far.
   };
 }
 

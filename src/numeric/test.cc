@@ -19,6 +19,7 @@ for details.
 #include "fl/lapack.h"
 #include "fl/fourier.h"
 #include "fl/cluster.h"
+#include "fl/neighbor.h"
 
 #include <limits>
 #include <complex>
@@ -1072,6 +1073,75 @@ testCluster ()
   cout << "ClusterMethods pass" << endl;
 }
 
+class VecInt : public Vector<float>
+{
+public:
+  VecInt (const Vector<float> & A) : Vector (A) {}
+  int rank;
+};
+
+void
+testNeighbor ()
+{
+  int count = 1000;
+  int dimension = 5;
+  int k = 10;
+
+  // Generate a uniform cloud of points
+  vector<MatrixAbstract<float> *> points;
+  for (int i = 0; i < count; i++)
+  {
+	points.push_back (new VecInt (makeMatrix (dimension, 1)));
+  }
+  MatrixAbstract<float> * center = points[rand () % count];
+
+  // Sort by distance from a chosen target point, and label accordingly
+  multimap<float, VecInt *> sorted;
+  for (int i = 0; i < count; i++)
+  {
+	VecInt * v = (VecInt *) points[i];
+	sorted.insert (make_pair ((*center - *v).norm (2), v));
+  }
+  multimap<float, VecInt *>::iterator it;
+  int i = 0;
+  for (it = sorted.begin (); it != sorted.end (); it++) it->second->rank = i++;
+
+  // Do a NN query and verify that top N points are actually the ones returned
+  KDTree tree;
+  tree.k = k;
+  tree.set (points);
+  //tree.dump (cerr);
+  vector<MatrixAbstract<float> *> result;
+  tree.find (*center, result);
+  if (result.size () != k) throw "KDTree k not honored";
+  for (int i = 0; i < k; i++)
+  {
+	VecInt * v = (VecInt *) result[i];
+	cerr << v->rank << " " << *v << " " << (*v - *center).norm (2) << endl;
+	if (v->rank > k) throw "Item returned by KDTree is not one of the nearest neighbors";
+  }
+
+  // Repeat the test with limited radius
+  int newK = k / 2;
+  float radius = ((*center - *result[newK-1]).norm (2) + (*center - *result[newK]).norm (2)) / 2;
+  tree.radius = radius;
+  result.clear ();
+  tree.find (*center, result);
+  cerr << "radius = " << radius << endl;
+  for (int i = 0; i < result.size (); i++)
+  {
+	VecInt * v = (VecInt *) result[i];
+	cerr << v->rank << " " << *v << " " << (*v - *center).norm (2) << endl;
+  }
+  if (result.size () != newK) throw "KDTree unexpected number of results from radius-limited search";
+  if ((*center - *result.back ()).norm (2) > radius) throw "KDTree radius not honored";
+
+  // Clean-up memory
+  for (int i = 0; i < points.size (); i++) delete points[i];
+
+  cout << "KDTree passes" << endl;
+}
+
 template<class T>
 void
 testAll ()
@@ -1102,6 +1172,7 @@ main (int argc, char * argv[])
 	cout << "running all tests for float" << endl;
 	testAll<float> ();
 	testCluster ();  // right now, ClusterMethod is only in float
+	testNeighbor ();  // only in float
 
 	cout << "====================================================================" << endl;
 	cout << "running all tests for double" << endl;

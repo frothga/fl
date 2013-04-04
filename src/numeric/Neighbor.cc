@@ -68,10 +68,11 @@ Neighbor::Entry::resize (const int rows, const int columns)
 
 KDTree::KDTree ()
 {
-  root = 0;
+  root       = 0;
   bucketSize = 5;
-  k = 5;  // it doesn't make sense for k to be less than bucketSize
-  epsilon = 1e-4;
+  k          = 5;  // it doesn't make sense for k to be less than bucketSize
+  radius     = INFINITY;
+  epsilon    = 1e-4;
 }
 
 KDTree::~KDTree ()
@@ -110,8 +111,8 @@ KDTree::set (const vector<MatrixAbstract<float> *> & data)
 	float * end = l + dimensions;
 	while (l < end)
 	{
-	  l = min (l, a);
-	  h = max (h, a);
+	  *l = min (*l, *a);
+	  *h = max (*h, *a);
 	  a++;
 	  l++;
 	  h++;
@@ -129,20 +130,38 @@ KDTree::find (const MatrixAbstract<float> & query, vector<MatrixAbstract<float> 
   float distance = 0;
   for (int i = 0; i < dimensions; i++)
   {
-	distance += min (0.0f, lo[i] - query[i]) + min (0.0f, query[i] - hi[i]);
+	float d = max (0.0f, lo[i] - query[i]) + max (0.0f, query[i] - hi[i]);
+	distance += d * d;
   }
 
   // Recursively collect closest points
   Query q;
-  q.k = k;
-  q.point = &query;
-  q.oneEpsilon = pow (1 + epsilon, 2);
+  q.k          = k;
+  q.radius     = radius * radius;
+  q.point      = &query;
+  q.oneEpsilon = (1 + epsilon) * (1 + epsilon);
   root->search (distance, q);
+
+  // Transfer results to vector. No need to limit number of results, becaus this has
+  // already been done by Leaf::search().
   result.reserve (q.sorted.size ());
-  multimap<float, MatrixAbstract<float> *>::iterator sit = q.sorted.begin ();
-  for (; sit != q.sorted.end (); sit++)
+  multimap<float, MatrixAbstract<float> *>::iterator sit;
+  for (sit = q.sorted.begin (); sit != q.sorted.end (); sit++)
   {
 	result.push_back (sit->second);
+  }
+}
+
+void
+KDTree::dump (ostream & out, const string & pad) const
+{
+  out << pad << "KDTree: " << bucketSize << " " << k << " " << radius << " " << epsilon << endl;
+  out << pad << "lo = " << lo << endl;
+  out << pad << "hi = " << hi << endl;
+  if (root)
+  {
+	out << pad << "root:" << endl;
+	root->dump (out, pad + "  ");
   }
 }
 
@@ -185,7 +204,7 @@ KDTree::construct (vector<MatrixAbstract<float> *> & points)
 	result->dimension = d;
 	result->lo = lo[d];
 	result->hi = hi[d];
-	result->mid = (*points[cut])[d];
+	result->mid = (**c)[d];
 
 	hi[d] = result->mid;
 	vector<MatrixAbstract<float> *> tempPoints (b, c);
@@ -244,12 +263,15 @@ KDTree::Branch::search (float distance, Query & q) const
   float newOffset = qmid - mid;
   if (newOffset < 0)  // lowNode is closer
   {
+	// We don't do any special testing on nearer node, because it has already been
+	// tested as part of the containing node.
 	if (lowNode) lowNode->search (distance, q);
 	if (highNode)
 	{
 	  float oldOffset = max (lo - qmid, 0.0f);
 	  distance += newOffset * newOffset - oldOffset * oldOffset;
-	  if (q.sorted.rbegin ()->first > distance * q.oneEpsilon) highNode->search (distance, q);
+	  float mayFind = distance * q.oneEpsilon;
+	  if (mayFind < q.radius  &&  (q.sorted.empty ()  ||  mayFind < q.sorted.rbegin ()->first)) highNode->search (distance, q);
 	}
   }
   else  // newOffset >= 0, so highNode is closer
@@ -259,8 +281,25 @@ KDTree::Branch::search (float distance, Query & q) const
 	{
 	  float oldOffset = max (qmid - hi, 0.0f);
 	  distance += newOffset * newOffset - oldOffset * oldOffset;
-	  if (q.sorted.rbegin ()->first > distance * q.oneEpsilon) lowNode->search (distance, q);
+	  float mayFind = distance * q.oneEpsilon;
+	  if (mayFind < q.radius  &&  (q.sorted.empty ()  ||  mayFind < q.sorted.rbegin ()->first)) lowNode->search (distance, q);
 	}
+  }
+}
+
+void
+KDTree::Branch::dump (ostream & out, const string & pad) const
+{
+  out << pad << "Branch: " << dimension << " " << lo << " " << mid << " " << hi << endl;
+  if (lowNode)
+  {
+	out << pad << "lowNode:" << endl;
+	lowNode->dump (out, pad + "  ");
+  }
+  if (highNode)
+  {
+	out << pad << "highNode:" << endl;
+	highNode->dump (out, pad + "  ");
   }
 }
 
@@ -272,12 +311,13 @@ KDTree::Leaf::search (float distance, Query & q) const
 {
   int count = points.size ();
   int dimensions = points[0]->rows ();
-  float limit = q.sorted.size () ? q.sorted.rbegin ()->first : INFINITY;
+  float limit = q.radius;
+  if (q.sorted.size () >= q.k) limit = min (limit, q.sorted.rbegin ()->first);
   for (int i = 0; i < count; i++)
   {
 	MatrixAbstract<float> * p = points[i];
 
-	// Measure distance using early-out method.  May save operations in
+	// Measure distance using early-out method. Might save operations in
 	// high-dimensional spaces.
 	// Here we make the assumption that the values are stored contiguously in
 	// memory.  This is a good place to check for bugs if using more exotic
@@ -292,6 +332,7 @@ KDTree::Leaf::search (float distance, Query & q) const
 	  total += t * t;
 	}
 
+	if (total > limit) continue;
 	q.sorted.insert (make_pair (total, p));
 	if (q.sorted.size () > q.k)
 	{
@@ -300,4 +341,10 @@ KDTree::Leaf::search (float distance, Query & q) const
 	  q.sorted.erase (it);
 	}
   }
+}
+
+void
+KDTree::Leaf::dump (ostream & out, const string & pad) const
+{
+  for (int i = 0; i < points.size (); i++) out << pad << *points[i] << endl;
 }
