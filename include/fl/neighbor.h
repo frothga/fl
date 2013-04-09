@@ -129,7 +129,7 @@ namespace fl
 	  float lo;  ///< Lowest value along the dimension
 	  float hi;  ///< Highest value along the dimension
 	  float mid;  ///< The cut point along the dimension
-	  Node * lowNode;  ///< bleow mid
+	  Node * lowNode;  ///< below mid
 	  Node * highNode;  ///< above mid
 	};
 

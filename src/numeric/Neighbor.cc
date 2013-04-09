@@ -137,7 +137,7 @@ KDTree::find (const MatrixAbstract<float> & query, vector<MatrixAbstract<float> 
   // Recursively collect closest points
   Query q;
   q.k          = k;
-  q.radius     = radius * radius;
+  q.radius     = radius * radius;  // this may shrink monotonically once we find enough neighbors
   q.point      = &query;
   q.oneEpsilon = (1 + epsilon) * (1 + epsilon);
   root->search (distance, q);
@@ -270,8 +270,7 @@ KDTree::Branch::search (float distance, Query & q) const
 	{
 	  float oldOffset = max (lo - qmid, 0.0f);
 	  distance += newOffset * newOffset - oldOffset * oldOffset;
-	  float mayFind = distance * q.oneEpsilon;
-	  if (mayFind < q.radius  &&  (q.sorted.empty ()  ||  mayFind < q.sorted.rbegin ()->first)) highNode->search (distance, q);
+	  if (distance * q.oneEpsilon < q.radius) highNode->search (distance, q);
 	}
   }
   else  // newOffset >= 0, so highNode is closer
@@ -281,8 +280,7 @@ KDTree::Branch::search (float distance, Query & q) const
 	{
 	  float oldOffset = max (qmid - hi, 0.0f);
 	  distance += newOffset * newOffset - oldOffset * oldOffset;
-	  float mayFind = distance * q.oneEpsilon;
-	  if (mayFind < q.radius  &&  (q.sorted.empty ()  ||  mayFind < q.sorted.rbegin ()->first)) lowNode->search (distance, q);
+	  if (distance * q.oneEpsilon < q.radius) lowNode->search (distance, q);
 	}
   }
 }
@@ -311,8 +309,6 @@ KDTree::Leaf::search (float distance, Query & q) const
 {
   int count = points.size ();
   int dimensions = points[0]->rows ();
-  float limit = q.radius;
-  if (q.sorted.size () >= q.k) limit = min (limit, q.sorted.rbegin ()->first);
   for (int i = 0; i < count; i++)
   {
 	MatrixAbstract<float> * p = points[i];
@@ -326,13 +322,13 @@ KDTree::Leaf::search (float distance, Query & q) const
 	float * y = &(*q.point)[0];
 	float * end = x + dimensions;
 	float total = 0;
-	while (x < end  &&  total < limit)
+	while (x < end  &&  total < q.radius)
 	{
 	  float t = *x++ - *y++;
 	  total += t * t;
 	}
 
-	if (total > limit) continue;
+	if (total >= q.radius) continue;
 	q.sorted.insert (make_pair (total, p));
 	if (q.sorted.size () > q.k)
 	{
@@ -340,6 +336,7 @@ KDTree::Leaf::search (float distance, Query & q) const
 	  it--;  // it is one past end of collection, so we must back up one step
 	  q.sorted.erase (it);
 	}
+	if (q.sorted.size () == q.k) q.radius = min (q.radius, q.sorted.rbegin ()->first);
   }
 }
 
