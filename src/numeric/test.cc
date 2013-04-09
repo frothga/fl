@@ -1084,10 +1084,11 @@ public:
 void
 testNeighbor ()
 {
-  int count = 1000;
-  int dimension = 5;
+  int count = 100000;
+  int dimension = 128;
   int k = 10;
   int probes = 100;
+  int maxNodes = 1000;
 
   // Generate a uniform cloud of points
   vector<MatrixAbstract<float> *> points;
@@ -1105,7 +1106,6 @@ testNeighbor ()
   for (int i = 0; i < probes; i++)
   {
 	cerr << ".";
-	//cerr << "--------------------------------------------------------" << endl;
 	Vector<float> center = makeMatrix (dimension, 1);
 
 	// Sort by distance from a chosen target point, and label accordingly
@@ -1122,6 +1122,7 @@ testNeighbor ()
 	// Do a NN query and verify that top N points are actually the ones returned
 	vector<MatrixAbstract<float> *> result;
 	tree.radius = INFINITY;
+	tree.maxNodes = INT_MAX;  // no approximation
 	tree.find (center, result);
 	if (result.size () != k) throw "KDTree k not honored";
 	for (int i = 0; i < k; i++)
@@ -1130,6 +1131,7 @@ testNeighbor ()
 	  //cerr << v->rank << " " << *v << " " << (*v - center).norm (2) << endl;
 	  if (v->rank > k) throw "Item returned by KDTree is not one of the nearest neighbors";
 	}
+	float maxDistance = (*(VecInt *) result.back () - center).norm (2);
 
 	// Repeat the test with limited radius
 	int newK = k / 2;
@@ -1137,17 +1139,19 @@ testNeighbor ()
 	tree.radius = radius;
 	result.clear ();
 	tree.find (center, result);
-	/*
-	cerr << "radius = " << radius << endl;
-	cerr << "new k  = " << newK << endl;
-	for (int i = 0; i < result.size (); i++)
-	{
-	  VecInt * v = (VecInt *) result[i];
-	  cerr << v->rank << " " << *v << " " << (*v - center).norm (2) << endl;
-	}
-	*/
 	if (result.size () != newK) throw "KDTree unexpected number of results from radius-limited search";
 	if ((center - *result.back ()).norm (2) > radius) throw "KDTree radius not honored";
+
+	// Repeat test with approximation
+	tree.radius = INFINITY;
+	tree.maxNodes = maxNodes;
+	result.clear ();
+	tree.find (center, result);
+	if (result.size () != k) throw "KDTree k not honored";  // don't relax k as long as maxNodes >= k
+	VecInt * v = (VecInt *) result.back ();
+	float distance = (*v - center).norm (2) / maxDistance;
+	//cerr << v->rank << " " << distance << endl;
+	if (distance > 1.1) throw "Item returned by approximate KDTree search is too far away.";
   }
   timer.stop ();
   cerr << endl;

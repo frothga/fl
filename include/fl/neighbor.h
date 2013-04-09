@@ -99,15 +99,17 @@ namespace fl
 	virtual void find (const MatrixAbstract<float> & query, std::vector<MatrixAbstract<float> *> & result) const;
 	virtual void dump (std::ostream & out, const std::string & pad = "") const;
 
+	class Node;
+
 	/// Internal helper class for passing search-related info down the tree.
 	class Query
 	{
 	public:
 	  int k;
 	  float radius;
-	  float oneEpsilon;  ///< (1+epsilon)^2
 	  const MatrixAbstract<float> * point;
 	  std::multimap<float, MatrixAbstract<float> *> sorted;
+	  std::multimap<float, Node *> queue;
 	};
 
 	class Node
@@ -152,7 +154,8 @@ namespace fl
 	int bucketSize;
 	int k;
 	float radius;  ///< Maximum distance between query point and any result point. Initially set to INFINITY by constructor.
-	float epsilon;  ///< We prune the search when the nearest rectangle is farther than (1+epsilon)*limit, where limit is either radius or distance to nearest point found so far.
+	float epsilon;  ///< Nodes must have at least this much overlap with the current radius (which is always the lesser of the initial radius and the kth nearest neighbor).
+	int maxNodes;  ///< Expand no more than this number of nodes. Forces a search to be approximate rather than exhaustive.
   };
 }
 

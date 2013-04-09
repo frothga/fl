@@ -73,6 +73,7 @@ KDTree::KDTree ()
   k          = 5;  // it doesn't make sense for k to be less than bucketSize
   radius     = INFINITY;
   epsilon    = 1e-4;
+  maxNodes   = INT_MAX;
 }
 
 KDTree::~KDTree ()
@@ -139,8 +140,20 @@ KDTree::find (const MatrixAbstract<float> & query, vector<MatrixAbstract<float> 
   q.k          = k;
   q.radius     = radius * radius;  // this may shrink monotonically once we find enough neighbors
   q.point      = &query;
-  q.oneEpsilon = (1 + epsilon) * (1 + epsilon);
-  root->search (distance, q);
+
+  float oneEpsilon = (1 + epsilon) * (1 + epsilon);
+  q.queue.insert (make_pair (distance, root));
+  int visited = 0;
+  while (q.queue.size ())
+  {
+	multimap<float, Node *>::iterator it = q.queue.begin ();
+	distance = it->first;
+	Node * n = it->second;
+	q.queue.erase (it);
+	if (distance * oneEpsilon > q.radius) break;
+	n->search (distance, q);
+	if (++visited >= maxNodes) break;
+  }
 
   // Transfer results to vector. No need to limit number of results, becaus this has
   // already been done by Leaf::search().
@@ -270,7 +283,7 @@ KDTree::Branch::search (float distance, Query & q) const
 	{
 	  float oldOffset = max (lo - qmid, 0.0f);
 	  distance += newOffset * newOffset - oldOffset * oldOffset;
-	  if (distance * q.oneEpsilon < q.radius) highNode->search (distance, q);
+	  q.queue.insert (make_pair (distance, highNode));
 	}
   }
   else  // newOffset >= 0, so highNode is closer
@@ -280,7 +293,7 @@ KDTree::Branch::search (float distance, Query & q) const
 	{
 	  float oldOffset = max (qmid - hi, 0.0f);
 	  distance += newOffset * newOffset - oldOffset * oldOffset;
-	  if (distance * q.oneEpsilon < q.radius) lowNode->search (distance, q);
+	  q.queue.insert (make_pair (distance, lowNode));
 	}
   }
 }
