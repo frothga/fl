@@ -113,7 +113,7 @@ ImageCache::clear (ImageCacheEntry * query)
   while (i != cache.end ())
   {
 	memory -= (*i)->memory ();
-	delete *i;
+	if (*i != query) delete *i;
 	cache.erase (i);
 	i = cache.find (query);
   }
