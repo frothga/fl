@@ -131,13 +131,12 @@ ClusterGauss::serialize (Archive & archive, uint32_t version)
 // class GaussianMixture ------------------------------------------------------
 
 GaussianMixture::GaussianMixture (float maxSize, float minSize, int initialK, int maxK, const string & clusterFileName)
+: maxSize         (maxSize),
+  minSize         (minSize),
+  initialK        (initialK),
+  maxK            (maxK),
+  clusterFileName (clusterFileName)
 {
-  this->maxSize  = maxSize;
-  this->minSize  = minSize;
-  this->initialK = initialK;
-  this->maxK     = maxK;
-
-  this->clusterFileName = clusterFileName;
 }
 
 GaussianMixture::GaussianMixture (const string & clusterFileName)

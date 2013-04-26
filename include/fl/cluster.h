@@ -97,7 +97,7 @@ namespace fl
   class SHARED GaussianMixture : public ClusterMethod
   {
   public:
-	GaussianMixture (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");  ///< clusterFileName refers to target file for new clustering data, which is very likely to be different from input file.
+	GaussianMixture (float maxSize, float minSize = 0, int initialK = 1, int maxK = INT_MAX, const std::string & clusterFileName = "");  ///< clusterFileName refers to target file for new clustering data, which is very likely to be different from input file.
 	GaussianMixture (const std::string & clusterFileName = "");
 
 	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);

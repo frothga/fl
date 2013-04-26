@@ -985,6 +985,22 @@ testFourier ()
 #endif
 
 void
+testCluster (ClusterMethod * method, vector<Vector<float> > & data, float separation)
+{
+  int dimension = data[0].rows ();
+  method->run (data);
+  if (method->classCount () != dimension) throw "Wrong number of clusters";
+  for (int i = 0; i < dimension; i++)
+  {
+	Vector<float> point (dimension);
+	point.clear ();
+	point[i] = separation;
+	Vector<float> center = method->representative (method->classify (point));
+	if ((point - center).norm (2) > 0.2) throw "Cluster is missing";
+  }
+}
+
+void
 testCluster ()
 {
   // Generate data
@@ -1010,18 +1026,13 @@ testCluster ()
 	}
   }
 
+  // Test GaussianMixture
+  GaussianMixture gm (separation / 2);
+  testCluster (&gm, data, separation);
+
   // Test KMeans
   KMeans kmeans (dimension);
-  kmeans.run (data);
-  if (kmeans.classCount () != dimension) throw "KMeans wrong number of clusters";
-  for (int i = 0; i < dimension; i++)
-  {
-	Vector<float> point (dimension);
-	point.clear ();
-	point[i] = separation;
-	Vector<float> center = kmeans.representative (kmeans.classify (point));
-	if ((point - center).norm (2) > 0.2) throw "KMeans cluster is missing";
-  }
+  testCluster (&kmeans, data, separation);
 
   // Test KMeansTree
   KMeansTree ktree (dimension, 2);
