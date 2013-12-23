@@ -8,7 +8,7 @@ Directory structure and naming conventions
 ------------------------------------------
 The directory mswin generally resides directly under the root FL directory.  It contains subdirectories similar in structure to other posix software installations (bin, include, lib, lib64).  It also contains a "build" directory, which in turn contains source directories for the various supporting libraries.  When populating this structure from scratch, you should search for and download the most recent source code for each package.
 
-Most files retain the name they normally receive from the build process in their respective projects.  However, libraries are renamed to be simple and follow MS naming conventions.  In particular, all libraries end in ".lib", and they generally to not have a leading or trailing "lib" in the name.  The following are desirable library names:
+Most files retain the name they normally receive from the build process in their respective projects.  However, libraries are renamed to be simple and follow MS naming conventions.  In particular, all libraries end in ".lib", and they generally do not have a leading or trailing "lib" in the name.  The following are desirable library names:
 
 	jpeg.lib        // drop extraneous "lib"
 	z.lib           // drop extraneous "lib"
@@ -33,7 +33,7 @@ The rest of these instructions assume that "mingw32" and "mingw64" refer to the 
 
 FL supplied headers
 -------------------
-As of this writing, MS does not provide stdint.h or inttypes.h.  Instead, there are minimal substitutes already present in mswin/include.  Remove these if MS ever achieves better standards compliance.
+As of this writing, MS does not provide inttypes.h. Instead, there is a minimal substitutes already present in mswin/include. Remove these if MS ever achieves better standards compliance.
 
 
 FreeType
@@ -247,14 +247,14 @@ Copy the headers up to mswin/include:
 
 FFmpeg
 ------
-Must be built using MinGW.  Building as shared libraries (DLLs) works better, because it eliminates the need to supply as many dependencies to VC++.  FFMPEG forked in mid 2011.  The "libav" forks seems better maintained for Windows use.  There are prebuilt libraries available for download from that web site, but they appear to be configured for GPL.  If LGPL is necessary (generally the case), do the following...
+Must be built using MinGW.  Building as shared libraries (DLLs) works better, because it eliminates the need to supply as many dependencies to VC++.  FFMPEG forked in mid 2011.  The main ffmpeg project actively integrates any work from libav, so prefer the main ffmpeg source. Prebuilt libraries are available from the libav web-site and http://ffmpeg.zeranoe.com. However, they often have GPL configurations. For LGPL, follow these instructions...
 
-Download the latest code from http://libav.org, and expand into {mswin}/build/libav
+Download the latest code from http://ffmpeg.org, and expand into {mswin}/build/libav
 
 32-bit:
 
-	cd {mswin}/build/libav
-	./configure --prefix={mswin}/build/libav/encap32 --enable-runtime-cpudetect --enable-cross-compile --enable-w32threads --cross-prefix=i686-w64-mingw32- --arch=i686 --target-os=mingw32 --enable-memalign-hack --enable-shared --disable-static --disable-dxva2
+	cd {mswin}/build/ffmpeg
+	./configure --prefix={mswin}/build/ffmpeg/encap32 --enable-cross-compile --cross-prefix=i686-w64-mingw32- --arch=i686 --target-os=mingw32 --enable-shared --disable-static
 	make clean           // if you need to clean out a previous build
 	rm -rf encap{32,64}  // to clean out previous distribution
 	make
@@ -262,9 +262,9 @@ Download the latest code from http://libav.org, and expand into {mswin}/build/li
 
 For 64-bit builds, substitute the following configure line:
 
-	./configure --prefix={mswin}/build/libav/encap64 --enable-runtime-cpudetect --enable-cross-compile --enable-w32threads --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-memalign-hack --enable-shared --disable-static --disable-dxva2
+	./configure --prefix={mswin}/build/ffmpeg/encap64 --libdir={mswin}/build/ffmpeg/encap64/lib64 --shlibdir={mswin}/build/ffmpeg/encap64/lib64 --enable-cross-compile --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-shared --disable-static
 
-Note that the option "--disable-dxva2" is present because the MinGW-w64 cross-compiles seem to lack some DirectX support that normally comes with MinGW.  Not sure why.  May be temporary.
+For a highly contagious and non-distributable version, but one that can do anything, add these flags: --enable-gpl --enable-version3 --enable-nonfree
 
 Copy DLLs to mswin/bin or mswin/bin64:
 
