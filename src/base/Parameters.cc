@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -297,6 +297,20 @@ Parameters::getIntList (const string & name, vector<int> & result, const char * 
 	string piece;
 	split (value, ",", piece, value);
 	result.push_back (atoi (piece.c_str ()));
+  }
+}
+
+void
+Parameters::getMap (const string & prefix, map<string, string> & result)
+{
+  int prefixSize = prefix.size ();
+  for (int i = 0; i < names.size (); i++)
+  {
+	string & name = names[i];
+	if (name.size () >= prefixSize  &&  name.substr (0, prefixSize) == prefix)
+	{
+	  result.insert (make_pair (name.substr (prefixSize), values[i]));
+	}
   }
 }
 
