@@ -34,21 +34,23 @@ for details.
 
 namespace fl
 {
- /**
-	Inheritable set of convenience functions for accessing and converting
-	named values to various other types.
+  /**
+	 Inheritable set of convenience functions for accessing and converting
+	 named values to various other types.
 
-	<p>To make use of the class properly, do the following steps in the
-	child class:
-	<ul>
-	<li>Inherit from Metadata.
-	<li>Implement get(string,string) and set(string,string)
-	<li>Pull all the other implementations in with "using Metadata::get" and
-	"using Metadata::set".  This step is important, because the standard
-	behavior of C++ is to hide all the inherited functions when you create
-	a get or set function in the child class.  Alternately, you can explicitly
-	qualify any call: "object->Metadata::get (...)".
-	</ul>
+	 <p>To make use of the class properly, do the following steps in the
+	 child class:
+	 <ul>
+	 <li>Inherit from Metadata.
+	 <li>Implement get(string,string) and set(string,string). All named values
+	 must be recognized and processed by the string form of the functions.
+	 <li>Pull all the other implementations in with "using Metadata::get" and
+	 "using Metadata::set". See NamedValueSet for an example. This step is
+	 important, because the standard behavior of C++ is to hide all the
+	 inherited functions when you create a function of the same name in a
+	 child class. Alternately, you can explicitly qualify any call:
+	 "object->Metadata::get (...)".
+	 </ul>
   **/
   class SHARED Metadata
   {
@@ -71,6 +73,10 @@ namespace fl
 	void set (const std::string & name, const Matrix<double> & value);
   };
 
+  /**
+	 A concrete implementation of the Metadata interface that simply stores
+	 and retrieves strings.
+  **/
   class SHARED NamedValueSet : public Metadata
   {
   public:

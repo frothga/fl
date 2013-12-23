@@ -52,6 +52,8 @@ Metadata::get (const string & name, double & value)
   if (temp.size ()) value = atof (temp.c_str ());
 }
 
+// Metadata::get (string, Matrix<double>) is implemented in src/numeric/MatrixDouble.cc
+
 void
 Metadata::set (const string & name, const string & value)
 {
@@ -80,3 +82,5 @@ Metadata::set (const string & name, double value)
   sprintf (buffer, "%g", value);
   set (name, buffer);
 }
+
+// Metadata::set (string, Matrix<double>) is implemented in src/numeric/MatrixDouble.cc
