@@ -7,8 +7,12 @@
 
 
 add_library (flNet
+  ../../include/fl/server.h
   ../../include/fl/socket.h
   Listener.cc
+  Responder.cc
+  Server.cc
+  ServerTCP.cc
   SocketStream.cc
 )
 target_link_libraries (flNet

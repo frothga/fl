@@ -132,9 +132,8 @@ namespace fl
   {
   public:
 	Listener (int timeout = 0, bool threaded = true);
-	~Listener ();
 
-	void listen (int port, int lastPort = -1);
+	void listen (int port, int lastPort = -1, int scanTimeout = 120);
 	virtual void processConnection (SocketStream & ss, struct sockaddr_in & clientAddress) = 0;  ///< Override this function to implement the server.
 
 	bool threaded;  ///< If true, create a new thread per connection.  If false, each connection will be handled serially on the listen() thread.

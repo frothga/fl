@@ -29,6 +29,10 @@ for details.
 #  include <unistd.h>
 #endif
 
+#ifdef WIN32
+#  include <time.h>
+#  define localtime_r(A,B) localtime_s(B,A)
+#endif
 
 namespace fl
 {

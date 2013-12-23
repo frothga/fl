@@ -13,6 +13,7 @@ for details.
 
 
 #include "fl/socket.h"
+#include "fl/time.h"
 
 #include <string.h>
 #ifdef HAVE_PTHREAD
@@ -27,17 +28,20 @@ using namespace std;
 // class Listener -------------------------------------------------------------
 
 Listener::Listener (int timeout, bool threaded)
-{
-  this->timeout  = timeout;
-  this->threaded = threaded;
-}
-
-Listener::~Listener ()
+: timeout  (timeout),
+  threaded (threaded)
 {
 }
 
+/**
+   @param port First port to try.
+   @param lastPort If port can't be opened, try subsequent ones until this
+   one is tried.
+   @param scanTimeout How many seconds to keep scanning for an open port. 0 means
+   forever.
+**/
 void
-Listener::listen (int port, int lastPort)
+Listener::listen (int port, int lastPort, int scanTimeout)
 {
   SOCKET sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock == INVALID_SOCKET) throw "Unable to create socket";
@@ -47,20 +51,31 @@ Listener::listen (int port, int lastPort)
   address.sin_family      = AF_INET;
   address.sin_addr.s_addr = htonl (INADDR_ANY);
 
+  int optval = 1;
+  setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (const char *) &optval, sizeof (optval));
+
   // Scan for open port
+  int firstPort = port;
   if (lastPort < 0) lastPort = port;
+  Stopwatch timer;
   while (port <= lastPort)
   {
 	address.sin_port = htons (port);
 	if (bind (sock, (struct sockaddr *) &address, sizeof (address)))
 	{
 	  int error = GETLASTERROR;
-	  if (error == EADDRINUSE)
+	  if (error == EADDRINUSE  &&  port < lastPort)
 	  {
 		port++;
 		continue;
 	  }
-	  throw "bind failed";
+	  if (scanTimeout <= 0  ||  timer.total () < scanTimeout)
+	  {
+		port = firstPort;
+		sleep (1);
+		continue;
+	  }
+	  throw "bind failed (probably due to a lingering socket)";
 	}
 	break;
   }
@@ -70,9 +85,6 @@ Listener::listen (int port, int lastPort)
   {
 	throw "listen failed";
   }
-
-  int optval = 1;
-  setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (const char *) &optval, sizeof (optval));
 
   fd_set readfds;
   timeval selectTimeout;
