@@ -5,7 +5,10 @@
 #   GTIF_INC    Directory containing the include files
 #   GTIF_LIB    Full path to library to link against
 
-find_path (GTIF_INC geotiff.h)
+find_path (GTIF_INC geotiff.h
+  PATH_SUFFIXES
+    libgeotiff
+)
 
 find_library (GTIF_LIB geotiff)
 

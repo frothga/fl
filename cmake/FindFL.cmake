@@ -112,9 +112,7 @@ else (MSVC)
     set (FORTRAN_LIB gfortran)
   elseif (CMAKE_Fortran_COMPILER MATCHES g77)
     set (FORTRAN_LIB g2c)
-  else   (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
-    set (FORTRAN_LIB "")
-  endif  (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
+  endif  ()
 
   set (GCC_LIBRARIES ${FORTRAN_LIB})
 
