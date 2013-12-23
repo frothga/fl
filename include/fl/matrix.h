@@ -192,6 +192,12 @@ namespace fl
   }
 
   template<class T>
+  MatrixResult<T> operator - (const MatrixAbstract<T> & A)
+  {
+	return A * (T) -1;
+  }
+
+  template<class T>
   SHARED std::string elementToString (const T & value);
 
   template<class T>
