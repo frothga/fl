@@ -18,14 +18,17 @@ for details.
 // macro for use with FFMPEG constants (namely AV_NOPTS_VALUE).  This
 // definition must occur before stdint.h is otherwise included.
 #define __STDC_CONSTANT_MACROS
+#define __STDC_LIMIT_MACROS
 
 #include "fl/video.h"
 #include "fl/math.h"
+#include "fl/time.h"
 
 extern "C"
 {
 # include <libavformat/avformat.h>
 # include <libavutil/mathematics.h>
+# undef PixelFormat
 }
 
 #include <typeinfo>
@@ -52,7 +55,8 @@ public:
   virtual void readNext (Image & image);
   virtual bool good () const;
   virtual void setTimestampMode (bool frames = false);
-  virtual void get (const std::string & name, double & value);
+  virtual void get (const std::string & name,       string & value);
+  virtual void set (const std::string & name, const string & value);
 
   // private ...
   void open (const std::string & fileName);
@@ -364,22 +368,54 @@ VideoInFileFFMPEG::setTimestampMode (bool frames)
 }
 
 void
-VideoInFileFFMPEG::get (const std::string & name, double & value)
+VideoInFileFFMPEG::get (const std::string & name, string & value)
 {
+  char buffer[100];
   if (stream)
   {
 	if (name == "duration")
 	{
 	  if (fc->duration != AV_NOPTS_VALUE)
 	  {
-		value = (double) fc->duration / AV_TIME_BASE;
+		sprintf (buffer, "%g", (double) fc->duration / AV_TIME_BASE);
+		value = buffer;
 	  }
 	}
 	else if (name == "startTime")
 	{
-	  value = startTime;
+	  sprintf (buffer, "%g", startTime);
+	  value = buffer;
 	}
+	else if (name == "startTimeNTP")
+	{
+	  if (fc  &&  strcmp (fc->iformat->name, "rtsp") == 0)
+	  {
+		if (fc->start_time_realtime != AV_NOPTS_VALUE)
+		{
+		  time_t hi = fc->start_time_realtime / 1000000;
+		  struct tm time;
+		  localtime_r (&hi, &time);
+		  double seconds = time.tm_sec + (fc->start_time_realtime % 1000000) / 1000000.0;
+		  sprintf (buffer, "%04i%02i%02i%02i%02i%s%f", time.tm_year + 1900, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, (seconds < 10 ? "0" : ""), seconds);
+		  value = buffer;
+		}
+	  }
+	}
+	return;
   }
+  if (fc)
+  {
+	if (name == "filename")
+	{
+	  value = fc->filename;
+	}
+	return;
+  }
+}
+
+void
+VideoInFileFFMPEG::set (const std::string & name, const string & value)
+{
 }
 
 void
@@ -457,16 +493,9 @@ void
 VideoInFileFFMPEG::close ()
 {
   av_free_packet (&packet);
-  if (cc  &&  cc->codec)
-  {
-	avcodec_close (cc);
-	cc = 0;
-  }
-  if (fc)
-  {
-	av_close_input_file (fc);
-	fc = 0;
-  }
+  avcodec_close (cc);
+  cc = 0;
+  avformat_close_input (&fc);  // function guards against null
 
   state = -12;
 }
@@ -476,7 +505,8 @@ VideoInFileFFMPEG::extractImage (Image & image)
 {
   switch (cc->pix_fmt)
   {
-	case PIX_FMT_YUV420P:
+	case PIX_FMT_YUV420P:   // any AVColorRange
+	case PIX_FMT_YUVJ420P:  // specifically AVCOL_RANGE_JPEG
 	  assert (picture.linesize[1] == picture.linesize[2]);
 	  image.format = &YUV420;
 	  image.buffer = new PixelBufferPlanar (picture.data[0], picture.data[1], picture.data[2], picture.linesize[0], picture.linesize[1], cc->height, YUV420.ratioH, YUV420.ratioV);
@@ -506,6 +536,7 @@ VideoInFileFFMPEG::extractImage (Image & image)
 	  image.attach (picture.data[0], cc->width, cc->height, GrayChar);
 	  break;
 	default:
+	  cerr << "Unsupported PIX_FMT (see enumeration in libavutil/pixfmt.h): " << cc->pix_fmt << endl;
 	  throw "Unsupported PIX_FMT";
   }
 
@@ -533,7 +564,8 @@ public:
   void close ();
   virtual void writeNext (const Image & image);
   virtual bool good () const;
-  virtual void set (const std::string & name, double value);
+  virtual void get (const std::string & name,       string & value);
+  virtual void set (const std::string & name, const string & value);
 
   AVFormatContext * fc;
   AVStream * stream;
@@ -602,7 +634,7 @@ VideoOutFileFFMPEG::open (const std::string & fileName, const std::string & form
   {
 	for (AVCodec * i = av_codec_next (0); i; i = av_codec_next (i))
 	{
-	  if (i->encode  &&  i->type == AVMEDIA_TYPE_VIDEO  &&  codecName == i->name)
+	  if (av_codec_is_encoder (i)  &&  i->type == AVMEDIA_TYPE_VIDEO  &&  codecName == i->name)
 	  {
 		codec = i;
 		break;
@@ -692,18 +724,18 @@ VideoOutFileFFMPEG::close ()
 struct PixelFormatMapping
 {
   fl::PixelFormat * fl;
-  ::PixelFormat     av;
+  AVPixelFormat     av;
 };
 
 static PixelFormatMapping pixelFormatMap[] =
 {
-  {&YUV420,   PIX_FMT_YUV420P},
-  {&YUV411,   PIX_FMT_YUV411P},
-  {&YUYV,     PIX_FMT_YUYV422},
-  {&UYVY,     PIX_FMT_UYVY422},
-  {&RGBChar,  PIX_FMT_RGB24},
-  {&BGRChar,  PIX_FMT_BGR24},
-  {&GrayChar, PIX_FMT_GRAY8},
+  {&YUV420,   AV_PIX_FMT_YUV420P},
+  {&YUV411,   AV_PIX_FMT_YUV411P},
+  {&YUYV,     AV_PIX_FMT_YUYV422},
+  {&UYVY,     AV_PIX_FMT_UYVY422},
+  {&RGBChar,  AV_PIX_FMT_RGB24},
+  {&BGRChar,  AV_PIX_FMT_BGR24},
+  {&GrayChar, AV_PIX_FMT_GRAY8},
   {0}
 };
 
@@ -714,9 +746,9 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 
   stream->codec->width = image.width;
   stream->codec->height = image.height;
-  if (stream->codec->pix_fmt == PIX_FMT_NONE)
+  if (stream->codec->pix_fmt == AV_PIX_FMT_NONE)
   {
-	enum ::PixelFormat best = PIX_FMT_YUV420P;  // FFMPEG's default
+	enum AVPixelFormat best = AV_PIX_FMT_YUV420P;  // FFMPEG's default
 	if (codec->pix_fmts)  // options are available, so enumerate and find best match for image.format
 	{
 	  best = codec->pix_fmts[0];
@@ -728,16 +760,16 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 		if ((const fl::PixelFormat *) image.format == m->fl) break;
 		m++;
 	  }
-	  enum ::PixelFormat target = m->av;
+	  enum AVPixelFormat target = m->av;
 	  if (target < 0  &&  image.format->monochrome)
 	  {
-		target = PIX_FMT_GRAY8;
+		target = AV_PIX_FMT_GRAY8;
 	  }
 
 	  // See if PIX_FMT is in supported list
 	  if (target >= 0)
 	  {
-		const enum ::PixelFormat * p = codec->pix_fmts;
+		const enum AVPixelFormat * p = codec->pix_fmts;
 		while (*p != -1)
 		{
 		  if (*p == target)
@@ -776,13 +808,14 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
 	  if (m->av == stream->codec->pix_fmt) break;
 	  m++;
 	}
-	if (! m->fl) throw "Unsupported PIX_FMT";
+	if (! m->fl) throw "Unsupported AV_PIX_FMT";
 	pixelFormat = m->fl;
   }
 
   // Get image into a format that FFMPEG understands...
   AVFrame dest;
-  avcodec_get_frame_defaults (&dest);
+  memset (&dest, 0, sizeof (AVFrame));  // redundant with memset() inside av_frame_unref(), but necessary due to check on extradata
+  av_frame_unref (&dest);
   Image converted = image * *pixelFormat;
   if (PixelBufferPlanar * pb = (PixelBufferPlanar *) converted.buffer)
   {
@@ -807,45 +840,37 @@ VideoOutFileFFMPEG::writeNext (const Image & image)
   }
 
   // Finally, encode and write the frame
-  int size = max (FF_MIN_BUFFER_SIZE, (int) ceil (converted.format->depth * converted.width * converted.height));  // Assumption: encoded image will never be larger than raw image.
-  videoBuffer.grow (size);
-  size = videoBuffer.size ();
-  size = avcodec_encode_video (cc, (uint8_t *) videoBuffer, size, &dest);
-  if (size < 0)
+  AVPacket packet;
+  av_init_packet (&packet);
+  packet.stream_index = stream->index;
+  if (fc->oformat->flags & AVFMT_RAWPICTURE)  // &&  cc->codec->id == AV_CODEC_ID_RAWVIDEO
   {
-	state = size;
-  }
-  else if (size > 0)
-  {
-	AVPacket packet;
-	av_init_packet (&packet);
-	packet.stream_index = stream->index;
-
-	if (fc->oformat->flags & AVFMT_RAWPICTURE)
-	{
-	  packet.flags |= AV_PKT_FLAG_KEY;
-	  packet.data = (uint8_t *) &dest;
-	  packet.size = sizeof (AVPicture);
-	}
-	else
-	{
-	  if (cc->coded_frame->pts != AV_NOPTS_VALUE)
-	  {
-		packet.pts = av_rescale_q (cc->coded_frame->pts, cc->time_base, stream->time_base);
-	  }
-	  if (cc->coded_frame->key_frame)
-	  {
-		packet.flags |= AV_PKT_FLAG_KEY;
-	  }
-	  packet.data = (uint8_t *) videoBuffer;
-	  packet.size = size;
-	}
-
+	// Dump raw picture to stream, rather than encoding
+	packet.flags |= AV_PKT_FLAG_KEY;
+	packet.data   = (uint8_t *) &dest;
+	packet.size   = sizeof (AVPicture);
+	packet.pts    = av_rescale_q (dest.pts, cc->time_base, stream->time_base);
 	state = av_interleaved_write_frame (fc, &packet);
-	if (state == 1)
+  }
+  else
+  {
+	// Encode the image
+	packet.data = 0;
+	packet.size = 0;
+	int gotPacket;
+	state = avcodec_encode_video2 (cc, &packet, &dest, &gotPacket);
+	if (state == 0  &&  gotPacket)
 	{
-	  state = 0;
-	  close ();
+	  if (packet.pts != AV_NOPTS_VALUE)
+	  {
+		packet.pts = av_rescale_q (packet.pts, cc->time_base, stream->time_base);
+	  }
+	  if (packet.dts != AV_NOPTS_VALUE)
+	  {
+		packet.dts = av_rescale_q (packet.dts, cc->time_base, stream->time_base);
+	  }
+	  state = av_interleaved_write_frame (fc, &packet);
+	  av_free_packet (&packet);
 	}
   }
 }
@@ -857,12 +882,18 @@ VideoOutFileFFMPEG::good () const
 }
 
 void
-VideoOutFileFFMPEG::set (const std::string & name, double value)
+VideoOutFileFFMPEG::get (const string & name, string & value)
+{
+}
+
+void
+VideoOutFileFFMPEG::set (const string & name, const string & value)
 {
   if (stream)
   {
 	if (name == "framerate")
 	{
+	  double v = atof (value.c_str ());
 	  if (codec  &&  codec->supported_framerates)
 	  {
 		// Restricted set of framerates, so select closest one
@@ -872,7 +903,7 @@ VideoOutFileFFMPEG::set (const std::string & name, double value)
 		while (fr->den)
 		{
 		  double rate = (double) fr->num / fr->den;
-		  double distance = fabs (value - rate);
+		  double distance = fabs (v - rate);
 		  if (distance < bestDistance)
 		  {
 			bestDistance = distance;
@@ -886,20 +917,20 @@ VideoOutFileFFMPEG::set (const std::string & name, double value)
 	  else  // arbitrary framerate is acceptable
 	  {
 		stream->codec->time_base.num = AV_TIME_BASE;
-		stream->codec->time_base.den = (int) roundp (value * AV_TIME_BASE);
+		stream->codec->time_base.den = (int) roundp (v * AV_TIME_BASE);
 	  }
 	}
 	else if (name == "bitrate")
 	{
-	  stream->codec->bit_rate = (int) roundp (value);
+	  stream->codec->bit_rate = atoi (value.c_str ());
 	}
 	else if (name == "gop")
 	{
-	  stream->codec->gop_size = (int) roundp (value);
+	  stream->codec->gop_size = atoi (value.c_str ());
 	}
 	else if (name == "bframes")
 	{
-	  stream->codec->max_b_frames = (int) roundp (value);
+	  stream->codec->max_b_frames = atoi (value.c_str ());
 	}
   }
 }
@@ -921,6 +952,7 @@ VideoFileFormatFFMPEG::use ()
 VideoFileFormatFFMPEG::VideoFileFormatFFMPEG ()
 {
   av_register_all ();
+  avformat_network_init ();
 }
 
 VideoInFile *

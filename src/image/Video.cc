@@ -21,7 +21,7 @@ using namespace std;
 using namespace fl;
 
 
-// class VideoIn ----------------------------------------------------------------
+// class VideoIn --------------------------------------------------------------
 
 VideoIn::VideoIn (const string & fileName)
 {
@@ -39,47 +39,32 @@ VideoIn::open (const string & fileName)
 {
   close ();
   VideoFileFormat * format = VideoFileFormat::find (fileName);
-  if (format)
-  {
-	file = format->openInput (fileName);
-  }
+  if (format) file = format->openInput (fileName);
 }
 
 void
 VideoIn::close ()
 {
-  if (file)
-  {
-	delete file;
-	file = 0;
-  }
+  delete file;
+  file = 0;
 }
 
 void
 VideoIn::seekFrame (int frame)
 {
-  if (file)
-  {
-	file->seekFrame (frame);
-  }
+  if (file) file->seekFrame (frame);
 }
 
 void
 VideoIn::seekTime (double timestamp)
 {
-  if (file)
-  {
-	file->seekTime (timestamp);
-  }
+  if (file) file->seekTime (timestamp);
 }
 
 VideoIn &
 VideoIn::operator >> (Image & image)
 {
-  if (file)
-  {
-	file->readNext (image);
-  }
+  if (file) file->readNext (image);
   return *this;
 }
 
@@ -92,19 +77,19 @@ VideoIn::good () const
 void
 VideoIn::setTimestampMode (bool frames)
 {
-  if (file)
-  {
-	file->setTimestampMode (frames);
-  }
+  if (file) file->setTimestampMode (frames);
 }
 
 void
-VideoIn::get (const string & name, double & value)
+VideoIn::get (const string & name, string & value)
 {
-  if (file)
-  {
-	file->get (name, value);
-  }
+  if (file) file->get (name, value);
+}
+
+void
+VideoIn::set (const string & name, const string & value)
+{
+  if (file) file->set (name, value);
 }
 
 
@@ -114,27 +99,18 @@ VideoOut::VideoOut (const std::string & fileName, const std::string & formatName
 {
   file = 0;
   VideoFileFormat * format = VideoFileFormat::find (formatName, codecName);
-  if (format)
-  {
-	file = format->openOutput (fileName, formatName, codecName);
-  }
+  if (format) file = format->openOutput (fileName, formatName, codecName);
 }
 
 VideoOut::~VideoOut ()
 {
-  if (file)
-  {
-	delete file;
-  }
+  delete file;
 }
 
 VideoOut &
 VideoOut::operator << (const Image & image)
 {
-  if (file)
-  {
-	file->writeNext (image);
-  }
+  if (file) file->writeNext (image);
   return *this;
 }
 
@@ -145,12 +121,15 @@ VideoOut::good () const
 }
 
 void
-VideoOut::set (const string & name, double value)
+VideoOut::get (const string & name, string & value)
 {
-  if (file)
-  {
-	file->set (name, value);
-  }
+  if (file) file->get (name, value);
+}
+
+void
+VideoOut::set (const string & name, const string & value)
+{
+  if (file) file->set (name, value);
 }
 
 

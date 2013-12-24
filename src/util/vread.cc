@@ -46,10 +46,9 @@ class VideoShow : public SlideShow
 {
 public:
   VideoShow (const string fileName)
-  : fileName (fileName),
-	vin (fileName)
+  : vin (fileName)
   {
-	useFrames = true;
+	useFrames = false;
 	vin.setTimestampMode (useFrames);
 
 	startTime = 0;
@@ -216,7 +215,9 @@ public:
 	{
 	  me->vin >> me->image;
 	  if (! me->vin.good ()) break;
-	  cerr << me->image.timestamp << endl;
+	  string rtsp;
+	  me->vin.get ("startTimeNTP", rtsp);
+	  cerr << me->image.timestamp << " " << rtsp << endl;
 	  if (! me->sizeSet)
 	  {
 		cerr << "size = " << me->image.width << " " << me->image.height << endl;
@@ -229,7 +230,9 @@ public:
 	}
 	if (! me->vin.good ()  &&  me->playing)
 	{
-	  me->vin.open (me->fileName);  // forces close() first
+	  string filename;
+	  me->vin.get ("filename", filename);
+	  me->vin.open (filename);  // forces close() first
 	  me->vin.setTimestampMode (me->useFrames);
 	}
 	me->playing = false;
@@ -259,7 +262,6 @@ public:
   bool useFrames;
   double startTime;
   double duration;
-  string fileName;
   string stem;
   pthread_t pidPlayThread;
   bool playing;
@@ -281,6 +283,7 @@ main (int argc, char * argv[])
 	  cerr << "parameters:" << endl;
 	  cerr << "  frame={frame number} (default = 0)" << endl;
 	  cerr << "  pause={1 to freeze first frame, 0 otherwise} (default = 0)" << endl;
+	  return 1;
 	}
 
 	ImageFileFormatPGM   ::use ();

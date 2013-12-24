@@ -50,7 +50,7 @@ namespace fl
 	 stream (in the usual OS sense), the Video class would wrap the data source
 	 as well.
   **/
-  class SHARED VideoIn
+  class SHARED VideoIn : public Metadata
   {
   public:
 	VideoIn (const std::string & fileName);
@@ -63,7 +63,11 @@ namespace fl
 	VideoIn & operator >> (Image & image);  ///< Extract next image frame.  image may end up attached to a buffer used internally by the video device or library, so it may be freed unexpectedly.  However, this clss guarantees that the memory will not be freed before the next call to a method of this class.
 	bool good () const;  ///< Indicates that the stream is open and the last read (if any) succeeded.
 	void setTimestampMode (bool frames = false);  ///< Changes image.timestamp from presentation time to frame number.
-	void get (const std::string & name, double & value);  ///< Retrieve values of stream attributes (such as duration in seconds).
+
+	virtual void get (const std::string & name,       std::string & value);
+	virtual void set (const std::string & name, const std::string & value);
+	using Metadata::get;
+	using Metadata::set;
 
 	VideoInFile * file;
   };
@@ -71,7 +75,7 @@ namespace fl
   /**
 	 Video output stream.
   **/
-  class SHARED VideoOut
+  class SHARED VideoOut : public Metadata
   {
   public:
 	VideoOut (const std::string & fileName, const std::string & formatName = "", const std::string & codecName = "");
@@ -79,7 +83,11 @@ namespace fl
 
 	VideoOut & operator << (const Image & image);  ///< Insert next image frame.
 	bool good () const;  ///< True as long as it is possible to write another frame to the stream.
-	void set (const std::string & name, double value);  ///< Assign values to stream attributes (such as framerate).
+
+	virtual void get (const std::string & name,       std::string & value);
+	virtual void set (const std::string & name, const std::string & value);
+	using Metadata::get;
+	using Metadata::set;
 
 	VideoOutFile * file;
   };
@@ -97,7 +105,8 @@ namespace fl
 	virtual void readNext (Image & image) = 0;  ///< Reads the next frame and stores it in image.  image may end up attached to a buffer used internally by the video device or library, so it may be freed unexpectedly.  However, this clss guarantees that the memory will not be freed before the next call to a method of this class.
 	virtual bool good () const = 0;  ///< Indicates that the stream is open and the last read (if any) succeeded.
 	virtual void setTimestampMode (bool frames = false) = 0;  ///< Changes image.timestamp from presentation time to frame number.
-	virtual void get (const std::string & name, double & value) = 0;  ///< Retrieve values of stream attributes (such as duration in seconds).
+	virtual void get (const std::string & name,       std::string & value) = 0;
+	virtual void set (const std::string & name, const std::string & value) = 0;
   };
 
   class SHARED VideoOutFile
@@ -107,7 +116,8 @@ namespace fl
 
 	virtual void writeNext (const Image & image) = 0;  ///< Reads the next frame and stores it in image
 	virtual bool good () const = 0;  ///< True if another frame can be written
-	virtual void set (const std::string & name, double value) = 0;
+	virtual void get (const std::string & name,       std::string & value) = 0;
+	virtual void set (const std::string & name, const std::string & value) = 0;
   };
 
   class SHARED VideoFileFormat
