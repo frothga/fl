@@ -19,7 +19,6 @@ for details.
 #include "fl/math.h"
 #include "fl/lapack.h"
 #include "fl/binary.h"
-#include "fl/slideshow.h"
 
 #include <tiffio.h>
 #ifdef HAVE_GEOTIFF
