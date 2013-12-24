@@ -201,31 +201,46 @@ namespace fl
 	  typedef typename vectorsparse::pointer         pointer;
 	  typedef typename vectorsparse::reference       reference;
 
-	  iterator (vectorsparse & container, size_type index) : container (container), index (index) {}
+	  iterator () : container (0), index (0) {}
+	  iterator (vectorsparse * container, size_type index) : container (container), index (index) {}
 
 	  reference operator * () const
 	  {
-		return container[index];
+		return (*container)[index];
 	  }
 
 	  pointer operator -> () const
 	  {
-		return & container[index];
+		return & (*container)[index];
 	  }
 
-	  iterator & operator ++ ()
+	  iterator & operator ++ ()  // prefix
 	  {
 		index++;
 		return *this;
 	  }
 
-	  iterator & operator -- ()
+	  iterator operator ++ (int)  // postfix
+	  {
+		iterator result (container, index);
+		index++;
+		return result;
+	  }
+
+	  iterator & operator -- ()  // prefix
 	  {
 		index--;
 		return *this;
 	  }
 
-	  vectorsparse & container;
+	  iterator operator -- (int)  // postfix
+	  {
+		iterator result (container, index);
+		index--;
+		return result;
+	  }
+
+	  vectorsparse * container;
 	  size_type index;
 	};
 
@@ -239,31 +254,56 @@ namespace fl
 	  typedef typename vectorsparse::const_pointer   pointer;
 	  typedef typename vectorsparse::const_reference reference;
 
-	  const_iterator (const vectorsparse & container, size_type index) : container (container), index (index) {}
+	  const_iterator () : container (0), index (0) {}
+	  const_iterator (const vectorsparse * container, size_type index) : container (container), index (index) {}
 
 	  reference operator * () const
 	  {
-		return container[index];
+		return (*container)[index];
 	  }
 
 	  pointer operator -> () const
 	  {
-		return & container[index];
+		return & (*container)[index];
 	  }
 
-	  const_iterator & operator ++ ()
+	  bool operator == (const const_iterator & that)
+	  {
+		return container == that.container  &&  index == that.index;
+	  }
+
+	  bool operator != (const const_iterator & that)
+	  {
+		return container != that.container  ||  index != that.index;
+	  }
+
+	  const_iterator & operator ++ ()  // prefix
 	  {
 		index++;
 		return *this;
 	  }
 
-	  const_iterator & operator -- ()
+	  const_iterator operator ++ (int)  // postfix
+	  {
+		const_iterator result (container, index);
+		index++;
+		return result;
+	  }
+
+	  const_iterator & operator -- ()  // prefix
 	  {
 		index--;
 		return *this;
 	  }
 
-	  const vectorsparse & container;
+	  const_iterator operator -- (int)  // postfix
+	  {
+		const_iterator result (container, index);
+		index--;
+		return result;
+	  }
+
+	  const vectorsparse * container;
 	  size_type index;
 	};
 
@@ -277,13 +317,13 @@ namespace fl
 	  typedef typename vectorsparse::const_pointer   pointer;
 	  typedef typename vectorsparse::const_reference reference;
 
-	  sparse_iterator (vectorsparse & container, size_type index)
+	  sparse_iterator (vectorsparse * container, size_type index)
 	  : container (container)
 	  {
-		c = container.contigs.begin ();
+		c = container->contigs.begin ();
 		i = 0;
-		if (container.contigs.size () < 1) return;  // Any incrementing or decrementing of this iterator is not supported.
-		int position = container.findContig (index);
+		if (container->contigs.size () < 1) return;  // Any incrementing or decrementing of this iterator is not supported.
+		int position = container->findContig (index);
 		if (position < 0)
 		{
 		  i = (*c)->start ();
@@ -311,7 +351,7 @@ namespace fl
 		if (i >= (*c)->finish ())
 		{
 		  c++;
-		  if (c < container.contigs.end ())
+		  if (c < container->contigs.end ())
 		  {
 			i = (*c)->start ();
 		  }
@@ -330,7 +370,7 @@ namespace fl
 		if (i < (*c)->start ())
 		{
 		  c--;
-		  if (c >= container.contigs.begin ())
+		  if (c >= container->contigs.begin ())
 		  {
 			i = (*c)->finish () - 1;
 		  }
@@ -348,7 +388,7 @@ namespace fl
 		return (*c)->index + (i - (*c)->start ());
 	  }
 
-	  vectorsparse & container;
+	  vectorsparse * container;
 	  typename std::vector<Contig *>::iterator c;
 	  T * i;
 	};
@@ -373,16 +413,16 @@ namespace fl
 
 	~vectorsparse ()
 	{
-	  std::cerr << "dtor" << std::endl;
+	  //std::cerr << "dtor" << std::endl;
 	  typename std::vector<Contig *>::iterator it = contigs.begin ();
 	  for (; it < contigs.end (); it++)
 	  {
-		std::cerr << "  destructing " << (*it)->index << " " << (*it)->count << std::endl;
+		//std::cerr << "  destructing " << (*it)->index << " " << (*it)->count << std::endl;
 		(*it)->destruct ();
 		free (*it);
-		std::cerr << "    done" << std::endl;
+		//std::cerr << "    done" << std::endl;
 	  }
-	  std::cerr << "dtor done" << std::endl;
+	  //std::cerr << "dtor done" << std::endl;
 	}
 
 	// Sweeping assignment operations are low priority, as they are unlikely for a sparse vector.
@@ -391,22 +431,22 @@ namespace fl
 
 	iterator begin ()
 	{
-	  return iterator (*this, 0);
+	  return iterator (this, 0);
 	}
 
 	const_iterator begin () const
 	{
-	  return const_iterator (*this, 0);
+	  return const_iterator (this, 0);
 	}
 
 	iterator end ()
 	{
-	  return iterator (*this, size ());
+	  return iterator (this, size ());
 	}
 
 	const_iterator end () const
 	{
-	  return const_iterator (*this, size ());
+	  return const_iterator (this, size ());
 	}
 
 	//reverse_iterator       rbegin ();
@@ -416,12 +456,12 @@ namespace fl
 
 	sparse_iterator sbegin ()
 	{
-	  return sparse_iterator (*this, 0);
+	  return sparse_iterator (this, 0);
 	}
 
 	sparse_iterator send ()
 	{
-	  return sparse_iterator (*this, size ());
+	  return sparse_iterator (this, size ());
 	}
 
 	bool empty () const
@@ -455,11 +495,12 @@ namespace fl
 
 	void resize (size_type n, const value_type & value = zero)
 	{
-	  n = std::max (n, 0);  // since size_type is currently signed, we must enforce non-negativity.
+	  n = std::max (n, (size_type) 0);  // since size_type is currently signed, we must enforce non-negativity.
 	  size_type s = size ();
 	  if (n == s) return;
 	  if (n < s)
 	  {
+
 		size_type position = findContig (n - 1);
 		if (position < 0)
 		{
@@ -743,6 +784,7 @@ namespace fl
 	  size_type index;
 	  size_type count;
 	  Contig *  contig;
+	  typename std::vector<Contig *>::iterator it;
 	};
 
 	/**
@@ -757,39 +799,104 @@ namespace fl
 	**/
 	void sparsify ()
 	{
-	  throw "sparsify is not fully written yet";
-
 	  // Pass 1 -- Splits
 	  std::vector<ContigRemap> splits;
 	  splits.reserve (contigs.size ());
+	  ContigRemap r;
 	  typename std::vector<Contig *>::iterator it;
 	  for (it = contigs.begin; it < contigs.end (); it++)
 	  {
-		T * start        = (*it)->start ();
-		T * end          = (*it)->finish ();
-		T * i            = start;
-		T * firstNonzero = 0;
-		T * lastNonzero  = 0;
-		int zeroCount    = 0;
+		r.contig = *it;
+		r.it     = it;
+		T * start = (*it)->start ();
+		T * end   = (*it)->finish ();
+		T * i     = start;
+		// A block consists of a group of (mostly) non-zero elements, followed
+		// by a group of zero elements.  The first block (and only the first
+		// block) might have an empty set of nonzero elements.
+		T * first = start;  // beginning element of block
+		T * last  = 0;      // last non-zero element in a block
 		while (i < end)
 		{
-		  if (*i == zero)
+		  if (*i != zero)
 		  {
-			zeroCount++;
-			//if ()
+			if (i - last > threshold)
 			{
+			  r.count = last - first + 1;
+			  if (r.count > 0)  // distinquishes between an initial set of zeros and one that follows a set of nonzeros
+			  {
+				r.index = first - start + (*it)->index;
+				splits.push_back (r);
+			  }
+			  first = i;
 			}
+			last = i;
 		  }
-		  else  // nonzero
-		  {
-			if (! firstNonzero) firstNonzero = i;
-			lastNonzero = i;
-			zeroCount = 0;
-		  }
+		  i++;
+		}
+		r.count = last - first + 1;
+		if (r.count > 0)
+		{
+		  r.index = first - start + (*it)->index;
+		  splits.push_back (r);
 		}
 	  }
 
 	  // Pass 2 -- Merges
+	  std::vector<Contig *> newContigs;
+	  newContigs.reserve (contigs.size ());
+	  typename std::vector<ContigRemap>::iterator i     = splits.begin ();
+	  typename std::vector<ContigRemap>::iterator end   = splits.end ();
+	  typename std::vector<ContigRemap>::iterator first = i;
+	  typename std::vector<ContigRemap>::iterator last  = i;
+	  i++;
+	  while (i <= end)
+	  {
+		if (i == end  ||  last->index + last->count - i->index > threshold)
+		{
+		  // Combine and copy out contigs
+		  if (first == last  &&  first->index == first->contig->index  &&  first->count == first->contig->count)
+		  {
+			// No change to the contig, so just keep it.
+			newContigs.push_back (first->contig);
+			*first->it = 0;  // Don't delete contig later
+		  }
+		  else
+		  {
+			Contig * c = Contig::create (first->index, last->index + last->count - first->index);
+			pointer m = c->start ();
+			pointer f = m;
+			newContigs.push_back (c);
+			typename std::vector<ContigRemap>::iterator r = first;
+			while (r < last)
+			{
+			  memcpy (f,
+					  r->contig->start () + (r->index - r->contig->index),
+					  r->count);
+			  f += r->count;
+			  typename std::vector<ContigRemap>::iterator s = r + 1;
+			  pointer e = m + (s->index - first->index);
+			  while (f < e) ::new (f++) T (0);
+			  f = e;
+			  r = s;
+			}
+			memcpy (f,
+					r->contig->start () + (r->index - r->contig->index),
+					r->count);
+		  }
+
+		  first = i;
+		}
+		last = i;
+		i++;
+	  }
+
+	  // Dispose of old memory
+	  for (it = contigs.begin (); it < contigs.end (); it++)
+	  {
+		if (*it) delete (*it);
+	  }
+	  contigs = newContigs;
 	}
 
 	// Support functions for Contig style storage

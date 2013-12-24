@@ -270,7 +270,21 @@ generateRandomVector (vectorsparse<int> & test, vector<int> & truth, const int f
 	  truth[index] = index;
 	  test[index] = index;
 	}
-	cerr << ".";
+	//cerr << ".";
+  }
+}
+
+inline void
+compareSparseVector (vectorsparse<int> & test, vector<int> & truth)
+{
+  for (int i = 0; i < maxElement; i++)
+  {
+	int value = ((const vectorsparse<int> &) test)[i];
+	if (truth[i] != value)
+	{
+	  cerr << "  Unexpected element value: " << value << " at " << i << endl;
+	  throw "vectorsparse fails";
+	}
   }
 }
 
@@ -281,16 +295,8 @@ testVectorsparseStructure (const int fillIn)
   vectorsparse<int> test;
   vector<int> truth;
   generateRandomVector (test, truth, fillIn);
-  cerr << "  Done filling.  Starting integrity check." << endl;
-  for (int i = 0; i < maxElement; i++)
-  {
-	int value = ((const vectorsparse<int> &) test)[i];
-	if (truth[i] != value)
-	{
-	  cerr << "  Unexpected element value: " << value << " at " << i << endl;
-	  throw "vectorsparse fails";
-	}
-  }
+  //cerr << "  Done filling.  Starting integrity check." << endl;
+  compareSparseVector (test, truth);
 }
 
 void
@@ -303,10 +309,10 @@ testVectorsparse ()
   testVectorsparseStructure (30);
 
   // copy constructor
+  vectorsparse<int> test;
+  vector<int> truth;
+  generateRandomVector (test, truth, 20);
   {
-	vectorsparse<int> test;
-	vector<int> truth;
-	generateRandomVector (test, truth, 20);
 	vectorsparse<int> test2 (test);
 	for (int i = 0; i < maxElement; i++)
 	{
@@ -319,14 +325,45 @@ testVectorsparse ()
 	}
   }
 
-  // resize
-  
-
-  // Test for const and non-const access
-  //   Make some const accesses, and verify that no fill-in has occurred
-  //   Make some non-const accesses, and verify fill-in
-
   // const iterator
+  //   Record current structure
+  vector<int> indices;
+  vector<int> counts;
+  for (int i = 0; i < test.contigs.size (); i++)
+  {
+	indices.push_back (test.contigs[i]->index);
+	counts .push_back (test.contigs[i]->count);
+  }
+  //   Read through vector
+  {
+	const vectorsparse<int> & constest = test;
+	int i = 0;
+	vectorsparse<int>::const_iterator it;
+	for (it = constest.begin (); it != constest.end (); it++)
+	{
+	  if (truth[i] != *it)
+	  {
+		cerr << "  Unexpected element value: " << *it << " at " << i << endl;
+		throw "vectorsparse failes";
+	  }
+	  i++;
+	}
+  }
+  //   Verify that structure has not changed
+  if (indices.size () != test.contigs.size ())
+  {
+	cerr << "structure changed" << endl;
+	throw "vectorsparse fails";
+  }
+  for (int i = 0; i < indices.size (); i++)
+  {
+	if (   test.contigs[i]->index != indices[i]
+	    || test.contigs[i]->count != counts[i])
+	{
+	  cerr << "structure changed" << endl;
+	  throw "vectorsparse fails";
+	}
+  }
 
 
   // non-const iterator
@@ -335,7 +372,14 @@ testVectorsparse ()
   // sparse iterator
 
 
+  // resize
+  
+
+  // const access
+  //   Make some const accesses, and verify that no fill-in has occurred
+
 }
+
 
 int main (int argc, char * argv[])
 {
