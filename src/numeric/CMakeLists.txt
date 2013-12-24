@@ -41,15 +41,17 @@ if (LAPACK_FOUND)
     sspev.cc
     ssyev.cc
     ssygv.cc
-	ssytrf.cc
+    ssytrf.cc
   )
   set (maybeSearch
-    LevenbergMarquardtDouble.cc
-    LevenbergMarquardtFloat.cc
-    NewtonRaphsonDouble.cc
-    NewtonRaphsonFloat.cc
     ConjugateGradientDouble.cc
     ConjugateGradientFloat.cc
+    LevenbergMarquardtDouble.cc
+    LevenbergMarquardtFloat.cc
+    MemorySearchDouble.cc
+    MemorySearchFloat.cc
+    NewtonRaphsonDouble.cc
+    NewtonRaphsonFloat.cc
   )
 endif (LAPACK_FOUND)
 
@@ -136,6 +138,7 @@ add_library (flNumeric
   ../../include/fl/LevenbergMarquardt.tcc
   ../../include/fl/LevenbergMarquardtSparse.tcc
   ../../include/fl/LineSearch.tcc
+  ../../include/fl/MemorySearch.tcc
   ../../include/fl/NewtonRaphson.tcc
   ../../include/fl/ParticleSwarm.tcc
   ../../include/fl/SearchableNumeric.tcc

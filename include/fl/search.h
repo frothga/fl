@@ -226,6 +226,41 @@ namespace fl
 	int maxIterations;
   };
 
+  /**
+	 Find local minimum of a n-parameter function.
+	 This is a higher-dimensional generalization of LineSearch.  The output
+	 of the function can have any dimensionality.  This method will seek
+	 a solution that minimizes the Euclidean norm of the output vector
+	 (that is, a least square solution).
+	 @todo This class compiles, but is not yet tested! It probably needs
+	 work before it is ready for regular use.
+   **/
+  template<class T>
+  class SHARED MemorySearch : public Search<T>
+  {
+  public:
+	MemorySearch (T toleranceF = (T) -1, T toleranceX = (T) -1);
+
+	virtual void search (Searchable<T> & searchable, Vector<T> & point);
+
+	T toleranceF;
+	T toleranceX;
+	int maxIterations;
+
+	class Sample
+	{
+	public:
+	  Sample (const Vector<T> & x, const T & value)
+	  : value (value)
+	  {
+		this->x.copyFrom (x);
+	  }
+
+	  Vector<T> x;
+	  T value;
+	};
+  };
+
   template<class T>
   class SHARED AnnealingAdaptive : public Search<T>
   {
