@@ -172,11 +172,10 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	return;
   }
 
-  // This is counterintuitive, but stream->time_base is apparently defined
-  // as the amount to *divide* seconds by to get stream units.
+  // stream->time_base is the duration of one stream unit in seconds.
   // targetPTS uses ceil() to force rounding errors in the direction of the
   // next frame.  This produces more intuitive results.
-  int64_t targetPTS  = (int64_t) ceil (timestamp * stream->time_base.den / stream->time_base.num);
+  int64_t targetPTS  = (int64_t) ceil   (timestamp * stream->time_base.den / stream->time_base.num);
   int64_t startPTS   = (int64_t) roundp (startTime * stream->time_base.den / stream->time_base.num);
   int64_t horizonPTS = targetPTS - (int64_t) roundp ((double) stream->time_base.den / stream->time_base.num);  // willing to sift forward up to 1 second before using seek
   int64_t framePeriod = (int64_t) roundp ((double) stream->r_frame_rate.den / stream->r_frame_rate.num * stream->time_base.den / stream->time_base.num);
