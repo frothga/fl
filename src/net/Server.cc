@@ -237,21 +237,22 @@ Message::getHeader (const string & name)
   else                     return const_cast<Header *> (&(*i));
 }
 
-void
+const char *
 Message::getHeader (const string & name, string & values)
 {
   Header * header = getHeader (name);
-  if (! header) return;
+  if (! header) return values.c_str ();
   if (header->values.size () == 0)
   {
 	values.clear ();  // this Header is empty
-	return;
+	return values.c_str ();
   }
   values = header->values[0];
   for (int i = 1; i < header->values.size (); i++)
   {
 	values = values + "," + values[i];
   }
+  return values.c_str ();
 }
 
 void
