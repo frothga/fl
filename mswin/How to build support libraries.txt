@@ -247,9 +247,9 @@ Copy the headers up to mswin/include:
 
 FFmpeg
 ------
-Must be built using MinGW.  Building as shared libraries (DLLs) works better, because it eliminates the need to supply as many dependencies to VC++.  FFMPEG forked in mid 2011.  The main ffmpeg project actively integrates any work from libav, so prefer the main ffmpeg source. Prebuilt libraries are available from the libav web-site and http://ffmpeg.zeranoe.com. However, they often have GPL configurations. For LGPL, follow these instructions...
+Must be built using MinGW.  Building as shared libraries (DLLs) works better, because it eliminates the need to supply as many dependencies to VC++.  FFMPEG forked in mid 2011.  The main ffmpeg project actively integrates any work from libav, so prefer the main ffmpeg source. Prebuilt libraries are available from http://ffmpeg.zeranoe.com. However, they often have GPL configurations. For LGPL, follow these instructions...
 
-Download the latest code from http://ffmpeg.org, and expand into {mswin}/build/libav
+Download the latest code from http://ffmpeg.org, and expand into {mswin}/build/ffmpeg
 
 32-bit:
 
@@ -262,28 +262,28 @@ Download the latest code from http://ffmpeg.org, and expand into {mswin}/build/l
 
 For 64-bit builds, substitute the following configure line:
 
-	./configure --prefix={mswin}/build/ffmpeg/encap64 --libdir={mswin}/build/ffmpeg/encap64/lib64 --shlibdir={mswin}/build/ffmpeg/encap64/lib64 --enable-cross-compile --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-shared --disable-static
+	./configure --prefix={mswin}/build/ffmpeg/encap64 --enable-cross-compile --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-shared --disable-static
 
 For a highly contagious and non-distributable version, but one that can do anything, add these flags: --enable-gpl --enable-version3 --enable-nonfree
 
 Copy DLLs to mswin/bin or mswin/bin64:
 
-	libav/encap{32,64}/bin/avcodec-{major version}.dll
-	libav/encap{32,64}/bin/avdevice-{major version}.dll
-	libav/encap{32,64}/bin/avfilter-{major version}.dll
-	libav/encap{32,64}/bin/avformat-{major version}.dll
-	libav/encap{32,64}/bin/avutil-{major version}.dll
-	libav/encap{32,64}/bin/swscale-{major version}.dll
+	ffmpeg/encap{32,64}/bin/avcodec-{major version}.dll
+	ffmpeg/encap{32,64}/bin/avdevice-{major version}.dll
+	ffmpeg/encap{32,64}/bin/avfilter-{major version}.dll
+	ffmpeg/encap{32,64}/bin/avformat-{major version}.dll
+	ffmpeg/encap{32,64}/bin/avutil-{major version}.dll
+	ffmpeg/encap{32,64}/bin/swscale-{major version}.dll
 
 where {major version} is the number before the first dot in a version string.  The major version is necessary, because this is what the import libraries are constructed to look for.  All other forms are simply copies of xxx-{major version}.dll.
 
 Copy import libaries to mswin/lib or lib64:
 
-	libav/encap{32,64}/bin/avcodec.lib
-	libav/encap{32,64}/bin/avdevice.lib
-	libav/encap{32,64}/bin/avfilter.lib
-	libav/encap{32,64}/bin/avformat.lib
-	libav/encap{32,64}/bin/avutil.lib
-	libav/encap{32,64}/bin/swscale.lib
+	ffmpeg/encap{32,64}/bin/avcodec.lib
+	ffmpeg/encap{32,64}/bin/avdevice.lib
+	ffmpeg/encap{32,64}/bin/avfilter.lib
+	ffmpeg/encap{32,64}/bin/avformat.lib
+	ffmpeg/encap{32,64}/bin/avutil.lib
+	ffmpeg/encap{32,64}/bin/swscale.lib
 
-Copy libav/encap{any}/include to mswin/include.
+Copy ffmpeg/encap{any}/include to mswin/include.
