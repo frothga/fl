@@ -109,10 +109,11 @@ namespace fl
   public:
 	Message (int versionMajor = 1, int versionMinor = 1);
 
-	virtual Header * addHeader    (const std::string & name, const std::string & value, bool caseSensitive = true);  ///< Appends value to end of list of values associated with named Header. Creates Header if it doesn't already exist.
-	virtual Header * getHeader    (const std::string & name);  ///< Returns a pointer to the named Header. Returns 0 if header hasn't been created yet.
-	virtual void     removeHeader (const std::string & name);  ///< Removes the named Header.
-	virtual void     removeHeader (const std::string & name, const std::string & value, bool caseSensitive = true);  ///< Removes value from the list associated with named Header. Convenience method for getHeader()->removeValue().
+	virtual Header *     addHeader    (const std::string & name, const std::string & value, bool caseSensitive = true);  ///< Appends value to end of list of values associated with named Header. Creates Header if it doesn't already exist.
+	virtual Header *     getHeader    (const std::string & name);  ///< Returns a pointer to the named Header. Returns 0 if header hasn't been created yet.
+	virtual const char * getHeader    (const std::string & name, std::string & values);  ///< Puts comma-separated list of header values in "values", or leaves it unchanged if header is not found. @return values.c_str ()
+	virtual void         removeHeader (const std::string & name);  ///< Removes the named Header.
+	virtual void         removeHeader (const std::string & name, const std::string & value, bool caseSensitive = true);  ///< Removes value from the list associated with named Header. Convenience method for getHeader()->removeValue().
 
 	bool versionAtLeast (int major, int minor)  ///< Indicates that the HTTP version of this message is greater than or equal to major.minor
 	{
@@ -135,13 +136,7 @@ namespace fl
 	static const char * URIsafe;  ///< Characters other than alphanumeric which may be safely used in a URI without escaping.
   };
 
-  /**
-	 Encapsulates the request from the client.  Also functions as the "master object",
-	 in the sense that all other major objects are known (or manufactured) and made available
-	 by this one.  Note that in the Responder interface below, respond () takes two
-	 arguments: a Request and a Response.  This is just a coding convenience, since the
-	 Response could be extracted from the Request.
-  **/
+  /// Encapsulates the request from the client.
   class SHARED Request : public Message
   {
   public:
@@ -161,7 +156,7 @@ namespace fl
 	static void decodeBase64     (const std::string & in, std::string & result);
   };
 
-  ///< Encapsulates the message to be returned to the client.
+  /// Encapsulates the message to be returned to the client.
   class SHARED Response : public Message, public std::wostream
   {
   public:
@@ -337,7 +332,7 @@ namespace fl
 	  time_t      time;
 	};
 	void scan (const std::wstring & dirName, int sortBy, std::multimap<std::string, DirEntry> & result);
-	virtual void write (const DirEntry & entry, const std::wstring & pathWithSlash, Response & response);
+	virtual void write (const DirEntry & entry, const std::wstring & pathWithSlash, Response & response); ///< Output one row in the table. Override this to change output format or to filter which files to list.
 
 	std::wstring root;
 

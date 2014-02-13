@@ -238,6 +238,23 @@ Message::getHeader (const string & name)
 }
 
 void
+Message::getHeader (const string & name, string & values)
+{
+  Header * header = getHeader (name);
+  if (! header) return;
+  if (header->values.size () == 0)
+  {
+	values.clear ();  // this Header is empty
+	return;
+  }
+  values = header->values[0];
+  for (int i = 1; i < header->values.size (); i++)
+  {
+	values = values + "," + values[i];
+  }
+}
+
+void
 Message::removeHeader (const string & name)
 {
   headers.erase (Header (name));

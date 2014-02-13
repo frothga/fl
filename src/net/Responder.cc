@@ -432,7 +432,7 @@ ResponderFile::write (const DirEntry & entry, const wstring & pathWithSlash, Res
   struct tm t;
   localtime_r (&entry.time, &t);
   char buffer[32];
-  sprintf (buffer, "%04i/%02i/%02i %02i:%02i:%02i", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+  strftime (buffer, sizeof (buffer), "%x %X %Z", &t);
   response << "<td style=\"text-align:left\">" << buffer << "</td>";
   response << "</tr>";
 }
