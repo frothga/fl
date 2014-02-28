@@ -86,6 +86,12 @@ Listener::listen (int port, int lastPort, int scanTimeout)
 	throw "listen failed";
   }
 
+# ifdef HAVE_PTHREAD
+  pthread_attr_t attributes;
+  pthread_attr_init (&attributes);
+  pthread_attr_setdetachstate (&attributes, PTHREAD_CREATE_DETACHED);
+# endif
+
   fd_set readfds;
   timeval selectTimeout;
 
@@ -141,7 +147,7 @@ Listener::listen (int port, int lastPort, int scanTimeout)
 	  data->clientAddress = clientAddress;
 
 	  pthread_t pid;
-	  pthread_create (&pid, NULL, processConnectionThread, data);
+	  pthread_create (&pid, &attributes, processConnectionThread, data);
 
 	  continue;  // Don't fall through to the non-threaded processor below.
 	}
@@ -151,6 +157,10 @@ Listener::listen (int port, int lastPort, int scanTimeout)
 	ss.ownSocket = true;
 	processConnection (ss, clientAddress);
   }
+
+# ifdef HAVE_PTHREAD
+  pthread_attr_destroy (&attributes);
+# endif
 }
 
 void *
