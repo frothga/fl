@@ -698,24 +698,16 @@ VideoOutFileFFMPEG::close ()
 	av_write_trailer (fc);  // Clears private data used by avformat.  Private data is not allocated until av_write_header(), so this is balanced.
   }
 
-  if (codec)
-  {
-	avcodec_close (stream->codec);
-	av_free (stream->codec);
-	codec = 0;
-  }
-
   if (stream)
   {
-	av_free (stream);
+	avcodec_close (stream->codec);
 	stream = 0;
   }
 
   if (fc)
   {
-	av_dict_free (&fc->metadata);
 	if (! (fc->oformat->flags & AVFMT_NOFILE)) avio_close (fc->pb);
-	av_free (fc);
+	avformat_free_context (fc);
 	fc = 0;
   }
 }
