@@ -19,6 +19,6 @@ for details.
 
 namespace fl
 {
-  template SHARED Matrix<double> MatrixAbstract<double>::operator ! () const;
+  template class FactorizationGeneral<double>;
   template SHARED double det (const MatrixAbstract<double> & A);
 }

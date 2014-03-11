@@ -674,7 +674,11 @@ namespace fl
 
 	this->maxIterations = maxIterations;
 
-	this->method = new FactorizationBK<T>;
+#   ifdef HAVE_LAPACK
+	this->method = new FactorizationSymmetric<T>;  // Better stability, with little extra overhead (the squared Jacobian scales according to number of variables to solve, rather than number of equations).
+#   else
+	this->method = new FactorizationBKsparse<T>;
+#   endif
   }
 
   template<class T>

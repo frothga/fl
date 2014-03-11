@@ -10,33 +10,39 @@ if (Freetype_FOUND)
   include_directories (${FREETYPE_INCLUDE_DIRS})
 endif (Freetype_FOUND)
 
+set (maybeImage)
+
 if (TIFF_FOUND)
-  set (flImageTIFF ImageFileFormatTIFF.cc)
+  set (maybeImage ${maybeImage} ImageFileFormatTIFF.cc)
 endif (TIFF_FOUND)
 
 if (JPEG_FOUND)
-  set (flImageJPEG ImageFileFormatJPEG.cc)
+  set (maybeImage ${maybeImage} ImageFileFormatJPEG.cc)
 endif (JPEG_FOUND)
 
 if (PNG_FOUND)
-  set (flImagePNG ImageFileFormatPNG.cc)
+  set (maybeImage ${maybeImage} ImageFileFormatPNG.cc)
 endif (PNG_FOUND)
 
 if (FFMPEG_FOUND)
   # Should rearrange code so that Video.cc and video.h can be built without FFMPEG present.
-  set (flImageFFMPEG
-    ../../include/fl/video.h
+  set (maybeVideo
     Video.cc
     VideoFileFormatFFMPEG.cc
   )
 endif (FFMPEG_FOUND)
 
 if (X11_FOUND  OR  MSVC)
-  set (flImageX flX)
+  set (maybeX flX)
 endif (X11_FOUND  OR  MSVC)
 
 if (LAPACK_FOUND)
-  set (maybeInterestDOG InterestDOG.cc)
+  set (maybeMatch Match.cc)
+
+  set (maybeDescriptors
+    DescriptorFilters.cc
+    DescriptorFiltersTexton.cc
+  )
 endif (LAPACK_FOUND)
 
 add_library (flImage
@@ -50,6 +56,7 @@ add_library (flImage
   Point.cc
 
   # Image cache
+  ../../include/fl/imagecache.h
   ImageCache.cc
   EntryFiniteDifference.cc
   EntryDOG.cc
@@ -62,9 +69,7 @@ add_library (flImage
   ImageFileFormatEPS.cc
   ImageFileFormatMatlab.cc
   ImageFileFormatNITF.cc
-  ${flImageTIFF}
-  ${flImageJPEG}
-  ${flImagePNG}
+  ${maybeImage}
 
   # Canvas
   ../../include/fl/canvas.h
@@ -112,42 +117,42 @@ add_library (flImage
   ../../include/fl/descriptor.h
   Comparison.cc
   Descriptor.cc
-  DescriptorCombo.cc
-  DescriptorScale.cc
-  DescriptorOrientation.cc
-  DescriptorOrientationHistogram.cc
-  DescriptorContrast.cc
-  DescriptorFilters.cc
-  DescriptorFiltersTexton.cc
-  DescriptorPatch.cc
-  DescriptorSchmidScale.cc
-  DescriptorSchmid.cc
-  DescriptorSpatialPyramid.cc
-  DescriptorSpin.cc
-  DescriptorSIFT.cc
   DescriptorColorHistogram2D.cc
   DescriptorColorHistogram3D.cc
-  DescriptorTextonScale.cc
+  DescriptorCombo.cc
+  DescriptorContrast.cc
   DescriptorLBP.cc
+  DescriptorOrientation.cc
+  DescriptorOrientationHistogram.cc
+  DescriptorPatch.cc
+  DescriptorScale.cc
+  DescriptorSchmidScale.cc
+  DescriptorSchmid.cc
+  DescriptorSIFT.cc
+  DescriptorSpatialPyramid.cc
+  DescriptorSpin.cc
+  DescriptorTextonScale.cc
+  ${maybeDescriptors}
 
   # Interest operators
   ../../include/fl/interest.h
   Interest.cc
+  InterestDOG.cc
   InterestHarris.cc
   InterestHarrisLaplacian.cc
-  InterestLaplacian.cc
   InterestHessian.cc
-  ${maybeInterestDOG}
+  InterestLaplacian.cc
   InterestMSER.cc
 
   # Matching framework
   ../../include/fl/match.h
-  Match.cc
+  ${maybeMatch}
 
   # Video
+  ../../include/fl/video.h
   ../../include/fl/track.h
   KLT.cc
-  ${flImageFFMPEG}
+  ${maybeVideo}
 )
 target_link_libraries (flImage
   flNumeric
@@ -171,7 +176,7 @@ endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 
 add_executable (testImage test.cc)
 target_link_libraries (testImage
-  ${flImageX}
+  ${maybeX}
   flImage
   flNumeric
   flNet

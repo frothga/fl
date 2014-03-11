@@ -42,15 +42,17 @@ if (LAPACK_FOUND)
     )
     install (TARGETS psnr RUNTIME DESTINATION bin)
 
-    add_executable (thumb thumb.cc)
-    target_link_libraries (thumb
-      flImage
-      flNumeric
-      flNet
-      flBase
-      ${FL_LIBRARIES}
-    )
-    install (TARGETS thumb RUNTIME DESTINATION bin)
+    if (JPEG_FOUND)
+      add_executable (thumb thumb.cc)
+      target_link_libraries (thumb
+        flImage
+        flNumeric
+        flNet
+        flBase
+        ${FL_LIBRARIES}
+      )
+      install (TARGETS thumb RUNTIME DESTINATION bin)
+    endif (JPEG_FOUND)
 
     if (X11_FOUND  AND  JPEG_FOUND)
       add_executable (vread vread.cc)

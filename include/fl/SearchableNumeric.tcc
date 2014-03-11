@@ -39,7 +39,11 @@ namespace fl
   Search<T> *
   SearchableNumeric<T>::search ()
   {
+#   ifdef HAVE_LAPACK
 	return new LevenbergMarquardt<T>;
+#   else
+	return new GradientDescent<T>;
+#   endif
   }
 
   template<class T>

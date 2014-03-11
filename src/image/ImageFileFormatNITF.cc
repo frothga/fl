@@ -1599,6 +1599,7 @@ ImageFileDelegateNITF::get (const string & name, string & value)
 
   if (name == "GeoTransformationMatrix")
   {
+#   ifdef HAVE_LAPACK
 	if (imageIndex < 0) return;
 
 	string ICORDS;
@@ -1684,6 +1685,7 @@ ImageFileDelegateNITF::get (const string & name, string & value)
 	temp.region (0, 3) = centerXY - temp.region (0, 0, 1, 1) * centerIJ;
 	temp(3,3) = 1;
 	temp.toString (value);
+#   endif
 
 	return;
   }

@@ -88,7 +88,7 @@ InterestDOG::fitQuadratic (ImageOf<float> & dog0, ImageOf<float> & dog1, ImageOf
   g[1] = (dog1(x+1,y  ) - dog1(x-1,y  )) / 2.0f;
   g[2] = (dog1(x,  y+1) - dog1(x,  y-1)) / 2.0f;
 
-  Matrix<float> H (3, 3);
+  MatrixFixed<float,3,3> H;
   H(0,0) = dog0(x,  y  ) - 2.0f * dog1(x,y) + dog2(x,  y  );
   H(1,1) = dog1(x-1,y  ) - 2.0f * dog1(x,y) + dog1(x+1,y  );
   H(2,2) = dog1(x,  y-1) - 2.0f * dog1(x,y) + dog1(x,  y+1);
@@ -99,7 +99,7 @@ InterestDOG::fitQuadratic (ImageOf<float> & dog0, ImageOf<float> & dog1, ImageOf
   H(2,0) = H(0,2);
   H(2,1) = H(1,2);
 
-  gelss (H, result, g * -1.0f);
+  result = !H * g * -1.0f;
 
   return dog1(x,y) + 0.5f * result.dot (g);
 }

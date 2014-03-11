@@ -15,4 +15,4 @@ for details.
 using namespace fl;
 
 
-template class FactorizationBK<float>;
+template class FactorizationSymmetric<float>;

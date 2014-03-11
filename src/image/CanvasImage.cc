@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/canvas.h"
-#include "fl/lapack.h"
 #include "fl/string.h"
 
 #include <algorithm>
@@ -645,7 +644,6 @@ CanvasImage::drawFilledRectangle (const Point & corner0, const Point & corner1, 
 void
 CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
 {
-# ifdef HAVE_LAPACK
   // Adjust for scaling and translation
   Point tcenter = trans (center);
   MatrixFixed<double,2,2> tshape;
@@ -785,7 +783,6 @@ CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & 
 	  pen (p, color);
 	}
   }
-# endif
 }
 
 /**

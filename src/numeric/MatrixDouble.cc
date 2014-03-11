@@ -14,7 +14,7 @@ for details.
 */
 
 
-#include "fl/Matrix.tcc"
+#include "fl/MatrixDouble.tcc"
 #include "fl/metadata.h"
 
 // Must redefine SHARED, because metadata.h includes matrix.h and then sets

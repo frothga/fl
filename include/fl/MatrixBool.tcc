@@ -15,7 +15,7 @@ for details.
 #define fl_matrix_bool_tcc
 
 
-#include "fl/matrix.h"
+#include "fl/Matrix.tcc"
 
 
 namespace fl

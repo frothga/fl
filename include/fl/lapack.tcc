@@ -763,11 +763,115 @@ namespace fl
   }
 
 
-  // class FactorizationBK ----------------------------------------------------
+  // class FactorizationGeneral -----------------------------------------------
 
   template<class T>
   void
-  FactorizationBK<T>::factorize (const MatrixAbstract<T> & A, bool destroyA)
+  FactorizationGeneral<T>::factorize (const MatrixAbstract<T> & A, bool destroyA)
+  {
+	int m = A.rows ();
+	int n = A.columns ();
+	int minmn = std::min (m, n);
+
+	if (destroyA  &&  (A.classID () & MatrixID))
+	{
+	  this->A = (const Matrix<double> &) A;
+	}
+	else
+	{
+	  this->A.copyFrom (A.region (0, 0, minmn-1, minmn-1));
+	}
+
+	pivots.resize (minmn);
+
+	int info = 0;
+
+	getrf (minmn,
+		   minmn,
+		   & this->A[0],
+		   this->A.strideC,
+		   & pivots[0],
+		   info);
+
+	if (info) throw info;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  FactorizationGeneral<T>::solve (const MatrixAbstract<T> & B, bool destroyB)
+  {
+	int m = A.rows ();
+	int n = A.columns ();
+	int minmn = std::min (m, n);
+
+	Matrix<T> * X = new Matrix<T>;
+	if (destroyB  &&  (B.classID () & MatrixID))
+	{
+	  *X = (const Matrix<T> &) B;
+	}
+	else
+	{
+	  X->copyFrom (B);
+	}
+
+	int info = 0;
+
+	getrs ('N',
+		   minmn,
+		   X->columns_,
+		   & A[0],
+		   A.strideC,
+		   & pivots[0],
+		   & (*X)[0],
+		   X->strideC,
+		   info);
+
+	if (info) throw info;
+	return X;
+  }
+
+  template<class T>
+  MatrixResult<T>
+  FactorizationGeneral<T>::invert ()
+  {
+	int m = A.rows ();
+	int n = A.columns ();
+	int minmn = std::min (m, n);
+
+	int lwork = -1;
+	T optimalSize;
+	int info = 0;
+
+	getri (minmn,
+		   & A[0],
+		   A.strideC,
+		   & pivots[0],
+		   & optimalSize,
+		   lwork,
+		   info);
+
+	lwork = (int) optimalSize;
+	T * work = (T *) malloc (lwork * sizeof (T));
+
+	getri (minmn,
+		   & A[0],
+		   A.strideC,
+		   & pivots[0],
+		   work,
+		   lwork,
+		   info);
+
+	free (work);
+	if (info) throw info;
+	return new Matrix<T> (A);
+  }
+
+
+  // class FactorizationSymmetric ---------------------------------------------
+
+  template<class T>
+  void
+  FactorizationSymmetric<T>::factorize (const MatrixAbstract<T> & A, bool destroyA)
   {
 	int m = A.rows ();
 	int n = A.columns ();
@@ -825,7 +929,7 @@ namespace fl
 
   template<class T>
   MatrixResult<T>
-  FactorizationBK<T>::solve (const MatrixAbstract<T> & B, bool destroyB)
+  FactorizationSymmetric<T>::solve (const MatrixAbstract<T> & B, bool destroyB)
   {
 	Matrix<T> * X = new Matrix<T>;
 	if (destroyB  &&  (B.classID () & MatrixID))
@@ -837,7 +941,7 @@ namespace fl
 	  X->copyFrom (B);
 	}
 
-	int info;
+	int info = 0;
 
 	sytrs ('U',
 		   A.rows_,
@@ -855,7 +959,7 @@ namespace fl
 
   template<class T>
   MatrixResult<T>
-  FactorizationBK<T>::invert ()
+  FactorizationSymmetric<T>::invert ()
   {
     T * work = (T *) malloc (A.rows_ * sizeof (T));
 	int info = 0;
@@ -887,7 +991,7 @@ namespace fl
   // Utilities dependent on LAPACK --------------------------------------------
 
   template<class T>
-  Matrix<T>
+  MatrixResult<T>
   pinv (const MatrixAbstract<T> & A, T tolerance, T epsilon)
   {
 	Matrix<T> U;
@@ -942,65 +1046,6 @@ namespace fl
 	while (result < S.rows ()  &&  S[result] > threshold)
 	{
 	  result++;
-	}
-
-	return result;
-  }
-
-  template<class T>
-  Matrix<T>
-  MatrixAbstract<T>::operator ! () const
-  {
-	int h = rows ();
-	int w = columns ();
-	if (w != h) return pinv (*this);  // forces dgesvd to be linked as well
-
-	Matrix<T> result;
-	result.copyFrom (*this);
-
-	int * ipiv = (int *) malloc (h * sizeof (int));
-
-	int info = 0;
-
-	getrf (h,
-		   h,
-		   & result[0],
-		   result.strideC,
-		   ipiv,
-		   info);
-
-	if (info == 0)
-	{
-	  int lwork = -1;
-	  T optimalSize;
-
-	  getri (h,
-			 & result[0],
-			 result.strideC,
-			 ipiv,
-			 & optimalSize,
-			 lwork,
-			 info);
-
-	  lwork = (int) optimalSize;
-	  T * work = (T *) malloc (lwork * sizeof (T));
-
-	  getri (h,
-			 & result[0],
-			 result.strideC,
-			 ipiv,
-			 work,
-			 lwork,
-			 info);
-
-	  free (work);
-	}
-
-	free (ipiv);
-
-	if (info != 0)
-	{
-	  throw info;
 	}
 
 	return result;

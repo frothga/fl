@@ -110,7 +110,11 @@ namespace fl
   Search<T> *
   SearchableSparse<T>::search ()
   {
+#   ifdef HAVE_LAPACK
 	return new LevenbergMarquardtSparse<T>;
+#   else
+	return new GradientDescent<T>;
+#   endif
   }
 
   template<class T>

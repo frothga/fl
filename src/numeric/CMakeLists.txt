@@ -6,10 +6,6 @@
 # LICENSE for details.
 
 
-if (CMAKE_USE_PTHREADS_INIT)
-  set (maybeGaussianMixtureParallel GaussianMixtureParallel.cc)
-endif (CMAKE_USE_PTHREADS_INIT)
-
 if (BLAS_FOUND)
   set (flNumericBLAS
     ../../include/fl/blasproto.h
@@ -43,15 +39,31 @@ if (LAPACK_FOUND)
     ssygv.cc
     ssytrf.cc
   )
+
   set (maybeSearch
     ConjugateGradientDouble.cc
     ConjugateGradientFloat.cc
     LevenbergMarquardtDouble.cc
     LevenbergMarquardtFloat.cc
+    LineSearchDouble.cc
+    LineSearchFloat.cc
     MemorySearchDouble.cc
     MemorySearchFloat.cc
     NewtonRaphsonDouble.cc
     NewtonRaphsonFloat.cc
+  )
+
+  set (maybeCluster
+    GaussianMixture.cc
+    SVM.cc
+  )
+  if (CMAKE_USE_PTHREADS_INIT)
+    set (maybeCluster ${maybeCluster} GaussianMixtureParallel.cc)
+  endif (CMAKE_USE_PTHREADS_INIT)
+
+  set (maybeDimensionality
+    PCA.cc
+    MDA.cc
   )
 endif (LAPACK_FOUND)
 
@@ -78,7 +90,6 @@ add_library (flNumeric
   ../../include/fl/Matrix.tcc
   ../../include/fl/MatrixDiagonal.tcc
   ../../include/fl/MatrixFixed.tcc
-  ../../include/fl/MatrixFixed22.tcc
   ../../include/fl/MatrixIdentity.tcc
   ../../include/fl/MatrixPacked.tcc
   ../../include/fl/MatrixSparse.tcc
@@ -148,7 +159,6 @@ add_library (flNumeric
   AnnealingAdaptiveDouble.cc
   GradientDescentDouble.cc
   LevenbergMarquardtSparseDouble.cc
-  LineSearchDouble.cc
   ParticleSwarmDouble.cc
   SearchableNumericDouble.cc
   SearchableSparseDouble.cc
@@ -156,7 +166,6 @@ add_library (flNumeric
   AnnealingAdaptiveFloat.cc
   GradientDescentFloat.cc
   LevenbergMarquardtSparseFloat.cc
-  LineSearchFloat.cc
   ParticleSwarmFloat.cc
   SearchableNumericFloat.cc
   SearchableSparseFloat.cc
@@ -166,13 +175,11 @@ add_library (flNumeric
   ../../include/fl/neighbor.h
   Agglomerate.cc
   ClusterMethod.cc
-  GaussianMixture.cc
-  ${maybeGaussianMixtureParallel}
   KMeans.cc
   KMeansTree.cc
   Kohonen.cc
   Neighbor.cc
-  SVM.cc
+  ${maybeCluster}
 
   # Neural Networks
   ../../include/fl/neural.h
@@ -183,8 +190,7 @@ add_library (flNumeric
   # Dimensionality reduction
   ../../include/fl/reduce.h
   DimensionalityReduction.cc
-  PCA.cc
-  MDA.cc
+  ${maybeDimensionality}
 )
 target_link_libraries (flNumeric
   flNet

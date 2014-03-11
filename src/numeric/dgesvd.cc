@@ -20,6 +20,6 @@ for details.
 namespace fl
 {
   template SHARED void gesvd (const MatrixAbstract<double> & A, Matrix<double> & U, Matrix<double> & S, Matrix<double> & VT, char jobu, char jobvt, bool destroyA);
-  template SHARED Matrix<double> pinv (const MatrixAbstract<double> & A, double tolerance, double epsilon);
+  template SHARED MatrixResult<double> pinv (const MatrixAbstract<double> & A, double tolerance, double epsilon);
   template SHARED int rank (const MatrixAbstract<double> & A, double threshold, double epsilon);
 }

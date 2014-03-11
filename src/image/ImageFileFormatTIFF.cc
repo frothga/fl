@@ -752,6 +752,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 		  temp.toString (value);
 		}
 	  }
+#     ifdef HAVE_LAPACK
 	  else if (points >= 3)  // 3 or more tiepoints, so solve for transformation using least squares
 	  {
 		// First determine level of model to compute
@@ -852,6 +853,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 		  temp.toString (value);
 		}
 	  }
+#     endif
 	}
 
 	return;

@@ -27,7 +27,7 @@ for details.
 #include <typeinfo>
 
 // For debugging only
-#include "fl/slideshow.h"
+//#include "fl/slideshow.h"
 
 
 using namespace std;
@@ -68,7 +68,6 @@ testAbsoluteValue (Image & image)
   }
 }
 
-#ifdef HAVE_LAPACK
 void
 testTransform (Image & image)
 {
@@ -108,7 +107,6 @@ testTransform (Image & image)
 	}
   }
 }
-#endif
 
 /**
    This is kind of a mini ConvolutionDiscrete1D.  It is meant to be a reliable
@@ -1023,7 +1021,7 @@ testCanvasImage ()
 void
 testConvolutionDiscrete1D ()
 {
-# if defined (HAVE_JPEG)  &&  defined (HAVE_LAPACK)
+# if defined (HAVE_JPEG)
   vector<ConvolutionDiscrete1D *> kernels;
   Gaussian1D oddKernel (1, Crop, GrayDouble);
   ConvolutionDiscrete1D evenKernel = oddKernel * Transform ((oddKernel.width + 1.0) / oddKernel.width, 1.0);
@@ -1090,7 +1088,7 @@ testConvolutionDiscrete1D ()
 
   cout << "ConvlutionDiscrete1D passes" << endl;
 # else
-  cout << "WARNING: ConvolutionDiscrete1D not tested due to lack of JPEG or LAPACK" << endl;
+  cout << "WARNING: ConvolutionDiscrete1D not tested due to lack of JPEG" << endl;
 # endif
 }
 
@@ -1288,7 +1286,6 @@ testDescriptors ()
   }
   cout << "DescriptorSIFT passes" << endl;
 
-# ifdef HAVE_LAPACK
   DescriptorLBP lbp;
   value = lbp.value (image, pa);
   cerr << "DescriptorLBP completed, but result is unverified" << endl;
@@ -1305,9 +1302,6 @@ testDescriptors ()
   DescriptorTextonScale ts;
   value = ts.value (image, pa);
   cerr << "DescriptorTextonScale completed, but result is unverified" << endl;
-# else
-  cout << "WARNING: DescriptorPatch, DescriptorLBP and DescriptorTextonScale not tested due to lack of LAPACK" << endl;
-# endif
 
   DescriptorOrientation orientation;
   value = orientation.value (image, pa);
@@ -1547,12 +1541,8 @@ testInterest ()
   InterestHessian s;
   testInterest (s, image, 5000);
 
-# ifdef HAVE_LAPACK
   InterestDOG dog;
   testInterest (dog, image, 58);
-# else
-  cout << "WARNING: InterestDOG not tested due to lack of LAPACK" << endl;
-# endif
 
   cout << "InterestOperators pass" << endl;
 # else

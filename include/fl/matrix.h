@@ -151,7 +151,7 @@ namespace fl
 	  return ! ((*this) == B);
 	}
 
-	Matrix<T> operator ! () const;  ///< Invert matrix if square, otherwise create pseudo-inverse.  Can't be virtual, because this forces a link dependency on LAPACK for any matrix class that uses it to implement inversion.
+	virtual MatrixResult<T> operator ! () const;  ///< Invert matrix if square, otherwise create pseudo-inverse.
 	virtual MatrixResult<T> operator ~ () const;  ///< Transpose matrix.
 
 	virtual MatrixResult<T> operator ^ (const MatrixAbstract & B) const;  ///< View both matrices as vectors and return cross product.  (Is there a better definition that covers 2D matrices?)
@@ -302,6 +302,7 @@ namespace fl
 	virtual MatrixResult<T> column (const int c) const                         {return result->column (c);}
 	virtual MatrixResult<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const {return result->region (firstRow, firstColumn, lastRow, lastColumn);}
 
+	virtual MatrixResult<T> operator ! () const                                {return !(*result);}
 	virtual MatrixResult<T> operator ~ () const                                {return ~(*result);}
 
 	virtual MatrixResult<T> operator ^ (const MatrixAbstract<T> & B) const     {return *result ^ B;}
@@ -838,7 +839,9 @@ namespace fl
 	virtual MatrixResult<T> column (const int c) const;
 	virtual MatrixResult<T> region (const int firstRow = 0, const int firstColumn = 0, int lastRow = -1, int lastColumn = -1) const;
 
+	virtual MatrixResult<T> operator ! () const;
 	virtual MatrixResult<T> operator ~ () const;
+
 	virtual MatrixResult<T> operator * (const MatrixAbstract<T> & B) const;
 	virtual MatrixResult<T> operator * (const T scalar) const;
 	virtual MatrixResult<T> operator / (const T scalar) const;
@@ -859,17 +862,17 @@ namespace fl
   extern template class SHARED MatrixFixed<double,2,2>;
   extern template class SHARED MatrixFixed<double,3,3>;
 
-  template<class T, int R, int C>
-  SHARED Matrix<T> operator ! (const MatrixFixed<T,R,C> & A);
+  template<class T>
+  SHARED T det (const MatrixFixed<T,2,2> & A);
 
   template<class T>
-  SHARED MatrixFixed<T,2,2> operator ! (const MatrixFixed<T,2,2> & A);
+  SHARED void geev (const MatrixFixed<T,2,2> & A, Matrix<T> & eigenvalues, bool destroyA = false);
 
   template<class T>
-  SHARED void geev (const MatrixFixed<T,2,2> & A, Matrix<T> & eigenvalues);
+  SHARED void geev (const MatrixFixed<T,2,2> & A, Matrix<T> & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
 
   template<class T>
-  SHARED void geev (const MatrixFixed<T,2,2> & A, Matrix<std::complex<T> > & eigenvalues);
+  SHARED T det (const MatrixFixed<T,3,3> & A);
 }
 
 

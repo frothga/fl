@@ -323,6 +323,13 @@ namespace fl
 
   template<class T>
   MatrixResult<T>
+  MatrixAbstract<T>::operator ! () const
+  {
+	throw "Matrix inverse not implemented. Is LAPACK available?";
+  }
+
+  template<class T>
+  MatrixResult<T>
   MatrixAbstract<T>::operator ~ () const
   {
 	return new MatrixTranspose<T> (this->clone ());

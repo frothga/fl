@@ -176,12 +176,25 @@ namespace fl
 
 	virtual void            factorize (const MatrixAbstract<T> & A, bool destroyA = false) = 0;
 	virtual MatrixResult<T> solve     (const MatrixAbstract<T> & B, bool destroyB = false) = 0;
-	virtual MatrixResult<T> invert    () = 0;  ///< Leaves internal structures in an undefined state. User should make another call to factorization() to continue using this object.
+	virtual MatrixResult<T> invert    () = 0;  ///< Leaves internal structures in an undefined state. User should make another call to factorize() to continue using this object.
+  };
+
+  /// Triangle factorization of a general square matrix
+  template<class T>
+  class SHARED FactorizationGeneral : public Factorization<T>
+  {
+  public:
+	virtual void            factorize (const MatrixAbstract<T> & A, bool destroyA = false);
+	virtual MatrixResult<T> solve     (const MatrixAbstract<T> & B, bool destroyB = false);
+	virtual MatrixResult<T> invert    ();
+
+	Matrix<T> A;
+	Vector<int> pivots;
   };
 
   /// Factor a symmetric indefinite matrix using Bunch-Kaufman
   template<class T>
-  class SHARED FactorizationBK : public Factorization<T>
+  class SHARED FactorizationSymmetric : public Factorization<T>
   {
   public:
 	virtual void            factorize (const MatrixAbstract<T> & A, bool destroyA = false);
@@ -199,7 +212,7 @@ namespace fl
 	 Returns the pseudoinverse of an arbitrary matrix.
   **/
   template<class T>
-  SHARED Matrix<T> pinv (const MatrixAbstract<T> & A, T tolerance = (T) -1, T epsilon = (T) -1);
+  SHARED MatrixResult<T> pinv (const MatrixAbstract<T> & A, T tolerance = (T) -1, T epsilon = (T) -1);
 
   /**
 	 Compute the determinant of a square matrix.
@@ -212,15 +225,6 @@ namespace fl
   **/
   template<class T>
   SHARED int rank (const MatrixAbstract<T> & A, T threshold = (T) -1, T epsilon = (T) -1);
-
-  /**
-	 Generic implementation of fixed size matrix inversion.
-   **/
-  template<class T, int R, int C>
-  Matrix<T> operator ! (const MatrixFixed<T,R,C> & A)
-  {
-	return ! Matrix<T> (const_cast<T *> ((T *) A.data), R, C);
-  }
 }
 
 

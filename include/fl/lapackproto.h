@@ -102,6 +102,16 @@ extern "C"
 				const int & lwork,
 				int &       info);
 
+  void dgetrs_ (const char & trans,
+				const int &  n,
+				const int &  nrhs,
+				const double a[],
+				const int &  lda,
+				const int    ipiv[],
+				double       b[],
+				const int &  ldb,
+				int &        info);
+
   void dormqr_ (const char & side,
 				const char & trans,
 				const int &  m,
@@ -270,6 +280,16 @@ extern "C"
 				float       work[],
 				const int & lwork,
 				int &       info);
+
+  void sgetrs_ (const char & trans,
+				const int &  n,
+				const int &  nrhs,
+				const float  a[],
+				const int &  lda,
+				const int    ipiv[],
+				float        b[],
+				const int &  ldb,
+				int &        info);
 
   void sormqr_ (const char & side,
 				const char & trans,
@@ -570,6 +590,34 @@ namespace fl
 		 int &       info)
   {
 	sgetri_ (n, a, lda, ipiv, work, lwork, info);
+  }
+
+  inline void
+  getrs (const char & trans,
+		 const int &  n,
+		 const int &  nrhs,
+		 const double a[],
+		 const int &  lda,
+		 const int    ipiv[],
+		 double       b[],
+		 const int &  ldb,
+		 int &        info)
+  {
+	dgetrs_ (trans, n, nrhs, a, lda, ipiv, b, ldb, info);
+  }
+
+  inline void
+  getrs (const char & trans,
+		 const int &  n,
+		 const int &  nrhs,
+		 const float  a[],
+		 const int &  lda,
+		 const int    ipiv[],
+		 float        b[],
+		 const int &  ldb,
+		 int &        info)
+  {
+	sgetrs_ (trans, n, nrhs, a, lda, ipiv, b, ldb, info);
   }
 
   inline int

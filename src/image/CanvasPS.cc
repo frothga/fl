@@ -15,7 +15,6 @@ for details.
 
 
 #include "fl/canvas.h"
-#include "fl/lapack.h"
 
 #include <algorithm>
 
