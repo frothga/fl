@@ -58,7 +58,7 @@ Listener::listen (int port, int lastPort, int scanTimeout)
   int firstPort = port;
   if (lastPort < 0) lastPort = port;
   Stopwatch timer;
-  while (port <= lastPort)
+  while (port <= lastPort  &&  ! stop)
   {
 	address.sin_port = htons (port);
 	if (bind (sock, (struct sockaddr *) &address, sizeof (address)))
@@ -78,6 +78,11 @@ Listener::listen (int port, int lastPort, int scanTimeout)
 	  throw "bind failed (probably due to a lingering socket)";
 	}
 	break;
+  }
+  if (stop)
+  {
+	CLOSESOCKET (sock);
+	return;
   }
   this->port = port;
 
@@ -161,6 +166,8 @@ Listener::listen (int port, int lastPort, int scanTimeout)
 # ifdef HAVE_PTHREAD
   pthread_attr_destroy (&attributes);
 # endif
+
+  CLOSESOCKET (sock);
 }
 
 void *
