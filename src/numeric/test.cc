@@ -21,7 +21,6 @@ for details.
 #include "fl/cluster.h"
 #include "fl/neighbor.h"
 #include "fl/time.h"
-#include "fl/MatrixFixed.tcc"
 
 #include <limits>
 #include <complex>
@@ -1033,7 +1032,9 @@ testCluster ()
 # ifdef HAVE_LAPACK
   GaussianMixture gm (separation / 2);
   testCluster (&gm, data, separation);
-#  endif
+# else
+  cerr << "WARNING: GaussianMixture not tested due to lack of LAPACK." << endl;
+# endif
 
   // Test KMeans
   KMeans kmeans (dimension);
@@ -1088,7 +1089,7 @@ testCluster ()
   cerr << "ratio = " << ratio << endl;
   if (ratio < 0.99) throw "SVM does not classify enough test points correctly.";
 # else
-  cerr << "WARNING: Skipping SVM due to lack of LAPACK." << endl;
+  cerr << "WARNING: SVM not tested due to lack of LAPACK." << endl;
 # endif
 
   cout << "ClusterMethods pass" << endl;
