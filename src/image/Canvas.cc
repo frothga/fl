@@ -34,19 +34,19 @@ Canvas::drawDone ()
 }
 
 void
-Canvas::drawPoint (const Point & p, unsigned int color)
+Canvas::drawPoint (const Point & p, uint32_t color)
 {
   throw "drawPoint not implemented for this type of Canvas";
 }
 
 void
-Canvas::drawSegment (const Point & a, const Point & b, unsigned int color)
+Canvas::drawSegment (const Point & a, const Point & b, uint32_t color)
 {
   throw "drawSegment not implemented for this type of Canvas";
 }
 
 void
-Canvas::drawLine (const Point & a, const Point & b, unsigned int color)
+Canvas::drawLine (const Point & a, const Point & b, uint32_t color)
 {
   float l1 = b.y - a.y;
   float l2 = a.x - b.x;
@@ -55,31 +55,31 @@ Canvas::drawLine (const Point & a, const Point & b, unsigned int color)
 }
 
 void
-Canvas::drawLine (float a, float b, float c, unsigned int color)
+Canvas::drawLine (float a, float b, float c, uint32_t color)
 {
   throw "drawLine not implemented for this type of Canvas";
 }
 
 void
-Canvas::drawRay (const Point & p, float angle, unsigned int color)
+Canvas::drawRay (const Point & p, float angle, uint32_t color)
 {
   throw "drawRay not implemented for this type of Canvas";
 }
 
 void
-Canvas::drawPolygon (const std::vector<Point> & points, unsigned int color)
+Canvas::drawPolygon (const std::vector<Point> & points, uint32_t color)
 {
   throw "drawPolygon not implemented for this type of Canvas";
 }
 
 void
-Canvas::drawFilledPolygon (const std::vector<Point> & points, unsigned int color)
+Canvas::drawFilledPolygon (const std::vector<Point> & points, uint32_t color)
 {
   throw "drawFilledPolygon not implemented for this type of Canvas";
 }
 
 void
-Canvas::drawParallelogram (const Matrix<double> & S, float radius, unsigned int color)
+Canvas::drawParallelogram (const Matrix<double> & S, float radius, uint32_t color)
 {
   Vector<double> tl (3);
   tl[0] = -radius;
@@ -110,7 +110,7 @@ Canvas::drawParallelogram (const Matrix<double> & S, float radius, unsigned int 
 }
 
 void
-Canvas::drawParallelogram (const PointAffine & p, float radius, unsigned int color)
+Canvas::drawParallelogram (const PointAffine & p, float radius, uint32_t color)
 {
   MatrixFixed<double,2,2> R;
   R(0,0) = cos (p.angle);
@@ -127,13 +127,13 @@ Canvas::drawParallelogram (const PointAffine & p, float radius, unsigned int col
 }
 
 void
-Canvas::drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill)
+Canvas::drawFilledRectangle (const Point & corner0, const Point & corner1, uint32_t colorFill)
 {
   throw "drawFilledRectangle not implemented for this type of Canvas";
 }
 
 void
-Canvas::drawCircle (const Point & center, float radius, unsigned int color, float startAngle, float endAngle)
+Canvas::drawCircle (const Point & center, float radius, uint32_t color, float startAngle, float endAngle)
 {
   MatrixFixed<double,2,2> A;
   A.identity ();
@@ -141,13 +141,13 @@ Canvas::drawCircle (const Point & center, float radius, unsigned int color, floa
 }
 
 void
-Canvas::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
+Canvas::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, uint32_t color, float startAngle, float endAngle, bool inverse)
 {
   throw "drawEllipse not implemented for this type of Canvas";
 }
 
 void
-Canvas::drawEllipse (const Matrix<double> & S, float radius, unsigned int color)
+Canvas::drawEllipse (const Matrix<double> & S, float radius, uint32_t color)
 {
   Point center (S(0,2), S(1,2));
   MatrixFixed<double,2,2> shape = S.region (0, 0, 1, 1);
@@ -166,7 +166,7 @@ Canvas::drawEllipse (const Matrix<double> & S, float radius, unsigned int color)
    be marked.
 **/
 void
-Canvas::drawMSER (const PointMSER & p, const Image & image, unsigned int colorFill, unsigned int colorBorder)
+Canvas::drawMSER (const PointMSER & p, const Image & image, uint32_t colorFill, uint32_t colorBorder)
 {
   throw "drawMSER not implemented for this type of Canvas";
 }
@@ -178,7 +178,7 @@ Canvas::drawImage (const Image & image, Point & p, float width, float height)
 }
 
 void
-Canvas::drawText (const std::string & text, const Point & point, unsigned int color, float angle)
+Canvas::drawText (const std::string & text, const Point & point, uint32_t color, float angle)
 {
   throw "drawText not implemented for this type of Canvas";
 }

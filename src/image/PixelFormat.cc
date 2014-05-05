@@ -179,19 +179,19 @@ static int refcountIncremented = incrementRefcount ();
 // Structure used for converting odd stride (ie: stride = 3 bytes)
 union Int2Char
 {
-  unsigned int  all;
+  uint32_t  all;
   struct
   {
 #   if BYTE_ORDER == LITTLE_ENDIAN
-	unsigned char piece0;
-	unsigned char piece1;
-	unsigned char piece2;
-	unsigned char barf;
+	uint8_t piece0;
+	uint8_t piece1;
+	uint8_t piece2;
+	uint8_t barf;
 #   elif BYTE_ORDER == BIG_ENDIAN
-	unsigned char barf;
-	unsigned char piece0;
-	unsigned char piece1;
-	unsigned char piece2;
+	uint8_t barf;
+	uint8_t piece0;
+	uint8_t piece1;
+	uint8_t piece2;
 #   endif
   };
 };
@@ -357,8 +357,8 @@ HLSvalue (const float & n1, const float & n2, float h)
 
 // class PixelFormat ----------------------------------------------------------
 
-unsigned char * PixelFormat::lutFloat2Char = PixelFormat::buildFloat2Char ();
-float *         PixelFormat::lutChar2Float = PixelFormat::buildChar2Float ();
+uint8_t * PixelFormat::lutFloat2Char = PixelFormat::buildFloat2Char ();
+float *   PixelFormat::lutChar2Float = PixelFormat::buildChar2Float ();
 
 PixelFormat::~PixelFormat ()
 {
@@ -398,14 +398,14 @@ PixelFormat::fromAny (const Image & image, Image & result) const
   PixelBufferPacked * i = (PixelBufferPacked *) central.buffer;
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i);
-  unsigned int * source = (unsigned int *) i->base ();
-  const int step        = i->stride - central.width * sizeof (unsigned int);
+  uint32_t * source = (uint32_t *) i->base ();
+  const int  step   = i->stride - central.width * sizeof (uint32_t);
   if (o)
   {
-	const int destDepth    = (int) depth;
-	unsigned char * dest   = (unsigned char *) o->base ();
-	unsigned char * end    = dest + o->stride * result.height;
-	unsigned char * rowEnd = dest + result.width * destDepth;
+	const int destDepth = (int) depth;
+	uint8_t * dest      = (uint8_t *) o->base ();
+	uint8_t * end       = dest + o->stride * result.height;
+	uint8_t * rowEnd    = dest + result.width * destDepth;
 	while (dest < end)
 	{
 	  while (dest < rowEnd)
@@ -417,7 +417,7 @@ PixelFormat::fromAny (const Image & image, Image & result) const
 #       endif
 		dest += destDepth;
 	  }
-	  source = (unsigned int *) ((char *) source + step);
+	  source = (uint32_t *) ((char *) source + step);
 	  rowEnd += o->stride;
 	}
   }
@@ -433,7 +433,7 @@ PixelFormat::fromAny (const Image & image, Image & result) const
 		setRGBA (result.buffer->pixel (x, y), *source++);
 #       endif
 	  }
-	  source = (unsigned int *) ((char *) source + step);
+	  source = (uint32_t *) ((char *) source + step);
 	}
   }
 }
@@ -478,7 +478,7 @@ PixelFormat::operator == (const PixelFormat & that) const
 void
 PixelFormat::getRGBA (void * pixel, float values[]) const
 {
-  unsigned int rgba = getRGBA (pixel);
+  uint32_t rgba = getRGBA (pixel);
   values[0] = lutChar2Float[(rgba & 0xFF000000) >> 24];
   values[1] = lutChar2Float[(rgba &   0xFF0000) >> 16];
   values[2] = lutChar2Float[(rgba &     0xFF00) >>  8];
@@ -500,29 +500,29 @@ PixelFormat::getXYZ (void * pixel, float values[]) const
 /**
    See PixelFormatUYVY::setRGBA() for more details on the conversion matrix.
  **/
-unsigned int
+uint32_t
 PixelFormat::getYUV  (void * pixel) const
 {
-  unsigned int rgba = getRGBA (pixel);
+  uint32_t rgba = getRGBA (pixel);
 
-  int r = (rgba & 0xFF000000) >> 24;
-  int g = (rgba &   0xFF0000) >> 16;
-  int b = (rgba &     0xFF00) >>  8;
+  int32_t r = (rgba & 0xFF000000) >> 24;
+  int32_t g = (rgba &   0xFF0000) >> 16;
+  int32_t b = (rgba &     0xFF00) >>  8;
 
-  unsigned int y = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) & 0xFF0000;
-  unsigned int u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) & 0xFF0000;
-  unsigned int v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) & 0xFF0000;
+  uint32_t y = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) & 0xFF0000;
+  uint32_t u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) & 0xFF0000;
+  uint32_t v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) & 0xFF0000;
 
   return y | (u >> 8) | (v >> 16);
 }
 
-unsigned char
+uint8_t
 PixelFormat::getGray (void * pixel) const
 {
-  unsigned int rgba = getRGBA (pixel);
-  unsigned int r = (rgba & 0xFF000000) >> 16;
-  unsigned int g = (rgba &   0xFF0000) >>  8;
-  unsigned int b = (rgba &     0xFF00);
+  uint32_t rgba = getRGBA (pixel);
+  uint32_t r = (rgba & 0xFF000000) >> 16;
+  uint32_t g = (rgba &   0xFF0000) >>  8;
+  uint32_t b = (rgba &     0xFF00);
   return ((redWeight * r + greenWeight * g + blueWeight * b) / totalWeight + 0x80) >> 8;
 }
 
@@ -532,7 +532,7 @@ PixelFormat::getGray (void * pixel, float & gray) const
   gray = lutChar2Float[getGray (pixel)];
 }
 
-unsigned char
+uint8_t
 PixelFormat::getAlpha (void * pixel) const
 {
   // Presumably, the derived PixelFormat does not have an alpha channel,
@@ -543,10 +543,10 @@ PixelFormat::getAlpha (void * pixel) const
 void
 PixelFormat::setRGBA (void * pixel, float values[]) const
 {
-  unsigned int rgba = (unsigned int) (values[3] * 255);
-  rgba |= lutFloat2Char[(unsigned int) (65535 * min (max (values[0], 0.0f), 1.0f))] << 24;
-  rgba |= lutFloat2Char[(unsigned int) (65535 * min (max (values[1], 0.0f), 1.0f))] << 16;
-  rgba |= lutFloat2Char[(unsigned int) (65535 * min (max (values[2], 0.0f), 1.0f))] <<  8;
+  uint32_t rgba = (uint32_t) (values[3] * 255);
+  rgba |= lutFloat2Char[(uint32_t) (65535 * min (max (values[0], 0.0f), 1.0f))] << 24;
+  rgba |= lutFloat2Char[(uint32_t) (65535 * min (max (values[1], 0.0f), 1.0f))] << 16;
+  rgba |= lutFloat2Char[(uint32_t) (65535 * min (max (values[2], 0.0f), 1.0f))] <<  8;
   setRGBA (pixel, rgba);
 }
 
@@ -566,21 +566,21 @@ PixelFormat::setXYZ (void * pixel, float values[]) const
 }
 
 void
-PixelFormat::setYUV (void * pixel, unsigned int yuv) const
+PixelFormat::setYUV (void * pixel, uint32_t yuv) const
 {
   // It is possible to pass a value where Y = 0 but U and V are not zero.
   // Technically, this is an illegal value.  However, this code doesn't
   // trap that case, so it can generate bogus RGB values when the pixel
   // should be black.
 
-  int y =   yuv & 0xFF0000;
-  int u = ((yuv &   0xFF00) >> 8) - 128;
-  int v =  (yuv &     0xFF)       - 128;
+  int32_t y =   yuv & 0xFF0000;
+  int32_t u = ((yuv &   0xFF00) >> 8) - 128;
+  int32_t v =  (yuv &     0xFF)       - 128;
 
   // See PixelFormatUYVY::getRGBA() for an explanation of this arithmetic.
-  unsigned int r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
-  unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
-  unsigned int b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
+  uint32_t r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
+  uint32_t g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
+  uint32_t b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
 
   setRGBA (pixel, ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF);
 }
@@ -630,9 +630,9 @@ PixelFormat::setHLS (void * pixel, float values[]) const
 }
 
 void
-PixelFormat::setGray (void * pixel, unsigned char gray) const
+PixelFormat::setGray (void * pixel, uint8_t gray) const
 {
-  register unsigned int iv = gray;
+  register uint32_t iv = gray;
   setRGBA (pixel, (iv << 24) | (iv << 16) | (iv << 8) | 0xFF);
 }
 
@@ -640,22 +640,39 @@ void
 PixelFormat::setGray (void * pixel, float gray) const
 {
   gray = min (max (gray, 0.0f), 1.0f);
-  unsigned int iv = lutFloat2Char[(unsigned short) (65535 * gray)];
-  unsigned int rgba = (iv << 24) | (iv << 16) | (iv << 8) | 0xFF;
+  uint32_t iv = lutFloat2Char[(uint16_t) (65535 * gray)];
+  uint32_t rgba = (iv << 24) | (iv << 16) | (iv << 8) | 0xFF;
   setRGBA (pixel, rgba);
 }
 
 void
-PixelFormat::setAlpha (void * pixel, unsigned char alpha) const
+PixelFormat::setAlpha (void * pixel, uint8_t alpha) const
 {
   // Presumably, the derived PixelFormat does not have an alpha channel,
   // so just ignore this request.
 }
 
-inline unsigned char *
+void
+PixelFormat::blend (void * pixel, uint32_t rgba) const
+{
+  uint32_t p = getRGBA (pixel);
+  alphaBlend (rgba, p);
+  setRGBA (pixel, p);
+}
+
+void
+PixelFormat::blend (void * pixel, float values[]) const
+{
+  float p[4];
+  getRGBA (pixel, p);
+  alphaBlend (values, p);
+  setRGBA (pixel, p);
+}
+
+inline uint8_t *
 PixelFormat::buildFloat2Char ()
 {
-  unsigned char * result = (unsigned char *) malloc (65536);
+  uint8_t * result = (uint8_t *) malloc (65536);
   for (int i = 0; i < 65536; i++)
   {
 	double f = i / 65535.0;
@@ -671,7 +688,7 @@ PixelFormat::buildFloat2Char ()
 	  f = 1.055 * pow (f, 1.0 / 2.4) - 0.055;
 	}
 
-	result[i] = (unsigned char) roundp (f * 255);
+	result[i] = (uint8_t) roundp (f * 255);
   }
   return result;
 }
@@ -701,7 +718,7 @@ PixelFormat::buildChar2Float ()
 
 // class PixelFormatPalette ---------------------------------------------------
 
-PixelFormatPalette::PixelFormatPalette (unsigned char * r, unsigned char * g, unsigned char * b, int stride, int bits, bool bigendian)
+PixelFormatPalette::PixelFormatPalette (uint8_t * r, uint8_t * g, uint8_t * b, int stride, int bits, bool bigendian)
 {
   planes     = -1;
   depth      = bits / 8.0f;
@@ -713,7 +730,7 @@ PixelFormatPalette::PixelFormatPalette (unsigned char * r, unsigned char * g, un
   pixels     = 8 / bits;
 
   // build masks
-  unsigned char mask = 0x1;
+  uint8_t mask = 0x1;
   for (int i = 1; i < bits; i++) mask |= mask << 1;
 
   int i = bigendian ? pixels - 1 : 0;
@@ -729,8 +746,8 @@ PixelFormatPalette::PixelFormatPalette (unsigned char * r, unsigned char * g, un
   }
 
   // Build palette
-  unsigned int * p   = palette;
-  unsigned int * end = p + (0x1 << bits);
+  uint32_t * p   = palette;
+  uint32_t * end = p + (0x1 << bits);
   while (p < end)
   {
 	*p++ = (*r << 24) | (*g << 16) | (*b << 8) | 0xFF;
@@ -756,9 +773,9 @@ PixelFormatPalette::operator == (const PixelFormat & that) const
   if (! other) return false;
   if (bits != other->bits) return false;
 
-  const unsigned int * o   = other->palette;
-  const unsigned int * p   = palette;
-  const unsigned int * end = p + (0x1 << bits);
+  const uint32_t * o   = other->palette;
+  const uint32_t * p   = palette;
+  const uint32_t * end = p + (0x1 << bits);
   while (p < end)
   {
 	if (*o++ != *p++) return false;
@@ -766,25 +783,25 @@ PixelFormatPalette::operator == (const PixelFormat & that) const
   return true;
 }
 
-unsigned int
+uint32_t
 PixelFormatPalette::getRGBA  (void * pixel) const
 {
   PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
-  unsigned int index = (*data->address & masks[data->index]) >> shifts[data->index];
+  uint32_t index = (*data->address & masks[data->index]) >> shifts[data->index];
   return palette[index];
 }
 
 void
-PixelFormatPalette::setRGBA  (void * pixel, unsigned int rgba) const
+PixelFormatPalette::setRGBA  (void * pixel, uint32_t rgba) const
 {
   // Naive linear search for closest color
   int r =  rgba             >> 24;
   int g = (rgba & 0xFF0000) >> 16;
   int b = (rgba &   0xFF00) >>  8;
 
-  const unsigned int * p         = palette;
-  const unsigned int * end       = p + 256;
-  const unsigned int * bestEntry = p;
+  const uint32_t * p         = palette;
+  const uint32_t * end       = p + 256;
+  const uint32_t * bestEntry = p;
   int smallestDifference = INT_MAX;
   while (p < end)
   {
@@ -803,11 +820,11 @@ PixelFormatPalette::setRGBA  (void * pixel, unsigned int rgba) const
 
 	p++;
   }
-  unsigned char index = bestEntry - palette;
+  uint8_t index = bestEntry - palette;
 
   // Write the resulting palette index into the buffer
   PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
-  unsigned char m = masks[data->index];
+  uint8_t m = masks[data->index];
   *data->address = (*data->address & ~m) | ((index << shifts[data->index]) & m);
 }
 
@@ -827,7 +844,7 @@ PixelFormatGrayBits::PixelFormatGrayBits (int bits, bool bigendian)
 
   // build masks
 
-  unsigned char mask = 0x1;
+  uint8_t mask = 0x1;
   for (int i = 1; i < bits; i++) mask |= mask << 1;
 
   int i = bigendian ? pixels - 1 : 0;
@@ -858,9 +875,9 @@ PixelFormatGrayBits::operator == (const PixelFormat & that) const
   if (! other) return false;
   if (bits != other->bits) return false;
 
-  const unsigned char * o   = other->masks;
-  const unsigned char * m   = masks;
-  const unsigned char * end = m + pixels;
+  const uint8_t * o   = other->masks;
+  const uint8_t * m   = masks;
+  const uint8_t * end = m + pixels;
   while (m < end)
   {
 	if (*o++ != *m++) return false;
@@ -868,27 +885,27 @@ PixelFormatGrayBits::operator == (const PixelFormat & that) const
   return true;
 }
 
-unsigned int
+uint32_t
 PixelFormatGrayBits::getRGBA  (void * pixel) const
 {
   PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
 
-  unsigned int t = (*data->address & masks[data->index]) << shifts[data->index];
+  uint32_t t = (*data->address & masks[data->index]) << shifts[data->index];
   t = dublicate (t, dublicateTable[bits], 31);
 
   return (t << 24) | (t << 16) | (t << 8) | 0xFF;
 }
 
 void
-PixelFormatGrayBits::setRGBA  (void * pixel, unsigned int rgba) const
+PixelFormatGrayBits::setRGBA  (void * pixel, uint32_t rgba) const
 {
-  unsigned int r = (rgba & 0xFF000000) >> 16;
-  unsigned int g = (rgba &   0xFF0000) >>  8;
-  unsigned int b =  rgba &     0xFF00;
-  unsigned char t = ((r * redWeight + g * greenWeight + b * blueWeight) / totalWeight + 0x80) >> 8;
+  uint32_t r = (rgba & 0xFF000000) >> 16;
+  uint32_t g = (rgba &   0xFF0000) >>  8;
+  uint32_t b =  rgba &     0xFF00;
+  uint8_t  t = ((r * redWeight + g * greenWeight + b * blueWeight) / totalWeight + 0x80) >> 8;
 
   PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
-  unsigned char m = masks[data->index];
+  uint8_t m = masks[data->index];
   *data->address = (*data->address & ~m) | ((t >> shifts[data->index]) & m);
 }
 
@@ -958,19 +975,19 @@ PixelFormatGrayChar::fromGrayShort (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned short * fromPixel = (unsigned short *) i->base ();
-  unsigned char *  toPixel   = (unsigned char *)  o->base ();
-  unsigned char *  end       = toPixel + result.width * result.height;
+  uint16_t * fromPixel = (uint16_t *) i->base ();
+  uint8_t *  toPixel   = (uint8_t *)  o->base ();
+  uint8_t *  end       = toPixel + result.width * result.height;
   const int grayShift = ((const PixelFormatGrayShort *) image.format)->grayShift;
   const int step = i->stride - image.width * sizeof (short);
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width;
+	uint8_t * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
 	  *toPixel++ = lutFloat2Char[*fromPixel++ << grayShift];
 	}
-	fromPixel = (unsigned short *) ((char *) fromPixel + step);
+	fromPixel = (uint16_t *) ((char *) fromPixel + step);
   }
 }
 
@@ -981,17 +998,17 @@ PixelFormatGrayChar::fromGrayFloat (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  float *         fromPixel = (float *)         i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height;
+  float *   fromPixel = (float *)   i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (float);
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width;
+	uint8_t * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
 	  float p = min (max (*fromPixel++, 0.0f), 1.0f);
-	  *toPixel++ = lutFloat2Char[(unsigned short) (65535 * p)];
+	  *toPixel++ = lutFloat2Char[(uint16_t) (65535 * p)];
 	}
 	fromPixel = (float *) ((char *) fromPixel + step);
   }
@@ -1004,17 +1021,17 @@ PixelFormatGrayChar::fromGrayDouble (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  double *        fromPixel = (double *)        i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height;
+  double *  fromPixel = (double *)  i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (double);
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width;
+	uint8_t * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
 	  double p = min (max (*fromPixel++, 0.0), 1.0);
-	  *toPixel++ = lutFloat2Char[(unsigned short) (65535 * p)];
+	  *toPixel++ = lutFloat2Char[(uint16_t) (65535 * p)];
 	}
 	fromPixel = (double *) ((char *) fromPixel + step);
   }
@@ -1027,16 +1044,16 @@ PixelFormatGrayChar::fromRGBAChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * 4;
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width;
+	uint8_t * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
-	  unsigned int t;
+	  uint32_t t;
 	  t  = fromPixel[0] * (redWeight   << 8);
 	  t += fromPixel[1] * (greenWeight << 8);
 	  t += fromPixel[2] * (blueWeight  << 8);
@@ -1056,56 +1073,56 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 
   const PixelFormatRGBABits * that = (const PixelFormatRGBABits *) image.format;
 
-  const unsigned int grayMask = 0xFF00;
+  const uint32_t grayMask = 0xFF00;
   int redShift;
   int greenShift;
   int blueShift;
   int alphaShift;
   that->shift (grayMask, grayMask, grayMask, grayMask, redShift, greenShift, blueShift, alphaShift);
-  int redFactor   = prepareDublicate (redShift,   that->redBits);
-  int greenFactor = prepareDublicate (greenShift, that->greenBits);
-  int blueFactor  = prepareDublicate (blueShift,  that->blueBits);
+  uint32_t redFactor   = prepareDublicate (redShift,   that->redBits);
+  uint32_t greenFactor = prepareDublicate (greenShift, that->greenBits);
+  uint32_t blueFactor  = prepareDublicate (blueShift,  that->blueBits);
 
   #define RGBBits2GrayChar(fromSize) \
   { \
-    unsigned fromSize * fromPixel = (unsigned fromSize *) i->base (); \
-    unsigned char * toPixel       = (unsigned char *)     o->base (); \
-    unsigned char * end           = toPixel + result.width * result.height; \
+    fromSize * fromPixel = (fromSize *) i->base (); \
+    uint8_t  * toPixel   = (uint8_t *)  o->base (); \
+    uint8_t  * end       = toPixel + result.width * result.height; \
 	const int step = i->stride - image.width * sizeof (fromSize); \
     while (toPixel < end) \
     { \
-	  unsigned char * rowEnd = toPixel + result.width; \
+	  uint8_t * rowEnd = toPixel + result.width; \
 	  while (toPixel < rowEnd) \
 	  { \
-		unsigned int r = *fromPixel & that->redMask; \
-		unsigned int g = *fromPixel & that->greenMask; \
-		unsigned int b = *fromPixel & that->blueMask; \
+		uint32_t r = *fromPixel & that->redMask; \
+		uint32_t g = *fromPixel & that->greenMask; \
+		uint32_t b = *fromPixel & that->blueMask; \
 		fromPixel++; \
 		*toPixel++ = ((  (dublicate (r, redFactor,   redShift)   & grayMask) * redWeight \
 					   + (dublicate (g, greenFactor, greenShift) & grayMask) * greenWeight \
 					   + (dublicate (b, blueFactor,  blueShift)  & grayMask) * blueWeight \
 					  ) / totalWeight + 0x80) >> 8; \
 	  } \
-	  fromPixel = (unsigned fromSize *) ((char *) fromPixel + step); \
+	  fromPixel = (fromSize *) ((char *) fromPixel + step); \
     } \
   }
 
   switch ((int) that->depth)
   {
     case 1:
-	  RGBBits2GrayChar (char);
+	  RGBBits2GrayChar (uint8_t);
 	  break;
     case 2:
-	  RGBBits2GrayChar (short);
+	  RGBBits2GrayChar (uint16_t);
 	  break;
     case 3:
 	{
 	  const int step = i->stride - image.width * 3;
 #     if BYTE_ORDER == LITTLE_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->base () + i->stride * image.height - step - 3;
-	  unsigned char * begin     = (unsigned char *) o->base ();
-	  unsigned char * toPixel   = begin + result.width * result.height;
-	  unsigned char * rowBegin  = toPixel - result.width;
+	  uint8_t * fromPixel = (uint8_t *) i->base () + i->stride * image.height - step - 3;
+	  uint8_t * begin     = (uint8_t *) o->base ();
+	  uint8_t * toPixel   = begin + result.width * result.height;
+	  uint8_t * rowBegin  = toPixel - result.width;
 	  // process last pixel
 	  toPixel--;
 	  Int2Char t;
@@ -1113,9 +1130,9 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 	  t.piece1 = fromPixel[1];
 	  t.piece2 = fromPixel[2];
 	  fromPixel -= 3;
-	  unsigned int r = t.all & that->redMask;
-	  unsigned int g = t.all & that->greenMask;
-	  unsigned int b = t.all & that->blueMask;
+	  uint32_t r = t.all & that->redMask;
+	  uint32_t g = t.all & that->greenMask;
+	  uint32_t b = t.all & that->blueMask;
 	  *toPixel-- = ((  (dublicate (r, redFactor,   redShift)   & grayMask) * redWeight
 					 + (dublicate (g, greenFactor, greenShift) & grayMask) * greenWeight
 					 + (dublicate (b, blueFactor,  blueShift)  & grayMask) * blueWeight
@@ -1125,7 +1142,7 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 	  {
 		while (toPixel >= rowBegin)
 		{
-		  unsigned int t = * (unsigned int *) fromPixel;
+		  uint32_t t = * (uint32_t *) fromPixel;
 		  fromPixel -= 3;
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
@@ -1139,19 +1156,19 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 		rowBegin -= result.width;
 	  }
 #     elif BYTE_ORDER == BIG_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->base ();
-	  unsigned char * toPixel   = (unsigned char *) o->base ();
-	  unsigned char * end       = toPixel + result.width * result.height;
-	  unsigned char * rowEnd    = toPixel + result.width;
+	  uint8_t * fromPixel = (uint8_t *) i->base ();
+	  uint8_t * toPixel   = (uint8_t *) o->base ();
+	  uint8_t * end       = toPixel + result.width * result.height;
+	  uint8_t * rowEnd    = toPixel + result.width;
 	  // process first pixel
 	  Int2Char t;
 	  t.piece0 = fromPixel[0];
 	  t.piece1 = fromPixel[1];
 	  t.piece2 = fromPixel[2];
 	  fromPixel += 2;  // only 2, because big-endian pointer is set back by 1
-	  unsigned int r = t.all & that->redMask;
-	  unsigned int g = t.all & that->greenMask;
-	  unsigned int b = t.all & that->blueMask;
+	  uint32_t r = t.all & that->redMask;
+	  uint32_t g = t.all & that->greenMask;
+	  uint32_t b = t.all & that->blueMask;
 	  *toPixel++ = ((  (dublicate (r, redFactor,   redShift)   & grayMask) * redWeight
 					 + (dublicate (g, greenFactor, greenShift) & grayMask) * greenWeight
 					 + (dublicate (b, blueFactor,  blueShift)  & grayMask) * blueWeight
@@ -1161,7 +1178,7 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 	  {
 		while (toPixel < rowEnd)
 		{
-		  unsigned int t = * (unsigned int *) fromPixel;
+		  uint32_t t = * (uint32_t *) fromPixel;
 		  fromPixel += 3;
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
@@ -1179,7 +1196,7 @@ PixelFormatGrayChar::fromRGBABits (const Image & image, Image & result) const
 	}
     case 4:
     default:
-	  RGBBits2GrayChar (int);
+	  RGBBits2GrayChar (uint32_t);
   }
 }
 
@@ -1190,13 +1207,13 @@ PixelFormatGrayChar::fromYCbCr (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->plane0;
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height;
+  uint8_t * fromPixel = (uint8_t *) i->plane0;
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height;
   const int step = i->stride0 - image.width;
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width;
+	uint8_t * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
 	  *toPixel++ = PixelFormatPlanarYCbCr::lutYout[*fromPixel++];
@@ -1208,19 +1225,19 @@ PixelFormatGrayChar::fromYCbCr (const Image & image, Image & result) const
 void
 PixelFormatGrayChar::fromAny (const Image & image, Image & result) const
 {
-  unsigned char * dest = (unsigned char *) ((PixelBufferPacked *) result.buffer)->base ();
+  uint8_t * dest = (uint8_t *) ((PixelBufferPacked *) result.buffer)->base ();
   const PixelFormat * sourceFormat = image.format;
 
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->base ();
+	uint8_t * source      = (uint8_t *) i->base ();
 	const int sourceDepth = (int) sourceFormat->depth;
-	const int step = i->stride - image.width * sourceDepth;
-	unsigned char * end = dest + result.width * result.height;
+	const int step        = i->stride - image.width * sourceDepth;
+	uint8_t * end         = dest + result.width * result.height;
 	while (dest < end)
 	{
-	  unsigned char * rowEnd = dest + result.width;
+	  uint8_t * rowEnd = dest + result.width;
 	  while (dest < rowEnd)
 	  {
 		*dest++ = sourceFormat->getGray (source);
@@ -1259,42 +1276,42 @@ PixelFormatGrayChar::operator == (const PixelFormat & that) const
   return false;
 }
 
-unsigned int
+uint32_t
 PixelFormatGrayChar::getRGBA (void * pixel) const
 {
-  unsigned int t = *((unsigned char *) pixel);
+  uint32_t t = *((uint8_t *) pixel);
   return (t << 24) | (t << 16) | (t << 8) | 0xFF;
 }
 
 void
 PixelFormatGrayChar::getXYZ (void * pixel, float values[]) const
 {
-  float t = lutChar2Float[*(unsigned char *) pixel];
+  float t = lutChar2Float[*(uint8_t *) pixel];
   values[0] = 0.950470f * t;
   values[1] =             t;
   values[2] = 1.088830f * t;
 }
 
-unsigned char
+uint8_t
 PixelFormatGrayChar::getGray (void * pixel) const
 {
-  return *((unsigned char *) pixel);
+  return *((uint8_t *) pixel);
 }
 
 void
 PixelFormatGrayChar::getGray (void * pixel, float & gray) const
 {
-  gray = lutChar2Float[*(unsigned char *) pixel];
+  gray = lutChar2Float[*(uint8_t *) pixel];
 }
 
 void
-PixelFormatGrayChar::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatGrayChar::setRGBA (void * pixel, uint32_t rgba) const
 {
-  unsigned int r = (rgba & 0xFF000000) >> 16;
-  unsigned int g = (rgba &   0xFF0000) >>  8;
-  unsigned int b =  rgba &     0xFF00;
+  uint32_t r = (rgba & 0xFF000000) >> 16;
+  uint32_t g = (rgba &   0xFF0000) >>  8;
+  uint32_t b =  rgba &     0xFF00;
 
-  *((unsigned char *) pixel) = ((r * redWeight + g * greenWeight + b * blueWeight) / totalWeight + 0x80) >> 8;
+  *((uint8_t *) pixel) = ((r * redWeight + g * greenWeight + b * blueWeight) / totalWeight + 0x80) >> 8;
 }
 
 void
@@ -1302,20 +1319,20 @@ PixelFormatGrayChar::setXYZ (void * pixel, float values[]) const
 {
   // Convert Y value to non-linear form
   float v = min (max (values[1], 0.0f), 1.0f);
-  *((unsigned char *) pixel) = lutFloat2Char[(unsigned short) (65535 * v)];
+  *((uint8_t *) pixel) = lutFloat2Char[(uint16_t) (65535 * v)];
 }
 
 void
-PixelFormatGrayChar::setGray (void * pixel, unsigned char gray) const
+PixelFormatGrayChar::setGray (void * pixel, uint8_t gray) const
 {
-  *((unsigned char *) pixel) = gray;
+  *((uint8_t *) pixel) = gray;
 }
 
 void
 PixelFormatGrayChar::setGray (void * pixel, float gray) const
 {
   gray = min (max (gray, 0.0f), 1.0f);
-  *((unsigned char *) pixel) = lutFloat2Char[(unsigned short) (65535 * gray)];
+  *((uint8_t *) pixel) = lutFloat2Char[(uint16_t) (65535 * gray)];
 }
 
 
@@ -1330,15 +1347,15 @@ PixelFormatGrayAlphaChar::PixelFormatGrayAlphaChar ()
   hasAlpha   = true;
 }
 
-unsigned int
+uint32_t
 PixelFormatGrayAlphaChar::getRGBA (void * pixel) const
 {
-  uint32_t t = *((unsigned char *) pixel);
-  return (t << 24) | (t << 16) | (t << 8) | *((unsigned char *) pixel + 1);
+  uint32_t t = *((uint8_t *) pixel);
+  return (t << 24) | (t << 16) | (t << 8) | *((uint8_t *) pixel + 1);
 }
 
 void
-PixelFormatGrayAlphaChar::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatGrayAlphaChar::setRGBA (void * pixel, uint32_t rgba) const
 {
   uint32_t r = (rgba & 0xFF000000) >> 16;
   uint32_t g = (rgba &   0xFF0000) >>  8;
@@ -1351,7 +1368,7 @@ PixelFormatGrayAlphaChar::setRGBA (void * pixel, unsigned int rgba) const
 
 // class PixelFormatGrayShort -------------------------------------------------
 
-PixelFormatGrayShort::PixelFormatGrayShort (unsigned short grayMask)
+PixelFormatGrayShort::PixelFormatGrayShort (uint16_t grayMask)
 {
   planes     = 1;
   depth      = 2;
@@ -1407,16 +1424,16 @@ PixelFormatGrayShort::fromGrayChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char *  fromPixel = (unsigned char *)  i->base ();
-  unsigned short * toPixel   = (unsigned short *) o->base ();
-  unsigned short * end       = toPixel + result.width * result.height;
+  uint8_t *  fromPixel = (uint8_t *)  i->base ();
+  uint16_t * toPixel   = (uint16_t *) o->base ();
+  uint16_t * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width;
   while (toPixel < end)
   {
-	unsigned short * rowEnd = toPixel + result.width;
+	uint16_t * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
-	  *toPixel++ = (unsigned short) (grayMask * lutChar2Float[*fromPixel++]);
+	  *toPixel++ = (uint16_t) (grayMask * lutChar2Float[*fromPixel++]);
 	}
 	fromPixel += step;
   }
@@ -1429,17 +1446,17 @@ PixelFormatGrayShort::fromGrayFloat (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  float *          fromPixel = (float *)          i->base ();
-  unsigned short * toPixel   = (unsigned short *) o->base ();
-  unsigned short * end       = toPixel + result.width * result.height;
+  float *    fromPixel = (float *)    i->base ();
+  uint16_t * toPixel   = (uint16_t *) o->base ();
+  uint16_t * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (float);
   while (toPixel < end)
   {
-	unsigned short * rowEnd = toPixel + result.width;
+	uint16_t * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
 	  float p = min (max (*fromPixel++, 0.0f), 1.0f);
-	  *toPixel++ = (unsigned short) (p * grayMask);
+	  *toPixel++ = (uint16_t) (p * grayMask);
 	}
 	fromPixel = (float *) ((char *) fromPixel + step);
   }
@@ -1452,17 +1469,17 @@ PixelFormatGrayShort::fromGrayDouble (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  double *         fromPixel = (double *)         i->base ();
-  unsigned short * toPixel   = (unsigned short *) o->base ();
-  unsigned short * end       = toPixel + result.width * result.height;
+  double *   fromPixel = (double *)   i->base ();
+  uint16_t * toPixel   = (uint16_t *) o->base ();
+  uint16_t * end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (double);
   while (toPixel < end)
   {
-	unsigned short * rowEnd = toPixel + result.width;
+	uint16_t * rowEnd = toPixel + result.width;
 	while (toPixel < rowEnd)
 	{
 	  double p = min (max (*fromPixel++, 0.0), 1.0);
-	  *toPixel++ = (unsigned short) (p * grayMask);
+	  *toPixel++ = (uint16_t) (p * grayMask);
 	}
 	fromPixel = (double *) ((char *) fromPixel + step);
   }
@@ -1471,24 +1488,24 @@ PixelFormatGrayShort::fromGrayDouble (const Image & image, Image & result) const
 void
 PixelFormatGrayShort::fromAny (const Image & image, Image & result) const
 {
-  unsigned short * dest = (unsigned short *) ((PixelBufferPacked *) result.buffer)->base ();
+  uint16_t * dest = (uint16_t *) ((PixelBufferPacked *) result.buffer)->base ();
   const PixelFormat * sourceFormat = image.format;
 
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->base ();
-	const int sourceDepth = (int) sourceFormat->depth;
-	const int step = i->stride - image.width * sourceDepth;
-	unsigned short * end = dest + image.width * image.height;
+	uint8_t *  source      = (uint8_t *) i->base ();
+	const int  sourceDepth = (int) sourceFormat->depth;
+	const int  step        = i->stride - image.width * sourceDepth;
+	uint16_t * end         = dest + image.width * image.height;
 	while (dest < end)
 	{
-	  unsigned short * rowEnd = dest + result.width;
+	  uint16_t * rowEnd = dest + result.width;
 	  while (dest < rowEnd)
 	  {
 		float gray;
 		sourceFormat->getGray (source, gray);
-		*dest++ = (unsigned short) (grayMask * gray);
+		*dest++ = (uint16_t) (grayMask * gray);
 		source += sourceDepth;
 	  }
 	  source += step;
@@ -1502,7 +1519,7 @@ PixelFormatGrayShort::fromAny (const Image & image, Image & result) const
 	  {
 		float gray;
 		sourceFormat->getGray (image.buffer->pixel (x, y), gray);
-		*dest++ = (unsigned short) (grayMask * gray);
+		*dest++ = (uint16_t) (grayMask * gray);
 	  }
 	}
   }
@@ -1525,63 +1542,63 @@ PixelFormatGrayShort::operator == (const PixelFormat & that) const
   return false;
 }
 
-unsigned int
+uint32_t
 PixelFormatGrayShort::getRGBA (void * pixel) const
 {
-  unsigned int t = lutFloat2Char[*(unsigned short *) pixel << grayShift];
+  uint32_t t = lutFloat2Char[*(uint16_t *) pixel << grayShift];
   return (t << 24) | (t << 16) | (t << 8) | 0xFF;
 }
 
 void
 PixelFormatGrayShort::getXYZ (void * pixel, float values[]) const
 {
-  float t = *((unsigned short *) pixel) / (float) grayMask;
+  float t = *((uint16_t *) pixel) / (float) grayMask;
   values[0] = 0.950470f * t;
   values[1] =             t;
   values[2] = 1.088830f * t;
 }
 
-unsigned char
+uint8_t
 PixelFormatGrayShort::getGray (void * pixel) const
 {
-  return lutFloat2Char[*(unsigned short *) pixel << grayShift];
+  return lutFloat2Char[*(uint16_t *) pixel << grayShift];
 }
 
 void
 PixelFormatGrayShort::getGray (void * pixel, float & gray) const
 {
-  gray = *((unsigned short *) pixel) / (float) grayMask;
+  gray = *((uint16_t *) pixel) / (float) grayMask;
 }
 
 void
-PixelFormatGrayShort::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatGrayShort::setRGBA (void * pixel, uint32_t rgba) const
 {
   float r = lutChar2Float[ rgba             >> 24];
   float g = lutChar2Float[(rgba & 0xFF0000) >> 16];
   float b = lutChar2Float[(rgba &   0xFF00) >>  8];
 
   float t = r * redToY + g * greenToY + b * blueToY;
-  *((unsigned short *) pixel) = (unsigned short) (grayMask * t);
+  *((uint16_t *) pixel) = (uint16_t) (grayMask * t);
 }
 
 void
 PixelFormatGrayShort::setXYZ (void * pixel, float values[]) const
 {
   float v = min (max (values[1], 0.0f), 1.0f);
-  *((unsigned short *) pixel) = (unsigned short) (grayMask * v);
+  *((uint16_t *) pixel) = (uint16_t) (grayMask * v);
 }
 
 void
-PixelFormatGrayShort::setGray (void * pixel, unsigned char gray) const
+PixelFormatGrayShort::setGray (void * pixel, uint8_t gray) const
 {
-  *((unsigned short *) pixel) = (unsigned short) (grayMask * lutChar2Float[gray]);
+  *((uint16_t *) pixel) = (uint16_t) (grayMask * lutChar2Float[gray]);
 }
 
 void
 PixelFormatGrayShort::setGray (void * pixel, float gray) const
 {
   gray = min (max (gray, 0.0f), 1.0f);
-  *((unsigned short *) pixel) = (unsigned short) (grayMask * gray);
+  *((uint16_t *) pixel) = (uint16_t) (grayMask * gray);
 }
 
 
@@ -1608,7 +1625,7 @@ PixelFormatGrayShortSigned::operator == (const PixelFormat & that) const
   return false;
 }
 
-unsigned int
+uint32_t
 PixelFormatGrayShortSigned::getRGBA (void * pixel) const
 {
   uint32_t t = lutFloat2Char[min (65535, max (0, *(int16_t *) pixel + bias))];
@@ -1641,7 +1658,7 @@ PixelFormatGrayShortSigned::getGray (void * pixel, float & gray) const
 }
 
 void
-PixelFormatGrayShortSigned::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatGrayShortSigned::setRGBA (void * pixel, uint32_t rgba) const
 {
   float r = lutChar2Float[ rgba             >> 24];
   float g = lutChar2Float[(rgba & 0xFF0000) >> 16];
@@ -1682,7 +1699,7 @@ PixelFormatGrayAlphaShort::PixelFormatGrayAlphaShort ()
   hasAlpha   = true;
 }
 
-unsigned int
+uint32_t
 PixelFormatGrayAlphaShort::getRGBA (void * pixel) const
 {
   uint32_t t = lutFloat2Char[*(uint16_t *) pixel];
@@ -1691,7 +1708,7 @@ PixelFormatGrayAlphaShort::getRGBA (void * pixel) const
 }
 
 void
-PixelFormatGrayAlphaShort::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatGrayAlphaShort::setRGBA (void * pixel, uint32_t rgba) const
 {
   float r = lutChar2Float[ rgba             >> 24];
   float g = lutChar2Float[(rgba & 0xFF0000) >> 16];
@@ -1772,9 +1789,9 @@ PixelFormatGrayFloat::fromGrayChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  float *         toPixel   = (float *)         o->base ();
-  float *         end       = toPixel + result.width * result.height;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  float *   toPixel   = (float *)   o->base ();
+  float *   end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width;
   while (toPixel < end)
   {
@@ -1794,9 +1811,9 @@ PixelFormatGrayFloat::fromGrayShort (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned short * fromPixel = (unsigned short *) i->base ();
-  float *          toPixel   = (float *)          o->base ();
-  float *          end       = toPixel + result.width * result.height;
+  uint16_t * fromPixel = (uint16_t *) i->base ();
+  float *    toPixel   = (float *)    o->base ();
+  float *    end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (short);
   const float grayMask = ((const PixelFormatGrayShort *) image.format)->grayMask;
   while (toPixel < end)
@@ -1806,7 +1823,7 @@ PixelFormatGrayFloat::fromGrayShort (const Image & image, Image & result) const
 	{
 	  *toPixel++ = *fromPixel++ / grayMask;
 	}
-	fromPixel = (unsigned short *) ((char *) fromPixel + step);
+	fromPixel = (uint16_t *) ((char *) fromPixel + step);
   }
 }
 
@@ -1839,9 +1856,9 @@ PixelFormatGrayFloat::fromRGBAChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  float *         toPixel   = (float *)         o->base ();
-  float *         end       = toPixel + result.width * result.height;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  float *   toPixel   = (float *)   o->base ();
+  float *   end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * 4;
   while (toPixel < end)
   {
@@ -1865,9 +1882,9 @@ PixelFormatGrayFloat::fromRGBChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  float *         toPixel   = (float *)         o->base ();
-  float *         end       = toPixel + result.width * result.height;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  float *   toPixel   = (float *)   o->base ();
+  float *   end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * 3;
   while (toPixel < end)
   {
@@ -1898,50 +1915,50 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
   int blueShift;
   int alphaShift;
   that->shift (0xFF, 0xFF, 0xFF, 0xFF, redShift, greenShift, blueShift, alphaShift);
-  int redFactor   = prepareDublicate (redShift,   that->redBits);
-  int greenFactor = prepareDublicate (greenShift, that->greenBits);
-  int blueFactor  = prepareDublicate (blueShift,  that->blueBits);
+  uint32_t redFactor   = prepareDublicate (redShift,   that->redBits);
+  uint32_t greenFactor = prepareDublicate (greenShift, that->greenBits);
+  uint32_t blueFactor  = prepareDublicate (blueShift,  that->blueBits);
 
   #define RGBBits2GrayFloat(imageSize) \
   { \
-    unsigned imageSize * fromPixel = (unsigned imageSize *) i->base (); \
-    float *              toPixel   = (float *)              o->base (); \
-    float *              end       = toPixel + result.width * result.height; \
+    imageSize * fromPixel = (imageSize *) i->base (); \
+    float *     toPixel   = (float *)     o->base (); \
+    float *     end       = toPixel + result.width * result.height; \
 	const int step = i->stride - image.width * sizeof (imageSize); \
 	while (toPixel < end) \
     { \
 	  float * rowEnd = toPixel + result.width; \
 	  while (toPixel < rowEnd) \
 	  { \
-		unsigned int r = *fromPixel & that->redMask; \
-		unsigned int g = *fromPixel & that->greenMask; \
-		unsigned int b = *fromPixel & that->blueMask; \
+		uint32_t r = *fromPixel & that->redMask; \
+		uint32_t g = *fromPixel & that->greenMask; \
+		uint32_t b = *fromPixel & that->blueMask; \
 		fromPixel++; \
 		float fr = lutChar2Float[dublicate (r, redFactor,   redShift)]; \
 		float fg = lutChar2Float[dublicate (g, greenFactor, greenShift)]; \
 		float fb = lutChar2Float[dublicate (b, blueFactor,  blueShift)]; \
 		*toPixel++ = redToY * fr + greenToY * fg + blueToY * fb; \
 	  } \
-	  fromPixel = (unsigned imageSize *) ((char *) fromPixel + step); \
+	  fromPixel = (imageSize *) ((char *) fromPixel + step); \
 	} \
   }
 
   switch ((int) that->depth)
   {
     case 1:
-	  RGBBits2GrayFloat (char);
+	  RGBBits2GrayFloat (uint8_t);
 	  break;
     case 2:
-	  RGBBits2GrayFloat (short);
+	  RGBBits2GrayFloat (uint16_t);
 	  break;
     case 3:
 	{
 	  const int step = i->stride - image.width * 3;
 #     if BYTE_ORDER == LITTLE_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->base () + i->stride * image.height - step - 3;
-	  float *         begin     = (float *)         o->base ();
-	  float *         toPixel   = begin + result.width * result.height;
-	  float *         rowBegin  = toPixel - result.width;
+	  uint8_t * fromPixel = (uint8_t *) i->base () + i->stride * image.height - step - 3;
+	  float *   begin     = (float *)   o->base ();
+	  float *   toPixel   = begin + result.width * result.height;
+	  float *   rowBegin  = toPixel - result.width;
 	  // Process last pixel
 	  toPixel--;
 	  Int2Char t;
@@ -1949,9 +1966,9 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 	  t.piece1 = fromPixel[1];
 	  t.piece2 = fromPixel[2];
 	  fromPixel -= 3;
-	  unsigned int r = t.all & that->redMask;
-	  unsigned int g = t.all & that->greenMask;
-	  unsigned int b = t.all & that->blueMask;
+	  uint32_t r = t.all & that->redMask;
+	  uint32_t g = t.all & that->greenMask;
+	  uint32_t b = t.all & that->blueMask;
 	  float fr = lutChar2Float[dublicate (r, redFactor,   redShift)];
 	  float fg = lutChar2Float[dublicate (g, greenFactor, greenShift)];
 	  float fb = lutChar2Float[dublicate (b, blueFactor,  blueShift)];
@@ -1961,7 +1978,7 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 	  {
 		while (toPixel >= rowBegin)
 		{
-		  unsigned int t = * (unsigned int *) fromPixel;
+		  uint32_t t = * (uint32_t *) fromPixel;
 		  fromPixel -= 3;
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
@@ -1975,19 +1992,19 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 		rowBegin -= result.width;
 	  }
 #     elif BYTE_ORDER == BIG_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->base ();
-	  float *         toPixel   = (float *)         o->base ();
-	  float *         end       = toPixel + result.width * result.height;
-	  float *         rowEnd    = toPixel + result.width;
+	  uint8_t * fromPixel = (uint8_t *) i->base ();
+	  float *   toPixel   = (float *)   o->base ();
+	  float *   end       = toPixel + result.width * result.height;
+	  float *   rowEnd    = toPixel + result.width;
 	  // Process first pixel
 	  Int2Char t;
 	  t.piece0 = fromPixel[0];
 	  t.piece1 = fromPixel[1];
 	  t.piece2 = fromPixel[2];
 	  fromPixel += 2;  // only 2, because big-endian pointer is set back by 1
-	  unsigned int r = t.all & that->redMask;
-	  unsigned int g = t.all & that->greenMask;
-	  unsigned int b = t.all & that->blueMask;
+	  uint32_t r = t.all & that->redMask;
+	  uint32_t g = t.all & that->greenMask;
+	  uint32_t b = t.all & that->blueMask;
 	  float fr = lutChar2Float[dublicate (r, redFactor,   redShift)];
 	  float fg = lutChar2Float[dublicate (g, greenFactor, greenShift)];
 	  float fb = lutChar2Float[dublicate (b, blueFactor,  blueShift)];
@@ -1997,7 +2014,7 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 	  {
 		while (toPixel < rowEnd)
 		{
-		  unsigned int t = * (unsigned int *) fromPixel;
+		  uint32_t t = * (uint32_t *) fromPixel;
 		  fromPixel += 3;
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
@@ -2015,7 +2032,7 @@ PixelFormatGrayFloat::fromRGBABits (const Image & image, Image & result) const
 	}
     case 4:
     default:
-	  RGBBits2GrayFloat (int);
+	  RGBBits2GrayFloat (uint32_t);
   }
 }
 
@@ -2026,9 +2043,9 @@ PixelFormatGrayFloat::fromYCbCr (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->plane0;
-  float *         toPixel   = (float *)         o->base ();
-  float *         end       = toPixel + result.width * result.height;
+  uint8_t * fromPixel = (uint8_t *) i->plane0;
+  float *   toPixel   = (float *)   o->base ();
+  float *   end       = toPixel + result.width * result.height;
   const int step = i->stride0 - image.width;
   while (toPixel < end)
   {
@@ -2050,10 +2067,10 @@ PixelFormatGrayFloat::fromAny (const Image & image, Image & result) const
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->base ();
+	uint8_t * source      = (uint8_t *) i->base ();
 	const int sourceDepth = (int) sourceFormat->depth;
-	const int step = i->stride - image.width * sourceDepth;
-	float * end = dest + image.width * image.height;
+	const int step        = i->stride - image.width * sourceDepth;
+	float *   end         = dest + image.width * image.height;
 	while (dest < end)
 	{
 	  float * rowEnd = dest + result.width;
@@ -2077,11 +2094,11 @@ PixelFormatGrayFloat::fromAny (const Image & image, Image & result) const
   }
 }
 
-unsigned int
+uint32_t
 PixelFormatGrayFloat::getRGBA (void * pixel) const
 {
   float v = min (max (*((float *) pixel), 0.0f), 1.0f);
-  unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)];
+  uint32_t t = lutFloat2Char[(uint16_t) (65535 * v)];
   return (t << 24) | (t << 16) | (t << 8) | 0xFF;
 }
 
@@ -2104,11 +2121,11 @@ PixelFormatGrayFloat::getXYZ (void * pixel, float values[]) const
   values[2] = 1.088830f * t;
 }
 
-unsigned char
+uint8_t
 PixelFormatGrayFloat::getGray (void * pixel) const
 {
   float v = min (max (*((float *) pixel), 0.0f), 1.0f);
-  return lutFloat2Char[(unsigned short) (65535 * v)];
+  return lutFloat2Char[(uint16_t) (65535 * v)];
 }
 
 void
@@ -2118,7 +2135,7 @@ PixelFormatGrayFloat::getGray (void * pixel, float & gray) const
 }
 
 void
-PixelFormatGrayFloat::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatGrayFloat::setRGBA (void * pixel, uint32_t rgba) const
 {
   float r = lutChar2Float[(rgba & 0xFF000000) >> 24];
   float g = lutChar2Float[(rgba &   0xFF0000) >> 16];
@@ -2139,7 +2156,7 @@ PixelFormatGrayFloat::setXYZ (void * pixel, float values[]) const
 }
 
 void
-PixelFormatGrayFloat::setGray  (void * pixel, unsigned char gray) const
+PixelFormatGrayFloat::setGray  (void * pixel, uint8_t gray) const
 {
   *((float *) pixel) = lutChar2Float[gray];
 }
@@ -2220,9 +2237,9 @@ PixelFormatGrayDouble::fromGrayChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  double *        toPixel   = (double *)        o->base ();
-  double *        end       = toPixel + result.width * result.height;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  double *  toPixel   = (double *)  o->base ();
+  double *  end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width;
   while (toPixel < end)
   {
@@ -2242,9 +2259,9 @@ PixelFormatGrayDouble::fromGrayShort (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned short * fromPixel = (unsigned short *) i->base ();
-  double *         toPixel   = (double *)         o->base ();
-  double *         end       = toPixel + result.width * result.height;
+  uint16_t * fromPixel = (uint16_t *) i->base ();
+  double *   toPixel   = (double *)   o->base ();
+  double *   end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * sizeof (short);
   const double grayMask = ((const PixelFormatGrayShort *) image.format)->grayMask;
   while (toPixel < end)
@@ -2254,7 +2271,7 @@ PixelFormatGrayDouble::fromGrayShort (const Image & image, Image & result) const
 	{
 	  *toPixel++ = *fromPixel++ / grayMask;
 	}
-	fromPixel = (unsigned short *) ((char *) fromPixel + step);
+	fromPixel = (uint16_t *) ((char *) fromPixel + step);
   }
 }
 
@@ -2287,9 +2304,9 @@ PixelFormatGrayDouble::fromRGBAChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  double *        toPixel   = (double *)        o->base ();
-  double *        end       = toPixel + result.width * result.height;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  double *  toPixel   = (double *)  o->base ();
+  double *  end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * 4;
   while (toPixel < end)
   {
@@ -2313,9 +2330,9 @@ PixelFormatGrayDouble::fromRGBChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  double *        toPixel   = (double *)        o->base ();
-  double *        end       = toPixel + result.width * result.height;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  double *  toPixel   = (double *)  o->base ();
+  double *  end       = toPixel + result.width * result.height;
   const int step = i->stride - image.width * 3;
   while (toPixel < end)
   {
@@ -2346,50 +2363,50 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
   int blueShift;
   int alphaShift;
   that->shift (0xFF, 0xFF, 0xFF, 0xFF, redShift, greenShift, blueShift, alphaShift);
-  int redFactor   = prepareDublicate (redShift,   that->redBits);
-  int greenFactor = prepareDublicate (greenShift, that->greenBits);
-  int blueFactor  = prepareDublicate (blueShift,  that->blueBits);
+  uint32_t redFactor   = prepareDublicate (redShift,   that->redBits);
+  uint32_t greenFactor = prepareDublicate (greenShift, that->greenBits);
+  uint32_t blueFactor  = prepareDublicate (blueShift,  that->blueBits);
 
   #define RGBBits2GrayDouble(imageSize) \
   { \
-    unsigned imageSize * fromPixel = (unsigned imageSize *) i->base (); \
-    double *             toPixel   = (double *)             o->base (); \
-    double *             end       = toPixel + result.width * result.height; \
+    imageSize * fromPixel = (imageSize *) i->base (); \
+    double *    toPixel   = (double *)    o->base (); \
+    double *    end       = toPixel + result.width * result.height; \
 	const int step = i->stride - image.width * sizeof (imageSize); \
 	while (toPixel < end) \
     { \
 	  double * rowEnd = toPixel + result.width; \
 	  while (toPixel < rowEnd) \
 	  { \
-		unsigned int r = *fromPixel & that->redMask; \
-		unsigned int g = *fromPixel & that->greenMask; \
-		unsigned int b = *fromPixel & that->blueMask; \
+		uint32_t r = *fromPixel & that->redMask; \
+		uint32_t g = *fromPixel & that->greenMask; \
+		uint32_t b = *fromPixel & that->blueMask; \
 		fromPixel++; \
 		double fr = lutChar2Float[dublicate (r, redFactor,   redShift)]; \
 		double fg = lutChar2Float[dublicate (g, greenFactor, greenShift)]; \
 		double fb = lutChar2Float[dublicate (b, blueFactor,  blueShift)]; \
 		*toPixel++ = redToY * fr + greenToY * fg + blueToY * fb; \
 	  } \
-	  fromPixel = (unsigned imageSize *) ((char *) fromPixel + step); \
+	  fromPixel = (imageSize *) ((char *) fromPixel + step); \
 	} \
   }
 
   switch ((int) that->depth)
   {
     case 1:
-	  RGBBits2GrayDouble (char);
+	  RGBBits2GrayDouble (uint8_t);
 	  break;
     case 2:
-	  RGBBits2GrayDouble (short);
+	  RGBBits2GrayDouble (uint16_t);
 	  break;
     case 3:
 	{
 	  const int step = i->stride - image.width * 3;
 #     if BYTE_ORDER == LITTLE_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->base () + i->stride * image.height - step - 3;
-	  double *        begin     = (double *)        o->base ();
-	  double *        toPixel   = begin + result.width * result.height;
-	  double *        rowBegin  = toPixel - result.width;
+	  uint8_t * fromPixel = (uint8_t *) i->base () + i->stride * image.height - step - 3;
+	  double *  begin     = (double *)  o->base ();
+	  double *  toPixel   = begin + result.width * result.height;
+	  double *  rowBegin  = toPixel - result.width;
 	  // Process lasst pixel
 	  toPixel--;
 	  Int2Char t;
@@ -2397,9 +2414,9 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 	  t.piece1 = fromPixel[1];
 	  t.piece2 = fromPixel[2];
 	  fromPixel -= 3;
-	  unsigned int r = t.all & that->redMask;
-	  unsigned int g = t.all & that->greenMask;
-	  unsigned int b = t.all & that->blueMask;
+	  uint32_t r = t.all & that->redMask;
+	  uint32_t g = t.all & that->greenMask;
+	  uint32_t b = t.all & that->blueMask;
 	  double fr = lutChar2Float[dublicate (r, redFactor,   redShift)];
 	  double fg = lutChar2Float[dublicate (g, greenFactor, greenShift)];
 	  double fb = lutChar2Float[dublicate (b, blueFactor,  blueShift)];
@@ -2409,7 +2426,7 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 	  {
 		while (toPixel >= rowBegin)
 		{
-		  unsigned int t = * (unsigned int *) fromPixel;
+		  uint32_t t = * (uint32_t *) fromPixel;
 		  fromPixel -= 3;
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
@@ -2423,19 +2440,19 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 		rowBegin -= result.width;
 	  }
 #     elif BYTE_ORDER == BIG_ENDIAN
-	  unsigned char * fromPixel = (unsigned char *) i->base ();
-	  double *        toPixel   = (double *)        o->base ();
-	  double *        end       = toPixel + result.width * result.height;
-	  double *        rowEnd    = toPixel + result.width;
+	  uint8_t * fromPixel = (uint8_t *) i->base ();
+	  double *  toPixel   = (double *)  o->base ();
+	  double *  end       = toPixel + result.width * result.height;
+	  double *  rowEnd    = toPixel + result.width;
 	  // Process first pixel
 	  Int2Char t;
 	  t.piece0 = fromPixel[0];
 	  t.piece1 = fromPixel[1];
 	  t.piece2 = fromPixel[2];
 	  fromPixel += 2;  // only 2, because big-endian pointer is set back by 1
-	  unsigned int r = t.all & that->redMask;
-	  unsigned int g = t.all & that->greenMask;
-	  unsigned int b = t.all & that->blueMask;
+	  uint32_t r = t.all & that->redMask;
+	  uint32_t g = t.all & that->greenMask;
+	  uint32_t b = t.all & that->blueMask;
 	  double fr = lutChar2Float[dublicate (r, redFactor,   redShift)];
 	  double fg = lutChar2Float[dublicate (g, greenFactor, greenShift)];
 	  double fb = lutChar2Float[dublicate (b, blueFactor,  blueShift)];
@@ -2445,7 +2462,7 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 	  {
 		while (toPixel < rowEnd)
 		{
-		  unsigned int t = * (unsigned int *) fromPixel;
+		  uint32_t t = * (uint32_t *) fromPixel;
 		  fromPixel += 3;
 		  r = t & that->redMask;
 		  g = t & that->greenMask;
@@ -2463,7 +2480,7 @@ PixelFormatGrayDouble::fromRGBABits (const Image & image, Image & result) const
 	}
     case 4:
     default:
-	  RGBBits2GrayDouble (int);
+	  RGBBits2GrayDouble (uint32_t);
   }
 }
 
@@ -2474,9 +2491,9 @@ PixelFormatGrayDouble::fromYCbCr (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->plane0;
-  double *        toPixel   = (double *)        o->base ();
-  double *        end       = toPixel + result.width * result.height;
+  uint8_t * fromPixel = (uint8_t *) i->plane0;
+  double *  toPixel   = (double *)  o->base ();
+  double *  end       = toPixel + result.width * result.height;
   const int step = i->stride0 - image.width;
   while (toPixel < end)
   {
@@ -2498,10 +2515,10 @@ PixelFormatGrayDouble::fromAny (const Image & image, Image & result) const
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->base ();
+	uint8_t * source      = (uint8_t *) i->base ();
 	const int sourceDepth = (int) sourceFormat->depth;
-	const int step = i->stride - image.width * sourceDepth;
-	double * end = dest + image.width * image.height;
+	const int step        = i->stride - image.width * sourceDepth;
+	double *  end         = dest + image.width * image.height;
 	while (dest < end)
 	{
 	  double * rowEnd = dest + result.width;
@@ -2529,11 +2546,11 @@ PixelFormatGrayDouble::fromAny (const Image & image, Image & result) const
   }
 }
 
-unsigned int
+uint32_t
 PixelFormatGrayDouble::getRGBA (void * pixel) const
 {
   double v = min (max (*((double *) pixel), 0.0), 1.0);
-  unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)];
+  uint32_t t = lutFloat2Char[(uint16_t) (65535 * v)];
   return (t << 24) | (t << 16) | (t << 8) | 0xFF;
 }
 
@@ -2556,11 +2573,11 @@ PixelFormatGrayDouble::getXYZ (void * pixel, float values[]) const
   values[2] = 1.088830f * t;
 }
 
-unsigned char
+uint8_t
 PixelFormatGrayDouble::getGray (void * pixel) const
 {
   double v = min (max (*((double *) pixel), 0.0), 1.0);
-  return lutFloat2Char[(unsigned short) (65535 * v)];
+  return lutFloat2Char[(uint16_t) (65535 * v)];
 }
 
 void
@@ -2570,7 +2587,7 @@ PixelFormatGrayDouble::getGray (void * pixel, float & gray) const
 }
 
 void
-PixelFormatGrayDouble::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatGrayDouble::setRGBA (void * pixel, uint32_t rgba) const
 {
   double r = lutChar2Float[(rgba & 0xFF000000) >> 24];
   double g = lutChar2Float[(rgba &   0xFF0000) >> 16];
@@ -2591,7 +2608,7 @@ PixelFormatGrayDouble::setXYZ (void * pixel, float values[]) const
 }
 
 void
-PixelFormatGrayDouble::setGray  (void * pixel, unsigned char gray) const
+PixelFormatGrayDouble::setGray  (void * pixel, uint8_t gray) const
 {
   *((double *) pixel) = lutChar2Float[gray];
 }
@@ -2605,7 +2622,7 @@ PixelFormatGrayDouble::setGray  (void * pixel, float gray) const
 
 // class PixelFormatRGBABits --------------------------------------------------
 
-PixelFormatRGBABits::PixelFormatRGBABits (int depth, unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask)
+PixelFormatRGBABits::PixelFormatRGBABits (int depth, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
 {
   this->depth     = depth;
   this->redMask   = redMask;
@@ -2673,40 +2690,40 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define Bits2Bits(fromSize,toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned fromSize * fromPixel = (unsigned fromSize *) i->base (); \
-  unsigned toSize *   toPixel   = (unsigned toSize *)   o->base (); \
-  unsigned toSize *   end       = toPixel + result.width * result.height; \
+  fromSize * fromPixel = (fromSize *) i->base (); \
+  toSize *   toPixel   = (toSize *)   o->base (); \
+  toSize *   end       = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
-	unsigned toSize * rowEnd = toPixel + result.width; \
+	toSize * rowEnd = toPixel + result.width; \
 	while (toPixel < rowEnd) \
 	{ \
-	  unsigned int r = *fromPixel & fromRed; \
-	  unsigned int g = *fromPixel & fromGreen; \
-	  unsigned int b = *fromPixel & fromBlue; \
-	  unsigned int a = fromAlpha ? *fromPixel & fromAlpha : 0xFFFFFFFF; \
+	  uint32_t r = *fromPixel & fromRed; \
+	  uint32_t g = *fromPixel & fromGreen; \
+	  uint32_t b = *fromPixel & fromBlue; \
+	  uint32_t a = fromAlpha ? *fromPixel & fromAlpha : 0xFFFFFFFF; \
 	  fromPixel++; \
 	  *toPixel++ =   (dublicate (r, redFactor,   redShift)   & toRed) \
 		           | (dublicate (g, greenFactor, greenShift) & toGreen) \
 		           | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
 		           | (dublicate (a, alphaFactor, alphaShift) & toAlpha); \
 	} \
-	fromPixel = (unsigned fromSize *) ((char *) fromPixel + step); \
+	fromPixel = (fromSize *) ((char *) fromPixel + step); \
   } \
 }
 
 #define GrayFloat2Bits(fromSize,toSize) \
 { \
-  fromSize *        fromPixel = (fromSize *)        i->base (); \
-  unsigned toSize * toPixel   = (unsigned toSize *) o->base (); \
-  unsigned toSize * end       = toPixel + result.width * result.height; \
+  fromSize * fromPixel = (fromSize *) i->base (); \
+  toSize *   toPixel   = (toSize *)   o->base (); \
+  toSize *   end       = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
-	unsigned toSize * rowEnd = toPixel + result.width; \
+	toSize * rowEnd = toPixel + result.width; \
 	while (toPixel < rowEnd) \
 	{ \
 	  fromSize v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
-	  unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)]; \
+	  uint32_t t = lutFloat2Char[(uint16_t) (65535 * v)]; \
 	  *toPixel++ =   (roll (t, redShift)   & redMask) \
 	               | (roll (t, greenShift) & greenMask) \
 	               | (roll (t, blueShift)  & blueMask) \
@@ -2722,20 +2739,20 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define OddBits2Bits(toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned char *   fromPixel = (unsigned char *)   i->base () + i->stride * image.height - step - 3; \
-  unsigned toSize * begin     = (unsigned toSize *) o->base (); \
-  unsigned toSize * toPixel   = begin + result.width * result.height; \
-  unsigned toSize * rowBegin  = toPixel - result.width; \
+  uint8_t * fromPixel = (uint8_t *) i->base () + i->stride * image.height - step - 3; \
+  toSize *  begin     = (toSize *)  o->base (); \
+  toSize *  toPixel   = begin + result.width * result.height; \
+  toSize *  rowBegin  = toPixel - result.width; \
   toPixel--; \
   Int2Char t; \
   t.piece0 = fromPixel[0]; \
   t.piece1 = fromPixel[1]; \
   t.piece2 = fromPixel[2]; \
   fromPixel -= 3; \
-  unsigned int r = t.all & fromRed; \
-  unsigned int g = t.all & fromGreen; \
-  unsigned int b = t.all & fromBlue; \
-  unsigned int a = fromAlpha ? t.all & fromAlpha : 0xFFFFFFFF; \
+  uint32_t r = t.all & fromRed; \
+  uint32_t g = t.all & fromGreen; \
+  uint32_t b = t.all & fromBlue; \
+  uint32_t a = fromAlpha ? t.all & fromAlpha : 0xFFFFFFFF; \
   *toPixel-- =   (dublicate (r, redFactor,   redShift)   & toRed) \
                | (dublicate (g, greenFactor, greenShift) & toGreen) \
                | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
@@ -2744,7 +2761,7 @@ PixelFormatRGBABits::filter (const Image & image)
   { \
 	while (toPixel >= rowBegin) \
 	{ \
-	  unsigned int t = * (unsigned int *) fromPixel; \
+	  uint32_t t = * (uint32_t *) fromPixel; \
 	  fromPixel -= 3; \
 	  r = t & fromRed; \
 	  g = t & fromGreen; \
@@ -2762,16 +2779,16 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define Bits2OddBits(fromSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned fromSize * fromPixel = (unsigned fromSize *) i->base (); \
-  unsigned char *     toPixel   = (unsigned char *)     o->base (); \
-  unsigned char *     end       = toPixel + o->stride * result.height - 3; \
-  unsigned int r; \
-  unsigned int g; \
-  unsigned int b; \
-  unsigned int a; \
+  fromSize * fromPixel = (fromSize *) i->base (); \
+  uint8_t *  toPixel   = (uint8_t *)  o->base (); \
+  uint8_t *  end       = toPixel + o->stride * result.height - 3; \
+  uint32_t r; \
+  uint32_t g; \
+  uint32_t b; \
+  uint32_t a; \
   while (toPixel < end) \
   { \
-	unsigned char * rowEnd = min (toPixel + o->stride, end); \
+	uint8_t * rowEnd = min (toPixel + o->stride, end); \
 	while (toPixel < rowEnd) \
 	{ \
 	  r = *fromPixel & fromRed; \
@@ -2779,15 +2796,15 @@ PixelFormatRGBABits::filter (const Image & image)
 	  b = *fromPixel & fromBlue; \
 	  a = fromAlpha ? *fromPixel & fromAlpha : 0xFFFFFFFF; \
 	  fromPixel++; \
-	  * (unsigned int *) toPixel =   (dublicate (r, redFactor,   redShift)   & toRed) \
-		                           | (dublicate (g, greenFactor, greenShift) & toGreen) \
-		                           | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
-		                           | (dublicate (a, alphaFactor, alphaShift) & toAlpha); \
+	  * (uint32_t *) toPixel =   (dublicate (r, redFactor,   redShift)   & toRed) \
+		                       | (dublicate (g, greenFactor, greenShift) & toGreen) \
+		                       | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
+		                       | (dublicate (a, alphaFactor, alphaShift) & toAlpha); \
 	  toPixel += 3; \
 	} \
-	fromPixel = (unsigned fromSize *) ((char *) fromPixel + step); \
+	fromPixel = (fromSize *) ((char *) fromPixel + step); \
   } \
-  fromPixel = (unsigned fromSize *) ((char *) fromPixel - step); \
+  fromPixel = (fromSize *) ((char *) fromPixel - step); \
   r = *fromPixel & fromRed; \
   g = *fromPixel & fromGreen; \
   b = *fromPixel & fromBlue; \
@@ -2804,28 +2821,28 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define OddBits2OddBits(fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned char * fromPixel = (unsigned char *) i->base (); \
-  unsigned char * toPixel   = (unsigned char *) o->base (); \
-  unsigned char * end       = toPixel + o->stride * result.height - 3; \
-  unsigned int r; \
-  unsigned int g; \
-  unsigned int b; \
-  unsigned int a; \
+  uint8_t * fromPixel = (uint8_t *) i->base (); \
+  uint8_t * toPixel   = (uint8_t *) o->base (); \
+  uint8_t * end       = toPixel + o->stride * result.height - 3; \
+  uint32_t r; \
+  uint32_t g; \
+  uint32_t b; \
+  uint32_t a; \
   while (toPixel < end) \
   { \
-	unsigned char * rowEnd = min (toPixel + o->stride, end); \
+	uint8_t * rowEnd = min (toPixel + o->stride, end); \
 	while (toPixel < rowEnd) \
 	{ \
-	  unsigned int t = * (unsigned int *) fromPixel; \
+	  uint32_t t = * (uint32_t *) fromPixel; \
 	  fromPixel += 3; \
 	  r = t & fromRed; \
 	  g = t & fromGreen; \
 	  b = t & fromBlue; \
 	  a = fromAlpha ? t & fromAlpha : 0xFFFFFFFF; \
-	  * (unsigned int *) toPixel =   (dublicate (r, redFactor,   redShift)   & toRed) \
-	                               | (dublicate (g, greenFactor, greenShift) & toGreen) \
-	                               | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
-	                               | (dublicate (a, alphaFactor, alphaShift) & toAlpha); \
+	  * (uint32_t *) toPixel =   (dublicate (r, redFactor,   redShift)   & toRed) \
+	                           | (dublicate (g, greenFactor, greenShift) & toGreen) \
+	                           | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
+	                           | (dublicate (a, alphaFactor, alphaShift) & toAlpha); \
 	  toPixel += 3; \
 	} \
 	fromPixel += step; \
@@ -2850,21 +2867,21 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define GrayFloat2OddBits(fromSize) \
 { \
-  fromSize *      fromPixel = (fromSize *)      i->base (); \
-  unsigned char * toPixel   = (unsigned char *) o->base (); \
-  unsigned char * end       = toPixel + o->stride * result.height - 3; \
+  fromSize * fromPixel = (fromSize *) i->base (); \
+  uint8_t *  toPixel   = (uint8_t *)  o->base (); \
+  uint8_t *  end       = toPixel + o->stride * result.height - 3; \
   fromSize v; \
   while (toPixel < end) \
   { \
-	unsigned char * rowEnd = min (toPixel + o->stride, end); \
+	uint8_t * rowEnd = min (toPixel + o->stride, end); \
 	while (toPixel < rowEnd) \
 	{ \
 	  v = min (max (*fromPixel++, (fromSize) 0.0), (fromSize) 1.0); \
-	  unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)]; \
-	  * (unsigned int *) toPixel =   (roll (t, redShift)   & redMask) \
-	                               | (roll (t, greenShift) & greenMask) \
-	                               | (roll (t, blueShift)  & blueMask) \
-	                               | alphaMask; \
+	  uint32_t t = lutFloat2Char[(uint16_t) (65535 * v)]; \
+	  * (uint32_t *) toPixel =   (roll (t, redShift)   & redMask) \
+	                           | (roll (t, greenShift) & greenMask) \
+	                           | (roll (t, blueShift)  & blueMask) \
+	                           | alphaMask; \
 	  toPixel += 3; \
 	} \
 	fromPixel = (fromSize *) ((char *) fromPixel + step); \
@@ -2872,7 +2889,7 @@ PixelFormatRGBABits::filter (const Image & image)
   fromPixel = (fromSize *) ((char *) fromPixel - step); \
   v = min (max (*fromPixel, (fromSize) 0.0), (fromSize) 1.0); \
   Int2Char t; \
-  t.all = lutFloat2Char[(unsigned short) (65535 * v)]; \
+  t.all = lutFloat2Char[(uint16_t) (65535 * v)]; \
   t.all =   (roll (t.all, redShift)   & redMask) \
           | (roll (t.all, greenShift) & greenMask) \
           | (roll (t.all, blueShift)  & blueMask) \
@@ -2886,19 +2903,19 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define OddBits2Bits(toSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned char *   fromPixel = (unsigned char *)   i->base (); \
-  unsigned toSize * toPixel   = (unsigned toSize *) o->base (); \
-  unsigned toSize * end       = toPixel + result.width * result.height; \
-  unsigned toSize * rowEnd    = toPixel + result.width; \
+  uint8_t * fromPixel = (uint8_t *) i->base (); \
+  toSize *  toPixel   = (toSize *)  o->base (); \
+  toSize *  end       = toPixel + result.width * result.height; \
+  toSize *  rowEnd    = toPixel + result.width; \
   Int2Char t; \
   t.piece0 = fromPixel[0]; \
   t.piece1 = fromPixel[1]; \
   t.piece2 = fromPixel[2]; \
   fromPixel += 2; \
-  unsigned int r = t.all & fromRed; \
-  unsigned int g = t.all & fromGreen; \
-  unsigned int b = t.all & fromBlue; \
-  unsigned int a = fromAlpha ? t.all & fromAlpha : 0xFFFFFFFF; \
+  uint32_t r = t.all & fromRed; \
+  uint32_t g = t.all & fromGreen; \
+  uint32_t b = t.all & fromBlue; \
+  uint32_t a = fromAlpha ? t.all & fromAlpha : 0xFFFFFFFF; \
   *toPixel++ =   (dublicate (r, redFactor,   redShift)   & toRed) \
                | (dublicate (g, greenFactor, greenShift) & toGreen) \
                | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
@@ -2907,7 +2924,7 @@ PixelFormatRGBABits::filter (const Image & image)
   { \
 	while (toPixel < rowEnd) \
 	{ \
-	  unsigned int t = * (unsigned int *) fromPixel; \
+	  uint32_t t = * (uint32_t *) fromPixel; \
 	  fromPixel += 3; \
 	  r = t & fromRed; \
 	  g = t & fromGreen; \
@@ -2925,16 +2942,16 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define Bits2OddBits(fromSize,fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned fromSize * fromPixel = (unsigned fromSize *) ((char *) i->base () + i->stride * image.height - step) - 1; \
-  unsigned char *     begin     = (unsigned char *) o->base (); \
-  unsigned char *     toPixel   = begin + o->stride * result.height - 4; \
-  unsigned int r; \
-  unsigned int g; \
-  unsigned int b; \
-  unsigned int a; \
+  fromSize * fromPixel = (fromSize *) ((char *) i->base () + i->stride * image.height - step) - 1; \
+  uint8_t *  begin     = (uint8_t *) o->base (); \
+  uint8_t *  toPixel   = begin + o->stride * result.height - 4; \
+  uint32_t r; \
+  uint32_t g; \
+  uint32_t b; \
+  uint32_t a; \
   while (toPixel > begin) \
   { \
-	unsigned char * rowBegin = max (toPixel - o->stride, begin); \
+	uint8_t * rowBegin = max (toPixel - o->stride, begin); \
 	while (toPixel > rowBegin) \
 	{ \
 	  r = *fromPixel & fromRed; \
@@ -2942,15 +2959,15 @@ PixelFormatRGBABits::filter (const Image & image)
 	  b = *fromPixel & fromBlue; \
 	  a = fromAlpha ? *fromPixel & fromAlpha : 0xFFFFFFFF; \
 	  fromPixel--; \
-	  * (unsigned int *) toPixel =   (dublicate (r, redFactor,   redShift)   & toRed) \
-		                           | (dublicate (g, greenFactor, greenShift) & toGreen) \
-		                           | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
-		                           | (dublicate (a, alphaFactor, alphaShift) & toAlpha); \
+	  * (uint32_t *) toPixel =   (dublicate (r, redFactor,   redShift)   & toRed) \
+	                           | (dublicate (g, greenFactor, greenShift) & toGreen) \
+	                           | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
+	                           | (dublicate (a, alphaFactor, alphaShift) & toAlpha); \
 	  toPixel -= 3; \
 	} \
-	fromPixel = (unsigned fromSize *) ((char *) fromSize + step); \
+	fromPixel = (fromSize *) ((char *) fromSize + step); \
   } \
-  fromPixel = (unsigned fromSize *) ((char *) fromSize - step); \
+  fromPixel = (fromSize *) ((char *) fromSize - step); \
   toPixel++; \
   r = *fromPixel & fromRed; \
   g = *fromPixel & fromGreen; \
@@ -2968,28 +2985,28 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define OddBits2OddBits(fromRed,fromGreen,fromBlue,fromAlpha,toRed,toGreen,toBlue,toAlpha) \
 { \
-  unsigned char * fromPixel = (unsigned char *) i->base () + i->stride * image.height - step - 4; \
-  unsigned char * begin     = (unsigned char *) o->base (); \
-  unsigned char * toPixel   = begin + o->stride * result.height - 4; \
-  unsigned int r; \
-  unsigned int g; \
-  unsigned int b; \
-  unsigned int a; \
+  uint8_t * fromPixel = (uint8_t *) i->base () + i->stride * image.height - step - 4; \
+  uint8_t * begin     = (uint8_t *) o->base (); \
+  uint8_t * toPixel   = begin + o->stride * result.height - 4; \
+  uint32_t r; \
+  uint32_t g; \
+  uint32_t b; \
+  uint32_t a; \
   while (toPixel > begin) \
   { \
-	unsigned char * rowBegin = max (toPixel - o->stride, begin); \
+	uint8_t * rowBegin = max (toPixel - o->stride, begin); \
 	while (toPixel > rowBegin) \
 	{ \
-	  unsigned int t = * (unsigned int *) fromPixel; \
+	  uint32_t t = * (uint32_t *) fromPixel; \
 	  fromPixel -= 3; \
 	  r = t & fromRed; \
 	  g = t & fromGreen; \
 	  b = t & fromBlue; \
 	  a = fromAlpha ? t & fromAlpha : 0xFFFFFFFF; \
-	  * (unsigned int *) toPixel =   (dublicate (r, redFactor,   redShift)   & toRed) \
-	                               | (dublicate (g, greenFactor, greenShift) & toGreen) \
-	                               | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
-	                               | (dublicate (a, alphaFactor, alphaShift) & toAlpha); \
+	  * (uint32_t *) toPixel =   (dublicate (r, redFactor,   redShift)   & toRed) \
+	                           | (dublicate (g, greenFactor, greenShift) & toGreen) \
+	                           | (dublicate (b, blueFactor,  blueShift)  & toBlue) \
+	                           | (dublicate (a, alphaFactor, alphaShift) & toAlpha); \
 	  toPixel -= 3; \
 	} \
 	fromPixel -= step; \
@@ -3015,29 +3032,29 @@ PixelFormatRGBABits::filter (const Image & image)
 
 #define GrayFloat2OddBits(fromSize) \
 { \
-  fromSize *      fromPixel = (fromSize *) ((char *) i->base () + i->stride * image.height - step) - 1; \
-  unsigned char * begin     = (unsigned char *) o->base (); \
-  unsigned char * toPixel   = begin + o->stride * result.height; \
+  fromSize * fromPixel = (fromSize *) ((char *) i->base () + i->stride * image.height - step) - 1; \
+  uint8_t *  begin     = (uint8_t *) o->base (); \
+  uint8_t *  toPixel   = begin + o->stride * result.height; \
   while (toPixel > begin) \
   { \
-	unsigned char * rowBegin = max (toPixel - o->stride, begin); \
+	uint8_t * rowBegin = max (toPixel - o->stride, begin); \
 	while (toPixel > rowBegin) \
 	{ \
 	  fromSize v = min (max (*fromPixel--, (fromSize) 0.0), (fromSize) 1.0); \
-	  unsigned int t = lutFloat2Char[(unsigned short) (65535 * v)]; \
-	  * (unsigned int *) toPixel =   (roll (t, redShift)   & redMask) \
-	                               | (roll (t, greenShift) & greenMask) \
-	                               | (roll (t, blueShift)  & blueMask) \
-	                               | alphaMask; \
+	  uint32_t t = lutFloat2Char[(uint16_t) (65535 * v)]; \
+	  * (uint32_t *) toPixel =   (roll (t, redShift)   & redMask) \
+	                           | (roll (t, greenShift) & greenMask) \
+	                           | (roll (t, blueShift)  & blueMask) \
+	                           | alphaMask; \
 	  toPixel -= 3; \
 	} \
-	fromPixel = (unsigned fromSize *) ((char *) fromPixel - step); \
+	fromPixel = (fromSize *) ((char *) fromPixel - step); \
   } \
-  fromPixel = (unsigned fromSize *) ((char *) fromPixel + step); \
+  fromPixel = (fromSize *) ((char *) fromPixel + step); \
   toPixel++; \
   fromSize v = min (max (*fromPixel, (fromSize) 0.0), (fromSize) 1.0); \
   Int2Char t; \
-  t.all = lutFloat2Char[(unsigned short) (65535 * v)]; \
+  t.all = lutFloat2Char[(uint16_t) (65535 * v)]; \
   t.all =   (roll (t, redShift)   & redMask) \
           | (roll (t, greenShift) & greenMask) \
           | (roll (t, blueShift)  & blueMask) \
@@ -3065,27 +3082,27 @@ PixelFormatRGBABits::fromGrayChar (const Image & image, Image & result) const
   greenShift *= -1;
   blueShift *= -1;
   alphaShift *= -1;
-  int redFactor   = prepareDublicate (redShift,   8);
-  int greenFactor = prepareDublicate (greenShift, 8);
-  int blueFactor  = prepareDublicate (blueShift,  8);
-  int alphaFactor = prepareDublicate (alphaShift, 0);
+  uint32_t redFactor   = prepareDublicate (redShift,   8);
+  uint32_t greenFactor = prepareDublicate (greenShift, 8);
+  uint32_t blueFactor  = prepareDublicate (blueShift,  8);
+  uint32_t alphaFactor = prepareDublicate (alphaShift, 0);
 
   const int step = i->stride - image.width;
 
   switch ((int) depth)
   {
     case 1:
-	  Bits2Bits (char, char, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
+	  Bits2Bits (uint8_t, uint8_t, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
 	  break;
     case 2:
-	  Bits2Bits (char, short, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
+	  Bits2Bits (uint8_t, uint16_t, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
 	  break;
     case 3:
-	  Bits2OddBits (char, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
+	  Bits2OddBits (uint8_t, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
 	  break;
     case 4:
     default:
-	  Bits2Bits (char, int, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
+	  Bits2Bits (uint8_t, uint32_t, 0xFF, 0xFF, 0xFF, 0, redMask, greenMask, blueMask, alphaMask);
   }
 }
 
@@ -3110,54 +3127,54 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
 
 # define GrayShort2Bits(toSize) \
   { \
-    unsigned short *  fromPixel = (unsigned short *)  i->base (); \
-	unsigned toSize * toPixel   = (unsigned toSize *) o->base (); \
-	unsigned toSize * end       = toPixel + result.width * result.height; \
+    uint16_t * fromPixel = (uint16_t *) i->base (); \
+	toSize *   toPixel   = (toSize *)   o->base (); \
+	toSize *   end       = toPixel + result.width * result.height; \
 	while (toPixel < end) \
 	{ \
-	  unsigned toSize * rowEnd = toPixel + result.width; \
+	  toSize * rowEnd = toPixel + result.width; \
 	  while (toPixel < rowEnd) \
 	  { \
-		unsigned int t = lutFloat2Char[*fromPixel++ << grayShift]; \
+		uint32_t t = lutFloat2Char[*fromPixel++ << grayShift]; \
 		*toPixel++ =   (roll (t, redShift)   & redMask) \
 		             | (roll (t, greenShift) & greenMask) \
 		             | (roll (t, blueShift)  & blueMask) \
 		             | alphaMask; \
 	  } \
-	  fromPixel = (unsigned short *) ((char *) fromPixel + step); \
+	  fromPixel = (uint16_t *) ((char *) fromPixel + step); \
 	} \
   }
 
   switch ((int) depth)
   {
     case 1:
-	  GrayShort2Bits (char);
+	  GrayShort2Bits (uint8_t);
 	  break;
     case 2:
-	  GrayShort2Bits (short);
+	  GrayShort2Bits (uint16_t);
 	  break;
     case 3:
 	{
 #     if BYTE_ORDER == LITTLE_ENDIAN
-	  unsigned short * fromPixel = (unsigned short *) i->base ();
-	  unsigned char *  toPixel   = (unsigned char *)  o->base ();
-	  unsigned char *  end       = toPixel + o->stride * result.height - 3;
+	  uint16_t * fromPixel = (uint16_t *) i->base ();
+	  uint8_t *  toPixel   = (uint8_t *)  o->base ();
+	  uint8_t *  end       = toPixel + o->stride * result.height - 3;
 	  while (toPixel < end)
 	  {
-		unsigned char * rowEnd = min (toPixel + o->stride, end);
+		uint8_t * rowEnd = min (toPixel + o->stride, end);
 		while (toPixel < rowEnd)
 		{
-		  unsigned int v = lutFloat2Char[*fromPixel++ << grayShift];
-		  * (unsigned int *) toPixel =   (roll (v, redShift)   & redMask)
-		                               | (roll (v, greenShift) & greenMask)
-		                               | (roll (v, blueShift)  & blueMask)
-		                               | alphaMask;
+		  uint32_t v = lutFloat2Char[*fromPixel++ << grayShift];
+		  * (uint32_t *) toPixel =   (roll (v, redShift)   & redMask)
+		                           | (roll (v, greenShift) & greenMask)
+		                           | (roll (v, blueShift)  & blueMask)
+		                           | alphaMask;
 		  toPixel += 3;
 		}
-		fromPixel = (unsigned short *) ((char *) fromPixel + step);
+		fromPixel = (uint16_t *) ((char *) fromPixel + step);
 	  }
-	  fromPixel = (unsigned short *) ((char *) fromPixel - step);
-	  unsigned int v = lutFloat2Char[*fromPixel++ << grayShift];
+	  fromPixel = (uint16_t *) ((char *) fromPixel - step);
+	  uint32_t v = lutFloat2Char[*fromPixel++ << grayShift];
 	  Int2Char t;
 	  t.all =   (roll (v, redShift)   & redMask)
 		      | (roll (v, greenShift) & greenMask)
@@ -3167,26 +3184,26 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
 	  toPixel[1] = t.piece1;
 	  toPixel[2] = t.piece2;
 #     elif BYTE_ORDER == BIG_ENDIAN
-	  unsigned short * fromPixel = (unsigned short *) ((char *) i->base () + i->stride * image.height - step) - 1;
-	  unsigned char *  begin     = (unsigned char *) o->base ();
-	  unsigned char *  toPixel   = end + o->stride * result.height - 4;
+	  uint16_t * fromPixel = (uint16_t *) ((char *) i->base () + i->stride * image.height - step) - 1;
+	  uint8_t *  begin     = (uint8_t *) o->base ();
+	  uint8_t *  toPixel   = end + o->stride * result.height - 4;
 	  while (toPixel > begin)
 	  {
-		unsigned char * rowBegin = max (toPixel - o->stride, begin);
+		uint8_t * rowBegin = max (toPixel - o->stride, begin);
 		while (toPixel > rowBegin)
 		{
-		  unsigned int v = lutFloat2Char[*fromPixel-- << grayShift];
-		  * (unsigned int *) toPixel =   (roll (v, redShift)   & redMask)
+		  uint32_t v = lutFloat2Char[*fromPixel-- << grayShift];
+		  * (uint32_t *) toPixel =   (roll (v, redShift)   & redMask)
 		                               | (roll (v, greenShift) & greenMask)
 		                               | (roll (v, blueShift)  & blueMask)
 		                               | alphaMask;
 		  toPixel -= 3;
 		}
-		fromPixel = (unsigned short *) ((char *) fromPixel - step);
+		fromPixel = (uint16_t *) ((char *) fromPixel - step);
 	  }
-	  fromPixel = (unsigned short *) ((char *) fromPixel + step);
+	  fromPixel = (uint16_t *) ((char *) fromPixel + step);
 	  toPixel++;
-	  unsigned int v = lutFloat2Char[*fromPixel << grayShift];
+	  uint32_t v = lutFloat2Char[*fromPixel << grayShift];
 	  Int2Char t;
 	  t.all =   (roll (v, redShift)   & redMask)
 		      | (roll (v, greenShift) & greenMask)
@@ -3200,7 +3217,7 @@ PixelFormatRGBABits::fromGrayShort (const Image & image, Image & result) const
 	}
     case 4:
     default:
-	  GrayShort2Bits (int);
+	  GrayShort2Bits (uint32_t);
   }
 }
 
@@ -3225,17 +3242,17 @@ PixelFormatRGBABits::fromGrayFloat (const Image & image, Image & result) const
   switch ((int) depth)
   {
     case 1:
-	  GrayFloat2Bits (float, char);
+	  GrayFloat2Bits (float, uint8_t);
 	  break;
     case 2:
-	  GrayFloat2Bits (float, short);
+	  GrayFloat2Bits (float, uint16_t);
 	  break;
     case 3:
 	  GrayFloat2OddBits (float);
 	  break;
     case 4:
     default:
-	  GrayFloat2Bits (float, int);
+	  GrayFloat2Bits (float, uint32_t);
   }
 }
 
@@ -3260,17 +3277,17 @@ PixelFormatRGBABits::fromGrayDouble (const Image & image, Image & result) const
   switch ((int) depth)
   {
     case 1:
-	  GrayFloat2Bits (double, char);
+	  GrayFloat2Bits (double, uint8_t);
 	  break;
     case 2:
-	  GrayFloat2Bits (double, short);
+	  GrayFloat2Bits (double, uint16_t);
 	  break;
     case 3:
 	  GrayFloat2OddBits (double);
 	  break;
     case 4:
     default:
-	  GrayFloat2Bits (double, int);
+	  GrayFloat2Bits (double, uint32_t);
   }
 }
 
@@ -3288,10 +3305,10 @@ PixelFormatRGBABits::fromRGBABits (const Image & image, Image & result) const
   int blueShift;
   int alphaShift;
   that->shift (redMask, greenMask, blueMask, alphaMask, redShift, greenShift, blueShift, alphaShift);
-  int redFactor   = prepareDublicate (redShift,   that->redBits);
-  int greenFactor = prepareDublicate (greenShift, that->greenBits);
-  int blueFactor  = prepareDublicate (blueShift,  that->blueBits);
-  int alphaFactor = prepareDublicate (alphaShift, that->alphaBits);
+  uint32_t redFactor   = prepareDublicate (redShift,   that->redBits);
+  uint32_t greenFactor = prepareDublicate (greenShift, that->greenBits);
+  uint32_t blueFactor  = prepareDublicate (blueShift,  that->blueBits);
+  uint32_t alphaFactor = prepareDublicate (alphaShift, that->alphaBits);
 
   const int thatDepth = (int) that->depth;
   const int step = i->stride - image.width * thatDepth;
@@ -3302,51 +3319,51 @@ PixelFormatRGBABits::fromRGBABits (const Image & image, Image & result) const
 	  switch (thatDepth)
 	  {
 	    case 1:
-		  Bits2Bits (char, char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2Bits (uint8_t, uint8_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 2:
-		  Bits2Bits (short, char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2Bits (uint16_t, uint8_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 3:
-		  OddBits2Bits (char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  OddBits2Bits (uint8_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 4:
 	    default:
-		  Bits2Bits (int, char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2Bits (uint32_t, uint8_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 	  }
 	  break;
     case 2:
 	  switch (thatDepth)
 	  {
 	    case 1:
-		  Bits2Bits (char, short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2Bits (uint8_t, uint16_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 2:
-		  Bits2Bits (short, short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2Bits (uint16_t, uint16_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 3:
-		  OddBits2Bits (short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  OddBits2Bits (uint16_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 4:
 	    default:
-		  Bits2Bits (int, short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2Bits (uint32_t, uint16_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 	  }
 	  break;
     case 3:
 	  switch (thatDepth)
 	  {
 	    case 1:
-		  Bits2OddBits (char, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2OddBits (uint8_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 2:
-		  Bits2OddBits (short, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2OddBits (uint16_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 3:
 		  OddBits2OddBits (that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 4:
 	    default:
-		  Bits2OddBits (int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2OddBits (uint32_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 	  }
 	  break;
     case 4:
@@ -3354,17 +3371,17 @@ PixelFormatRGBABits::fromRGBABits (const Image & image, Image & result) const
 	  switch (thatDepth)
 	  {
 	    case 1:
-		  Bits2Bits (char, int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2Bits (uint8_t, uint32_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 2:
-		  Bits2Bits (short, int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2Bits (uint16_t, uint32_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 3:
-		  OddBits2Bits (int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  OddBits2Bits (uint32_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 		  break;
 	    case 4:
 	    default:
-		  Bits2Bits (int, int, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
+		  Bits2Bits (uint32_t, uint32_t, that->redMask, that->greenMask, that->blueMask, that->alphaMask, redMask, greenMask, blueMask, alphaMask);
 	  }
 	  break;
   }
@@ -3392,9 +3409,9 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
   int roundG = 0x800000 >> max (greenBits, 8);
   int roundB = 0x800000 >> max (blueBits,  8);
 
-  unsigned char * fromPixel = (unsigned char *) i->plane0;
-  unsigned char * Cb        = (unsigned char *) i->plane1;
-  unsigned char * Cr        = (unsigned char *) i->plane2;
+  uint8_t * fromPixel = (uint8_t *) i->plane0;
+  uint8_t * Cb        = (uint8_t *) i->plane1;
+  uint8_t * Cr        = (uint8_t *) i->plane2;
 
   assert (image.width % i->ratioH == 0  &&  image.height % i->ratioV == 0);
   int rowWidth = result.width;
@@ -3413,11 +3430,11 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
 
 #define YCbCr2Bits(toSize) \
 { \
-  unsigned toSize * toPixel = (unsigned toSize *) o->base (); \
-  unsigned toSize * end     = toPixel + result.width * result.height; \
+  toSize * toPixel = (toSize *) o->base (); \
+  toSize * end     = toPixel + result.width * result.height; \
   while (toPixel < end) \
   { \
-	unsigned toSize * rowEnd = toPixel + rowWidth; \
+	toSize * rowEnd = toPixel + rowWidth; \
 	while (toPixel < rowEnd) \
 	{ \
 	  int u = *Cb++ - 128; \
@@ -3425,16 +3442,16 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
 	  int tr =               0x19895 * v; \
 	  int tg =  0x644A * u +  0xD01F * v; \
 	  int tb = 0x20469 * u; \
-	  unsigned toSize * blockEnd = toPixel + blockSwath; \
+	  toSize * blockEnd = toPixel + blockSwath; \
 	  while (toPixel < blockEnd) \
 	  { \
-		unsigned toSize * blockRowEnd = toPixel + blockRowWidth; \
+		toSize * blockRowEnd = toPixel + blockRowWidth; \
 		while (toPixel < blockRowEnd) \
 		{ \
 		  int y = (*fromPixel++ - 16) * 0x12A15; \
-		  unsigned int r = min (max (y + tr + roundR, 0), 0xFFFFFF); \
-		  unsigned int g = min (max (y - tg + roundG, 0), 0xFFFFFF); \
-		  unsigned int b = min (max (y + tb + roundB, 0), 0xFFFFFF); \
+		  uint32_t r = min (max (y + tr + roundR, 0), 0xFFFFFF); \
+		  uint32_t g = min (max (y - tg + roundG, 0), 0xFFFFFF); \
+		  uint32_t b = min (max (y + tb + roundB, 0), 0xFFFFFF); \
 		  *toPixel++ =   (roll (r, redShift)   & redMask) \
 			           | (roll (g, greenShift) & greenMask) \
 			           | (roll (b, blueShift)  & blueMask) \
@@ -3456,10 +3473,10 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
   switch ((int) depth)
   {
     case 1:
-	  YCbCr2Bits (char);
+	  YCbCr2Bits (uint8_t);
 	  break;
     case 2:
-	  YCbCr2Bits (short);
+	  YCbCr2Bits (uint16_t);
 	  break;
     case 3:
 	{
@@ -3469,11 +3486,11 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
 	  toBlockRowStep *= 3;
 	  toBlockStep *= 3;
 	  toStep *= 3;
-	  unsigned char * toPixel = (unsigned char *) o->base ();
-	  unsigned char * end     = toPixel + result.width * result.height * 3;
+	  uint8_t * toPixel = (uint8_t *) o->base ();
+	  uint8_t * end     = toPixel + result.width * result.height * 3;
 	  while (toPixel < end)
 	  {
-		unsigned char * rowEnd = toPixel + rowWidth;
+		uint8_t * rowEnd = toPixel + rowWidth;
 		while (toPixel < rowEnd)
 		{
 		  int u = *Cb++ - 128;
@@ -3481,16 +3498,16 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
 		  int tr =               0x19895 * v;
 		  int tg =  0x644A * u +  0xD01F * v;
 		  int tb = 0x20469 * u;
-		  unsigned char * blockEnd = toPixel + blockSwath;
+		  uint8_t * blockEnd = toPixel + blockSwath;
 		  while (toPixel < blockEnd)
 		  {
-			unsigned char * blockRowEnd = toPixel + blockRowWidth;
+			uint8_t * blockRowEnd = toPixel + blockRowWidth;
 			while (toPixel < blockRowEnd)
 			{
 			  int y = (*fromPixel++ - 16) * 0x12A15;
-			  unsigned int r = min (max (y + tr + roundR, 0), 0xFFFFFF);
-			  unsigned int g = min (max (y - tg + roundG, 0), 0xFFFFFF);
-			  unsigned int b = min (max (y + tb + roundB, 0), 0xFFFFFF);
+			  uint32_t r = min (max (y + tr + roundR, 0), 0xFFFFFF);
+			  uint32_t g = min (max (y - tg + roundG, 0), 0xFFFFFF);
+			  uint32_t b = min (max (y + tb + roundB, 0), 0xFFFFFF);
 			  Int2Char t;
 			  t.all =   (roll (r, redShift)   & redMask)
 				      | (roll (g, greenShift) & greenMask)
@@ -3515,7 +3532,7 @@ PixelFormatRGBABits::fromYCbCr (const Image & image, Image & result) const
 	  break;
 	}
     case 4:
-	  YCbCr2Bits (int);
+	  YCbCr2Bits (uint32_t);
 	  break;
     default:
 	  throw "Unhandled depth in PixelFormatRGBABits::fromYCbCr";
@@ -3552,9 +3569,9 @@ PixelFormatRGBABits::operator == (const PixelFormat & that) const
 }
 
 void
-PixelFormatRGBABits::shift (unsigned int redMask, unsigned int greenMask, unsigned int blueMask, unsigned int alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift) const
+PixelFormatRGBABits::shift (uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask, int & redShift, int & greenShift, int & blueShift, int & alphaShift) const
 {
-  unsigned int t;
+  uint32_t t;
 
   redShift = 0;
   if (redMask  &&  this->redMask)
@@ -3590,7 +3607,7 @@ PixelFormatRGBABits::shift (unsigned int redMask, unsigned int greenMask, unsign
 }
 
 int
-PixelFormatRGBABits::countBits (unsigned int mask)
+PixelFormatRGBABits::countBits (uint32_t mask)
 {
   int count = 0;
   while (mask)
@@ -3601,7 +3618,7 @@ PixelFormatRGBABits::countBits (unsigned int mask)
   return count;
 }
 
-unsigned int
+uint32_t
 PixelFormatRGBABits::getRGBA (void * pixel) const
 {
   int redShift;
@@ -3615,37 +3632,37 @@ PixelFormatRGBABits::getRGBA (void * pixel) const
   switch ((int) depth)
   {
     case 1:
-	  value.all = *((unsigned char *) pixel);
+	  value.all = *((uint8_t *) pixel);
 	  break;
     case 2:
-	  value.all = *((unsigned short *) pixel);
+	  value.all = *((uint16_t *) pixel);
 	  break;
     case 3:
-	  value.piece0 = ((unsigned char *) pixel)[0];
-	  value.piece1 = ((unsigned char *) pixel)[1];
-	  value.piece2 = ((unsigned char *) pixel)[2];
+	  value.piece0 = ((uint8_t *) pixel)[0];
+	  value.piece1 = ((uint8_t *) pixel)[1];
+	  value.piece2 = ((uint8_t *) pixel)[2];
 	  break;
     case 4:
     default:
-	  value.all = *((unsigned int *) pixel);
+	  value.all = *((uint32_t *) pixel);
 	  break;
   }
 
-  unsigned int r = value.all & redMask;
-  unsigned int g = value.all & greenMask;
-  unsigned int b = value.all & blueMask;
-  unsigned int a = value.all & alphaMask;
+  uint32_t r = value.all & redMask;
+  uint32_t g = value.all & greenMask;
+  uint32_t b = value.all & blueMask;
+  uint32_t a = value.all & alphaMask;
 
-  int redFactor   = prepareDublicate (redShift,   redBits);
-  int greenFactor = prepareDublicate (greenShift, greenBits);
-  int blueFactor  = prepareDublicate (blueShift,  blueBits);
+  uint32_t redFactor   = prepareDublicate (redShift,   redBits);
+  uint32_t greenFactor = prepareDublicate (greenShift, greenBits);
+  uint32_t blueFactor  = prepareDublicate (blueShift,  blueBits);
   int ab = alphaBits;
   if (! alphaMask)
   {
 	a = 0xFF;
 	ab = 8;
   }
-  int alphaFactor = prepareDublicate (alphaShift, ab);
+  uint32_t alphaFactor = prepareDublicate (alphaShift, ab);
 
   return   (dublicate (r, redFactor,   redShift)   & 0xFF000000)
 		 | (dublicate (g, greenFactor, greenShift) &   0xFF0000)
@@ -3653,7 +3670,7 @@ PixelFormatRGBABits::getRGBA (void * pixel) const
 		 | (dublicate (a, alphaFactor, alphaShift) &       0xFF);
 }
 
-unsigned char
+uint8_t
 PixelFormatRGBABits::getAlpha (void * pixel) const
 {
   if (! alphaMask) return 0xFF;
@@ -3662,27 +3679,27 @@ PixelFormatRGBABits::getAlpha (void * pixel) const
   switch ((int) depth)
   {
     case 1:
-	  value.all = *((unsigned char *) pixel);
+	  value.all = *((uint8_t *) pixel);
 	  break;
     case 2:
-	  value.all = *((unsigned short *) pixel);
+	  value.all = *((uint16_t *) pixel);
 	  break;
     case 3:
-	  value.piece0 = ((unsigned char *) pixel)[0];
-	  value.piece1 = ((unsigned char *) pixel)[1];
-	  value.piece2 = ((unsigned char *) pixel)[2];
+	  value.piece0 = ((uint8_t *) pixel)[0];
+	  value.piece1 = ((uint8_t *) pixel)[1];
+	  value.piece2 = ((uint8_t *) pixel)[2];
 	  break;
     case 4:
     default:
-	  value.all = *((unsigned int *) pixel);
+	  value.all = *((uint32_t *) pixel);
 	  break;
   }
-  unsigned int a = value.all & alphaMask;
+  uint32_t a = value.all & alphaMask;
 
   int shift = 7;
-  unsigned int mask = alphaMask;
+  uint32_t mask = alphaMask;
   while (mask >>= 1) {shift--;}
-  int factor = prepareDublicate (shift, alphaBits);
+  uint32_t factor = prepareDublicate (shift, alphaBits);
 
   return dublicate (a, factor, shift) & 0xFF;
 }
@@ -3694,12 +3711,12 @@ PixelFormatRGBABits::getAlpha (void * pixel) const
    to avoid the associated extra setup.
  **/
 void
-PixelFormatRGBABits::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatRGBABits::setRGBA (void * pixel, uint32_t rgba) const
 {
-  unsigned int r = rgba & 0xFF000000;
-  unsigned int g = rgba &   0xFF0000;
-  unsigned int b = rgba &     0xFF00;
-  unsigned int a = rgba &       0xFF;
+  uint32_t r = rgba & 0xFF000000;
+  uint32_t g = rgba &   0xFF0000;
+  uint32_t b = rgba &     0xFF00;
+  uint32_t a = rgba &       0xFF;
 
   int redShift;
   int greenShift;
@@ -3716,19 +3733,19 @@ PixelFormatRGBABits::setRGBA (void * pixel, unsigned int rgba) const
   switch ((int) depth)
   {
     case 1:
-	  *((unsigned char *) pixel) = value.all;
+	  *((uint8_t *) pixel) = value.all;
 	  break;
     case 2:
-	  *((unsigned short *) pixel) = value.all;
+	  *((uint16_t *) pixel) = value.all;
 	  break;
     case 3:
-	  ((unsigned char *) pixel)[0] = value.piece0;
-	  ((unsigned char *) pixel)[1] = value.piece1;
-	  ((unsigned char *) pixel)[2] = value.piece2;
+	  ((uint8_t *) pixel)[0] = value.piece0;
+	  ((uint8_t *) pixel)[1] = value.piece1;
+	  ((uint8_t *) pixel)[2] = value.piece2;
 	  break;
     case 4:
     default:
-	  *((unsigned int *) pixel) = value.all;
+	  *((uint32_t *) pixel) = value.all;
 	  break;
   }
 }
@@ -3740,16 +3757,16 @@ PixelFormatRGBABits::setRGBA (void * pixel, unsigned int rgba) const
    on the last pixel.
 **/
 void
-PixelFormatRGBABits::setAlpha (void * pixel, unsigned char alpha) const
+PixelFormatRGBABits::setAlpha (void * pixel, uint8_t alpha) const
 {
   int shift = -7;
-  unsigned int mask = alphaMask;
+  uint32_t mask = alphaMask;
   while (mask >>= 1) {shift++;}
 
-  unsigned int a = alpha;
+  uint32_t a = alpha;
   a = roll (a, shift) & alphaMask;
 
-  * (unsigned int *) pixel = a | ((* (unsigned int *) pixel) & ~alphaMask);
+  * (uint32_t *) pixel = a | ((* (uint32_t *) pixel) & ~alphaMask);
 }
 
 
@@ -3826,16 +3843,16 @@ PixelFormatRGBAChar::fromGrayChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height * 4;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height * 4;
   const int step = i->stride - image.width;
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + o->stride;
+	uint8_t * rowEnd = toPixel + o->stride;
 	while (toPixel < rowEnd)
 	{
-	  unsigned char t = *fromPixel++;
+	  uint8_t t = *fromPixel++;
 	  toPixel[0] = t;
 	  toPixel[1] = t;
 	  toPixel[2] = t;
@@ -3853,17 +3870,17 @@ PixelFormatRGBAChar::fromGrayFloat (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  float *         fromPixel = (float *)         i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height * 4;
+  float *   fromPixel = (float *)   i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height * 4;
   const int step = i->stride - image.width * sizeof (float);
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width * 4;
+	uint8_t * rowEnd = toPixel + result.width * 4;
 	while (toPixel < rowEnd)
 	{
 	  float v = min (max (*fromPixel++, 0.0f), 1.0f);
-	  unsigned char t = lutFloat2Char[(unsigned short) (65535 * v)];
+	  uint8_t t = lutFloat2Char[(uint16_t) (65535 * v)];
 	  toPixel[0] = t;
 	  toPixel[1] = t;
 	  toPixel[2] = t;
@@ -3881,17 +3898,17 @@ PixelFormatRGBAChar::fromGrayDouble (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  double *        fromPixel = (double *)        i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height * 4;
+  double *  fromPixel = (double *)  i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height * 4;
   const int step = i->stride - image.width * sizeof (double);
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width * 4;
+	uint8_t * rowEnd = toPixel + result.width * 4;
 	while (toPixel < rowEnd)
 	{
 	  double v = min (max (*fromPixel++, 0.0), 1.0);
-	  unsigned char t = lutFloat2Char[(unsigned short) (65535 * v)];
+	  uint8_t t = lutFloat2Char[(uint16_t) (65535 * v)];
 	  toPixel[0] = t;
 	  toPixel[1] = t;
 	  toPixel[2] = t;
@@ -3909,13 +3926,13 @@ PixelFormatRGBAChar::fromRGBChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height * 4;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height * 4;
   const int step = i->stride - image.width * 3;
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width * 4;
+	uint8_t * rowEnd = toPixel + result.width * 4;
 	while (toPixel < rowEnd)
 	{
 	  toPixel[0] = fromPixel[0];
@@ -3937,30 +3954,30 @@ PixelFormatRGBAChar::fromPackedYUV (const Image & image, Image & result) const
   PixelBufferGroups *              i            = (PixelBufferGroups *) image.buffer;
   assert (i);
   PixelFormatPackedYUV::YUVindex * table        = sourceFormat->table;
-  unsigned char *                  fromPixel    = (unsigned char *) i->memory;
+  uint8_t *                        fromPixel    = (uint8_t *) i->memory;
   const int                        bytes        = i->bytes;
   const int                        fromStep     = i->stride - (int) floor ((image.width + 0.5) / i->pixels) * bytes;
 
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (o);
-  unsigned int *       toPixel  = (unsigned int *) o->base ();
-  const unsigned int * end      = (unsigned int *) ((char *) toPixel + o->stride * result.height);
-  const int            rowWidth = (int) roundp (result.width * depth);
-  const int            toStep   = o->stride - rowWidth;
+  uint32_t *       toPixel  = (uint32_t *) o->base ();
+  const uint32_t * end      = (uint32_t *) ((char *) toPixel + o->stride * result.height);
+  const int        rowWidth = (int) roundp (result.width * depth);
+  const int        toStep   = o->stride - rowWidth;
 
   while (toPixel < end)
   {
 	PixelFormatPackedYUV::YUVindex * index = table;
-	const unsigned int * rowEnd = (unsigned int *) ((char *) toPixel + rowWidth);
+	const uint32_t * rowEnd = (uint32_t *) ((char *) toPixel + rowWidth);
 	while (toPixel < rowEnd)
 	{
 	  int y = fromPixel[index->y] << 16;
 	  int u = fromPixel[index->u] - 128;
 	  int v = fromPixel[index->v] - 128;
 
-	  unsigned int r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
-	  unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
-	  unsigned int b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
+	  uint32_t r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
+	  uint32_t g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
+	  uint32_t b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
 
 #     if BYTE_ORDER == LITTLE_ENDIAN
 	  *toPixel++ = (b & 0xFF0000) | ((g >> 8) & 0xFF00) | ((r >> 16) & 0xFF) | 0xFF000000;
@@ -3976,7 +3993,7 @@ PixelFormatRGBAChar::fromPackedYUV (const Image & image, Image & result) const
 	  }
 	}
 	fromPixel += fromStep;
-	toPixel = (unsigned int *) ((char *) toPixel + toStep);
+	toPixel = (uint32_t *) ((char *) toPixel + toStep);
   }
 }
 
@@ -3989,15 +4006,15 @@ PixelFormatRGBAChar::fromAny (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (o);
 
-  unsigned int * dest = (unsigned int *) o->base ();
+  uint32_t * dest = (uint32_t *) o->base ();
 
   if (i)
   {
-	unsigned int * end     = dest + result.width * result.height;
-	unsigned int * rowEnd  = dest + result.width;  // Output of this conversion must have stride == row length.
-	unsigned char * source = (unsigned char *) i->base ();
-	const int sourceDepth  = (int) sourceFormat->depth;
-	const int step         = i->stride - image.width * sourceDepth;
+	uint32_t * end     = dest + result.width * result.height;
+	uint32_t * rowEnd  = dest + result.width;  // Output of this conversion must have stride == row length.
+	uint8_t * source      = (uint8_t *) i->base ();
+	const int sourceDepth = (int) sourceFormat->depth;
+	const int step        = i->stride - image.width * sourceDepth;
 	while (dest < end)
 	{
 	  while (dest < rowEnd)
@@ -4029,36 +4046,36 @@ PixelFormatRGBAChar::fromAny (const Image & image, Image & result) const
   }
 }
 
-unsigned int
+uint32_t
 PixelFormatRGBAChar::getRGBA (void * pixel) const
 {
 # if BYTE_ORDER == LITTLE_ENDIAN
-  return bswap (*((unsigned int *) pixel));
+  return bswap (*((uint32_t *) pixel));
 # else
-  return *((unsigned int *) pixel);
+  return *((uint32_t *) pixel);
 # endif
 }
 
-unsigned char
+uint8_t
 PixelFormatRGBAChar::getAlpha (void * pixel) const
 {
-  return ((unsigned char *) pixel)[3];
+  return ((uint8_t *) pixel)[3];
 }
 
 void
-PixelFormatRGBAChar::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatRGBAChar::setRGBA (void * pixel, uint32_t rgba) const
 {
 # if BYTE_ORDER == LITTLE_ENDIAN
-  *((unsigned int *) pixel) = bswap (rgba);
+  *((uint32_t *) pixel) = bswap (rgba);
 # else
-  *((unsigned int *) pixel) = rgba;
+  *((uint32_t *) pixel) = rgba;
 # endif
 }
 
 void
-PixelFormatRGBAChar::setAlpha (void * pixel, unsigned char alpha) const
+PixelFormatRGBAChar::setAlpha (void * pixel, uint8_t alpha) const
 {
-  ((unsigned char *) pixel)[3] = alpha;
+  ((uint8_t *) pixel)[3] = alpha;
 }
 
 
@@ -4127,16 +4144,16 @@ PixelFormatRGBChar::fromGrayChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height * 3;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height * 3;
   const int step = i->stride - image.width;
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width * 3;
+	uint8_t * rowEnd = toPixel + result.width * 3;
 	while (toPixel < rowEnd)
 	{
-	  unsigned char t = *fromPixel++;
+	  uint8_t t = *fromPixel++;
 	  toPixel[0] = t;
 	  toPixel[1] = t;
 	  toPixel[2] = t;
@@ -4153,23 +4170,23 @@ PixelFormatRGBChar::fromGrayShort (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned short * fromPixel = (unsigned short *) i->base ();
-  unsigned char *  toPixel   = (unsigned char *)  o->base ();
-  unsigned char *  end       = toPixel + result.width * result.height * 3;
+  uint16_t * fromPixel = (uint16_t *) i->base ();
+  uint8_t *  toPixel   = (uint8_t *)  o->base ();
+  uint8_t *  end       = toPixel + result.width * result.height * 3;
   const int grayShift = ((const PixelFormatGrayShort *) image.format)->grayShift;
   const int step = i->stride - image.width * sizeof (short);
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width * 3;
+	uint8_t * rowEnd = toPixel + result.width * 3;
 	while (toPixel < rowEnd)
 	{
-	  unsigned char t = lutFloat2Char[*fromPixel++ << grayShift];
+	  uint8_t t = lutFloat2Char[*fromPixel++ << grayShift];
 	  toPixel[0] = t;
 	  toPixel[1] = t;
 	  toPixel[2] = t;
 	  toPixel += 3;
 	}
-	fromPixel = (unsigned short *) ((char *) fromPixel + step);
+	fromPixel = (uint16_t *) ((char *) fromPixel + step);
   }
 }
 
@@ -4180,17 +4197,17 @@ PixelFormatRGBChar::fromGrayFloat (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  float *         fromPixel = (float *)         i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height * 3;
+  float *   fromPixel = (float *)   i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height * 3;
   const int step = i->stride - image.width * sizeof (float);
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width * 3;
+	uint8_t * rowEnd = toPixel + result.width * 3;
 	while (toPixel < rowEnd)
 	{
 	  float v = min (max (*fromPixel++, 0.0f), 1.0f);
-	  unsigned char t = lutFloat2Char[(unsigned short) (65535 * v)];
+	  uint8_t t = lutFloat2Char[(uint16_t) (65535 * v)];
 	  toPixel[0] = t;
 	  toPixel[1] = t;
 	  toPixel[2] = t;
@@ -4207,17 +4224,17 @@ PixelFormatRGBChar::fromGrayDouble (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  double *        fromPixel = (double *)        i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height * 3;
+  double *  fromPixel = (double *)  i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height * 3;
   const int step = i->stride - image.width * sizeof (double);
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width * 3;
+	uint8_t * rowEnd = toPixel + result.width * 3;
 	while (toPixel < rowEnd)
 	{
 	  double v = min (max (*fromPixel++, 0.0), 1.0);
-	  unsigned char t = lutFloat2Char[(unsigned short) (65535 * v)];
+	  uint8_t t = lutFloat2Char[(uint16_t) (65535 * v)];
 	  toPixel[0] = t;
 	  toPixel[1] = t;
 	  toPixel[2] = t;
@@ -4234,13 +4251,13 @@ PixelFormatRGBChar::fromRGBAChar (const Image & image, Image & result) const
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (i  &&  o);
 
-  unsigned char * fromPixel = (unsigned char *) i->base ();
-  unsigned char * toPixel   = (unsigned char *) o->base ();
-  unsigned char * end       = toPixel + result.width * result.height * 3;
+  uint8_t * fromPixel = (uint8_t *) i->base ();
+  uint8_t * toPixel   = (uint8_t *) o->base ();
+  uint8_t * end       = toPixel + result.width * result.height * 3;
   const int step = i->stride - image.width * 4;
   while (toPixel < end)
   {
-	unsigned char * rowEnd = toPixel + result.width * 3;
+	uint8_t * rowEnd = toPixel + result.width * 3;
 	while (toPixel < rowEnd)
 	{
 	  toPixel[0] = fromPixel[0];
@@ -4253,7 +4270,7 @@ PixelFormatRGBChar::fromRGBAChar (const Image & image, Image & result) const
   }
 }
 
-unsigned int
+uint32_t
 PixelFormatRGBChar::getRGBA  (void * pixel) const
 {
   // Note: This code will overrun the end of a buffer unless the allocation
@@ -4261,18 +4278,18 @@ PixelFormatRGBChar::getRGBA  (void * pixel) const
   // that allocates the buffer to do this for us, rather than doing extra
   // work to prevent the end-case.
 # if BYTE_ORDER == LITTLE_ENDIAN
-  return bswap (*((unsigned int *) pixel)) | 0xFF;
+  return bswap (*((uint32_t *) pixel)) | 0xFF;
 # else
-  return *((unsigned int *) pixel) | 0xFF;
+  return *((uint32_t *) pixel) | 0xFF;
 # endif
 }
 
 void
-PixelFormatRGBChar::setRGBA  (void * pixel, unsigned int rgba) const
+PixelFormatRGBChar::setRGBA  (void * pixel, uint32_t rgba) const
 {
-  ((unsigned char *) pixel)[2] = (rgba >>= 8) & 0xFF;
-  ((unsigned char *) pixel)[1] = (rgba >>= 8) & 0xFF;
-  ((unsigned char *) pixel)[0] =  rgba >>  8;
+  ((uint8_t *) pixel)[2] = (rgba >>= 8) & 0xFF;
+  ((uint8_t *) pixel)[1] = (rgba >>= 8) & 0xFF;
+  ((uint8_t *) pixel)[0] =  rgba >>  8;
 }
 
 
@@ -4287,36 +4304,36 @@ PixelFormatRGBAShort::PixelFormatRGBAShort ()
   hasAlpha   = true;
 }
 
-unsigned int
+uint32_t
 PixelFormatRGBAShort::getRGBA (void * pixel) const
 {
-  unsigned int rgba;
-  rgba =   ((((unsigned short *) pixel)[0] << 16) & 0xFF000000)
-         | ((((unsigned short *) pixel)[1] <<  8) &   0xFF0000)
-         | ( ((unsigned short *) pixel)[2]        &     0xFF00)
-         |   ((unsigned short *) pixel)[3] >>  8;
+  uint32_t rgba;
+  rgba =   ((((uint16_t *) pixel)[0] << 16) & 0xFF000000)
+         | ((((uint16_t *) pixel)[1] <<  8) &   0xFF0000)
+         | ( ((uint16_t *) pixel)[2]        &     0xFF00)
+         |   ((uint16_t *) pixel)[3] >>  8;
   return rgba;
 }
 
-unsigned char
+uint8_t
 PixelFormatRGBAShort::getAlpha (void * pixel) const
 {
-  return ((unsigned short *) pixel)[3] >> 8;
+  return ((uint16_t *) pixel)[3] >> 8;
 }
 
 void
-PixelFormatRGBAShort::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatRGBAShort::setRGBA (void * pixel, uint32_t rgba) const
 {
-  ((unsigned short *) pixel)[0] = (rgba & 0xFF000000) >> 16;
-  ((unsigned short *) pixel)[1] = (rgba &   0xFF0000) >> 8;
-  ((unsigned short *) pixel)[2] = (rgba &     0xFF00);
-  ((unsigned short *) pixel)[3] = (rgba &       0xFF) << 8;
+  ((uint16_t *) pixel)[0] = (rgba & 0xFF000000) >> 16;
+  ((uint16_t *) pixel)[1] = (rgba &   0xFF0000) >> 8;
+  ((uint16_t *) pixel)[2] = (rgba &     0xFF00);
+  ((uint16_t *) pixel)[3] = (rgba &       0xFF) << 8;
 }
 
 void
-PixelFormatRGBAShort::setAlpha (void * pixel, unsigned char alpha) const
+PixelFormatRGBAShort::setAlpha (void * pixel, uint8_t alpha) const
 {
-  ((unsigned short *) pixel)[3] = alpha << 8;
+  ((uint16_t *) pixel)[3] = alpha << 8;
 }
 
 
@@ -4331,23 +4348,23 @@ PixelFormatRGBShort::PixelFormatRGBShort ()
   hasAlpha   = false;
 }
 
-unsigned int
+uint32_t
 PixelFormatRGBShort::getRGBA (void * pixel) const
 {
-  unsigned int rgba = 0;
-  rgba =   (lutFloat2Char[((unsigned short *) pixel)[0]] << 24)
-         | (lutFloat2Char[((unsigned short *) pixel)[1]] << 16)
-         | (lutFloat2Char[((unsigned short *) pixel)[2]] <<  8)
+  uint32_t rgba = 0;
+  rgba =   (lutFloat2Char[((uint16_t *) pixel)[0]] << 24)
+         | (lutFloat2Char[((uint16_t *) pixel)[1]] << 16)
+         | (lutFloat2Char[((uint16_t *) pixel)[2]] <<  8)
          | 0xFF;
   return rgba;
 }
 
 void
-PixelFormatRGBShort::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatRGBShort::setRGBA (void * pixel, uint32_t rgba) const
 {
-  ((unsigned short *) pixel)[0] = (unsigned short) (65535 * lutChar2Float[ rgba             >> 24]);
-  ((unsigned short *) pixel)[1] = (unsigned short) (65535 * lutChar2Float[(rgba & 0xFF0000) >> 16]);
-  ((unsigned short *) pixel)[2] = (unsigned short) (65535 * lutChar2Float[(rgba &   0xFF00) >>  8]);
+  ((uint16_t *) pixel)[0] = (uint16_t) (65535 * lutChar2Float[ rgba             >> 24]);
+  ((uint16_t *) pixel)[1] = (uint16_t) (65535 * lutChar2Float[(rgba & 0xFF0000) >> 16]);
+  ((uint16_t *) pixel)[2] = (uint16_t) (65535 * lutChar2Float[(rgba &   0xFF00) >>  8]);
 }
 
 
@@ -4371,10 +4388,10 @@ PixelFormatRGBAFloat::fromAny (const Image & image, Image & result) const
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->base ();
+	uint8_t * source      = (uint8_t *) i->base ();
 	const int sourceDepth = (int) sourceFormat->depth;
-	const int step = i->stride - image.width * sourceDepth;
-	float * end = dest + image.width * image.height * 4;
+	const int step        = i->stride - image.width * sourceDepth;
+	float *   end         = dest + image.width * image.height * 4;
 	while (dest < end)
 	{
 	  float * rowEnd = dest + result.width * 4;
@@ -4400,7 +4417,7 @@ PixelFormatRGBAFloat::fromAny (const Image & image, Image & result) const
   }
 }
 
-unsigned int
+uint32_t
 PixelFormatRGBAFloat::getRGBA (void * pixel) const
 {
   float rgbaValues[4];
@@ -4410,10 +4427,10 @@ PixelFormatRGBAFloat::getRGBA (void * pixel) const
 	rgbaValues[i] = max (rgbaValues[i], 0.0f);
 	rgbaValues[i] = min (rgbaValues[i], 1.0f);
   }
-  unsigned int r = (unsigned int) lutFloat2Char[(unsigned short) (65535 * rgbaValues[0])] << 24;
-  unsigned int g = (unsigned int) lutFloat2Char[(unsigned short) (65535 * rgbaValues[1])] << 16;
-  unsigned int b = (unsigned int) lutFloat2Char[(unsigned short) (65535 * rgbaValues[2])] <<  8;
-  unsigned int a = (unsigned int) (255 * rgbaValues[3]);  // assume alpha is already linear
+  uint32_t r = (uint32_t) lutFloat2Char[(uint16_t) (65535 * rgbaValues[0])] << 24;
+  uint32_t g = (uint32_t) lutFloat2Char[(uint16_t) (65535 * rgbaValues[1])] << 16;
+  uint32_t b = (uint32_t) lutFloat2Char[(uint16_t) (65535 * rgbaValues[2])] <<  8;
+  uint32_t a = (uint32_t) (255 * rgbaValues[3]);  // assume alpha is already linear
   return r | g | b | a;
 }
 
@@ -4427,14 +4444,14 @@ PixelFormatRGBAFloat::getRGBA (void * pixel, float values[]) const
   values[3] = ((float *) pixel)[3];
 }
 
-unsigned char
+uint8_t
 PixelFormatRGBAFloat::getAlpha (void * pixel) const
 {
-  return (unsigned char) (((float *) pixel)[3] * 255);
+  return (uint8_t) (((float *) pixel)[3] * 255);
 }
 
 void
-PixelFormatRGBAFloat::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatRGBAFloat::setRGBA (void * pixel, uint32_t rgba) const
 {
   float * rgbaValues = (float *) pixel;
   rgbaValues[0] = lutChar2Float[ rgba             >> 24];
@@ -4454,9 +4471,15 @@ PixelFormatRGBAFloat::setRGBA (void * pixel, float values[]) const
 }
 
 void
-PixelFormatRGBAFloat::setAlpha (void * pixel, unsigned char alpha) const
+PixelFormatRGBAFloat::setAlpha (void * pixel, uint8_t alpha) const
 {
   ((float *) pixel)[3] = alpha / 255.0f;
+}
+
+void
+PixelFormatRGBAFloat::blend (void * pixel, float values[]) const
+{
+  alphaBlend (values, (float *) pixel);
 }
 
 
@@ -4528,23 +4551,23 @@ PixelFormatPackedYUV::fromAny (const Image & image, Image & result) const
   PixelBufferGroups * o = (PixelBufferGroups *) result.buffer;
   assert (o);
 
-  unsigned char *       address  = (unsigned char *) o->memory;
-  const unsigned char * end      = address + o->stride * result.height;
-  const int             rowWidth = (int) (result.width * depth);
-  const int             toStep   = o->stride - rowWidth;
+  uint8_t *       address  = (uint8_t *) o->memory;
+  const uint8_t * end      = address + o->stride * result.height;
+  const int       rowWidth = (int) (result.width * depth);
+  const int       toStep   = o->stride - rowWidth;
 
-  const unsigned int shift = 16 + (int) roundp (log ((double) ratioH) / log (2.0));
-  const int bias           = 0x808 << (shift - 4);  // include both bias and rounding in single constant
-  const int maximum        = (~(unsigned int) 0) >> (24 - shift);
+  const uint32_t  shift    = 16 + (int) roundp (log ((double) ratioH) / log (2.0));
+  const int       bias     = 0x808 << (shift - 4);  // include both bias and rounding in single constant
+  const int       maximum  = (~(uint32_t) 0) >> (24 - shift);
 
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->base ();
+	uint8_t * source = (uint8_t *) i->base ();
 	const int fromStep = i->stride - image.width * sourceDepth;
 
 	while (address < end)
 	{
-	  const unsigned char * rowEnd = address + rowWidth;
+	  const uint8_t * rowEnd = address + rowWidth;
 	  while (address < rowEnd)
 	  {
 		YUVindex * index = table;
@@ -4555,7 +4578,7 @@ PixelFormatPackedYUV::fromAny (const Image & image, Image & result) const
 		  int b = 0;
 		  for (int p = 0; p < ratioH; p++)
 		  {
-			unsigned int rgba = sourceFormat->getRGBA (source);
+			uint32_t rgba = sourceFormat->getRGBA (source);
 			source += sourceDepth;
 			int sr =  rgba             >> 24;  // assumes 32-bit int
 			int sg = (rgba & 0xFF0000) >> 16;
@@ -4584,7 +4607,7 @@ PixelFormatPackedYUV::fromAny (const Image & image, Image & result) const
 	while (address < end)
 	{
 	  int x = 0;
-	  const unsigned char * rowEnd = address + rowWidth;
+	  const uint8_t * rowEnd = address + rowWidth;
 	  while (address < rowEnd)
 	  {
 		YUVindex * index = table;
@@ -4595,7 +4618,7 @@ PixelFormatPackedYUV::fromAny (const Image & image, Image & result) const
 		  int b = 0;
 		  for (int p = 0; p < ratioH; p++)
 		  {
-			unsigned int rgba = sourceFormat->getRGBA (sourceBuffer->pixel (x++, y));
+			uint32_t rgba = sourceFormat->getRGBA (sourceBuffer->pixel (x++, y));
 			int sr =  rgba             >> 24;
 			int sg = (rgba & 0xFF0000) >> 16;
 			int sb = (rgba &   0xFF00) >>  8;
@@ -4626,29 +4649,29 @@ PixelFormatPackedYUV::fromYUV (const Image & image, Image & result) const
 
   PixelBufferGroups * o = (PixelBufferGroups *) result.buffer;
   assert (o);
-  unsigned char *       address  = (unsigned char *) o->memory;
-  const unsigned char * end      = address + o->stride * result.height;
-  const int             rowWidth = (int) (result.width * depth);
-  const int             toStep   = o->stride - rowWidth;
+  uint8_t *       address  = (uint8_t *) o->memory;
+  const uint8_t * end      = address + o->stride * result.height;
+  const int       rowWidth = (int) (result.width * depth);
+  const int       toStep   = o->stride - rowWidth;
 
-  const unsigned int shift = 8 + (int) roundp (log ((double) ratioH) / log (2.0));
-  const unsigned int roundup = 0x80 << (shift - 8);
+  const uint32_t shift = 8 + (int) roundp (log ((double) ratioH) / log (2.0));
+  const uint32_t roundup = 0x80 << (shift - 8);
 
   int y = 0;
   while (address < end)
   {
 	int x = 0;
-	const unsigned char * rowEnd = address + rowWidth;
+	const uint8_t * rowEnd = address + rowWidth;
 	while (address < rowEnd)
 	{
 	  YUVindex * index = table;
 	  while (index->y >= 0)
 	  {
-		unsigned int u = 0;
-		unsigned int v = 0;
+		uint32_t u = 0;
+		uint32_t v = 0;
 		for (int p = 0; p < ratioH; p++)
 		{
-		  unsigned int yuv = sourceFormat->getYUV (sourceBuffer->pixel (x++, y));
+		  uint32_t yuv = sourceFormat->getYUV (sourceBuffer->pixel (x++, y));
 		  u +=  yuv & 0xFF00;
 		  v += (yuv &   0xFF) << 8;
 		  address[(*index++).y] = yuv >> 16;  // don't mask, on assumption that higher order bits of yuv are 0
@@ -4687,35 +4710,35 @@ PixelFormatPackedYUV::operator == (const PixelFormat & that) const
   return true;
 }
 
-unsigned int
+uint32_t
 PixelFormatPackedYUV::getRGBA (void * pixel) const
 {
   PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
-  register unsigned char * address = data->address;
+  register uint8_t * address = data->address;
   YUVindex & index = table[data->index];
 
   int y = address[index.y] << 16;
   int u = address[index.u] - 128;
   int v = address[index.v] - 128;
 
-  unsigned int r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
-  unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
-  unsigned int b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
+  uint32_t r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
+  uint32_t g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
+  uint32_t b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
 
   return ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF;
 }
 
-unsigned int
+uint32_t
 PixelFormatPackedYUV::getYUV (void * pixel) const
 {
   PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
-  register unsigned char * address = data->address;
+  register uint8_t * address = data->address;
   YUVindex & index = table[data->index];
 
   return (address[index.y] << 16) | (address[index.u] << 8) | address[index.v];
 }
 
-unsigned char
+uint8_t
 PixelFormatPackedYUV::getGray (void * pixel) const
 {
   PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
@@ -4723,18 +4746,18 @@ PixelFormatPackedYUV::getGray (void * pixel) const
 }
 
 void
-PixelFormatPackedYUV::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatPackedYUV::setRGBA (void * pixel, uint32_t rgba) const
 {
   int r = (rgba & 0xFF000000) >> 24;
   int g = (rgba &   0xFF0000) >> 16;
   int b = (rgba &     0xFF00) >>  8;
 
-  unsigned char y = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) >> 16;
-  unsigned char u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
-  unsigned char v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+  uint8_t y = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) >> 16;
+  uint8_t u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+  uint8_t v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
 
   PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
-  register unsigned char * address = data->address;
+  register uint8_t * address = data->address;
   YUVindex & index = table[data->index];
 
   address[index.y] = y;
@@ -4743,10 +4766,10 @@ PixelFormatPackedYUV::setRGBA (void * pixel, unsigned int rgba) const
 }
 
 void
-PixelFormatPackedYUV::setYUV (void * pixel, unsigned int yuv) const
+PixelFormatPackedYUV::setYUV (void * pixel, uint32_t yuv) const
 {
   PixelBufferGroups::PixelData * data = (PixelBufferGroups::PixelData *) pixel;
-  register unsigned char * address = data->address;
+  register uint8_t * address = data->address;
   YUVindex & index = table[data->index];
 
   address[index.y] =  yuv           >> 16;
@@ -4782,15 +4805,15 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
   int rowWidth      = result.width;
   int blockRowWidth = ratioH;
 
-  const unsigned int shift = 16 + (int) roundp (log ((double) ratioH * ratioV) / log (2.0));
-  const int bias           = 0x808 << (shift - 4);  // include both bias and rounding in single constant
-  const int maximum        = (~(unsigned int) 0) >> (24 - shift);
+  const uint32_t shift   = 16 + (int) roundp (log ((double) ratioH * ratioV) / log (2.0));
+  const int      bias    = 0x808 << (shift - 4);  // include both bias and rounding in single constant
+  const int      maximum = (~(uint32_t) 0) >> (24 - shift);
 
   if (o)
   {
-	unsigned char * Y = (unsigned char *) o->plane0;
-	unsigned char * U = (unsigned char *) o->plane1;
-	unsigned char * V = (unsigned char *) o->plane2;
+	uint8_t * Y = (uint8_t *) o->plane0;
+	uint8_t * U = (uint8_t *) o->plane1;
+	uint8_t * V = (uint8_t *) o->plane2;
 
 	const int blockSwath     = o->stride0 * ratioV;
 	const int step12         = o->stride12 - result.width / ratioH;
@@ -4800,28 +4823,28 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
 
 	if (i)
 	{
-	  unsigned char * source = (unsigned char *) i->base ();
+	  uint8_t * source = (uint8_t *) i->base ();
 
 	  const int fromStep         = i->stride * ratioV - image.width * sourceDepth;
 	  const int fromBlockStep    = ratioH * sourceDepth - i->stride * ratioV;
 	  const int fromBlockRowStep = i->stride - ratioH * sourceDepth;
 
-	  unsigned char * end = Y + result.width * result.height;
+	  uint8_t * end = Y + result.width * result.height;
 	  while (Y < end)
 	  {
-		unsigned char * rowEnd = Y + rowWidth;
+		uint8_t * rowEnd = Y + rowWidth;
 		while (Y < rowEnd)
 		{
 		  int r = 0;
 		  int g = 0;
 		  int b = 0;
-		  unsigned char * blockEnd = Y + blockSwath;
+		  uint8_t * blockEnd = Y + blockSwath;
 		  while (Y < blockEnd)
 		  {
-			unsigned char * blockRowEnd = Y + blockRowWidth;
+			uint8_t * blockRowEnd = Y + blockRowWidth;
 			while (Y < blockRowEnd)
 			{
-			  unsigned int rgba = sourceFormat->getRGBA (source);
+			  uint32_t rgba = sourceFormat->getRGBA (source);
 			  source += sourceDepth;
 			  int sr =  rgba             >> 24;  // assumes 32-bit int
 			  int sg = (rgba & 0xFF0000) >> 16;
@@ -4848,23 +4871,23 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
 	else
 	{
 	  int y = 0;
-	  unsigned char * end = Y + result.width * result.height;
+	  uint8_t * end = Y + result.width * result.height;
 	  while (Y < end)
 	  {
 		int x = 0;
-		unsigned char * rowEnd = Y + rowWidth;
+		uint8_t * rowEnd = Y + rowWidth;
 		while (Y < rowEnd)
 		{
 		  int r = 0;
 		  int g = 0;
 		  int b = 0;
-		  unsigned char * blockEnd = Y + blockSwath;
+		  uint8_t * blockEnd = Y + blockSwath;
 		  while (Y < blockEnd)
 		  {
-			unsigned char * blockRowEnd = Y + blockRowWidth;
+			uint8_t * blockRowEnd = Y + blockRowWidth;
 			while (Y < blockRowEnd)
 			{
-			  unsigned int rgba = sourceFormat->getRGBA (sourceBuffer->pixel (x++, y));
+			  uint32_t rgba = sourceFormat->getRGBA (sourceBuffer->pixel (x++, y));
 			  int sr =  rgba             >> 24;
 			  int sg = (rgba & 0xFF0000) >> 16;
 			  int sb = (rgba &   0xFF00) >>  8;
@@ -4896,7 +4919,7 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
 
 	if (i)
 	{
-	  unsigned char * source = (unsigned char *) i->base ();
+	  uint8_t * source = (uint8_t *) i->base ();
 
 	  rowWidth      *= sourceDepth;
 	  blockRowWidth *= sourceDepth;
@@ -4906,23 +4929,23 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
 	  const int fromBlockRowStep = i->stride - ratioH * sourceDepth;
 
 	  int y = 0;
-	  unsigned char * end = source + i->stride * image.height;
+	  uint8_t * end = source + i->stride * image.height;
 	  while (source < end)
 	  {
 		int x = 0;
-		unsigned char * rowEnd = source + rowWidth;
+		uint8_t * rowEnd = source + rowWidth;
 		while (source < rowEnd)
 		{
 		  int r = 0;
 		  int g = 0;
 		  int b = 0;
-		  unsigned char * blockEnd = source + blockSwath;
+		  uint8_t * blockEnd = source + blockSwath;
 		  while (source < blockEnd)
 		  {
-			unsigned char * blockRowEnd = source + blockRowWidth;
+			uint8_t * blockRowEnd = source + blockRowWidth;
 			while (source < blockRowEnd)
 			{
-			  unsigned int rgba = sourceFormat->getRGBA (source);
+			  uint32_t rgba = sourceFormat->getRGBA (source);
 			  source += sourceDepth;
 			  int sr =  rgba             >> 24;  // assumes 32-bit int
 			  int sg = (rgba & 0xFF0000) >> 16;
@@ -4930,14 +4953,14 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
 			  r += sr;
 			  g += sg;
 			  b += sb;
-			  *((unsigned char **) destBuffer->pixel (x++, y))[0] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			  *((uint8_t **) destBuffer->pixel (x++, y))[0] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
 			}
 			source += fromBlockRowStep;
 			x -= ratioH;
 			y++;
 		  }
 		  y -= ratioV;
-		  unsigned char ** pixel = (unsigned char **) destBuffer->pixel (x, y);
+		  uint8_t ** pixel = (uint8_t **) destBuffer->pixel (x, y);
 		  *pixel[1] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
 		  *pixel[2] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
 		  source += fromBlockStep;
@@ -4962,17 +4985,17 @@ PixelFormatPlanarYUV::fromAny (const Image & image, Image & result) const
 		  {
 			for (int xx = x; xx < xend; xx++)
 			{
-			  unsigned int rgba = sourceFormat->getRGBA (sourceBuffer->pixel (xx, yy));
+			  uint32_t rgba = sourceFormat->getRGBA (sourceBuffer->pixel (xx, yy));
 			  int sr =  rgba             >> 24;
 			  int sg = (rgba & 0xFF0000) >> 16;
 			  int sb = (rgba &   0xFF00) >>  8;
 			  r += sr;
 			  g += sg;
 			  b += sb;
-			  *((unsigned char **) destBuffer->pixel (xx, yy))[0] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			  *((uint8_t **) destBuffer->pixel (xx, yy))[0] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
 			}
 		  }
-		  unsigned char ** pixel = (unsigned char **) destBuffer->pixel (x, y);
+		  uint8_t ** pixel = (uint8_t **) destBuffer->pixel (x, y);
 		  *pixel[1] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
 		  *pixel[2] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
 		}
@@ -5008,12 +5031,12 @@ PixelFormatPlanarYUV::operator == (const PixelFormat & that) const
          && ratioV == p->ratioV;
 }
 
-unsigned int
+uint32_t
 PixelFormatPlanarYUV::getRGBA (void * pixel) const
 {
-  int y = *((unsigned char **) pixel)[0] << 16;
-  int u = *((unsigned char **) pixel)[1] - 128;
-  int v = *((unsigned char **) pixel)[2] - 128;
+  int y = *((uint8_t **) pixel)[0] << 16;
+  int u = *((uint8_t **) pixel)[1] - 128;
+  int v = *((uint8_t **) pixel)[2] - 128;
 
   // R = Y           +1.4022*V
   // G = Y -0.3456*U -0.7145*V
@@ -5021,27 +5044,27 @@ PixelFormatPlanarYUV::getRGBA (void * pixel) const
   // The coefficients below are in fixed-point with decimal between bits 15 and 16.
   // Figure out a more elegant way to express these constants letting the
   // compiler do the work!
-  unsigned int r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
-  unsigned int g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
-  unsigned int b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
+  uint32_t r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
+  uint32_t g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
+  uint32_t b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
 
   return ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF;
 }
 
-unsigned int
+uint32_t
 PixelFormatPlanarYUV::getYUV (void * pixel) const
 {
-  return (*((unsigned char **) pixel)[0] << 16) | (*((unsigned char **) pixel)[1] << 8) | *((unsigned char **) pixel)[2];
+  return (*((uint8_t **) pixel)[0] << 16) | (*((uint8_t **) pixel)[1] << 8) | *((uint8_t **) pixel)[2];
 }
 
-unsigned char
+uint8_t
 PixelFormatPlanarYUV::getGray (void * pixel) const
 {
-  return *((unsigned char **) pixel)[0];
+  return *((uint8_t **) pixel)[0];
 }
 
 void
-PixelFormatPlanarYUV::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatPlanarYUV::setRGBA (void * pixel, uint32_t rgba) const
 {
   int r = (rgba & 0xFF000000) >> 24;
   int g = (rgba &   0xFF0000) >> 16;
@@ -5050,27 +5073,27 @@ PixelFormatPlanarYUV::setRGBA (void * pixel, unsigned int rgba) const
   // Y =  0.2989*R +0.5866*G +0.1145*B
   // U = -0.1687*R -0.3312*G +0.5000*B
   // V =  0.5000*R -0.4183*G -0.0816*B
-  *((unsigned char **) pixel)[0] = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) >> 16;
-  *((unsigned char **) pixel)[1] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
-  *((unsigned char **) pixel)[2] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+  *((uint8_t **) pixel)[0] = min (max (  0x4C84 * r + 0x962B * g + 0x1D4F * b            + 0x8000, 0), 0xFFFFFF) >> 16;
+  *((uint8_t **) pixel)[1] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
+  *((uint8_t **) pixel)[2] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + 0x800000 + 0x8000, 0), 0xFFFFFF) >> 16;
 }
 
 void
-PixelFormatPlanarYUV::setYUV  (void * pixel, unsigned int yuv) const
+PixelFormatPlanarYUV::setYUV  (void * pixel, uint32_t yuv) const
 {
-  *((unsigned char **) pixel)[0] =  yuv           >> 16;
-  *((unsigned char **) pixel)[1] = (yuv & 0xFF00) >>  8;
-  *((unsigned char **) pixel)[2] =  yuv &   0xFF;
+  *((uint8_t **) pixel)[0] =  yuv           >> 16;
+  *((uint8_t **) pixel)[1] = (yuv & 0xFF00) >>  8;
+  *((uint8_t **) pixel)[2] =  yuv &   0xFF;
 }
 
 
 // class PixelFormatPlanarYCbCr -----------------------------------------------
 
-unsigned char * PixelFormatPlanarYCbCr::lutYin = PixelFormatPlanarYCbCr::buildAll ();
-unsigned char * PixelFormatPlanarYCbCr::lutUVin;
-unsigned char * PixelFormatPlanarYCbCr::lutYout;
-unsigned char * PixelFormatPlanarYCbCr::lutUVout;
-float *         PixelFormatPlanarYCbCr::lutGrayOut;
+uint8_t * PixelFormatPlanarYCbCr::lutYin = PixelFormatPlanarYCbCr::buildAll ();
+uint8_t * PixelFormatPlanarYCbCr::lutUVin;
+uint8_t * PixelFormatPlanarYCbCr::lutYout;
+uint8_t * PixelFormatPlanarYCbCr::lutUVout;
+float *   PixelFormatPlanarYCbCr::lutGrayOut;
 
 PixelFormatPlanarYCbCr::PixelFormatPlanarYCbCr (int ratioH, int ratioV)
 : PixelFormatYUV (ratioH, ratioV)
@@ -5082,14 +5105,14 @@ PixelFormatPlanarYCbCr::PixelFormatPlanarYCbCr (int ratioH, int ratioV)
   hasAlpha   = false;
 }
 
-unsigned char *
+uint8_t *
 PixelFormatPlanarYCbCr::buildAll ()
 {
-  lutYin     = (unsigned char *) malloc (256);
-  lutUVin    = (unsigned char *) malloc (256);
-  lutYout    = (unsigned char *) malloc (256);
-  lutUVout   = (unsigned char *) malloc (256);
-  lutGrayOut = (float *)         malloc (256 * sizeof (float));
+  lutYin     = (uint8_t *) malloc (256);
+  lutUVin    = (uint8_t *) malloc (256);
+  lutYout    = (uint8_t *) malloc (256);
+  lutUVout   = (uint8_t *) malloc (256);
+  lutGrayOut = (float *)   malloc (256 * sizeof (float));
 
   for (int i = 0; i < 256; i++)
   {
@@ -5122,9 +5145,9 @@ PixelFormatPlanarYCbCr::fromAny (const Image & image, Image & result) const
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   PixelBufferPlanar * o = (PixelBufferPlanar *) result.buffer;
   assert (o);
-  unsigned char * Y  = (unsigned char *) o->plane0;
-  unsigned char * Cb = (unsigned char *) o->plane1;
-  unsigned char * Cr = (unsigned char *) o->plane2;
+  uint8_t * Y  = (uint8_t *) o->plane0;
+  uint8_t * Cb = (uint8_t *) o->plane1;
+  uint8_t * Cr = (uint8_t *) o->plane2;
 
   const int rowWidth       = result.width;
   const int blockRowWidth  = ratioH;
@@ -5134,34 +5157,34 @@ PixelFormatPlanarYCbCr::fromAny (const Image & image, Image & result) const
   const int toBlockStep    = ratioH - o->stride0 * ratioV;
   const int toBlockRowStep = o->stride0 - ratioH;
 
-  const unsigned int shift = 16 + (int) roundp (log ((double) ratioH * ratioV) / log (2.0));
+  const uint32_t shift = 16 + (int) roundp (log ((double) ratioH * ratioV) / log (2.0));
   const int bias = 0x808 << (shift - 4);
 
   if (i)
   {
-	unsigned char * source = (unsigned char *) i->base ();
+	uint8_t * source      = (uint8_t *) i->base ();
 	const int sourceDepth = (int) sourceFormat->depth;
 
 	const int fromStep         = i->stride * ratioV - image.width * sourceDepth;
 	const int fromBlockStep    = ratioH * sourceDepth - i->stride * ratioV;
 	const int fromBlockRowStep = i->stride - ratioH * sourceDepth;
 
-	unsigned char * end = Y + result.width * result.height;
+	uint8_t * end = Y + result.width * result.height;
 	while (Y < end)
 	{
-	  unsigned char * rowEnd = Y + rowWidth;
+	  uint8_t * rowEnd = Y + rowWidth;
 	  while (Y < rowEnd)
 	  {
 		int r = 0;
 		int g = 0;
 		int b = 0;
-		unsigned char * blockEnd = Y + blockSwath;
+		uint8_t * blockEnd = Y + blockSwath;
 		while (Y < blockEnd)
 		{
-		  unsigned char * blockRowEnd = Y + blockRowWidth;
+		  uint8_t * blockRowEnd = Y + blockRowWidth;
 		  while (Y < blockRowEnd)
 		  {
-			unsigned int rgba = sourceFormat->getRGBA (source);
+			uint32_t rgba = sourceFormat->getRGBA (source);
 			source += sourceDepth;
 			int sr =  rgba             >> 24;  // assumes 32-bit int
 			int sg = (rgba & 0xFF0000) >> 16;
@@ -5188,23 +5211,23 @@ PixelFormatPlanarYCbCr::fromAny (const Image & image, Image & result) const
   else
   {
 	int y = 0;
-	unsigned char * end = Y + result.width * result.height;
+	uint8_t * end = Y + result.width * result.height;
 	while (Y < end)
 	{
 	  int x = 0;
-	  unsigned char * rowEnd = Y + rowWidth;
+	  uint8_t * rowEnd = Y + rowWidth;
 	  while (Y < rowEnd)
 	  {
 		int r = 0;
 		int g = 0;
 		int b = 0;
-		unsigned char * blockEnd = Y + blockSwath;
+		uint8_t * blockEnd = Y + blockSwath;
 		while (Y < blockEnd)
 		{
-		  unsigned char * blockRowEnd = Y + blockRowWidth;
+		  uint8_t * blockRowEnd = Y + blockRowWidth;
 		  while (Y < blockRowEnd)
 		  {
-			unsigned int rgba = sourceFormat->getRGBA (image.buffer->pixel (x++, y));
+			uint32_t rgba = sourceFormat->getRGBA (image.buffer->pixel (x++, y));
 			int sr =  rgba             >> 24;  // assumes 32-bit int
 			int sg = (rgba & 0xFF0000) >> 16;
 			int sb = (rgba &   0xFF00) >>  8;
@@ -5258,7 +5281,7 @@ PixelFormatPlanarYCbCr::operator == (const PixelFormat & that) const
          && ratioV == p->ratioV;
 }
 
-unsigned int
+uint32_t
 PixelFormatPlanarYCbCr::getRGBA (void * pixel) const
 {
   // Converts from YCbCr using the matrix given in the Poynton color FAQ:
@@ -5268,13 +5291,13 @@ PixelFormatPlanarYCbCr::getRGBA (void * pixel) const
   // These values are for fixed-point after bit 8, but in this code they are
   // adjusted to put the fixed-point after bit 16.
 
-  int y = (*((unsigned char **) pixel)[0] -  16) * 0x12A15;
-  int u =  *((unsigned char **) pixel)[1] - 128;
-  int v =  *((unsigned char **) pixel)[2] - 128;
+  int y = (*((uint8_t **) pixel)[0] -  16) * 0x12A15;
+  int u =  *((uint8_t **) pixel)[1] - 128;
+  int v =  *((uint8_t **) pixel)[2] - 128;
 
-  unsigned int r = min (max (y               + 0x19895 * v + 0x8000, 0), 0xFFFFFF);
-  unsigned int g = min (max (y -  0x644A * u -  0xD01F * v + 0x8000, 0), 0xFFFFFF);
-  unsigned int b = min (max (y + 0x20469 * u               + 0x8000, 0), 0xFFFFFF);
+  uint32_t r = min (max (y               + 0x19895 * v + 0x8000, 0), 0xFFFFFF);
+  uint32_t g = min (max (y -  0x644A * u -  0xD01F * v + 0x8000, 0), 0xFFFFFF);
+  uint32_t b = min (max (y + 0x20469 * u               + 0x8000, 0), 0xFFFFFF);
 
   return ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF;
 }
@@ -5283,12 +5306,12 @@ PixelFormatPlanarYCbCr::getRGBA (void * pixel) const
    This function does not provide direct access to the scaled values stored
    in memory, but instead rescales them to standard [0,255] range values.
  **/
-unsigned int
+uint32_t
 PixelFormatPlanarYCbCr::getYUV (void * pixel) const
 {
-  return   (lutYout [*((unsigned char **) pixel)[0]] << 16)
-	     | (lutUVout[*((unsigned char **) pixel)[1]] <<  8)
-	     |  lutUVout[*((unsigned char **) pixel)[2]];
+  return   (lutYout [*((uint8_t **) pixel)[0]] << 16)
+	     | (lutUVout[*((uint8_t **) pixel)[1]] <<  8)
+	     |  lutUVout[*((uint8_t **) pixel)[2]];
 }
 
 /**
@@ -5298,11 +5321,11 @@ PixelFormatPlanarYCbCr::getYUV (void * pixel) const
 void
 PixelFormatPlanarYCbCr::getGray (void * pixel, float & gray) const
 {
-  gray = lutGrayOut[*((unsigned char **) pixel)[0]];
+  gray = lutGrayOut[*((uint8_t **) pixel)[0]];
 }
 
 void
-PixelFormatPlanarYCbCr::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatPlanarYCbCr::setRGBA (void * pixel, uint32_t rgba) const
 {
   // Converts to YCbCr using the matrix given in the Poynton color FAQ:
   // [Y ]    1  [ 65.738  129.057   25.064]   [R]   [ 16]
@@ -5318,9 +5341,9 @@ PixelFormatPlanarYCbCr::setRGBA (void * pixel, unsigned int rgba) const
   int g = (rgba &   0xFF0000) >> 16;
   int b = (rgba &     0xFF00) >>  8;
 
-  *((unsigned char **) pixel)[0] = (  0x41BD * r + 0x810F * g + 0x1910 * b + 0x100000 + 0x8000) >> 16;
-  *((unsigned char **) pixel)[1] = (- 0x25F2 * r - 0x4A7E * g + 0x7070 * b + 0x800000 + 0x8000) >> 16;
-  *((unsigned char **) pixel)[2] = (  0x7070 * r - 0x5E28 * g - 0x1248 * b + 0x800000 + 0x8000) >> 16;
+  *((uint8_t **) pixel)[0] = (  0x41BD * r + 0x810F * g + 0x1910 * b + 0x100000 + 0x8000) >> 16;
+  *((uint8_t **) pixel)[1] = (- 0x25F2 * r - 0x4A7E * g + 0x7070 * b + 0x800000 + 0x8000) >> 16;
+  *((uint8_t **) pixel)[2] = (  0x7070 * r - 0x5E28 * g - 0x1248 * b + 0x800000 + 0x8000) >> 16;
 }
 
 /**
@@ -5328,11 +5351,11 @@ PixelFormatPlanarYCbCr::setRGBA (void * pixel, unsigned int rgba) const
    instead rescales them to their shortened ranges.
  **/
 void
-PixelFormatPlanarYCbCr::setYUV  (void * pixel, unsigned int yuv) const
+PixelFormatPlanarYCbCr::setYUV  (void * pixel, uint32_t yuv) const
 {
-  *((unsigned char **) pixel)[0] = lutYin [ yuv           >> 16];
-  *((unsigned char **) pixel)[1] = lutUVin[(yuv & 0xFF00) >>  8];
-  *((unsigned char **) pixel)[2] = lutUVin[ yuv &   0xFF       ];
+  *((uint8_t **) pixel)[0] = lutYin [ yuv           >> 16];
+  *((uint8_t **) pixel)[1] = lutUVin[(yuv & 0xFF00) >>  8];
+  *((uint8_t **) pixel)[2] = lutUVin[ yuv &   0xFF       ];
 }
 
 /**
@@ -5352,7 +5375,7 @@ PixelFormatPlanarYCbCr::setGray (void * pixel, float gray) const
 	gray = 1.055f * powf (gray, 1.0f / 2.4f) - 0.055f;
   }
 
-  *((unsigned char **) pixel)[0] = (unsigned char) min (max (gray * 219.0f + 16.0f, 1.0f), 254.0f);
+  *((uint8_t **) pixel)[0] = (uint8_t) min (max (gray * 219.0f + 16.0f, 1.0f), 254.0f);
 }
 
 
@@ -5367,15 +5390,15 @@ PixelFormatHLSFloat::PixelFormatHLSFloat ()
   hasAlpha   = false;
 }
 
-unsigned int
+uint32_t
 PixelFormatHLSFloat::getRGBA (void * pixel) const
 {
   float rgbaValues[4];
   getRGBA (pixel, rgbaValues);
-  unsigned int r = lutFloat2Char[(unsigned short) (65535 * rgbaValues[0])];
-  unsigned int g = lutFloat2Char[(unsigned short) (65535 * rgbaValues[1])];
-  unsigned int b = lutFloat2Char[(unsigned short) (65535 * rgbaValues[2])];
-  unsigned int a = (unsigned int) (255 * rgbaValues[3]);
+  uint32_t r = lutFloat2Char[(uint16_t) (65535 * rgbaValues[0])];
+  uint32_t g = lutFloat2Char[(uint16_t) (65535 * rgbaValues[1])];
+  uint32_t b = lutFloat2Char[(uint16_t) (65535 * rgbaValues[2])];
+  uint32_t a = (uint32_t) (255 * rgbaValues[3]);
   return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
@@ -5421,7 +5444,7 @@ PixelFormatHLSFloat::getRGBA (void * pixel, float values[]) const
 }
 
 void
-PixelFormatHLSFloat::setRGBA (void * pixel, unsigned int rgba) const
+PixelFormatHLSFloat::setRGBA (void * pixel, uint32_t rgba) const
 {
   float rgbaValues[3];  // Ignore alpha channel, because it is not processed or stored by any function of this format.
   rgbaValues[0] = lutChar2Float[ rgba             >> 24];

@@ -53,21 +53,21 @@ namespace fl
 	virtual void drawDone ();  ///< Do any final steps to output the drawing.  After this, the effect of draw commands is undefined.
 
 	// Drawing functions are the primary interface
-	virtual void drawPoint (const Point & p, unsigned int color = WHITE);
-	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = WHITE);
-	virtual void drawLine (const Point & a, const Point & b, unsigned int color = WHITE);  ///< Draws a line thru a and b
-	virtual void drawLine (float a, float b, float c, unsigned int color = WHITE);  ///< Draws the set ax + by + c = 0
-	virtual void drawRay (const Point & p, float angle, unsigned int color = WHITE);
-	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
-	virtual void drawFilledPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
-	virtual void drawParallelogram (const Matrix<double> & S, float radius = 1.0f, unsigned int color = WHITE);  ///< S projects a unit square centered at the origin into the image.  radius scales up the unit square.
-	virtual void drawParallelogram (const PointAffine & p, float radius = 1.0f, unsigned int color = WHITE);  ///< Determines an S based on the shape and position of p, then calls drawParallelogram (S, ...).
-	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = WHITE);
-	virtual void drawCircle (const Point & center, float radius, unsigned int color = WHITE, float startAngle = 0, float endAngle = TWOPIf);
-	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1.0f, unsigned int color = WHITE, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
-	virtual void drawEllipse (const Matrix<double> & S, float radius = 1.0f, unsigned int color = WHITE);  ///< S projects a unit circle centered at the origin into the image.  radius scales up the unit circle.  This is a convenience function for marking affine-adapted patches.
-	virtual void drawMSER (const PointMSER & p, const Image & image, unsigned int colorFill = GRAY50, unsigned int colorBorder = WHITE);
-	virtual void drawText (const std::string & text, const Point & point, unsigned int color = WHITE, float angle = 0);
+	virtual void drawPoint (const Point & p, uint32_t color = WHITE);
+	virtual void drawSegment (const Point & a, const Point & b, uint32_t color = WHITE);
+	virtual void drawLine (const Point & a, const Point & b, uint32_t color = WHITE);  ///< Draws a line thru a and b
+	virtual void drawLine (float a, float b, float c, uint32_t color = WHITE);  ///< Draws the set ax + by + c = 0
+	virtual void drawRay (const Point & p, float angle, uint32_t color = WHITE);
+	virtual void drawPolygon (const std::vector<Point> & points, uint32_t color = WHITE);
+	virtual void drawFilledPolygon (const std::vector<Point> & points, uint32_t color = WHITE);
+	virtual void drawParallelogram (const Matrix<double> & S, float radius = 1.0f, uint32_t color = WHITE);  ///< S projects a unit square centered at the origin into the image.  radius scales up the unit square.
+	virtual void drawParallelogram (const PointAffine & p, float radius = 1.0f, uint32_t color = WHITE);  ///< Determines an S based on the shape and position of p, then calls drawParallelogram (S, ...).
+	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, uint32_t colorFill = WHITE);
+	virtual void drawCircle (const Point & center, float radius, uint32_t color = WHITE, float startAngle = 0, float endAngle = TWOPIf);
+	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1.0f, uint32_t color = WHITE, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
+	virtual void drawEllipse (const Matrix<double> & S, float radius = 1.0f, uint32_t color = WHITE);  ///< S projects a unit circle centered at the origin into the image.  radius scales up the unit circle.  This is a convenience function for marking affine-adapted patches.
+	virtual void drawMSER (const PointMSER & p, const Image & image, uint32_t colorFill = GRAY50, uint32_t colorBorder = WHITE);
+	virtual void drawText (const std::string & text, const Point & point, uint32_t color = WHITE, float angle = 0);
 	virtual void drawImage (const Image & image, Point & p, float width = -1, float height = -1);  ///< width or height == -1 means size is same number of units as pixels in image
 
 	// State information
@@ -90,16 +90,16 @@ namespace fl
 	void initialize ();
 	virtual ~CanvasImage ();
 
-	virtual void drawPoint (const Point & p, unsigned int color = WHITE);
-	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = WHITE);
-	virtual void drawLine (float a, float b, float c, unsigned int color = WHITE);
-	virtual void drawRay (const Point & p, float angle, unsigned int color = WHITE);
-	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
-	virtual void drawFilledPolygon (const std::vector<Point> & points, unsigned int color = WHITE);
-	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill = WHITE);
-	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, unsigned int color = WHITE, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);
-	virtual void drawMSER (const PointMSER & p, const Image & image, unsigned int colorFill = GRAY50, unsigned int colorBorder = WHITE);
-	virtual void drawText (const std::string & text, const Point & point, unsigned int color = WHITE, float angle = 0);
+	virtual void drawPoint (const Point & p, uint32_t color = WHITE);
+	virtual void drawSegment (const Point & a, const Point & b, uint32_t color = WHITE);
+	virtual void drawLine (float a, float b, float c, uint32_t color = WHITE);
+	virtual void drawRay (const Point & p, float angle, uint32_t color = WHITE);
+	virtual void drawPolygon (const std::vector<Point> & points, uint32_t color = WHITE);
+	virtual void drawFilledPolygon (const std::vector<Point> & points, uint32_t color = WHITE);
+	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, uint32_t colorFill = WHITE);
+	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, uint32_t color = WHITE, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);
+	virtual void drawMSER (const PointMSER & p, const Image & image, uint32_t colorFill = GRAY50, uint32_t colorBorder = WHITE);
+	virtual void drawText (const std::string & text, const Point & point, uint32_t color = WHITE, float angle = 0);
 
 	virtual void setTranslation (float x, float y);
 	virtual void setScale (float x, float y);
@@ -108,7 +108,7 @@ namespace fl
 	virtual void setFont (const std::string & name, float size);
 
 	Point trans (const Point & p);
-	void pen (const Point & p, unsigned int color);
+	void pen (const Point & p, uint32_t color);
 
 	float transX;
 	float transY;
@@ -139,18 +139,18 @@ namespace fl
 	virtual ~CanvasPS ();
 	virtual void drawDone ();
 
-	virtual void drawPoint (const Point & p, unsigned int color = BLACK);
-	virtual void drawSegment (const Point & a, const Point & b, unsigned int color = BLACK);
-	virtual void drawPolygon (const std::vector<Point> & points, unsigned int color = BLACK);
-	virtual void drawCircle (const Point & center, float radius, unsigned int color = BLACK, float startAngle = 0, float endAngle = TWOPIf);
-	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, unsigned int color = BLACK, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);
+	virtual void drawPoint (const Point & p, uint32_t color = BLACK);
+	virtual void drawSegment (const Point & a, const Point & b, uint32_t color = BLACK);
+	virtual void drawPolygon (const std::vector<Point> & points, uint32_t color = BLACK);
+	virtual void drawCircle (const Point & center, float radius, uint32_t color = BLACK, float startAngle = 0, float endAngle = TWOPIf);
+	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, uint32_t color = BLACK, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);
 	virtual void drawImage (const Image & image, Point & p, float width = -1, float height = -1);
 
 	virtual void setTranslation (float x, float y);
 	virtual void setScale (float x, float y);
 	virtual void setLineWidth (float width);
 
-	void expandColor (unsigned int color);
+	void expandColor (uint32_t color);
 
 	std::ofstream psf;  ///< "Postscript file"
 	float scale;  ///< Used to compute line widths.

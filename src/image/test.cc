@@ -1861,6 +1861,87 @@ testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f)
 # endif
 }
 
+// alpha blending
+void
+testAlpha ()
+{
+  Image test (10, 10, RGBAChar);
+
+  test.setRGBA (0, 0, 0xFFFFFFFF);
+  test.blend (0, 0, 0xFF000080);
+  if (test.getRGBA (0, 0) != 0xFF7F7FFF) throw "Unexpected result from alpha blending";
+
+  test.setRGBA (0, 0, 0xFFFFFFFF);
+  test.blend (0, 0, 0xFF0080);
+  if (test.getRGBA (0, 0) != 0x7FFF7FFF) throw "Unexpected result from alpha blending";
+
+  test.setRGBA (0, 0, 0xFFFFFFFF);
+  test.blend (0, 0, 0xFF80);
+  if (test.getRGBA (0, 0) != 0x7F7FFFFF) throw "Unexpected result from alpha blending";
+
+  test.setRGBA (0, 0, 0xFFFFFF80);
+  test.blend (0, 0, 0xFF000080);
+  cerr << "got: " << hex << test.getRGBA (0, 0) << dec << endl;
+  if (test.getRGBA (0, 0) != 0xFF5555BF) throw "Unexpected result from alpha blending";
+
+  Image test2 (10, 10, RGBAFloat);
+
+  float white[4];
+  white[0] = 1;
+  white[1] = 1;
+  white[2] = 1;
+  white[3] = 1;
+  float color[4];
+  color[0] = 1;
+  color[1] = 0;
+  color[2] = 0;
+  color[3] = 0.5;
+  float result[4];
+
+  test2.setRGBA (0, 0, white);
+  test2.blend   (0, 0, color);
+  test2.getRGBA (0, 0, result);
+  if (result[0] != 1  ||  result[1] != 0.5  ||  result[2] != 0.5  ||  result[3] != 1)
+  {
+	throw "Unexpected result from alpha blending";
+  }
+
+  color[0] = 0;
+  color[1] = 1;
+  test2.setRGBA (0, 0, white);
+  test2.blend   (0, 0, color);
+  test2.getRGBA (0, 0, result);
+  if (result[0] != 0.5  ||  result[1] != 1  ||  result[2] != 0.5  ||  result[3] != 1)
+  {
+	throw "Unexpected result from alpha blending";
+  }
+
+  color[1] = 0;
+  color[2] = 1;
+  test2.setRGBA (0, 0, white);
+  test2.blend   (0, 0, color);
+  test2.getRGBA (0, 0, result);
+  if (result[0] != 0.5  ||  result[1] != 0.5  ||  result[2] != 1  ||  result[3] != 1)
+  {
+	throw "Unexpected result from alpha blending";
+  }
+
+  white[3] = 0.5;
+  color[0] = 1;
+  color[2] = 0;
+  color[3] = 0.5;
+  test2.setRGBA (0, 0, white);
+  test2.blend   (0, 0, color);
+  test2.getRGBA (0, 0, result);
+  cerr << "got: " << result[0] << " " << result[1] << " " << result[2] << " " << result[3] << endl;
+  if (result[0] != 1  ||  abs (result[1] - 1.0f / 3.0f) > FLT_EPSILON  ||  abs (result[2] - 1.0f / 3.0f) > FLT_EPSILON  ||  result[3] != 0.75)
+  {
+	throw "Unexpected result from alpha blending";
+  }
+
+  cout << "Alpha blending passes" << endl;
+}
+
 
 int
 main (int argc, char * argv[])
@@ -1894,6 +1975,7 @@ main (int argc, char * argv[])
 	testVideo ();
 	testBitblt ();
 	testKLT ();
+	testAlpha ();
 	testPixelFormat ();  // The most expensive test, so do last.
   }
   catch (const char * error)

@@ -125,7 +125,7 @@ CanvasImage::trans (const Point & p)
 }
 
 inline void
-CanvasImage::pen (const Point & p, unsigned int color)
+CanvasImage::pen (const Point & p, uint32_t color)
 {
   if (lineWidth == 1)  // hack for simple line drawing
   {
@@ -158,7 +158,7 @@ CanvasImage::pen (const Point & p, unsigned int color)
 }
 
 void
-CanvasImage::drawPoint (const Point & p, unsigned int color)
+CanvasImage::drawPoint (const Point & p, uint32_t color)
 {
   Point step (pointRadius / scaleX, pointRadius / scaleY);
   Point p1 (p.x - step.x, p.y - step.y);
@@ -183,9 +183,9 @@ static inline int
 clipCode (const double & fWidth, const double & fHeight, const Point & a)
 {
   int result = 0;
-  if      (a.x < -0.5)    result |= LEFT;
-  else if (a.x > fWidth)  result |= RIGHT;
-  if      (a.y < -0.5)    result |= TOP;
+  if      (a.x < -0.5   ) result |= LEFT;
+  else if (a.x > fWidth ) result |= RIGHT;
+  if      (a.y < -0.5   ) result |= TOP;
   else if (a.y > fHeight) result |= BOTTOM;
   return result;
 }
@@ -205,7 +205,6 @@ clip (const int & width, const int & height, Point & a, Point & b)
 	double x;
 	double y;
 	int endpoint = clipA ? clipA : clipB;
-	double slope = (b.y - a.y) / (b.x - a.x);
 	if (endpoint & LEFT)
 	{
 	  x = 0;
@@ -243,7 +242,7 @@ clip (const int & width, const int & height, Point & a, Point & b)
 }
 
 void
-CanvasImage::drawSegment (const Point & a, const Point & b, unsigned int color)
+CanvasImage::drawSegment (const Point & a, const Point & b, uint32_t color)
 {
   Point ta = trans (a);
   Point tb = trans (b);
@@ -300,8 +299,9 @@ CanvasImage::drawSegment (const Point & a, const Point & b, unsigned int color)
   }
 }
 
+/// @todo use drawSegment()
 void
-CanvasImage::drawLine (float a, float b, float c, unsigned int color)
+CanvasImage::drawLine (float a, float b, float c, uint32_t color)
 {
   a /= scaleX;
   b /= scaleY;
@@ -330,8 +330,9 @@ CanvasImage::drawLine (float a, float b, float c, unsigned int color)
   }
 }
 
+/// @todo use drawSegment()
 void
-CanvasImage::drawRay (const Point & p, float angle, unsigned int color)
+CanvasImage::drawRay (const Point & p, float angle, uint32_t color)
 {
   Point center = trans (p);
 
@@ -390,7 +391,7 @@ CanvasImage::drawRay (const Point & p, float angle, unsigned int color)
 }
 
 void
-CanvasImage::drawPolygon (const vector<Point> & points, unsigned int color)
+CanvasImage::drawPolygon (const vector<Point> & points, uint32_t color)
 {
   for (int i = 0; i < points.size () - 1; i++)
   {
@@ -451,7 +452,7 @@ insertSegment (Vertex * smallerY, Vertex * biggerY, vector<Segment *> & active)
 
   // Insert into active in X order.
   // This linear search is reasonably efficient when there are only 2 or 4 active segments.
-  // Should to use the more efficient binary search for more complex polygons
+  // Should use the more efficient binary search for more complex polygons
   int i;
   for (i = 0; i < active.size (); i++)
   {
@@ -472,7 +473,7 @@ insertSegment (Vertex * smallerY, Vertex * biggerY, vector<Segment *> & active)
    though their order may change (segments may cross over other segments).
  **/
 void
-CanvasImage::drawFilledPolygon (const vector<Point> & points, unsigned int color)
+CanvasImage::drawFilledPolygon (const vector<Point> & points, uint32_t color)
 {
   if (points.size () < 3) throw "drawFilledPolygon requires at least 3 points";
 
@@ -609,7 +610,7 @@ CanvasImage::drawFilledPolygon (const vector<Point> & points, unsigned int color
 }
 
 void
-CanvasImage::drawFilledRectangle (const Point & corner0, const Point & corner1, unsigned int colorFill)
+CanvasImage::drawFilledRectangle (const Point & corner0, const Point & corner1, uint32_t colorFill)
 {
   int x0 = (int) roundp (corner0.x);
   int x1 = (int) roundp (corner1.x);
@@ -642,7 +643,7 @@ CanvasImage::drawFilledRectangle (const Point & corner0, const Point & corner1, 
 }
 
 void
-CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
+CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, uint32_t color, float startAngle, float endAngle, bool inverse)
 {
   // Adjust for scaling and translation
   Point tcenter = trans (center);
@@ -790,7 +791,7 @@ CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & 
    big enough to hold the actual region.
  **/
 void
-CanvasImage::drawMSER (const PointMSER & point, const Image & image, unsigned int colorFill, unsigned int colorBorder)
+CanvasImage::drawMSER (const PointMSER & point, const Image & image, uint32_t colorFill, uint32_t colorBorder)
 {
   Image grayImage = image * GrayChar;
   PixelBufferPacked * buffer = (PixelBufferPacked *) grayImage.buffer;
@@ -852,7 +853,7 @@ CanvasImage::drawMSER (const PointMSER & point, const Image & image, unsigned in
    However, not sure that is the case right now.
  **/
 void
-CanvasImage::drawText (const string & text, const Point & point, unsigned int color, float angle)
+CanvasImage::drawText (const string & text, const Point & point, uint32_t color, float angle)
 {
 # ifdef HAVE_FREETYPE
   if (face == 0)
@@ -931,6 +932,8 @@ CanvasImage::drawText (const string & text, const Point & point, unsigned int co
     pen.x += slot->advance.x / 64.0f;
     pen.y -= slot->advance.y / 64.0f;
   }
+# else
+  throw "Need FreeType to draw text";
 # endif
 }
 

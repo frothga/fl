@@ -82,7 +82,7 @@ CanvasPS::drawDone ()
 }
 
 inline void
-CanvasPS::expandColor (unsigned int color)
+CanvasPS::expandColor (uint32_t color)
 {
   int r = (color >> 24) & 0xFF;
   int g = (color >> 16) & 0xFF;
@@ -91,7 +91,7 @@ CanvasPS::expandColor (unsigned int color)
 }
 
 void
-CanvasPS::drawPoint (const Point & p, unsigned int color)
+CanvasPS::drawPoint (const Point & p, uint32_t color)
 {
   float step = 2.0 / scale;
 
@@ -115,7 +115,7 @@ CanvasPS::drawPoint (const Point & p, unsigned int color)
 }
 
 void
-CanvasPS::drawSegment (const Point & a, const Point & b, unsigned int color)
+CanvasPS::drawSegment (const Point & a, const Point & b, uint32_t color)
 {
   psf << a.x << " " << a.y << " " << b.x << " " << b.y << " ";
   expandColor (color);
@@ -124,7 +124,7 @@ CanvasPS::drawSegment (const Point & a, const Point & b, unsigned int color)
 }
 
 void
-CanvasPS::drawPolygon (const std::vector<Point> & points, unsigned int color)
+CanvasPS::drawPolygon (const std::vector<Point> & points, uint32_t color)
 {
   if (points.size ())
   {
@@ -141,7 +141,7 @@ CanvasPS::drawPolygon (const std::vector<Point> & points, unsigned int color)
 }
 
 void
-CanvasPS::drawCircle (const Point & center, float radius, unsigned int color, float startAngle, float endAngle)
+CanvasPS::drawCircle (const Point & center, float radius, uint32_t color, float startAngle, float endAngle)
 {
   startAngle *= (float) (180 / M_PI);
   endAngle   *= (float) (180 / M_PI);
@@ -154,7 +154,7 @@ CanvasPS::drawCircle (const Point & center, float radius, unsigned int color, fl
 }
 
 void
-CanvasPS::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, unsigned int color, float startAngle, float endAngle, bool inverse)
+CanvasPS::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius, uint32_t color, float startAngle, float endAngle, bool inverse)
 {
   Matrix<double> D;
   Matrix<double> rot;
