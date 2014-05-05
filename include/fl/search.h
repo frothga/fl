@@ -376,7 +376,7 @@ namespace fl
 
   /**
 	 LM based on solving the squared Jacobian (~J*J, aka JJ), rather than factorizing it
-	 directly.  Several different methods are available for solving JJ.
+	 directly. Several different methods are available for solving JJ.
   **/
   template<class T>
   class SHARED LevenbergMarquardtSparse : public Search<T>

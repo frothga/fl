@@ -196,7 +196,7 @@ SVM::classCount ()
 Vector<float>
 SVM::representative (int group)
 {
-  // Note that not every support vector actually gets classfied as part of the cluster.
+  // Note that not every support vector actually gets classified as part of the cluster.
   if (group >= clusters.size ()) throw "Requested cluster does not exist";
   Cluster * c = clusters[group];
   int count = c->support.size ();
