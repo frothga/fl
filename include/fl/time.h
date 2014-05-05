@@ -36,14 +36,21 @@ for details.
 
 namespace fl
 {
-# if defined(WIN32)  &&  ! defined(__CYGWIN__)
-  inline int
-  sleep (unsigned int seconds)
+  inline void sleep (double seconds)
   {
-	Sleep (seconds * 1000);
-	return 0;
+#   if defined(WIN32)  &&  ! defined(__CYGWIN__)
+
+	Sleep ((int) round (seconds * 1000));
+
+#   else   // Posix sleep
+
+	struct timespec delay;
+	delay.tv_sec = (int) seconds; // should truncate
+	delay.tv_nsec = (int) ((seconds - delay.tv_sec) * 1000000000);
+	nanosleep (&delay, 0);
+
+#   endif
   }
-# endif
 
   /**
 	 Read time at highest available resolution.  In most cases this is

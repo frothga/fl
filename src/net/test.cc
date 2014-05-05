@@ -197,7 +197,7 @@ main (int argc, char * argv[])
 		}
 		data[count - 1] = count - 1;
 
-		sleep (rand () % 2);
+		sleep ((double) (rand () % 2));
 
 		count = rand () % blockSize + 1;
 		data[count - 1] = i;
