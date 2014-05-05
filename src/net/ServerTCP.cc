@@ -35,13 +35,14 @@ ServerTCP::processConnection (SocketStream & ss, struct sockaddr_in & clientAddr
 	widenCast (peerAddr, peerName);
   }
 
-  bool persist = true;
-  while (persist  &&  ! stop)
+  while (! stop)
   {
 	RequestTCP  request  (ss);
 	ResponseTCP response (ss);
 
-	if (request.parse (response))
+	if (! request.parse (response)) break;
+
+	if (request.protocol == "HTTP")
 	{
 	  Header * host = request.getHeader ("Host");
 	  if (! host)
@@ -73,22 +74,22 @@ ServerTCP::processConnection (SocketStream & ss, struct sockaddr_in & clientAddr
 		  request.addHeader ("Host", hostName);
 		}
 	  }
-	  request.peer = peerName;
+	}
+	request.peer = peerName;
 
-	  if (response.statusCode == 200)
-	  {
-		string date;
-		encodeTime (time (0), date);
-		response.addHeader ("Date", date);
+	if (response.statusCode == 200)
+	{
+	  string date;
+	  encodeTime (time (0), date);
+	  response.addHeader ("Date", date);
 
-		if (request.method == L"HEAD") response.suppressBody = true;
+	  if (request.method == L"HEAD") response.suppressBody = true;
 
-		respond (request, response);
-	  }
+	  respond (request, response);
 	}
 
-	ss.flush ();
-	if (request.connectionClose) persist = false;
+	response.done (); // flushes ss
+	if (request.connectionClose) break;
   }
 }
 
@@ -124,10 +125,27 @@ RequestTCP::getQuery (const wstring & name, wstring & value)
 const wchar_t *
 RequestTCP::getCGI (const wstring & name, wstring & value)
 {
-  if      (wcscasecmp (name.c_str (), L"URL"           ) == 0) value = URL;
-  else if (wcscasecmp (name.c_str (), L"REQUEST_METHOD") == 0) value = method;
-  else if (wcscasecmp (name.c_str (), L"REMOTE_ADDR"   ) == 0) value = peer;
+  if      (wcscasecmp (name.c_str (), L"URL"              ) == 0) value = URL;
+  else if (wcscasecmp (name.c_str (), L"REQUEST_METHOD"   ) == 0) value = method;
+  else if (wcscasecmp (name.c_str (), L"REMOTE_ADDR"      ) == 0) value = peer;
+  else if (wcscasecmp (name.c_str (), L"GATEWAY_INTERFACE") == 0) value = L"CGI/1.1";
   return value.c_str ();
+}
+
+void
+RequestTCP::setQuery (const wstring & name, const wstring & value)
+{
+  pair<map<wstring, wstring>::iterator, bool> result;
+  result = queries.insert (make_pair (name, value));
+  if (! result.second)
+  {
+	wstring & current = result.first->second;
+	if (current.size ())
+	{
+	  if (value.size ()) current = current + L"," + value;
+	}
+	else                 current = value;
+  }
 }
 
 void
@@ -151,29 +169,32 @@ RequestTCP::parse (ResponseTCP & response)
   int i = 0;
   do
   {
-	if (i++ > maxHeaderLines  ||  ss.peek () == -1)
-	{
-	  connectionClose = true;
-	  return false;
-	}
+	if (i++ > maxHeaderLines  ||  ss.peek () == -1) return false;
 	getline (line);
 	trim (line);
   }
   while (line.length () < 1);
   parseRequestLine (line);
-  response.versionMajor = versionMajor;
-  response.versionMinor = versionMinor;
+  response.protocol = protocol;
+  if (protocol == "HTTP")
+  {
+	// Always respond as HTTP/1.1
+	response.versionMajor = 1;
+	response.versionMinor = 1;
+  }
+  else
+  {
+	// For all other protocols, use same version as client.
+	response.versionMajor = versionMajor;
+	response.versionMinor = versionMinor;
+  }
 
   // Parse headers
   string lastHeaderName = "";
   i = 0;
   while (true)
   {
-	if (i++ > maxHeaderLines)
-	{
-	  connectionClose = true;
-	  return false;
-	}
+	if (i++ > maxHeaderLines) return false;
 
 	getline (line);
 	trim (line);
@@ -209,11 +230,7 @@ RequestTCP::parse (ResponseTCP & response)
 	  int size;
 	  sscanf (line.c_str (), "%x", &size);
 	  if (size == 0) break;
-	  if (body.length () + size > maxBodyLength)
-	  {
-		connectionClose = true;
-		return false;
-	  }
+	  if (body.length () + size > maxBodyLength) return false;
 	  char * temp = new char[size];
 	  ss.read (temp, size);
 	  body.append (temp, size);
@@ -223,11 +240,7 @@ RequestTCP::parse (ResponseTCP & response)
 	i = 0;
 	while (true)
 	{
-	  if (i++ > maxHeaderLines)
-	  {
-		connectionClose = true;
-		return false;
-	  }
+	  if (i++ > maxHeaderLines) return false;
 	  getline (line);
 	  trim (line);
 	  if (line.length () == 0) break;
@@ -295,7 +308,7 @@ RequestTCP::parseRequestLine (const string & line)
   split (current, "?", URL, query);
 
   // Parse HTTP version
-  split (next, "/", current, next);
+  split (next, "/", protocol, next);
   split (next, ".", current, next);
   versionMajor = atoi (current.c_str ());
   versionMinor = atoi (next.c_str ());
@@ -306,18 +319,16 @@ RequestTCP::parseRequestLine (const string & line)
   }
 
   // Remove host from absolute URL if present.
-  if (URL.find ("http://") == 0)
+  int position = URL.find ("://");
+  if (position != string::npos)
   {
-	URL = URL.substr (7);
+	URL = URL.substr (position + 3);
 	string host;
 	split (URL, "/", host, URL);
 	URL.insert (0, "/");
-	// Don't create Host header unless we are less than HTTP/1.1, because we are
-	// required to return an error if a HTTP/1.1 client fails to send Host itself.
-	if (! versionAtLeast (1, 1))
-	{
-	  addHeader ("Host", host);
-	}
+	// Don't create Host header if the client is HTTP/1.1, because the standard
+	// requires us to return an error if a HTTP/1.1 client fails to send Host itself.
+	if (! (protocol == "HTTP"  &&  versionAtLeast (1, 1))) addHeader ("Host", host);
   }
   decodeURL (URL);
   widenCast (URL, this->URL);
@@ -356,22 +367,6 @@ RequestTCP::parseQuery (string & query)
   }
 }
 
-void
-RequestTCP::setQuery (const wstring & name, const wstring & value)
-{
-  pair<map<wstring, wstring>::iterator, bool> result;
-  result = queries.insert (make_pair (name, value));
-  if (! result.second)
-  {
-	wstring & current = result.first->second;
-	if (current.size ())
-	{
-	  if (value.size ()) current = current + L"," + value;
-	}
-	else                 current = value;
-  }
-}
-
 Header *
 RequestTCP::parseHeader (const string & line, string & lastHeaderName)
 {
@@ -405,6 +400,18 @@ RequestTCP::stripConnectionHeaders ()
 	  if (strcasecmp (i->c_str (), "close") == 0) connectionClose = true;
 	}
   }
+}
+
+ostream &
+fl::operator << (ostream & stream, const RequestTCP & request)
+{
+  string nmethod;
+  string nURL;
+  narrowCast (request.method, nmethod);
+  narrowCast (request.URL,    nURL);
+  stream << nmethod << " " << nURL << " " << request.protocol << "/" << request.versionMajor << "." << request.versionMinor << endl;
+  stream << (const Request &) request;  // send headers
+  return stream;
 }
 
 
@@ -501,13 +508,16 @@ ResponseTCP::Streambuf::imbue (const locale & loc)
 
 // class ResponseTCP ---------------------------------------------------------
 
+map<int, string> ResponseTCP::reasonsRTSP;
+
 ResponseTCP::ResponseTCP (SocketStream & ss)
 : streamBuffer (*this, ss),
   Response (&streamBuffer)
 {
   streamBuffer.imbue (getloc ());
-  started = false;
-  chunked = false;
+  started      = false;
+  finished     = false;
+  chunked      = false;
   suppressBody = false;
 }
 
@@ -520,21 +530,27 @@ ResponseTCP::raw (const char * data, int length)
 void
 ResponseTCP::done ()
 {
+  if (finished) return;
+  finished = true;
+
   if (! started)
   {
-	Header * header = getHeader ("Transfer-Encoding");
-	if (header != 0)
+	if (protocol == "HTTP")
 	{
-	  if (   versionAtLeast (1, 1)
-		  && ! (header->values.size () == 1  &&  strcasecmp (header->values[0].c_str (), "identity") != 0))
+	  Header * header = getHeader ("Transfer-Encoding");
+	  if (header != 0)
 	  {
-		chunked = true;
-		// Ensure that "chunked" occurs at the end of the list of encodings.
-		addHeader ("Transfer-Encoding", "chunked", false);
-	  }
-	  else
-	  {
-		chunked = false;
+		if (   versionAtLeast (1, 1)
+			&& ! (header->values.size () == 1  &&  strcasecmp (header->values[0].c_str (), "identity") != 0))
+		{
+		  chunked = true;
+		  // Ensure that "chunked" occurs at the end of the list of encodings.
+		  addHeader ("Transfer-Encoding", "chunked", false);
+		}
+		else
+		{
+		  chunked = false;
+		}
 	  }
 	}
 
@@ -560,6 +576,9 @@ ResponseTCP::done ()
 	  streamBuffer.ss.write ("\r\n", 2);
 	}
   }
+
+  // At this point, streamBuffer itself is already empty. We only need to flush underlying SocketStream.
+  streamBuffer.ss.flush ();
 }
 
 void
@@ -589,14 +608,49 @@ ResponseTCP::error (int statusCode, const wstring & explanation)
   done ();
 }
 
+const char *
+ResponseTCP::reasonPhrase () const
+{
+  if (protocol == "RTSP")
+  {
+	if (reasonsRTSP.size () == 0) initReasonsRTSP ();
+	map<int, string>::const_iterator it = reasonsRTSP.find (statusCode);
+	if (it != reasonsRTSP.end ()) return it->second.c_str ();
+  }
+
+  return Response::reasonPhrase ();
+}
+
+void
+ResponseTCP::initReasonsRTSP ()
+{
+  reasons.insert (make_pair (250, "Low on Storage Space"));
+  reasons.insert (make_pair (302, "Moved Temporarily"));
+  reasons.insert (make_pair (451, "Parameter Not Understood"));
+  reasons.insert (make_pair (452, "Conference Not Found"));
+  reasons.insert (make_pair (453, "Not Enough Bandwidth"));
+  reasons.insert (make_pair (454, "Session Not Found"));
+  reasons.insert (make_pair (455, "Method Not Valid in This State"));
+  reasons.insert (make_pair (456, "Header Field Not Valid for Resource"));
+  reasons.insert (make_pair (457, "Invalid Range"));
+  reasons.insert (make_pair (458, "Parameter Is Read-Only"));
+  reasons.insert (make_pair (459, "Aggregate operation not allowed"));
+  reasons.insert (make_pair (460, "Only aggregate operation allowed"));
+  reasons.insert (make_pair (461, "Unsupported transport"));
+  reasons.insert (make_pair (462, "Destination unreachable"));
+  reasons.insert (make_pair (505, "RTSP Version not supported"));
+  reasons.insert (make_pair (551, "Option not supported"));
+}
+
 void
 ResponseTCP::start ()
 {
+  if (started) return;
+  started = true;
+
   sendStatusLine (statusCode, reasonPhrase ());
   sendHeaders ();
   streamBuffer.ss.write ("\r\n", 2);
-
-  started = true;
 
   if (statusCode == 204  ||  statusCode == 205  ||  statusCode == 304)
   {
@@ -608,7 +662,7 @@ void
 ResponseTCP::sendStatusLine (int statusCode, const string & reasonPhrase)
 {
   char buffer[40];
-  sprintf (buffer, "HTTP/1.1 %i ", statusCode);  // We always respond HTTP/1.1, regardless of the version of the client.
+  sprintf (buffer, "%s/%i.%i %i ", protocol.c_str (), versionMajor, versionMinor, statusCode);
   string statusLine = buffer;
   statusLine += reasonPhrase;
   statusLine += "\r\n";
@@ -638,16 +692,19 @@ ResponseTCP::chunk ()
 {
   if (! started)
   {
-	Header * header = getHeader ("Content-Length");
-	if (! header  &&  versionAtLeast (1, 1))
+	if (protocol == "HTTP")
 	{
-	  chunked = true;
-	  // Ensure Transfer-Encoding exists and that "chunked" occurs at the end of the list of encodings.
-	  addHeader ("Transfer-Encoding", "chunked", false);
-	}
-	else
-	{
-	  chunked = false;
+	  Header * header = getHeader ("Content-Length");
+	  if (! header  &&  versionAtLeast (1, 1))
+	  {
+		chunked = true;
+		// Ensure Transfer-Encoding exists and that "chunked" occurs at the end of the list of encodings.
+		addHeader ("Transfer-Encoding", "chunked", false);
+	  }
+	  else
+	  {
+		chunked = false;
+	  }
 	}
 
 	start ();
@@ -674,4 +731,12 @@ ResponseTCP::chunk ()
 	  }
 	}
   }
+}
+
+ostream &
+fl::operator << (ostream & stream, const ResponseTCP & response)
+{
+  stream << response.protocol << "/" << response.versionMajor << "." << response.versionMinor << " " << response.statusCode << " " << response.reasonPhrase () << endl;
+  stream << (const Response &) response;  // send headers
+  return stream;
 }

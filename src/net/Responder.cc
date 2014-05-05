@@ -54,7 +54,74 @@ ResponderTree::respond (Request & request, Response & response)
 {
   wstring URL = L"";  // Won't match any ResponderName, because they always start with "/"
   request.getCGI (L"URL", URL);
-  return respond (URL, request, response);
+  return respond (request, response, URL);
+}
+
+
+// class ResponderDirectory --------------------------------------------------
+
+ResponderDirectory::ResponderDirectory (const wstring & name, bool caseSensitive)
+: ResponderTree (name, caseSensitive)
+{
+}
+
+bool
+ResponderDirectory::respond (Request & request, Response & response, const wstring & path)
+{
+  int length = name.length ();
+  if (caseSensitive ? wcsncmp     (name.c_str (), path.c_str (), length) != 0
+                    : wcsncasecmp (name.c_str (), path.c_str (), length) != 0)
+  {
+	return false;
+  }
+
+  wstring subdir = path.substr (length);
+
+  if (subdir.length () == 0)
+  {
+	// This directory is being requested as if it were a regular object, so redirect
+	// client to the correct form of the path.  This action is necessary for the client
+	// (ie: Netscape or IE) to understand that it should change its base URL.
+
+	Header * host = request.getHeader ("Host");  // Guaranteed to exist
+	string location = "http://";
+	location += host->values.front ();
+	narrowCast (path, location);
+	location += "/";
+	response.addHeader ("Location", location);
+
+	wstring explanation = L"The object you requested is actually a directory. Please use the following URL instead: ";
+	explanation += L"<A HREF=\"";
+	widenCast (location, explanation);
+	explanation += L"\">";
+	widenCast (location, explanation);
+	explanation += L"</A>";
+	response.error (302, explanation);
+
+	return true;
+  }
+
+  if (subdir[0] == L'/')
+  {
+	// This directory has been correctly requested.
+
+	bool found = false;
+	vector<ResponderTree *>::iterator i;
+	for (i = responders.begin (); i < responders.end ()  &&  ! found; i++)
+	{
+	  found = (*i)->respond (request, response, subdir);
+	}
+
+	if (! found)
+	{
+	  response.error (404);
+	}
+
+	return true;
+  }
+
+  // The name of the object contained this directory's name, but it was a false lead.
+  return false;
 }
 
 		
@@ -66,7 +133,7 @@ ResponderName::ResponderName (const wstring & name, bool caseSensitive)
 }
 
 bool
-ResponderName::respond (const wstring & path, Request & request, Response & response)
+ResponderName::respond (Request & request, Response & response, const wstring & path)
 {
   if (match (path))
   {
@@ -101,20 +168,19 @@ ResponderName::generate (Request & request, Response & response)
 
 // class ResponderFile -------------------------------------------------------
 
-ResponderFile::MIMEtype ResponderFile::MIMEtypes[] =
-{
-  {L".jpg",  "image/jpeg"},
-  {L".htm",  "text/html"},
-  {L".html", "text/html"},
-  {L".css",  "text/css"},
-  {L"*",     "text/*"},
-  {L"",      ""}  // Indicates end of list
-};
+ResponderFile::MIMEtype * ResponderFile::MIMEtypes = 0;
 
 ResponderFile::ResponderFile (const wstring & name, const wstring & root, bool caseSensitive)
 : ResponderTree (name, caseSensitive),
   root (root)
 {
+  if (MIMEtypes == 0)
+  {
+	addMIMEtype (L".jpg",  "image/jpeg");
+	addMIMEtype (L".htm",  "text/html");
+	addMIMEtype (L".html", "text/html");
+	addMIMEtype (L".css",  "text/css");
+  }
 }
 
 static inline FILE *
@@ -134,7 +200,7 @@ wstat (const wstring & fileName, struct stat * buf)
 }
 
 bool
-ResponderFile::respond (const wstring & path, Request & request, Response & response)
+ResponderFile::respond (Request & request, Response & response, const wstring & path)
 {
   int length = name.length ();
   if (caseSensitive ? wcsncmp     (name.c_str (), path.c_str (), length) != 0
@@ -164,8 +230,7 @@ ResponderFile::respond (const wstring & path, Request & request, Response & resp
   }
 
   struct stat filestats;
-  wstat (fileName, &filestats);
-  bool isDirectory = filestats.st_mode & S_IFDIR;
+  bool isDirectory = wstat (fileName, &filestats) == 0  &&  filestats.st_mode & S_IFDIR;
 
   wstring dirName;
   if (isDirectory)
@@ -194,54 +259,12 @@ ResponderFile::respond (const wstring & path, Request & request, Response & resp
 
   if (file)
   {
-	// Determine file size
-	if (fstat (fileno (file), &filestats))
-	{
-	  uint64_t filelength = filestats.st_size;
-	  char temp[20];
-	  sprintf (temp, "%"PRIu64, filelength);
-	  response.addHeader ("Content-Length", temp);
-	}
-
-	// Map a few basic file types to MIME types
-	//   Prepare for case insensitive compare
-	for (int i = 0; i < suffix.length (); i++)
-	{
-	  suffix[i] = towlower (suffix[i]);
-	}
-	//   Scan for MIME type
-	MIMEtype * mt = MIMEtypes;
-	while (mt->suffix[0])
-	{
-	  if (regexpMatch (mt->suffix, suffix))
-	  {
-		response.addHeader ("Content-Type", mt->type);
-		break;
-	  }
-	  mt++;
-	}
-
-	// Pump out file
-	do
-	{
-	  char buffer[4096];
-	  int count = fread (buffer, sizeof (char), sizeof (buffer), file);
-	  if (count > 0)
-	  {
-		response.raw (buffer, count);
-	  }
-	}
-	while (! feof (file)  &&  ! ferror (file));
-	if (ferror (file))
-	{
-	  request.disconnect ();
-	}
-
+	generateFile (request, response, fileName, suffix, file);
 	fclose (file);
   }
   else if (isDirectory)
   {
-	generateDirectoryListing (path, dirName, request, response);
+	generateDirectoryListing (request, response, path, dirName);
   }
   else
   {
@@ -252,7 +275,85 @@ ResponderFile::respond (const wstring & path, Request & request, Response & resp
 }
 
 void
-ResponderFile::generateDirectoryListing (const wstring & path, const wstring & dirName, Request & request, Response & response)
+ResponderFile::generateFile (Request & request, Response & response, const wstring & fileName, wstring & suffix, FILE * file)
+{
+  wstring start = L"";
+  request.getQuery (L"start", start);
+  if (start.size () > 0)
+  {
+	long offset = wcstol (start.c_str (), 0, 0);
+	if (offset) fseek (file, offset, SEEK_SET);
+  }
+
+  setContentLength (request, response, fileName, file);
+  setContentType   (request, response, fileName, suffix);
+
+  // Pump out file
+  while (true)
+  {
+	while (! feof (file))
+	{
+	  char buffer[4096];
+	  int count = fread (buffer, sizeof (char), sizeof (buffer), file);
+	  if (count > 0) response.raw (buffer, count);
+	  if (ferror (file))
+	  {
+		request.disconnect ();
+		return;
+	  }
+	}
+	if (! hasMore (request, response, fileName, file)) break;
+	clearerr (file); // get rid of EOF condition, so we will try to read more
+  }
+}
+
+void
+ResponderFile::setContentLength (Request & request, Response & response, const wstring & fileName, FILE * file)
+{
+  // Determine file size
+  struct stat filestats;
+  if (fstat (fileno (file), &filestats) == 0)
+  {
+	uint64_t filelength = filestats.st_size;
+	long position = ftell (file);
+	if (position < 0) position = 0;
+	filelength -= position;
+	char temp[20];
+	sprintf (temp, "%"PRIu64, filelength);
+	response.addHeader ("Content-Length", temp);
+  }
+}
+
+void
+ResponderFile::setContentType (Request & request, Response & response, const wstring & fileName, wstring & suffix)
+{
+  // Map a few basic file types to MIME types
+  //   Prepare for case insensitive compare
+  for (int i = 0; i < suffix.length (); i++)
+  {
+	suffix[i] = towlower (suffix[i]);
+  }
+  //   Scan for MIME type
+  MIMEtype * mt = MIMEtypes;
+  while (mt)
+  {
+	if (regexpMatch (mt->suffix, suffix))
+	{
+	  response.addHeader ("Content-Type", mt->type);
+	  break;
+	}
+	mt = mt->next;
+  }
+}
+
+bool
+ResponderFile::hasMore (Request & request, Response & response, const wstring & fileName, FILE * file)
+{
+  return false;
+}
+
+void
+ResponderFile::generateDirectoryListing (Request & request, Response & response, const wstring & path, const wstring & dirName)
 {
   response << "<html>";
   response << "<head>";
@@ -315,12 +416,12 @@ ResponderFile::generateDirectoryListing (const wstring & path, const wstring & d
   if (order == L"down")
   {
 	multimap<string, DirEntry>::reverse_iterator it;
-	for (it = sorted.rbegin (); it != sorted.rend (); it++) write (it->second, pathWithSlash, response);
+	for (it = sorted.rbegin (); it != sorted.rend (); it++) write (response, it->second, pathWithSlash);
   }
   else
   {
 	multimap<string, DirEntry>::iterator it;
-	for (it = sorted.begin (); it != sorted.end (); it++) write (it->second, pathWithSlash, response);
+	for (it = sorted.begin (); it != sorted.end (); it++) write (response, it->second, pathWithSlash);
   }
 
   response << "</table>";
@@ -421,7 +522,7 @@ ResponderFile::scan (const wstring & dirName, int sortBy, multimap<string, DirEn
 }
 
 void
-ResponderFile::write (const DirEntry & entry, const wstring & pathWithSlash, Response & response)
+ResponderFile::write (Response & response, const DirEntry & entry, const wstring & pathWithSlash)
 {
   response << "<tr>";
   wstring encodedPath = pathWithSlash;
@@ -437,69 +538,39 @@ ResponderFile::write (const DirEntry & entry, const wstring & pathWithSlash, Res
   response << "</tr>";
 }
 
-
-// class ResponderDirectory --------------------------------------------------
-
-ResponderDirectory::ResponderDirectory (const wstring & name, bool caseSensitive)
-: ResponderTree (name, caseSensitive)
+void
+ResponderFile::addMIMEtype (const wstring & suffix, const string & type)
 {
+  MIMEtype ** p = &MIMEtypes;
+  while (*p)
+  {
+	if ((*p)->suffix == suffix)
+	{
+	  break;
+	}
+	p = & (*p)->next;
+  }
+  if (*p == 0)
+  {
+	*p = new MIMEtype;
+	(*p)->next = 0;
+  }
+  (*p)->suffix = suffix;
+  (*p)->type   = type;
 }
 
-bool
-ResponderDirectory::respond (const wstring & path, Request & request, Response & response)
+void
+ResponderFile::removeMIMEtype (const wstring & suffix)
 {
-  int length = name.length ();
-  if (caseSensitive ? wcsncmp     (name.c_str (), path.c_str (), length) != 0
-                    : wcsncasecmp (name.c_str (), path.c_str (), length) != 0)
+  MIMEtype ** p = &MIMEtypes;
+  while (*p)
   {
-	return false;
-  }
-
-  wstring subdir = path.substr (length);
-
-  if (subdir.length () == 0)
-  {
-	// This directory is being requested as if it were a regular object, so redirect
-	// client to the correct form of the path.  This action is necessary for the client
-	// (ie: Netscape or IE) to understand that it should change its base URL.
-
-	Header * host = request.getHeader ("Host");  // Guaranteed to exist
-	string location = "http://";
-	location += host->values.front ();
-	narrowCast (path, location);
-	location += "/";
-	response.addHeader ("Location", location);
-
-	wstring explanation = L"The object you requested is actually a directory. Please use the following URL instead: ";
-	explanation += L"<A HREF=\"";
-	widenCast (location, explanation);
-	explanation += L"\">";
-	widenCast (location, explanation);
-	explanation += L"</A>";
-	response.error (302, explanation);
-
-	return true;
-  }
-
-  if (subdir[0] == L'/')
-  {
-	// This directory has been correctly requested.
-
-	bool found = false;
-	vector<ResponderTree *>::iterator i;
-	for (i = responders.begin (); i < responders.end ()  &&  ! found; i++)
+	if ((*p)->suffix == suffix)
 	{
-	  found = (*i)->respond (subdir, request, response);
+	  MIMEtype * kill = *p;
+	  *p = kill->next;
+	  return;
 	}
-
-	if (! found)
-	{
-	  response.error (404);
-	}
-
-	return true;
+	p = & (*p)->next;
   }
-
-  // The name of the object contained this directory's name, but it was a false lead.
-  return false;
 }

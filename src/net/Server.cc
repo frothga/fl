@@ -55,8 +55,6 @@ Server::respond (Request & request, Response & response)
   {
 	response.error (500);
   }
-
-  response.done ();
 }
 
 time_t
@@ -191,6 +189,19 @@ Header::unsentValues (string & result)
 	valuesSent++;
   }
   headerSent = true;
+}
+
+ostream &
+fl::operator << (ostream & stream, const Header & header)
+{
+  stream << header.name << ": ";
+  vector<string>::const_iterator i;
+  for (i = header.values.begin (); i < header.values.end (); i++)
+  {
+	stream << *i;
+	if (i < header.values.end () - 1) stream << ", ";
+  }
+  return stream;
 }
 
 
@@ -545,6 +556,17 @@ Message::characterEntities[] =
 const char *
 Message::URIsafe = "-_.!~*'()/";  // see RFC 2396
 
+ostream &
+fl::operator << (ostream & stream, const Message & message)
+{
+  set<Header>::const_iterator i;
+  for (i = message.headers.begin (); i != message.headers.end (); i++)
+  {
+	stream << *i << endl;
+  }
+  return stream;
+}
+
 
 // class Request --------------------------------------------------------------
 
@@ -623,6 +645,8 @@ Request::decodeBase64 (const string & in, string & result)
 
 // class Response -------------------------------------------------------------
 
+map<int, string> Response::reasons;
+
 Response::Response (wstreambuf * buffer)
 : wostream (buffer)
 {
@@ -630,17 +654,11 @@ Response::Response (wstreambuf * buffer)
 }
 
 const char *
-Response::reasonPhrase ()
+Response::reasonPhrase () const
 {
-  codeName * c = codeNames;
-  while (c->code)
-  {
-	if (c->code == statusCode)
-	{
-	  return c->name;
-	}
-	c++;
-  }
+  if (reasons.size () == 0) initReasons ();
+  map<int, string>::const_iterator it = reasons.find (statusCode);
+  if (it != reasons.end ()) return it->second.c_str ();
 
   switch (statusCode / 100)  // Remainder is thrown away by integer arithmetic.  Should give major status number.
   {
@@ -652,6 +670,51 @@ Response::reasonPhrase ()
 	default:
 	  return "Internal Server Error";
   }
+}
+
+void
+Response::initReasons ()
+{
+  reasons.insert (make_pair (100, "Continue"));
+  reasons.insert (make_pair (101, "Switching Protocols"));
+  reasons.insert (make_pair (200, "OK"));
+  reasons.insert (make_pair (201, "Created"));
+  reasons.insert (make_pair (202, "Accepted"));
+  reasons.insert (make_pair (203, "Non-Authoritative Information"));
+  reasons.insert (make_pair (204, "No Content"));
+  reasons.insert (make_pair (205, "Reset Content"));
+  reasons.insert (make_pair (206, "Partial Content"));
+  reasons.insert (make_pair (300, "Multiple Choices"));
+  reasons.insert (make_pair (301, "Moved Permanently"));
+  reasons.insert (make_pair (302, "Found"));
+  reasons.insert (make_pair (303, "See Other"));
+  reasons.insert (make_pair (304, "Not Modified"));
+  reasons.insert (make_pair (305, "Use Proxy"));
+  reasons.insert (make_pair (307, "Temporary Redirect"));
+  reasons.insert (make_pair (400, "Bad Request"));
+  reasons.insert (make_pair (401, "Unauthorized"));
+  reasons.insert (make_pair (402, "Payment Required"));
+  reasons.insert (make_pair (403, "Forbidden"));
+  reasons.insert (make_pair (404, "Not Found"));
+  reasons.insert (make_pair (405, "Method Not Allowed"));
+  reasons.insert (make_pair (406, "Not Acceptable"));
+  reasons.insert (make_pair (407, "Proxy Authentication Required"));
+  reasons.insert (make_pair (408, "Request Timeout"));
+  reasons.insert (make_pair (409, "Conflict"));
+  reasons.insert (make_pair (410, "Gone"));
+  reasons.insert (make_pair (411, "Length Required"));
+  reasons.insert (make_pair (412, "Precondition Failed"));
+  reasons.insert (make_pair (413, "Request Entity Too Large"));
+  reasons.insert (make_pair (414, "Request-URI Too Long"));
+  reasons.insert (make_pair (415, "Unsupported Media Type"));
+  reasons.insert (make_pair (416, "Requested Range Not Satisfiable"));
+  reasons.insert (make_pair (417, "Expectation Failed"));
+  reasons.insert (make_pair (500, "Internal Server Error"));
+  reasons.insert (make_pair (501, "Not Implemented"));
+  reasons.insert (make_pair (502, "Bad Gateway"));
+  reasons.insert (make_pair (503, "Service Unavailable"));
+  reasons.insert (make_pair (504, "Gateway Timeout"));
+  reasons.insert (make_pair (505, "HTTP Version Not Supported"));
 }
 
 void
@@ -697,51 +760,6 @@ void
 Response::encodeBase64 (const string & in, string & result)
 {
 }
-
-Response::codeName Response::codeNames[] =
-{
-  {100, "Continue"},
-  {101, "Switching Protocols"},
-  {200, "OK"},
-  {201, "Created"},
-  {202, "Accepted"},
-  {203, "Non-Authoritative Information"},
-  {204, "No Content"},
-  {205, "Reset Content"},
-  {206, "Partial Content"},
-  {300, "Multiple Choices"},
-  {301, "Moved Permanently"},
-  {302, "Found"},
-  {303, "See Other"},
-  {304, "Not Modified"},
-  {305, "Use Proxy"},
-  {307, "Temporary Redirect"},
-  {400, "Bad Request"},
-  {401, "Unauthorized"},
-  {402, "Payment Required"},
-  {403, "Forbidden"},
-  {404, "Not Found"},
-  {405, "Method Not Allowed"},
-  {406, "Not Acceptable"},
-  {407, "Proxy Authentication Required"},
-  {408, "Request Timeout"},
-  {409, "Conflict"},
-  {410, "Gone"},
-  {411, "Length Required"},
-  {412, "Precondition Failed"},
-  {413, "Request Entity Too Large"},
-  {414, "Request-URI Too Long"},
-  {415, "Unsupported Media Type"},
-  {416, "Requested Range Not Satisfiable"},
-  {417, "Expectation Failed"},
-  {500, "Internal Server Error"},
-  {501, "Not Implemented"},
-  {502, "Bad Gateway"},
-  {503, "Service Unavailable"},
-  {504, "Gateway Timeout"},
-  {505, "HTTP Version Not Supported"},
-  {0,   ""}  // Indicates end of list
-};
 
 
 // Utility functions ----------------------------------------------------------
