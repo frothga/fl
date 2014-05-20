@@ -1781,15 +1781,15 @@ testBitblt ()
 
 // KLT
 void
-testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f)
+testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 1.0f)
 {
 # if defined (HAVE_JPEG)  &&  defined (HAVE_LAPACK)
   const int range = searchRadius * 2;
   const int steps = 10;
-  const float lastStep = steps - 1;  // actually an integer, but using float here reduces the need for casts later
+  const float stepA = TWOPI / steps;
+  const float stepR = searchRadius / (steps - 1.0);  // we want to reach full radius when zero-based index reaches last step
 
   KLT klt (windowRadius, searchRadius, scaleRatio);
-  srand (1);
 
   Image test (dataDir + "test.jpg");  // Only big enough to test searchRadius < 28.  Note: for some weird reason, the position of the KLT constructor in this code makes a difference (including on performance).  Loading mars.jpg causes this program to crash under Cygwin unless the KLT constructore comes first.
   test *= GrayFloat;
@@ -1809,12 +1809,12 @@ testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f)
   int total = 0;
   Matrix<double> A (2, 3);
   A.identity ();
-  for (int x = 0; x < steps; x++)
+  for (int a = 0; a < steps; a++)
   {
-	A(0,2) = x * range / lastStep - searchRadius;
-	for (int y = 0; y < steps; y++)
+	for (int r = 0; r < steps; r++)
 	{
-	  A(1,2) = y * range / lastStep - searchRadius;
+	  A(0,2) = cos (a * stepA) * r * stepR;
+	  A(1,2) = sin (a * stepA) * r * stepR;
 
 	  Transform t (A);
 	  t.setWindow ((test.width - 1) / 2.0, (test.height - 1) / 2.0, windowWidth, windowHeight);  // force destination viewport to remain at center of original image, so we actually get a shift.
@@ -1843,8 +1843,13 @@ testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 2.0f)
 		  //cerr << "klt exception " << error << endl;
 		}
 		double d = expected.distance (p);
-		if (d < 1) succeeded++;
-		// should also measure and report how reliably the exception codes predict failure
+		if (d < 0.5) succeeded++;
+		else if (e && (   expected.x < -0.5  ||  expected.x > windowWidth  - 0.5
+					   || expected.y < -0.5  ||  expected.y > windowHeight - 0.5))
+		{
+		  // We *should* get an error code if the point is not trackable.
+		  succeeded++;
+		}
 	  }
 	}
 	cerr << ".";

@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2005, 2009 Sandia Corporation.
+Copyright 2005, 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -15,9 +15,6 @@ for details.
 
 
 #include "fl/track.h"
-#include "fl/zroots.h"
-
-#include <float.h>
 
 
 // For debugging
@@ -47,84 +44,58 @@ using namespace std;
    would only work for blobs on the same scale as the search window.  We
    may need to code an adaptive window size.  Furthermore, this may vary
    depending on the level in the pyramid.
+   \todo Should implement large scale blurring kernels as several smaller
+   ones applied in series.  Perhaps separate the downsampling blur from the
+   connecting blur.  Implement two sets of kernels.  Allow null entries
+   (skip convolving in this case).  Write sparse blur & downsample.
  **/
 KLT::KLT (int windowRadius, int searchRadius, float scaleRatio)
+: windowRadius (windowRadius)
 {
-  this->windowRadius = windowRadius;
-  windowWidth = 2 * windowRadius + 1;
-  minDeterminant = 2e-12f;
+  minDeterminant  = 2e-12f;
   minDisplacement = 0.1f;
-  maxIterations = 10;
-  maxError = 0.06f;
+  maxIterations   = 10;
+  maxError        = 0.06f;
 
-  // Determine size of pyramid.  The goal is to have searchRadius (in the
-  // full-sized image) fit within a region covered by the Minkowski sum
-  // of the search window at each of the respective scales in the pyramid.
-  // Birchfield gives the following formula for this:
-  // searchRadius = windowRadius * \sum_{i=0}^{levels-1} pyramidRatio^i
-  //              = windowRadius * (pyramidRatio^levels - 1) / (pyramidRatio - 1)
-  // Since there are two variables (pyramidRatio, levels) but one equation,
-  // we use the the following heuristics:
-  // * pyramidRatio in (1,8]
-  // * Minimize the number of pyramid levels; levels in {1,2,3}
-  // These imply that searchRadius can never be greater than 73*windowRadius
-  // pixels (219 pixels for default windowRadius of 3).
-  int levels;
+  // Determine size of pyramid.
+  // At any given level, the windowRadius should be at least as large as
+  // the (downsampled) searchRadius.  That is, it should be possible to
+  // fully solve the tracking problem at any given level.
+  // Let two consecutive levels be called L (for lower) and U (for upper).
+  // The area covered by one pixel in U should be no larger than the entire
+  // search window in L. If it were larger, then a solution at U might not
+  // fall within the window at L. The downsampling ratio (pyramidRatio) must
+  // not exceed windowWidth, so we create enough levels that
+  // pyramidRatio^levels >= searchRadius.
+  int windowWidth = 2 * windowRadius + 1;
   double w = (double) searchRadius / windowRadius;
-  if (w <= 1)  // pyramidRatio^0 = 1
-  {
-	levels = 1;
-	pyramidRatio = 1;
-  }
-  else if (w <= 9)  // pyramidRatio^0 + pyramidRatio^1 = 1 + 8 = 9, when pyramidRatio is at its max value of 8.
-  {
-	levels = 2;
-	pyramidRatio = (int) ceil ((w + sqrt (w * w - 4 * (w - 1))) / 2);  // larger solution to quadratic equation: 0 = pyramidRatio^2 - w * pyramidRatio + w - 1
-	pyramidRatio = max (2, pyramidRatio);  // The solution above is wrong when w < 2, because it treats a second level at the same scale as the first as if it can actually extend the range.
-  }
-  else
-  {
-	levels = 3;
-	// Solve the equation 0 = pyramidRatio^levels - w * pyramidRatio + w - 1
-	Vector<complex<double> > coeffs (4);
-	coeffs[0] = w - 1;
-	coeffs[1] = -w;
-	coeffs[2] = 0;
-	coeffs[3] = 1;
-	Vector<complex<double> > result;
-	zroots (coeffs, result);
-	pyramidRatio = 1;
-	for (int i = 0; i < result.rows (); i++)
-	{
-	  if (fabs (imag (result[i])) < DBL_EPSILON)  // Use only real roots
-	  {
-		pyramidRatio = max (pyramidRatio, (int) ceil (real (result[i])));
-	  }
-	}
-	pyramidRatio = max (2, pyramidRatio);
-  }
+  int topLevel = (int) ceil (log (w) / log ((double) windowWidth));
+  if (topLevel) pyramidRatio = (int) ceil (pow (w, 1.0 / topLevel));  // minimize downsample ratio by distributing it equally across all levels
+  else          pyramidRatio = 1;
+  int levels = topLevel + 1;  // topLevel is a zero-based index, whereas levels is the actual count
   //cerr << "KLT: levels=" << levels << " pyramidRatio=" << pyramidRatio << endl;
 
-
   // Create blurring kernels
-  blurs.resize (levels);
-  double sR = searchRadius;  // in source image, but will be adjusted to target level at top of loop below
   double currentBlur = 0.5;  // in source image
   double pR = 1;  // the downsample ratio for generating the current level
   for (int level = 0; level < levels; level++)
   {
 	// The source image (image at previous level) will be blurred and
 	// downsampled to create the image at the current level.
-	sR /= pR;
-	double radius = min (sR, (double) windowRadius);  // sR (search radius) and windowRadius are in terms of target (downsampled) image
-	double targetBlur = sqrt (radius * pR) * scaleRatio;  // in terms of source image, before downsampling
-	targetBlur = max (0.5, targetBlur);
+	double radius;  // search radius at current level
+	if (level == topLevel) radius = searchRadius / pow ((double) pyramidRatio, level);
+	else                   radius = pyramidRatio / 2.0;  // level L expects level U to solve offset to within its center pixel
+	double targetBlur = sqrt (radius) * scaleRatio * pR;  // mulitplying by pR puts this in terms of source image, before downsampling
 	double applyBlur = sqrt (targetBlur * targetBlur - currentBlur * currentBlur);
-	applyBlur = max (0.5, applyBlur);
-	blurs[level] = Gaussian1D (applyBlur, Boost);
-	//cerr << "blurs " << level << ": radius=" << radius << " targetBlur=" << targetBlur << " applyBlur=" << applyBlur << " currentBlur=" << currentBlur << " pR=" << pR << " sR=" << sR << endl;
+	if (isnan (applyBlur)  ||  applyBlur < 0.5)
+	{
+	  applyBlur = 0.5;
+	  targetBlur = sqrt (0.25 + currentBlur * currentBlur);
+	}
+	blurs.push_back (new Gaussian1D (applyBlur, Boost));
+	//cerr << "  level " << level << ": radius=" << radius << " targetBlur=" << targetBlur << " applyBlur=" << applyBlur << " currentBlur=" << currentBlur << " pR=" << pR << endl;
+
 	currentBlur = targetBlur / pR;  // at current level after downsampling; this becomes the source image for the next level
-	sR -= radius;
 	pR = pyramidRatio;  // for levels above 0
   }
 
@@ -133,12 +104,17 @@ KLT::KLT (int windowRadius, int searchRadius, float scaleRatio)
   pyramid1.resize (levels, ImageOf<float> (GrayFloat));
 }
 
+KLT::~KLT ()
+{
+  for (int i = 0; i < blurs.size (); i++) if (blurs[i]) delete blurs[i];
+}
+
 void
 KLT::nextImage (const Image & image)
 {
   // Pre-blur level 0
+  Gaussian1D & b = *blurs[0];
   ImageOf<float> & p = pyramid1[0];
-  Gaussian1D & b = blurs[0];
   pyramid0[0] = p;
   p = image * GrayFloat;
   b.direction = Horizontal;
@@ -150,7 +126,7 @@ KLT::nextImage (const Image & image)
   const float start = pyramidRatio / 2;
   for (int i = 1; i < pyramid0.size (); i++)
   {
-	Gaussian1D & b = blurs[i];
+	Gaussian1D & b = *blurs[i];
 	ImageOf<float> & p = pyramid1[i];  // "picture"
 	ImageOf<float> & pp = pyramid1[i-1];  // "previous picture"
 	pyramid0[i] = p;
@@ -207,7 +183,7 @@ KLT::track (Point & point)
   int lowestLevel;
   if (PointInterest * p = dynamic_cast<PointInterest *> (&point))
   {
-	lowestLevel = (int) roundp (log (p->scale / windowRadius) / log (pyramidRatio));
+	lowestLevel = (int) roundp (log (p->scale / windowRadius) / log ((float) pyramidRatio));
 	lowestLevel = max (lowestLevel, 0);
 	lowestLevel = min (lowestLevel, highestLevel);
   }
