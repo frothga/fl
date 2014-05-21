@@ -57,16 +57,19 @@ namespace fl
   class SHARED KLT : public PointTracker
   {
   public:
-	KLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 1.0f);
+	KLT (int searchRadius = 15, int windowRadius = 3, float scaleRatio = 1.0f);
 	~KLT ();
 
 	virtual void nextImage (const Image & image);
 	virtual void track (Point & point);
 	float track (const Point & point0, const int level, Point & point1);  ///< Subroutine of track().
 
-	std::vector<ImageOf<float> > pyramid0;  ///< "previous" image.  First entry is full sized image, and each subsequent entry is downsampled by 2.
+	std::vector<ImageOf<float> > pyramid0;  ///< "previous" image.  First entry is full sized image, and each subsequent entry is downsampled by pyramidRatio.
 	std::vector<ImageOf<float> > pyramid1;  ///< "current" image.  Same structure as pyramid0
-	std::vector<Gaussian1D *> blurs;  ///< Blurring kernel for each level of the pyramid.  Brings some information from each pixel in one image to the position of the corresponding pixel in the other image.
+	// Blurring brings some information from each pixel in one image to the
+	// position of the corresponding pixel in the other image.
+	std::vector<Gaussian1D *> blursPre;  ///< Blurring kernel applied to image from previous level to bring it up to sufficient blur to enable accurate downsampling.
+	std::vector<Gaussian1D *> blursPost;  ///< Blurring kernel applied after downsampling to produce desired scale at current level.
 	int pyramidRatio;  ///< Ratio between number of pixels in adjacent levels of pyramid.
 	int windowRadius;  ///< Number of pixels from center to edge of search window.
 	float minDeterminant;  ///< Smallest allowable determinant of second moment matrix.

@@ -28,13 +28,16 @@ using namespace std;
 // KLT ------------------------------------------------------------------------
 
 /**
-   \param windowRadius The number of discrete pixels beyond the center pixel
-   to use when solving the position update equation.  The full window size
-   will be 2 * windowRadius + 1.
-   \param searchRadius The largest expected distance between the previous
+   @param searchRadius The largest expected distance between the previous
    and current positions of a given point.  Determines number of levels
    in pyramid and degree of downsampling.
-   \todo Track blobs (as opposed to just corners):  The code currently
+   @param windowRadius The number of discrete pixels beyond the center pixel
+   to use when solving the position update equation.  The full window size
+   will be 2 * windowRadius + 1.
+   @param scaleRatio Determines how much blur to apply before comparing
+   two windows for alignment. Actual blur amount is
+   sqrt(expected offset) * scaleRatio
+   @todo Track blobs (as opposed to just corners):  The code currently
    depends on a large determinant in the second moment matrix, which is
    generally associated with Harris points.  Examine whether it is possible
    to formulate a similar numerical search for blob-like structures.
@@ -44,12 +47,8 @@ using namespace std;
    would only work for blobs on the same scale as the search window.  We
    may need to code an adaptive window size.  Furthermore, this may vary
    depending on the level in the pyramid.
-   \todo Should implement large scale blurring kernels as several smaller
-   ones applied in series.  Perhaps separate the downsampling blur from the
-   connecting blur.  Implement two sets of kernels.  Allow null entries
-   (skip convolving in this case).  Write sparse blur & downsample.
  **/
-KLT::KLT (int windowRadius, int searchRadius, float scaleRatio)
+KLT::KLT (int searchRadius, int windowRadius, float scaleRatio)
 : windowRadius (windowRadius)
 {
   minDeterminant  = 2e-12f;
@@ -73,30 +72,53 @@ KLT::KLT (int windowRadius, int searchRadius, float scaleRatio)
   if (topLevel) pyramidRatio = (int) ceil (pow (w, 1.0 / topLevel));  // minimize downsample ratio by distributing it equally across all levels
   else          pyramidRatio = 1;
   int levels = topLevel + 1;  // topLevel is a zero-based index, whereas levels is the actual count
-  //cerr << "KLT: levels=" << levels << " pyramidRatio=" << pyramidRatio << endl;
 
   // Create blurring kernels
-  double currentBlur = 0.5;  // in source image
-  double pR = 1;  // the downsample ratio for generating the current level
+  // Note that level 0 is a blurred but full-size version of the base image.
+  blursPre .resize (levels);
+  blursPost.resize (levels);
+  double currentBlur = 0.5;  // default value for base image
+  double downsample  = 1;    // to produce level 0 from the base image
+  const double minBlur = 0.55;  // Threshold below which it is not worth applying a blur.  Should be at least 0.5
   for (int level = 0; level < levels; level++)
   {
-	// The source image (image at previous level) will be blurred and
-	// downsampled to create the image at the current level.
+	// Determine blur scale in new image (target) that will be generated for
+	// this level.
 	double radius;  // search radius at current level
 	if (level == topLevel) radius = searchRadius / pow ((double) pyramidRatio, level);
 	else                   radius = pyramidRatio / 2.0;  // level L expects level U to solve offset to within its center pixel
-	double targetBlur = sqrt (radius) * scaleRatio * pR;  // mulitplying by pR puts this in terms of source image, before downsampling
-	double applyBlur = sqrt (targetBlur * targetBlur - currentBlur * currentBlur);
-	if (isnan (applyBlur)  ||  applyBlur < 0.5)
-	{
-	  applyBlur = 0.5;
-	  targetBlur = sqrt (0.25 + currentBlur * currentBlur);
-	}
-	blurs.push_back (new Gaussian1D (applyBlur, Boost));
-	//cerr << "  level " << level << ": radius=" << radius << " targetBlur=" << targetBlur << " applyBlur=" << applyBlur << " currentBlur=" << currentBlur << " pR=" << pR << endl;
+	double targetBlur = sqrt (radius) * scaleRatio;
 
-	currentBlur = targetBlur / pR;  // at current level after downsampling; this becomes the source image for the next level
-	pR = pyramidRatio;  // for levels above 0
+	// Generate a kernel to blur the source image to (downsample / 2).  This
+	// is the right level of blur to have just before a decimation by
+	// "downsample", resulting in an image with blur scale 0.5.
+	double blurAfterDecimation;
+	double applyBlur = sqrt (downsample * downsample / 4.0 - currentBlur * currentBlur);
+	if (isnan (applyBlur)  ||  applyBlur < minBlur)  // blur too small
+	{
+	  blursPre[level] = 0;
+	  blurAfterDecimation = currentBlur / downsample;
+	}
+	else
+	{
+	  blursPre[level] = new Gaussian1D (applyBlur, Boost);
+	  blurAfterDecimation = 0.5;
+	}
+
+	// Generate a kernal to blur the decimated image to targetBlur.
+	applyBlur = sqrt (targetBlur * targetBlur - blurAfterDecimation * blurAfterDecimation);
+	if (isnan (applyBlur)  ||  applyBlur < minBlur)
+	{
+	  blursPost[level] = 0;
+	  currentBlur = blurAfterDecimation;
+	}
+	else
+	{
+	  blursPost[level] = new Gaussian1D (applyBlur, Boost);
+	  currentBlur = targetBlur;
+	}
+
+	downsample = pyramidRatio;  // for levels above 0
   }
 
   // Create pyramids
@@ -106,51 +128,83 @@ KLT::KLT (int windowRadius, int searchRadius, float scaleRatio)
 
 KLT::~KLT ()
 {
-  for (int i = 0; i < blurs.size (); i++) if (blurs[i]) delete blurs[i];
+  for (int i = 0; i < blursPre .size (); i++) if (blursPre [i]) delete blursPre [i];
+  for (int i = 0; i < blursPost.size (); i++) if (blursPost[i]) delete blursPost[i];
 }
 
 void
 KLT::nextImage (const Image & image)
 {
-  // Pre-blur level 0
-  Gaussian1D & b = *blurs[0];
+  // Blur level 0.  No decimation or pre-blurring required.
   ImageOf<float> & p = pyramid1[0];
   pyramid0[0] = p;
   p = image * GrayFloat;
-  b.direction = Horizontal;
-  p *= b;
-  b.direction = Vertical;
-  p *= b;
+  if (blursPost[0])
+  {
+	Gaussian1D & b = *blursPost[0];
+	b.direction = Horizontal;
+	p *= b;
+	b.direction = Vertical;
+	p *= b;
+  }
 
   // Higher levels
-  const float start = pyramidRatio / 2;
-  for (int i = 1; i < pyramid0.size (); i++)
+  for (int level = 1; level < pyramid0.size (); level++)
   {
-	Gaussian1D & b = *blurs[i];
-	ImageOf<float> & p = pyramid1[i];  // "picture"
-	ImageOf<float> & pp = pyramid1[i-1];  // "previous picture"
-	pyramid0[i] = p;
+	ImageOf<float> & p  = pyramid1[level];   // "picture"
+	ImageOf<float> & pp = pyramid1[level-1]; // "previous picture"
+	pyramid0[level] = p;
 	p.detach ();
 
 	int hw = pp.width  / pyramidRatio;
 	int hh = pp.height / pyramidRatio;
 	p.resize (hw, hh);
 
-	b.direction = Horizontal;
-	Image temp = pp * b;
-
-	b.direction = Vertical;
-	Point t;
-	t.y = start;
-	for (int y = 0; y < hh; y++)
+	if (blursPre[level])  // downsample and decimate
 	{
-	  t.x = start;
-	  for (int x = 0; x < hw; x++)
+	  Gaussian1D & b = *blursPre[level];
+
+	  b.direction = Horizontal;
+	  Image temp = pp * b;
+
+	  b.direction = Vertical;
+	  Point t;
+	  const float start = pyramidRatio / 2;
+	  t.y = start;
+	  for (int y = 0; y < hh; y++)
 	  {
-		p(x,y) = b.response (temp, t);
-		t.x += pyramidRatio;
+		t.x = start;
+		for (int x = 0; x < hw; x++)
+		{
+		  p(x,y) = b.response (temp, t);
+		  t.x += pyramidRatio;
+		}
+		t.y += pyramidRatio;
 	  }
-	  t.y += pyramidRatio;
+	}
+	else  // decimate only
+	{
+	  const int start = pyramidRatio / 2;
+	  int fromY = start;
+	  for (int y = 0; y < hh; y++)
+	  {
+		int fromX = start;
+		for (int x = 0; x < hw; x++)
+		{
+		  p(x,y) = pp(fromX,fromY);
+		  fromX += pyramidRatio;
+		}
+		fromY += pyramidRatio;
+	  }
+	}
+
+	if (blursPost[level])
+	{
+	  Gaussian1D & b = *blursPost[level];
+	  b.direction = Horizontal;
+	  p *= b;
+	  b.direction = Vertical;
+	  p *= b;
 	}
   }
 }

@@ -1781,7 +1781,7 @@ testBitblt ()
 
 // KLT
 void
-testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 1.0f)
+testKLT (int searchRadius = 15, int windowRadius = 3, float scaleRatio = 1.0f)
 {
 # if defined (HAVE_JPEG)  &&  defined (HAVE_LAPACK)
   const int range = searchRadius * 2;
@@ -1789,7 +1789,7 @@ testKLT (int windowRadius = 3, int searchRadius = 15, float scaleRatio = 1.0f)
   const float stepA = TWOPI / steps;
   const float stepR = searchRadius / (steps - 1.0);  // we want to reach full radius when zero-based index reaches last step
 
-  KLT klt (windowRadius, searchRadius, scaleRatio);
+  KLT klt (searchRadius, windowRadius, scaleRatio);
 
   Image test (dataDir + "test.jpg");  // Only big enough to test searchRadius < 28.  Note: for some weird reason, the position of the KLT constructor in this code makes a difference (including on performance).  Loading mars.jpg causes this program to crash under Cygwin unless the KLT constructore comes first.
   test *= GrayFloat;
