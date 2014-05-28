@@ -206,7 +206,7 @@ namespace fl
   };
 
 
-  // General non LAPACK operations the depend on LAPACK -----------------------
+  // General non-LAPACK operations the depend on LAPACK -----------------------
 
   /**
 	 Returns the pseudoinverse of an arbitrary matrix.

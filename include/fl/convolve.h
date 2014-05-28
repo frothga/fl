@@ -440,8 +440,9 @@ namespace fl
   };
 
   /**
-	 An information gathering filter.  Finds standard deviation of intensity
-	 values based on a given average value.
+	 Count how many pixels fall into each of a set of inensity ranges.
+	 An information gathering filter.  Returns the image unaltered and stores
+	 the results in this object's state.
   **/
   class SHARED IntensityHistogram : public Filter
   {
