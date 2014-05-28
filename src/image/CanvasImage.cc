@@ -353,7 +353,6 @@ CanvasImage::drawSegment (const Point & a, const Point & b, uint32_t color)
   }
 }
 
-/// @todo use drawSegment()
 void
 CanvasImage::drawLine (float a, float b, float c, uint32_t color)
 {
@@ -366,25 +365,16 @@ CanvasImage::drawLine (float a, float b, float c, uint32_t color)
   {
 	a /= -b;
 	c /= -b;
-	for (p.x = 0; p.x < width; p.x++)
-	{
-	  p.y = a * p.x + c;
-	  pen (p, color);
-	}
+	drawSegment (Point (0, c), Point (width, a * width + c), color);
   }
   else
   {
 	b /= -a;
 	c /= -a;
-	for (p.y = 0; p.y < height; p.y++)
-	{
-	  p.x = b * p.y + c;
-	  pen (p, color);
-	}
+	drawSegment (Point (c, 0), Point (b * height + c, height), color);
   }
 }
 
-/// @todo use drawSegment()
 void
 CanvasImage::drawRay (const Point & p, float angle, uint32_t color)
 {
@@ -397,50 +387,14 @@ CanvasImage::drawRay (const Point & p, float angle, uint32_t color)
   if (fabsf (c) > fabsf (s))
   {
 	float step = s / c;
-	if (c < 0)
-	{
-	  do
-	  {
-		pen (center, color);
-		center.x--;
-		center.y -= step;
-	  }
-	  while (center.x >= 0);
-	}
-	else
-	{
-	  do
-	  {
-		pen (center, color);
-		center.x++;
-		center.y += step;
-	  }
-	  while (center.x < width);
-	}
+	if (c < 0) drawSegment (center, Point (0,     center.y -          center.x  * step), color);
+	else       drawSegment (center, Point (width, center.y + (width - center.x) * step), color);
   }
   else
   {
 	float step = c / s;
-	if (s < 0)
-	{
-	  do
-	  {
-		pen (center, color);
-		center.x -= step;
-		center.y--;
-	  }
-	  while (center.y >= 0);
-	}
-	else
-	{
-	  do
-	  {
-		pen (center, color);
-		center.x += step;
-		center.y++;
-	  }
-	  while (center.y < height);
-	}
+	if (s < 0) drawSegment (center, Point (center.x -           center.y  * step, 0     ), color);
+	else       drawSegment (center, Point (center.x + (height - center.y) * step, height), color);
   }
 }
 
