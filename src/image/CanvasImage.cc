@@ -249,6 +249,60 @@ CanvasImage::drawSegment (const Point & a, const Point & b, uint32_t color)
 
   if (! clip (width, height, ta, tb)) return;
 
+  if (lineWidth == 1) // draw single-pixel line, as fast as possible
+  {
+	// Bresenham's algorithm, with strictly integer math
+
+	int u0 = roundp (ta.x);
+	int v0 = roundp (ta.y);
+	int u1 = roundp (tb.x);
+	int v1 = roundp (tb.y);
+
+	bool steep = abs (v1 - v0) > abs (u1 - u0);
+	if (steep)
+	{
+	  swap (u0, v0);
+	  swap (u1, v1);
+	}
+	if (u0 > u1)
+	{
+	  swap (u0, u1);
+	  swap (v0, v1);
+	}
+	int du =      u1 - u0;  // abs() not needed here
+	int dv = abs (v1 - v0);
+	int error = du / 2;
+	int vstep = v0 < v1 ? 1 : -1;
+	int v = v0;
+
+	if (steep)
+	{
+	  for (int u = u0; u <= u1; u++)
+	  {
+		setRGBA (v, u, color);
+		if ((error -= dv) < 0)
+		{
+		  v += vstep;
+		  error += du;
+		}
+	  }
+	}
+	else
+	{
+	  for (int u = u0; u <= u1; u++)
+	  {
+		setRGBA (u, v, color);
+		if ((error -= dv) < 0)
+		{
+		  v += vstep;
+		  error += du;
+		}
+	  }
+	}
+
+	return;
+  }
+
   double dx = tb.x - ta.x;
   double dy = tb.y - ta.y;
 
