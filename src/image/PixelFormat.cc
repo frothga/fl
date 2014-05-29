@@ -95,7 +95,8 @@ PixelFormatPackedYUV          fl::UYYVYY       (tableUYYVYY);
 PixelFormatPackedYUV          fl::UYVYUYVYYYYY (tableUYVYUYVYYYYY);
 PixelFormatPlanarYCbCr        fl::YUV420 (2, 2);
 PixelFormatPlanarYCbCr        fl::YUV411 (4, 1);
-PixelFormatHLSFloat           fl::HLSFloat;
+PixelFormatHSLFloat           fl::HSLFloat;
+PixelFormatHSVFloat           fl::HSVFloat;
 
 // These "bits" formats must be endian independent.
 #if BYTE_ORDER == LITTLE_ENDIAN
@@ -137,7 +138,8 @@ static int incrementRefcount ()
   UYVYUYVYYYYY   .PointerPolyReferenceCount++;
   YUV420         .PointerPolyReferenceCount++;
   YUV411         .PointerPolyReferenceCount++;
-  HLSFloat       .PointerPolyReferenceCount++;
+  HSLFloat       .PointerPolyReferenceCount++;
+  HSVFloat       .PointerPolyReferenceCount++;
   B5G5R5         .PointerPolyReferenceCount++;
   BGRChar        .PointerPolyReferenceCount++;
   BGRChar4       .PointerPolyReferenceCount++;
@@ -317,44 +319,6 @@ prepareDublicate (int & shift, int bits)
 }
 
 
-// Support for HLS conversion -------------------------------------------------
-
-static const float root32    = sqrtf (3.0f) / 2.0f;
-static const float onesixth  = 1.0f / 6.0f;
-static const float onethird  = 1.0f / 3.0f;
-static const float twothirds = 2.0f / 3.0f;
-
-static inline float
-HLSvalue (const float & n1, const float & n2, float h)
-{
-  if (h > 1.0f)
-  {
-	h -= 1.0f;
-  }
-  if (h < 0)
-  {
-	h += 1.0f;
-  }
-
-  if (h < onesixth)
-  {
-    return n1 + (n2 - n1) * h * 6.0f;
-  }
-  else if (h < 0.5f)
-  {
-    return n2;
-  }
-  else if (h < twothirds)
-  {
-    return n1 + (n2 - n1) * (twothirds - h) * 6.0f;
-  }
-  else
-  {
-    return n1;
-  }
-}
-
-
 // class PixelFormat ----------------------------------------------------------
 
 uint8_t * PixelFormat::lutFloat2Char = PixelFormat::buildFloat2Char ();
@@ -516,6 +480,22 @@ PixelFormat::getYUV  (void * pixel) const
   return y | (u >> 8) | (v >> 16);
 }
 
+void
+PixelFormat::getHSL (void * pixel, float values[]) const
+{
+  float rgba[4];
+  getRGBA (pixel, rgba);
+  HSLFloat.setRGBA (values, rgba);
+}
+
+void
+PixelFormat::getHSV (void * pixel, float values[]) const
+{
+  float rgba[4];
+  getRGBA (pixel, rgba);
+  HSVFloat.setRGBA (values, rgba);
+}
+
 uint8_t
 PixelFormat::getGray (void * pixel) const
 {
@@ -535,9 +515,8 @@ PixelFormat::getGray (void * pixel, float & gray) const
 uint8_t
 PixelFormat::getAlpha (void * pixel) const
 {
-  // Presumably, the derived PixelFormat does not have an alpha channel,
-  // so pretend that it is set to full opacity.
-  return 0xFF;
+  uint32_t rgba = getRGBA (pixel);
+  return rgba & 0xFF;
 }
 
 void
@@ -586,46 +565,18 @@ PixelFormat::setYUV (void * pixel, uint32_t yuv) const
 }
 
 void
-PixelFormat::setHLS (void * pixel, float values[]) const
+PixelFormat::setHSL (void * pixel, float values[]) const
 {
   float rgba[4];
-  float h = values[0];
-  float l = values[1];
-  float s = values[2];
+  HSLFloat.getRGBA (values, rgba);
+  setRGBA (pixel, rgba);
+}
 
-  if (s == 0)  // saturation
-  {
-    rgba[0] = l;  // lightness
-    rgba[1] = l;
-    rgba[2] = l;
-  }
-  else
-  {
-	float m2;
-	if (l <= 0.5f)
-	{
-	  m2 = l + l * s;
-	}
-	else
-	{
-	  m2 = l + s - l * s;
-	}
-	float m1 = 2.0f * l - m2;
-
-	float barf;
-	h = modff (h, &barf);
-	if (h < 0)
-	{
-	  h += 1.0f;
-	}
-
-    rgba[0] = HLSvalue (m1, m2, h + onethird);
-    rgba[1] = HLSvalue (m1, m2, h);
-    rgba[2] = HLSvalue (m1, m2, h - onethird);
-  }
-
-  rgba[3] = 1.0f;
-
+void
+PixelFormat::setHSV (void * pixel, float values[]) const
+{
+  float rgba[4];
+  HSVFloat.getRGBA (values, rgba);
   setRGBA (pixel, rgba);
 }
 
@@ -648,8 +599,9 @@ PixelFormat::setGray (void * pixel, float gray) const
 void
 PixelFormat::setAlpha (void * pixel, uint8_t alpha) const
 {
-  // Presumably, the derived PixelFormat does not have an alpha channel,
-  // so just ignore this request.
+  uint32_t rgba = getRGBA (pixel);
+  rgba = (rgba & 0xFFFFFF00) | alpha;
+  setRGBA (pixel, rgba);
 }
 
 void
@@ -4307,12 +4259,19 @@ PixelFormatRGBAShort::PixelFormatRGBAShort ()
 uint32_t
 PixelFormatRGBAShort::getRGBA (void * pixel) const
 {
-  uint32_t rgba;
-  rgba =   ((((uint16_t *) pixel)[0] << 16) & 0xFF000000)
-         | ((((uint16_t *) pixel)[1] <<  8) &   0xFF0000)
-         | ( ((uint16_t *) pixel)[2]        &     0xFF00)
-         |   ((uint16_t *) pixel)[3] >>  8;
-  return rgba;
+  return   (lutFloat2Char[((uint16_t *) pixel)[0]] << 24)
+         | (lutFloat2Char[((uint16_t *) pixel)[1]] << 16)
+         | (lutFloat2Char[((uint16_t *) pixel)[2]] <<  8)
+         |  lutFloat2Char[((uint16_t *) pixel)[3]];
+}
+
+void
+PixelFormatRGBAShort::getRGBA (void * pixel, float values[]) const
+{
+  values[0] = ((uint16_t *) pixel)[0] / 65535.0f;
+  values[1] = ((uint16_t *) pixel)[1] / 65535.0f;
+  values[2] = ((uint16_t *) pixel)[2] / 65535.0f;
+  values[3] = ((uint16_t *) pixel)[3] / 65535.0f;
 }
 
 uint8_t
@@ -4324,10 +4283,19 @@ PixelFormatRGBAShort::getAlpha (void * pixel) const
 void
 PixelFormatRGBAShort::setRGBA (void * pixel, uint32_t rgba) const
 {
-  ((uint16_t *) pixel)[0] = (rgba & 0xFF000000) >> 16;
-  ((uint16_t *) pixel)[1] = (rgba &   0xFF0000) >> 8;
-  ((uint16_t *) pixel)[2] = (rgba &     0xFF00);
-  ((uint16_t *) pixel)[3] = (rgba &       0xFF) << 8;
+  ((uint16_t *) pixel)[0] = (uint16_t) (65535 * lutChar2Float[ rgba             >> 24]);
+  ((uint16_t *) pixel)[1] = (uint16_t) (65535 * lutChar2Float[(rgba & 0xFF0000) >> 16]);
+  ((uint16_t *) pixel)[2] = (uint16_t) (65535 * lutChar2Float[(rgba &   0xFF00) >>  8]);
+  ((uint16_t *) pixel)[3] = (uint16_t) (65535 * lutChar2Float[ rgba &     0xFF       ]);
+}
+
+void
+PixelFormatRGBAShort::setRGBA (void * pixel, float values[]) const
+{
+  ((uint16_t *) pixel)[0] = (uint16_t) (65535 * min (max (values[0], 0.0f), 1.0f));
+  ((uint16_t *) pixel)[1] = (uint16_t) (65535 * min (max (values[1], 0.0f), 1.0f));
+  ((uint16_t *) pixel)[2] = (uint16_t) (65535 * min (max (values[2], 0.0f), 1.0f));
+  ((uint16_t *) pixel)[3] = (uint16_t) (65535 * min (max (values[3], 0.0f), 1.0f));
 }
 
 void
@@ -4351,12 +4319,10 @@ PixelFormatRGBShort::PixelFormatRGBShort ()
 uint32_t
 PixelFormatRGBShort::getRGBA (void * pixel) const
 {
-  uint32_t rgba = 0;
-  rgba =   (lutFloat2Char[((uint16_t *) pixel)[0]] << 24)
+  return   (lutFloat2Char[((uint16_t *) pixel)[0]] << 24)
          | (lutFloat2Char[((uint16_t *) pixel)[1]] << 16)
          | (lutFloat2Char[((uint16_t *) pixel)[2]] <<  8)
          | 0xFF;
-  return rgba;
 }
 
 void
@@ -5379,9 +5345,9 @@ PixelFormatPlanarYCbCr::setGray (void * pixel, float gray) const
 }
 
 
-// class PixelFormatHLSFloat --------------------------------------------------
+// class PixelFormatHSLFloat --------------------------------------------------
 
-PixelFormatHLSFloat::PixelFormatHLSFloat ()
+PixelFormatHSLFloat::PixelFormatHSLFloat ()
 {
   planes     = 1;
   depth      = 3 * sizeof (float);
@@ -5391,7 +5357,7 @@ PixelFormatHLSFloat::PixelFormatHLSFloat ()
 }
 
 uint32_t
-PixelFormatHLSFloat::getRGBA (void * pixel) const
+PixelFormatHSLFloat::getRGBA (void * pixel) const
 {
   float rgbaValues[4];
   getRGBA (pixel, rgbaValues);
@@ -5402,12 +5368,47 @@ PixelFormatHLSFloat::getRGBA (void * pixel) const
   return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
+static const float root32    = sqrtf (3.0f) / 2.0f;
+static const float onesixth  = 1.0f / 6.0f;
+static const float onethird  = 1.0f / 3.0f;
+static const float twothirds = 2.0f / 3.0f;
+
+static inline float
+HS (const float & n1, const float & n2, float h)
+{
+  if (h > 1.0f)
+  {
+	h -= 1.0f;
+  }
+  if (h < 0)
+  {
+	h += 1.0f;
+  }
+
+  if (h < onesixth)
+  {
+    return n1 + (n2 - n1) * h * 6.0f;
+  }
+  else if (h < 0.5f)
+  {
+    return n2;
+  }
+  else if (h < twothirds)
+  {
+    return n1 + (n2 - n1) * (twothirds - h) * 6.0f;
+  }
+  else
+  {
+    return n1;
+  }
+}
+
 void
-PixelFormatHLSFloat::getRGBA (void * pixel, float values[]) const
+PixelFormatHSLFloat::getRGBA (void * pixel, float values[]) const
 {
   float h = ((float *) pixel)[0];
-  float l = ((float *) pixel)[1];
-  float s = ((float *) pixel)[2];
+  float s = ((float *) pixel)[1];
+  float l = ((float *) pixel)[2];
 
   if (s == 0)
   {
@@ -5435,16 +5436,24 @@ PixelFormatHLSFloat::getRGBA (void * pixel, float values[]) const
 	  h += 1.0f;
 	}
 
-    values[0] = HLSvalue (m1, m2, h + onethird);
-    values[1] = HLSvalue (m1, m2, h);
-    values[2] = HLSvalue (m1, m2, h - onethird);
+    values[0] = HS (m1, m2, h + onethird);
+    values[1] = HS (m1, m2, h);
+    values[2] = HS (m1, m2, h - onethird);
   }
 
   values[3] = 1.0f;
 }
 
 void
-PixelFormatHLSFloat::setRGBA (void * pixel, uint32_t rgba) const
+PixelFormatHSLFloat::getHSL (void * pixel, float values[]) const
+{
+  values[0] = ((float *) pixel)[0];
+  values[1] = ((float *) pixel)[1];
+  values[2] = ((float *) pixel)[2];
+}
+
+void
+PixelFormatHSLFloat::setRGBA (void * pixel, uint32_t rgba) const
 {
   float rgbaValues[3];  // Ignore alpha channel, because it is not processed or stored by any function of this format.
   rgbaValues[0] = lutChar2Float[ rgba             >> 24];
@@ -5454,7 +5463,7 @@ PixelFormatHLSFloat::setRGBA (void * pixel, uint32_t rgba) const
 }
 
 void
-PixelFormatHLSFloat::setRGBA (void * pixel, float values[]) const
+PixelFormatHSLFloat::setRGBA (void * pixel, float values[]) const
 {
   // Lightness
   float rgbmax = max (values[0], max (values[1], values[2]));
@@ -5495,12 +5504,147 @@ PixelFormatHLSFloat::setRGBA (void * pixel, float values[]) const
   }
 
   ((float *) pixel)[0] = h;
-  ((float *) pixel)[1] = l;
-  ((float *) pixel)[2] = s;
+  ((float *) pixel)[1] = s;
+  ((float *) pixel)[2] = l;
 }
 
 void
-PixelFormatHLSFloat::setHLS (void * pixel, float values[]) const
+PixelFormatHSLFloat::setHSL (void * pixel, float values[]) const
+{
+  ((float *) pixel)[0] = values[0];
+  ((float *) pixel)[1] = values[1];
+  ((float *) pixel)[2] = values[2];
+}
+
+
+// class PixelFormatHSVFloat --------------------------------------------------
+
+PixelFormatHSVFloat::PixelFormatHSVFloat ()
+{
+  planes     = 1;
+  depth      = 3 * sizeof (float);
+  precedence = 7;  // on par with RGBAFloat
+  monochrome = false;
+  hasAlpha   = false;
+}
+
+uint32_t
+PixelFormatHSVFloat::getRGBA (void * pixel) const
+{
+  float rgbaValues[4];
+  getRGBA (pixel, rgbaValues);
+  uint32_t r = lutFloat2Char[(uint16_t) (65535 * rgbaValues[0])];
+  uint32_t g = lutFloat2Char[(uint16_t) (65535 * rgbaValues[1])];
+  uint32_t b = lutFloat2Char[(uint16_t) (65535 * rgbaValues[2])];
+  uint32_t a = (uint32_t) (255 * rgbaValues[3]);
+  return (r << 24) | (g << 16) | (b << 8) | a;
+}
+
+void
+PixelFormatHSVFloat::getRGBA (void * pixel, float values[]) const
+{
+  float h = ((float *) pixel)[0];
+  float s = ((float *) pixel)[1];
+  float v = ((float *) pixel)[2];
+
+  assert (h >= 0  &&  h <= 1);
+
+  float c = v * s;
+  h *= 6;
+  float x = c * (1 - abs (fmod (h, 2) - 1));
+
+  if (h < 1)
+  {
+	values[0] = c;
+	values[1] = x;
+	values[2] = 0;
+  }
+  else if (h < 2)
+  {
+	values[0] = x;
+	values[1] = c;
+	values[2] = 0;
+  }
+  else if (h < 3)
+  {
+	values[0] = 0;
+	values[1] = c;
+	values[2] = x;
+  }
+  else if (h < 4)
+  {
+	values[0] = 0;
+	values[1] = x;
+	values[2] = c;
+  }
+  else if (h < 5)
+  {
+	values[0] = x;
+	values[1] = 0;
+	values[2] = c;
+  }
+  else  // h <= 6
+  {
+	values[0] = c;
+	values[1] = 0;
+	values[2] = x;
+  }
+
+  float m = v - c;
+  values[0] += m;
+  values[1] += m;
+  values[2] += m;
+  values[3] = 1.0f;
+}
+
+void
+PixelFormatHSVFloat::getHSV (void * pixel, float values[]) const
+{
+  values[0] = ((float *) pixel)[0];
+  values[1] = ((float *) pixel)[1];
+  values[2] = ((float *) pixel)[2];
+}
+
+void
+PixelFormatHSVFloat::setRGBA (void * pixel, uint32_t rgba) const
+{
+  float rgbaValues[3];  // Ignore alpha channel, because it is not processed or stored by any function of this format.
+  rgbaValues[0] = lutChar2Float[ rgba             >> 24];
+  rgbaValues[1] = lutChar2Float[(rgba & 0xFF0000) >> 16];
+  rgbaValues[2] = lutChar2Float[(rgba &   0xFF00) >>  8];
+  setRGBA (pixel, rgbaValues);
+}
+
+void
+PixelFormatHSVFloat::setRGBA (void * pixel, float values[]) const
+{
+  const float & r = values[0];
+  const float & g = values[1];
+  const float & b = values[2];
+
+  float v =     max (r, max (g, b));
+  float c = v - min (r, min (g, b));
+
+  // Hue and Saturation
+  float h;
+  if      (c == 0) h = 0;
+  else if (v == r) h = (g - b) / c;
+  else if (v == g) h = (b - r) / c + 2;
+  else             h = (r - g) / c + 4;  // v == b
+  if (h < 0) h += 6;  // this is the only boundary condition
+  h /= 6;
+
+  float s;
+  if (c == 0) s = 0;
+  else        s = c / v;
+
+  ((float *) pixel)[0] = h;
+  ((float *) pixel)[1] = s;
+  ((float *) pixel)[2] = v;
+}
+
+void
+PixelFormatHSVFloat::setHSV (void * pixel, float values[]) const
 {
   ((float *) pixel)[0] = values[0];
   ((float *) pixel)[1] = values[1];

@@ -98,6 +98,8 @@ namespace fl
 	void     getRGBA  (int x, int y, float values[]) const;
 	void     getXYZ   (int x, int y, float values[]) const;
 	uint32_t getYUV   (int x, int y                ) const;
+	void     getHSL   (int x, int y, float values[]) const;
+	void     getHSV   (int x, int y, float values[]) const;
 	uint8_t  getGray  (int x, int y                ) const;
 	void     getGray  (int x, int y, float & gray  ) const;
 	uint8_t  getAlpha (int x, int y                ) const;
@@ -105,7 +107,8 @@ namespace fl
 	void     setRGBA  (int x, int y, float    values[]);
 	void     setXYZ   (int x, int y, float    values[]);
 	void     setYUV   (int x, int y, uint32_t yuv);
-	void     setHLS   (int x, int y, float    values[]);
+	void     setHSL   (int x, int y, float    values[]);
+	void     setHSV   (int x, int y, float    values[]);
 	void     setGray  (int x, int y, uint8_t  gray);
 	void     setGray  (int x, int y, float    gray);
 	void     setAlpha (int x, int y, uint8_t  alpha);
@@ -538,6 +541,8 @@ namespace fl
 	virtual void     getRGBA  (void * pixel, float    values[]) const;  ///< "values" must have at least four elements.  Each returned value is in [0,1].
 	virtual void     getXYZ   (void * pixel, float    values[]) const;
 	virtual uint32_t getYUV   (void * pixel                   ) const;
+	virtual void     getHSL   (void * pixel, float    values[]) const;
+	virtual void     getHSV   (void * pixel, float    values[]) const;
 	virtual uint8_t  getGray  (void * pixel                   ) const;
 	virtual void     getGray  (void * pixel, float &  gray    ) const;
 	virtual uint8_t  getAlpha (void * pixel                   ) const;  ///< Returns fully opaque by default.  PixelFormats that actually have an alpha channel must override this to return correct value.
@@ -545,7 +550,8 @@ namespace fl
 	virtual void     setRGBA  (void * pixel, float    values[]) const;  ///< Each value must be in [0,1].  Values outside this range will be clamped and modified directly in the array.
 	virtual void     setXYZ   (void * pixel, float    values[]) const;
 	virtual void     setYUV   (void * pixel, uint32_t yuv     ) const;
-	virtual void     setHLS   (void * pixel, float    values[]) const;
+	virtual void     setHSL   (void * pixel, float    values[]) const;
+	virtual void     setHSV   (void * pixel, float    values[]) const;
 	virtual void     setGray  (void * pixel, uint8_t  gray    ) const;
 	virtual void     setGray  (void * pixel, float    gray    ) const;
 	virtual void     setAlpha (void * pixel, uint8_t  alpha   ) const;  ///< Ignored by default.  Formats that actually have an alpha channel must override this method.
@@ -861,10 +867,12 @@ namespace fl
   public:
 	PixelFormatRGBAShort ();
 
-	virtual uint32_t getRGBA  (void * pixel                ) const;
-	virtual uint8_t  getAlpha (void * pixel                ) const;
-	virtual void     setRGBA  (void * pixel, uint32_t rgba ) const;
-	virtual void     setAlpha (void * pixel, uint8_t  alpha) const;
+	virtual uint32_t getRGBA  (void * pixel                   ) const;
+	virtual void     getRGBA  (void * pixel, float    values[]) const;
+	virtual uint8_t  getAlpha (void * pixel                   ) const;
+	virtual void     setRGBA  (void * pixel, uint32_t rgba    ) const;
+	virtual void     setRGBA  (void * pixel, float    values[]) const;
+	virtual void     setAlpha (void * pixel, uint8_t  alpha   ) const;
   };
 
   class SHARED PixelFormatRGBShort : public PixelFormat
@@ -979,16 +987,30 @@ namespace fl
 	static uint8_t * buildAll ();  ///< Returns the value of lutYin, but actually constructs and assigns all 6 luts.
   };
 
-  class SHARED PixelFormatHLSFloat : public PixelFormat
+  class SHARED PixelFormatHSLFloat : public PixelFormat
   {
   public:
-	PixelFormatHLSFloat ();
+	PixelFormatHSLFloat ();
 
 	virtual uint32_t getRGBA (void * pixel                   ) const;
 	virtual void     getRGBA (void * pixel, float    values[]) const;
+	virtual void     getHSL  (void * pixel, float    values[]) const;
 	virtual void     setRGBA (void * pixel, uint32_t rgba    ) const;
 	virtual void     setRGBA (void * pixel, float    values[]) const;
-	virtual void     setHLS  (void * pixel, float    values[]) const;
+	virtual void     setHSL  (void * pixel, float    values[]) const;
+  };
+
+  class SHARED PixelFormatHSVFloat : public PixelFormat
+  {
+  public:
+	PixelFormatHSVFloat ();
+
+	virtual uint32_t getRGBA (void * pixel                   ) const;
+	virtual void     getRGBA (void * pixel, float    values[]) const;
+	virtual void     getHSV  (void * pixel, float    values[]) const;
+	virtual void     setRGBA (void * pixel, uint32_t rgba    ) const;
+	virtual void     setRGBA (void * pixel, float    values[]) const;
+	virtual void     setHSV  (void * pixel, float    values[]) const;
   };
 
   extern SHARED PixelFormatGrayChar           GrayChar;
@@ -1014,7 +1036,8 @@ namespace fl
   extern SHARED PixelFormatPackedYUV          UYVYUYVYYYYY;
   extern SHARED PixelFormatPlanarYCbCr        YUV420;
   extern SHARED PixelFormatPlanarYCbCr        YUV411;
-  extern SHARED PixelFormatHLSFloat           HLSFloat;
+  extern SHARED PixelFormatHSLFloat           HSLFloat;
+  extern SHARED PixelFormatHSVFloat           HSVFloat;
 
   // Naming convention for RGBABits:
   // R<red bits>G<green bits>B<blue bits>
@@ -1418,6 +1441,20 @@ namespace fl
 	return format->getYUV (buffer->pixel (x, y));
   }
 
+  inline void
+  Image::getHSL (int x, int y, float values[]) const
+  {
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->getHSL (buffer->pixel (x, y), values);
+  }
+
+  inline void
+  Image::getHSV (int x, int y, float values[]) const
+  {
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->getHSV (buffer->pixel (x, y), values);
+  }
+
   inline uint8_t
   Image::getGray (int x, int y) const
   {
@@ -1468,10 +1505,17 @@ namespace fl
   }
 
   inline void
-  Image::setHLS (int x, int y, float values[])
+  Image::setHSL (int x, int y, float values[])
   {
 	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
-	format->setHLS (buffer->pixel (x, y), values);
+	format->setHSL (buffer->pixel (x, y), values);
+  }
+
+  inline void
+  Image::setHSV (int x, int y, float values[])
+  {
+	assert (x >= 0  &&  x < width  &&  y >= 0  &&  y < height);
+	format->setHSV (buffer->pixel (x, y), values);
   }
 
   inline void
