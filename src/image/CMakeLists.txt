@@ -107,6 +107,8 @@ add_library (flImage
   Rotate180.cc
   Transform.cc
   TransformGauss.cc
+  TransformNeighbor.cc
+  TransformEagle.cc
   Decimate.cc
   DoubleSize.cc
   BlurDecimate.cc

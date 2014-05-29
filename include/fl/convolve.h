@@ -562,6 +562,31 @@ namespace fl
 	bool needG;  ///< Flag for lazy generation of G
   };
 
+  class SHARED TransformNeighbor : public Transform
+  {
+  public:
+	TransformNeighbor (const Matrix<double> & A, bool inverse = false) : Transform (A, inverse)     {}
+	TransformNeighbor (const Matrix<double> & A, const double scale)   : Transform (A, scale)       {}
+	TransformNeighbor (double angle)                                   : Transform (angle)          {}
+	TransformNeighbor (double scaleX, double scaleY)                   : Transform (scaleX, scaleY) {}
+	TransformNeighbor (const Transform & that)                         : Transform (that)           {}
+
+	virtual Image filter (const Image & image);
+  };
+
+  /** Emulate the classic Eagle upsampling algorithm to clip corners. **/
+  class SHARED TransformEagle : public Transform
+  {
+  public:
+	TransformEagle (const Matrix<double> & A, bool inverse = false) : Transform (A, inverse)     {}
+	TransformEagle (const Matrix<double> & A, const double scale)   : Transform (A, scale)       {}
+	TransformEagle (double angle)                                   : Transform (angle)          {}
+	TransformEagle (double scaleX, double scaleY)                   : Transform (scaleX, scaleY) {}
+	TransformEagle (const Transform & that)                         : Transform (that)           {}
+
+	virtual Image filter (const Image & image);
+  };
+
   /**
 	 Scales an image up by an integer amount.  Basically, this is a stripped
 	 down version of Transform that avoids blurring the image.
