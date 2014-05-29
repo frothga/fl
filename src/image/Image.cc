@@ -273,64 +273,100 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
   }
 
   // Get buffers
-  Image source = that * (*(this->format));  // should also force conversion to packed format
-  PixelBufferPacked * fromBuffer = (PixelBufferPacked *) source.buffer;
-  PixelBufferPacked * toBuffer   = (PixelBufferPacked *) this->buffer;
+  // TODO: Generalize so that the PixelBufferGroups case will work any time the
+  // source, destination and number of bytes being moved are all integral
+  // multiples of the group size.
+  Image source = that * *this->format;  // should also force conversion to packed format
+  char * fromBase = 0;
+  int    fromStride;
+  int    fromDepth;
+  if (PixelBufferPacked * fromBuffer = (PixelBufferPacked *) source.buffer)
+  {
+	fromBase   = (char *) fromBuffer->base ();
+	fromStride =          fromBuffer->stride;
+	fromDepth  =          fromBuffer->depth;
+  }
+  else if (PixelBufferGroups * fromBuffer = (PixelBufferGroups *) source.buffer)
+  {
+	if (fromBuffer->bytes == 1  &&  fromBuffer->pixels == 1)
+	{
+	  fromBase   = (char *) fromBuffer->memory;
+	  fromStride =          fromBuffer->stride;
+	  fromDepth  =          1;
+	}
+  }
+  char * toBase = 0;
+  int    toStride;
+  int    toDepth;
+  if (PixelBufferPacked * toBuffer = (PixelBufferPacked *) this->buffer)
+  {
+	toBase   = (char *) toBuffer->base ();
+	toStride =          toBuffer->stride;
+	toDepth  =          toBuffer->depth;
+  }
+  else if (PixelBufferGroups * toBuffer = (PixelBufferGroups *) this->buffer)
+  {
+	if (toBuffer->bytes == 1  &&  toBuffer->pixels == 1)
+	{
+	  toBase   = (char *) toBuffer->memory;
+	  toStride =          toBuffer->stride;
+	  toDepth  =          1;
+	}
+  }
 
   // Transfer the block
   int offsetX = fromX - toX;
   int offsetY = fromY - toY;
-  if (fromBuffer  &&  toBuffer)  // Both buffers are packed, so we can use direct memory copy.
+  if (fromBase  &&  toBase)  // Both buffers are packed, so we can use direct memory copy.
   {
 	char * toByte;
 	char * fromByte;
 	char * rowEnd;
 	char * end;
-	int toStep     = toBuffer  ->stride - width * toBuffer  ->depth;
-	int fromStep   = fromBuffer->stride - width * fromBuffer->depth;
-	int fromStride = fromBuffer->stride;
+	int toStep   = toStride   - width * toDepth;
+	int fromStep = fromStride - width * fromDepth;
 	int Xstep;
 
     if (offsetX < 0)
     {
       if (offsetY < 0)  // backward x and y
 	  {
-		toByte   = (char *) toBuffer  ->base () + (toY   + height - 1) * toBuffer  ->stride + (toX   + width) * toBuffer  ->depth - 1;
-		fromByte = (char *) fromBuffer->base () + (fromY + height - 1) * fromBuffer->stride + (fromX + width) * fromBuffer->depth - 1;
-		end      = fromByte - height * fromBuffer->stride;
+		toByte   = toBase   + (toY   + height - 1) * toStride   + (toX   + width) * toDepth   - 1;
+		fromByte = fromBase + (fromY + height - 1) * fromStride + (fromX + width) * fromDepth - 1;
+		end      = fromByte - height * fromStride;
 		toStep     *= -1;
 		fromStep   *= -1;
 		fromStride *= -1;
       }
       else  // backward x forward y
       {
-		toByte   = (char *) toBuffer  ->base () + toY   * toBuffer  ->stride + (toX   + width) * toBuffer  ->depth - 1;
-		fromByte = (char *) fromBuffer->base () + fromY * fromBuffer->stride + (fromX + width) * fromBuffer->depth - 1;
-		end      = fromByte + height * fromBuffer->stride;
-		toStep   = toBuffer->stride   + width * toBuffer  ->depth;
-		fromStep = fromBuffer->stride + width * fromBuffer->depth;
+		toByte   = toBase   + toY   * toStride   + (toX   + width) * toDepth   - 1;
+		fromByte = fromBase + fromY * fromStride + (fromX + width) * fromDepth - 1;
+		end      = fromByte + height * fromStride;
+		toStep   = toStride   + width * toDepth;
+		fromStep = fromStride + width * fromDepth;
       }
-	  rowEnd = fromByte - width  * fromBuffer->depth;
+	  rowEnd = fromByte - width * fromDepth;
 	  Xstep = -1;
 	}
     else
     {
 	  if (offsetY < 0)  // forward x backward y
 	  {
-		toByte   = (char *) toBuffer  ->base () + (toY   + height - 1) * toBuffer  ->stride + toX   * toBuffer  ->depth;
-		fromByte = (char *) fromBuffer->base () + (fromY + height - 1) * fromBuffer->stride + fromX * fromBuffer->depth;
-		end      = fromByte - height * fromBuffer->stride;
-		toStep   -= 2 * toBuffer  ->stride;
-		fromStep -= 2 * fromBuffer->stride;
+		toByte   = toBase   + (toY   + height - 1) * toStride   + toX   * toDepth;
+		fromByte = fromBase + (fromY + height - 1) * fromStride + fromX * fromDepth;
+		end      = fromByte - height * fromStride;
+		toStep   -= 2 * toStride;
+		fromStep -= 2 * fromStride;
 		fromStride *= -1;
 	  }
       else  // forward x forward y
       {
-		toByte   = (char *) toBuffer  ->base () + toY   * toBuffer  ->stride + toX   * toBuffer  ->depth;
-		fromByte = (char *) fromBuffer->base () + fromY * fromBuffer->stride + fromX * fromBuffer->depth;
-		end      = fromByte + height * fromBuffer->stride;
+		toByte   = toBase   + toY   * toStride   + toX   * toDepth;
+		fromByte = fromBase + fromY * fromStride + fromX * fromDepth;
+		end      = fromByte + height * fromStride;
       }
-	  rowEnd = fromByte + width  * fromBuffer->depth;
+	  rowEnd = fromByte + width * fromDepth;
 	  Xstep = 1;
     }
 
