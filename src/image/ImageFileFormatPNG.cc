@@ -191,12 +191,29 @@ ImageFileDelegatePNG::write (const Image & image, int x, int y)
 	colorFormat = 0;  // default is gray
 	if (image.format->monochrome)
 	{
-	  if      (image.format->depth == 1.0f / 8.0f) format = new PixelFormatGrayBits (1);
-	  else if (image.format->depth == 2.0f / 8.0f) format = new PixelFormatGrayBits (2);
-	  else if (image.format->depth == 4.0f / 8.0f) format = new PixelFormatGrayBits (4);
-	  else if (image.format->depth <= 1.0f)        format = &GrayChar;
-	  else                                         format = &GrayShort;
-	  depth = (int) roundp (format->depth * 8);
+	  if (image.format->hasAlpha)
+	  {
+		colorFormat |= PNG_COLOR_MASK_ALPHA;
+		if (image.format->depth <= 2.0f)
+		{
+		  format = &GrayAlphaChar;
+		  depth = 8;
+		}
+		else
+		{
+		  format = &GrayAlphaShort;
+		  depth = 16;
+		}
+	  }
+	  else
+	  {
+		if      (image.format->depth == 1.0f / 8.0f) format = new PixelFormatGrayBits (1);
+		else if (image.format->depth == 2.0f / 8.0f) format = new PixelFormatGrayBits (2);
+		else if (image.format->depth == 4.0f / 8.0f) format = new PixelFormatGrayBits (4);
+		else if (image.format->depth <= 1.0f)        format = &GrayChar;
+		else                                         format = &GrayShort;
+		depth = (int) roundp (format->depth * 8);
+	  }
 	}
 	else
 	{
