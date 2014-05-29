@@ -26,6 +26,11 @@ Match::~Match ()
 
 // class MatchSet -------------------------------------------------------------
 
+MatchSet::MatchSet ()
+{
+  model = 0;
+}
+
 MatchSet::~MatchSet ()
 {
   delete model;
@@ -92,7 +97,9 @@ MatchFinder::~MatchFinder ()
 double
 Homography::test (const Match & match) const
 {
-  return (H * match[0]->homogeneous () - match[1]->homogeneous ()).norm (2);
+  Vector<double> b = H * match[1]->homogeneous ();
+  b /= b[2];
+  return (*match[0] - b).norm (2);
 }
 
 

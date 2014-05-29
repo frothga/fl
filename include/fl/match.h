@@ -64,6 +64,7 @@ namespace fl
   class SHARED MatchSet : public std::vector<Match *>
   {
   public:
+	MatchSet ();
 	virtual ~MatchSet ();
 	void clear (bool destruct = false);  ///< Empty this collection, possibly destructing the contained matches.
 

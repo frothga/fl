@@ -19,6 +19,7 @@ for details.
 #include "fl/interest.h"
 #include "fl/time.h"
 #include "fl/track.h"
+#include "fl/match.h"
 #ifdef HAVE_FFMPEG
 #  include "fl/video.h"
 #endif
@@ -724,9 +725,9 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	  tDifference.clear (1.0 - fl::PixelFormat::lutChar2Float[255 - tChroma]);
 	  tDifference[3] = tAlpha / 255.0;
 	}
-	else if (const PixelFormatHLSFloat * hls = dynamic_cast<const PixelFormatHLSFloat *> (targetFormat))
+	else if (const PixelFormatHSLFloat * hsl = dynamic_cast<const PixelFormatHSLFloat *> (targetFormat))
 	{
-	  // Very loose thresholds because HLS has abysmal color fidelity due to
+	  // Very loose thresholds because HSL has abysmal color fidelity due to
 	  // singularities.
 	  tChroma = max (tChroma, 6);
 	  tRed    = tChroma;
@@ -930,7 +931,8 @@ testPixelFormat ()
   formats.push_back (&UYVYUYVYYYYY);
   formats.push_back (&YUV420);
   formats.push_back (&YUV411);
-  formats.push_back (&HLSFloat);
+  formats.push_back (&HSLFloat);
+  formats.push_back (&HSVFloat);
   formats.push_back (&B5G5R5);
   formats.push_back (&BGRChar);
   formats.push_back (&BGRChar4);
@@ -1550,6 +1552,82 @@ testInterest ()
 # endif
 }
 
+void
+testMatch (int dof)
+{
+  Matrix<double> H (3, 3);
+  H.identity ();
+  switch (dof)
+  {
+	case 8:
+	  H(2,0) = randfb () * 1e-5;
+	  H(2,1) = randfb () * 1e-5;
+	case 6:
+	  H(0,1) = randfb ();
+	  H(1,0) = randfb ();
+	case 4:
+	  H(0,0) = randfb ();
+	  H(1,1) = randfb ();
+	case 2:
+	  H(0,2) = randfb () * 1e3;
+	  H(1,2) = randfb () * 1e3;
+  };
+
+  PointSet A;
+  PointSet B;
+  MatchSet matches;
+  for (int i = 0; i < 1000; i++)
+  {
+	// Transforms are from B to A, so generate B's coordinates randomly,
+	// and calculate A's coordinates from B.
+
+	Point * b = new Point;
+	b->x = randf () * 1e3;
+	b->y = randf () * 1e3;
+
+	Vector<double> temp = H * b->homogeneous ();
+	temp /= temp[2];
+	Point * a = new Point (temp);
+
+	A.push_back (a);
+	B.push_back (b);
+
+	Match * m = new Match;
+	m->push_back (a);
+	m->push_back (b);
+	matches.push_back (m);
+  }
+
+  HomographyMethod method (dof);
+  Homography * homography = (Homography *) method.construct (matches);
+
+  double error = (homography->H - H).norm (INFINITY);  // find the worst error
+  if (error > 1e-7)
+  {
+	cerr << "DOF = " << dof << endl;
+	cerr << "H:" << endl << H << endl;
+	cerr << "homography->H:" << endl << homography->H << endl;
+	cerr << "error = " << error << endl;
+	throw "HomographyMethod failed to solve for correct transform";
+  }
+}
+
+// Match
+// MatchSet
+// Registration
+// RegistrationMethod
+// Homography
+// HomographyMethod
+void
+testMatch ()
+{
+  testMatch (2);
+  testMatch (4);
+  testMatch (6);
+  testMatch (8);
+  cout << "Match framework passes" << endl;
+}
+
 // Transform -- {8dof 6dof} X {float double}
 void
 testTransform ()
@@ -1771,7 +1849,7 @@ testBitblt ()
   testBitblt (test,  UYVYUYVYYYYY);
   testBitblt (test,  YUV420);
   testBitblt (test,  YUV411);
-  testBitblt (test,  HLSFloat);
+  testBitblt (test,  HSLFloat);
 
   cout << "Image::bitblt passes" << endl;
 # else
@@ -1976,6 +2054,7 @@ main (int argc, char * argv[])
 	testImageFileFormat ();
 	testIntensityFilters ();
 	testInterest ();
+	testMatch ();
 	testTransform ();
 	testVideo ();
 	testBitblt ();
