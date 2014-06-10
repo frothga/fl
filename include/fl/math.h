@@ -91,8 +91,7 @@ namespace std
   inline int
   isinf (double a)
   {
-	int c = _fpclass (a);
-	return c == _FPCLASS_PINF  ||  c == _FPCLASS_NINF;
+	return ! _finite (a);
   }
 
   inline double
