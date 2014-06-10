@@ -108,14 +108,14 @@ namespace fl
 	virtual void setFont (const std::string & name, float size);
 
 	Point trans (const Point & p);
-	void pen (const Point & p, uint32_t color);
+	void scanCircle (const Point & p, double radius, uint32_t color, int x0, int y0, int x1, int y1);
+	void scanCircle (const Point & p, double radius, uint32_t color);
 
 	float transX;
 	float transY;
 	float scaleX;
 	float scaleY;
 	float lineWidth;
-	ImageOf<unsigned char> penTip;
 	float pointRadius;
 	void * face;  ///< The currently selected font.  Actually an FT_FaceRec_ *.  Storing this as a void pointer is an ugly hack to avoid the dependency on the freetype includes in the client program.
 

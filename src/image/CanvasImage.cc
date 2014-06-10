@@ -124,37 +124,46 @@ CanvasImage::trans (const Point & p)
   return result;
 }
 
+/// Scanline convert a filled circle, with anit-aliasing
 inline void
-CanvasImage::pen (const Point & p, uint32_t color)
+CanvasImage::scanCircle (const Point & p, double radius, uint32_t color, int x0, int y0, int x1, int y1)
 {
-  if (lineWidth == 1)  // hack for simple line drawing
-  {
-	int x = (int) roundp (p.x);
-	int y = (int) roundp (p.y);
-	if (x >= 0  &&  x < width  &&  y >= 0  &&  y < height) setRGBA (x, y, color);
-  }
-  else
-  {
-	int h = penTip.width / 2;
-	int px = (int) roundp (p.x) - h;
-	int py = (int) roundp (p.y) - h;
+  x0 = max (0,          x0);
+  y0 = max (0,          y0);
+  x1 = min (width  - 1, x1);
+  y1 = min (height - 1, y1);
 
-	int xl = max (0,                 -px);
-	int xh = min (penTip.width - 1,  (width - 1) - px);
-	int yl = max (0,                 -py);
-	int yh = min (penTip.height - 1, (height - 1) - py);
-
-	Pixel C (color);
-	for (int x = xl; x <= xh; x++)
+  uint32_t alpha = color & 0xFF;
+  for (int x = x0; x <= x1; x++)
+  {
+	for (int y = y0; y <= y1; y++)
 	{
-	  for (int y = yl; y <= yh; y++)
-	  {
-		C.setAlpha (penTip (x, y));
-		Pixel p = (*this) (px + x, py + y);
-		p = p << C;
-	  }
+	  double dx = abs (x - p.x);
+	  double dy = abs (y - p.y);
+	  double r = sqrt (dx * dx + dy * dy);
+	  double m = radius - (r - 0.5);
+	  if (m < 0) continue;  // pixel is out of range
+	  m = min (1.0, m);  // if pixel if fully inside circle, then limit alpha to 1
+	  blend (x, y, (color & 0xFFFFFF00) | (uint32_t) (alpha * m));
 	}
   }
+}
+
+inline void
+CanvasImage::scanCircle (const Point & p, double radius, uint32_t color)
+{
+  if (radius == 0.5)
+  {
+	setRGBA ((int) roundp (p.x), (int) roundp (p.y), color);
+	return;
+  }
+
+  int x0 = (int) roundp (p.x - radius);
+  int y0 = (int) roundp (p.y - radius);
+  int x1 = (int) roundp (p.x + radius);
+  int y1 = (int) roundp (p.y + radius);
+
+  scanCircle (p, radius, color, x0, y0, x1, y1);
 }
 
 void
@@ -241,6 +250,44 @@ clip (const int & width, const int & height, Point & a, Point & b)
   }
 }
 
+static inline void
+bounds (const int & u, const double & v, const double & w, const double & cap, const double & r, const double & u0, const double & u1, const double & v0, const double & v1, double & lo, double & hi)
+{
+  lo = v - w;
+  hi = v + w;
+
+  double d = u - u0;
+  if (d < cap)
+  {
+	double s = abs (d / r);  // sine
+	double a = asin (s);
+	double w2 = r * cos (a);
+	if (v1 > v0) lo = v0 - w2;
+	else         hi = v0 + w2;
+  }
+
+  d = u1 - u;
+  if (d < cap)
+  {
+	double s = abs (d / r);
+	double a = asin (s);
+	double w2 = r * cos (a);
+	if (v1 > v0) hi = v1 + w2;
+	else         lo = v1 - w2;
+  }
+}
+
+/**
+   @todo Implement precision anit-aliasing. Rather than computing where each
+   (top and bottom) edge of the line crosses the center of a column of pixels,
+   compute where they cross the left and right edges of the column. This gives
+   a parallelogram. Up to 2 pixels at each end of the column will be partially
+   filled, and all the others completely filled. To handle end-caps, check
+   if either end-point is closer than a given corner of the parallelogram.
+   The very tip of the end-cap will instead require a filled-circle conversion.
+   This would only be an approximation, but figuring intersection of area
+   between a circle and a square is probably overkill.
+ **/
 void
 CanvasImage::drawSegment (const Point & a, const Point & b, uint32_t color)
 {
@@ -249,107 +296,149 @@ CanvasImage::drawSegment (const Point & a, const Point & b, uint32_t color)
 
   if (! clip (width, height, ta, tb)) return;
 
-  if (lineWidth == 1) // draw single-pixel line, as fast as possible
-  {
-	// Bresenham's algorithm, with strictly integer math
-
-	int u0 = roundp (ta.x);
-	int v0 = roundp (ta.y);
-	int u1 = roundp (tb.x);
-	int v1 = roundp (tb.y);
-
-	bool steep = abs (v1 - v0) > abs (u1 - u0);
-	if (steep)
-	{
-	  swap (u0, v0);
-	  swap (u1, v1);
-	}
-	if (u0 > u1)
-	{
-	  swap (u0, u1);
-	  swap (v0, v1);
-	}
-	int du =      u1 - u0;  // abs() not needed here
-	int dv = abs (v1 - v0);
-	int error = du / 2;
-	int vstep = v0 < v1 ? 1 : -1;
-	int v = v0;
-
-	if (steep)
-	{
-	  for (int u = u0; u <= u1; u++)
-	  {
-		setRGBA (v, u, color);
-		if ((error -= dv) < 0)
-		{
-		  v += vstep;
-		  error += du;
-		}
-	  }
-	}
-	else
-	{
-	  for (int u = u0; u <= u1; u++)
-	  {
-		setRGBA (u, v, color);
-		if ((error -= dv) < 0)
-		{
-		  v += vstep;
-		  error += du;
-		}
-	  }
-	}
-
-	return;
-  }
-
   double dx = tb.x - ta.x;
   double dy = tb.y - ta.y;
 
   if (dx == 0  &&  dy == 0)
   {
-	pen (ta, color);
+	scanCircle (ta, lineWidth / 2, color);
 	return;
   }
 
-  Point p;
-  if (fabs (dx) > fabs (dy))
+  bool steep = abs (dy) > abs (dx);
+  if (steep)  // sweeping on y axis
   {
-	if (dx < 0)
+	if (dy < 0) swap (ta, tb);  // signs of dx and dy are both reversed, but slope keeps same sign, so no need to change dx and dy
+  }
+  else  // sweeping on x axis
+  {
+	if (dx < 0) swap (ta, tb);  // ditto
+  }
+
+  if (lineWidth == 1) // draw single-pixel line, as fast as possible
+  {
+	// Bresenham's algorithm, with strictly integer math
+
+	int x0 = roundp (ta.x);
+	int y0 = roundp (ta.y);
+	int x1 = roundp (tb.x);
+	int y1 = roundp (tb.y);
+
+	int dx = abs (x1 - x0);
+	int dy = abs (y1 - y0);
+
+	if (steep)
 	{
-	  for (p.x = tb.x; p.x <= ta.x; p.x++)
+	  int error = dy / 2;
+	  int step = x0 < x1 ? 1 : -1;
+	  int x = x0;
+	  for (int y = y0; y <= y1; y++)
 	  {
-		p.y = (p.x - tb.x) * dy / dx + tb.y;
-		pen (p, color);
+		setRGBA (x, y, color);
+		if ((error -= dx) < 0)
+		{
+		  x += step;
+		  error += dy;
+		}
 	  }
 	}
 	else
 	{
-	  for (p.x = ta.x; p.x <= tb.x; p.x++)
+	  int error = dx / 2;
+	  int step = y0 < y1 ? 1 : -1;
+	  int y = y0;
+	  for (int x = x0; x <= x1; x++)
 	  {
-		p.y = (p.x - ta.x) * dy / dx + ta.y;
-		pen (p, color);
+		setRGBA (x, y, color);
+		if ((error -= dy) < 0)
+		{
+		  y += step;
+		  error += dx;
+		}
 	  }
 	}
+
+	return;
+  }
+
+  // General algorithm, based on floating-point math.
+  double l = sqrt (dx * dx + dy * dy);
+  double c = abs (dx) / l;  // cosine
+  double s = abs (dy) / l;  // sine
+  if (steep) swap (c, s);
+  double r = lineWidth / 2;  // radius of line
+  double w = r / c;  // width along pixel row
+  double cap = r * s;  // bound where end-cap begins to cut off eges of line
+  uint32_t alpha = color & 0xFF;
+  if (steep)
+  {
+	int y0 = (int) ceil  (ta.y - cap);
+	int y1 = (int) floor (tb.y + cap);
+	double x0 = ta.x - ta.y * dx / dy;
+	for (int y = y0; y <= y1; y++)
+	{
+	  double lo;
+	  double hi;
+	  bounds (y, y * dx /dy + x0, w, cap, r, ta.y, tb.y, ta.x, tb.x, lo, hi);
+	  int xlo = (int) roundp (lo);
+	  int xhi = (int) roundp (hi);
+	  if (xlo == xhi)
+	  {
+		blend (xlo, y, (color & 0xFFFFFF00) | (uint32_t) (alpha * lineWidth));  // this case is only possible when lineWidth < 1
+	  }
+	  else
+	  {
+		blend (xlo, y, (color & 0xFFFFFF00) | (uint32_t) (alpha * (xlo + 0.5 - lo)));
+		if (alpha == 0xFF) for (int x = xlo + 1; x < xhi; x++) setRGBA (x, y, color);
+		else               for (int x = xlo + 1; x < xhi; x++) blend   (x, y, color);
+		blend (xhi, y, (color & 0xFFFFFF00) | (uint32_t) (alpha * (hi - xhi + 0.5)));
+	  }
+	}
+
+	int v0 = (int) roundp (ta.x - r);
+	int v1 = (int) roundp (ta.x + r);
+	int u  = (int) roundp (ta.y - r);
+	scanCircle (ta, r, color, v0, u, v1, y0 - 1);
+
+	v0 = (int) roundp (tb.x - r);
+	v1 = (int) roundp (tb.x + r);
+	u  = (int) roundp (tb.y + r);
+	scanCircle (tb, r, color, v0, y1 + 1, v1, u);
   }
   else
   {
-	if (dy < 0)
+	int x0 = (int) ceil  (ta.x - cap);
+	int x1 = (int) floor (tb.x + cap);
+	double y0 = ta.y - ta.x * dy / dx;
+	for (int x = x0; x <= x1; x++)
 	{
-	  for (p.y = tb.y; p.y <= ta.y; p.y++)
+	  double lo;
+	  double hi;
+	  bounds (x, x * dy / dx + y0, w, cap, r, ta.x, tb.x, ta.y, tb.y, lo, hi);
+	  int ylo = (int) roundp (lo);
+	  int yhi = (int) roundp (hi);
+	  if (ylo == yhi)
 	  {
-		p.x = (p.y - tb.y) * dx / dy + tb.x;
-		pen (p, color);
+		blend (x, ylo, (color & 0xFFFFFF00) | (uint32_t) (alpha * lineWidth));
+	  }
+	  else
+	  {
+		blend (x, ylo, (color & 0xFFFFFF00) | (uint32_t) (alpha * (ylo + 0.5 - lo)));
+		if (alpha == 0xFF) for (int y = ylo + 1; y < yhi; y++) setRGBA (x, y, color);
+		else               for (int y = ylo + 1; y < yhi; y++) blend   (x, y, color);
+		blend (x, yhi, (color & 0xFFFFFF00) | (uint32_t) (alpha * (hi - yhi + 0.5)));
 	  }
 	}
-	else
-	{
-	  for (p.y = ta.y; p.y <= tb.y; p.y++)
-	  {
-		p.x = (p.y - ta.y) * dx / dy + ta.x;
-		pen (p, color);
-	  }
-	}
+
+	int v0 = (int) roundp (ta.y - r);
+	int v1 = (int) roundp (ta.y + r);
+	int u  = (int) roundp (ta.x - r);
+	scanCircle (ta, r, color, u, v0, x0 - 1, v1);
+
+	v0 = (int) roundp (tb.y - r);
+	v1 = (int) roundp (tb.y + r);
+	u  = (int) roundp (tb.x + r);
+	scanCircle (tb, r, color, x1 + 1, v0, u, v1);
   }
 }
 
@@ -731,6 +820,7 @@ CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & 
   float maxB = b / sqrt (a2_b2 + 1);
 
   // Do the actual drawing
+  double lineRadius = lineWidth / 2;
   Point p;
   for (float i = 0; i <= maxA; i++)  // i < a
   {
@@ -741,25 +831,25 @@ CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & 
 	{
 	  p.x = tcenter.x + rot(0,0) * i + rot(0,1) * yt;
 	  p.y = tcenter.y + rot(1,0) * i + rot(1,1) * yt;
-	  pen (p, color);
+	  scanCircle (p, lineRadius, color);
 	}
 	if (inRange (M_PI - angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x - rot(0,0) * i + rot(0,1) * yt;
 	  p.y = tcenter.y - rot(1,0) * i + rot(1,1) * yt;
-	  pen (p, color);
+	  scanCircle (p, lineRadius, color);
 	}
 	if (inRange (M_PI + angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x - rot(0,0) * i - rot(0,1) * yt;
 	  p.y = tcenter.y - rot(1,0) * i - rot(1,1) * yt;
-	  pen (p, color);
+	  scanCircle (p, lineRadius, color);
 	}
 	if (inRange (TWOPI - angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x + rot(0,0) * i - rot(0,1) * yt;
 	  p.y = tcenter.y + rot(1,0) * i - rot(1,1) * yt;
-	  pen (p, color);
+	  scanCircle (p, lineRadius, color);
 	}
   }
   for (float j = 0; j <= maxB; j++)  // j < b
@@ -771,25 +861,25 @@ CanvasImage::drawEllipse (const Point & center, const MatrixFixed<double,2,2> & 
 	{
 	  p.x = tcenter.x + rot(0,0) * xt + rot(0,1) * j;
 	  p.y = tcenter.y + rot(1,0) * xt + rot(1,1) * j;
-	  pen (p, color);
+	  scanCircle (p, lineRadius, color);
 	}
 	if (inRange (M_PI - angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x - rot(0,0) * xt + rot(0,1) * j;
 	  p.y = tcenter.y - rot(1,0) * xt + rot(1,1) * j;
-	  pen (p, color);
+	  scanCircle (p, lineRadius, color);
 	}
 	if (inRange (M_PI + angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x - rot(0,0) * xt - rot(0,1) * j;
 	  p.y = tcenter.y - rot(1,0) * xt - rot(1,1) * j;
-	  pen (p, color);
+	  scanCircle (p, lineRadius, color);
 	}
 	if (inRange (TWOPI - angle, startAngle, endAngle))
 	{
 	  p.x = tcenter.x + rot(0,0) * xt - rot(0,1) * j;
 	  p.y = tcenter.y + rot(1,0) * xt - rot(1,1) * j;
-	  pen (p, color);
+	  scanCircle (p, lineRadius, color);
 	}
   }
 }
@@ -962,29 +1052,7 @@ CanvasImage::setScale (float x, float y)
 void
 CanvasImage::setLineWidth (float width)
 {
-  if (lineWidth == width) return;
   lineWidth = width;
-
-  float radius = width / 2;
-  float sigma2 = radius * radius;
-
-  int h = (int) ceil (radius);
-  int w = 2 * h + 1;
-
-  ImageOf<float> temp (w, w, GrayFloat);
-  for (int x = 0; x < w; x++)
-  {
-	for (int y = 0; y < w; y++)
-	{
-	  float dx = x - h;
-	  float dy = y - h;
-	  float t = expf (0.5 - (dx * dx + dy * dy) / (2 * sigma2));
-	  t = min (1.0f, t);
-	  temp (x, y) = t;
-	}
-  }
-
-  penTip = temp * GrayChar;
 }
 
 void
