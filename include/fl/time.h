@@ -40,7 +40,7 @@ namespace fl
   {
 #   if defined(WIN32)  &&  ! defined(__CYGWIN__)
 
-	Sleep ((int) round (seconds * 1000));
+	Sleep ((int) floor (seconds * 1000 + 0.5));
 
 #   else   // Posix sleep
 
