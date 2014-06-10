@@ -229,7 +229,7 @@ ImageFileDelegateBMP::read (Image & image, int ignorex, int ignorey, int ignorew
   float depth = bitdepth / 8.0f;
   int bytedepth = (int) floor (depth);
   int stride = 4 * (int) ceil (bitdepth * width / 32.0);
-  if (compression >= 0  &&  compression <=2)  // BI_RGB, BI_RLE4, BI_RLE8
+  if (compression <= 2)  // BI_RGB, BI_RLE4, BI_RLE8
   {
 	switch (bitdepth)
 	{

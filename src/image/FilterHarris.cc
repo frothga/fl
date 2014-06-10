@@ -69,6 +69,7 @@ FilterHarris::preprocess (const Image & image)
   if (*image.format != *G1_D.format)
   {
 	preprocess (image * (*G1_D.format));
+	return;
   }
 
   G1_D.direction = Vertical;

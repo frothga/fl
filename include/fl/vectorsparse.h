@@ -376,7 +376,7 @@ namespace fl
 		  }
 		  else
 		  {
-			c = container.contigs.begin ();
+			c = container->contigs.begin ();
 			i = (*c)->start ();
 		  }
 		}

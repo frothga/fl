@@ -1137,8 +1137,8 @@ testNeighbor ()
 	  sorted.insert (make_pair ((center - *v).norm (2), v));
 	}
 	multimap<float, VecInt *>::iterator it;
-	int i = 0;
-	for (it = sorted.begin (); it != sorted.end (); it++) it->second->rank = i++;
+	int rank = 0;
+	for (it = sorted.begin (); it != sorted.end (); it++) it->second->rank = rank++;
 
 	// Do a NN query and verify that top N points are actually the ones returned
 	vector<MatrixAbstract<float> *> result;

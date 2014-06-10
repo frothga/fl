@@ -179,7 +179,7 @@ Pixel::operator * (float scalar) const
   result.data.rgbafloat[0] = values[0] * scalar;
   result.data.rgbafloat[1] = values[1] * scalar;
   result.data.rgbafloat[2] = values[2] * scalar;
-  result.data.rgbafloat[4] = values[3] * scalar;
+  result.data.rgbafloat[3] = values[3] * scalar;
 
   return result;
 }
@@ -195,7 +195,7 @@ Pixel::operator / (float scalar) const
   result.data.rgbafloat[0] = values[0] / scalar;
   result.data.rgbafloat[1] = values[1] / scalar;
   result.data.rgbafloat[2] = values[2] / scalar;
-  result.data.rgbafloat[4] = values[3] / scalar;
+  result.data.rgbafloat[3] = values[3] / scalar;
 
   return result;
 }
