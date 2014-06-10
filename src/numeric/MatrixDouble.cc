@@ -14,6 +14,7 @@ for details.
 */
 
 
+#define flNumeric_MS_EVIL
 #include "fl/MatrixDouble.tcc"
 #include "fl/metadata.h"
 

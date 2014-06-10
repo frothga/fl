@@ -857,10 +857,12 @@ namespace fl
 
   // For MS DLLs, declare that explicit specializations will be available
   // that are exported.
+# ifndef flNumeric_MS_EVIL
   extern template class SHARED MatrixFixed<float, 2,2>;
   extern template class SHARED MatrixFixed<float, 3,3>;
   extern template class SHARED MatrixFixed<double,2,2>;
   extern template class SHARED MatrixFixed<double,3,3>;
+# endif
 
   template<class T>
   SHARED T det (const MatrixFixed<T,2,2> & A);

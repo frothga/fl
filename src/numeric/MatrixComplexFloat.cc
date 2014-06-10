@@ -25,6 +25,7 @@ namespace std
   }
 }
 
+#define flNumeric_MS_EVIL
 #include "fl/Matrix.tcc"
 
 
