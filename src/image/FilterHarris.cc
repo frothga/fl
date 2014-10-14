@@ -95,8 +95,8 @@ FilterHarris::preprocess (const Image & image)
 	{
 	  for (int x = 0; x < xx.width; x++)
 	  {
-		float tx = dxf (x + offset1, y + offset2);
-		float ty = dyf (x + offset2, y + offset1);
+		volatile float tx = dxf (x + offset1, y + offset2);  // volatile keyword used because g++ -O3 damages logic here (probably optimizes out the instances of ImageOf<>)
+		volatile float ty = dyf (x + offset2, y + offset1);
 		xxf (x, y) = tx * tx;
 		xyf (x, y) = tx * ty;
 		yyf (x, y) = ty * ty;
@@ -114,8 +114,8 @@ FilterHarris::preprocess (const Image & image)
 	{
 	  for (int x = 0; x < xx.width; x++)
 	  {
-		double tx = dxd (x + offset1, y + offset2);
-		double ty = dyd (x + offset2, y + offset1);
+		volatile double tx = dxd (x + offset1, y + offset2);
+		volatile double ty = dyd (x + offset2, y + offset1);
 		xxd (x, y) = tx * tx;
 		xyd (x, y) = tx * ty;
 		yyd (x, y) = ty * ty;

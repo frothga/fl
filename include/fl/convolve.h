@@ -414,7 +414,7 @@ namespace fl
 
 	int radius;  ///< Radius of region on which to compute ordered list.  Region has width = 2 * radius + 1.  That is, the region is always odd-sized.
 	float order;   ///< Position in list (ordered from smallest to largest) from which to get resulting value, given as a fraction, where 0 means smallest and 1 means largest entry.
-	int cacheSize;  ///< if non-zero, then split() will break problem into columns small enough to fit in cache.
+	int cacheSize;  ///< if non-zero, then split() will break problem into columns small enough to fit in cpu cache.
   };
 
   /**

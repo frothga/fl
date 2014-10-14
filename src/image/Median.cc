@@ -116,7 +116,7 @@ Median::split (int width, int height, uint8_t * inBuffer, int inStrideH, int inS
 	  {
 		right = end - radius - 1;
 	  }
-	  else  // end >= width, so no more stipes follow
+	  else  // end >= width, so no more stripes follow
 	  {
 		end = width;
 		right = width - 1;
@@ -314,13 +314,13 @@ Median::filter (int width, int height, int left, int right, uint8_t * inBuffer, 
 	  // Find coarse level
 	  int threshold = (int) (order * count);
 	  int sum = 0;
-	  int c;
+	  volatile int c;  // marked volatile because g++ -O3 damages the logic here somehow
 	  for (c = 0; c < 16; c++)
 	  {
 		sum += total.coarse[c];
 		if (sum >= threshold) break;
 	  }
-	  sum -= total.coarse[c];
+	  sum -= total.coarse[c];  // note: the above loop always terminates early, so c <= 15
 
 	  // Update associated 2nd level histogram
 	  r = x - radius;
