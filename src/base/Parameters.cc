@@ -317,13 +317,13 @@ Parameters::getMap (const string & prefix, map<string, string> & result)
 ostream &
 fl::operator << (ostream & out, const Parameters & parms)
 {
-  out << "name-value pairs:" << endl;
+  out << "name-value pairs: " << parms.names.size () << endl;
   for (int i = 0; i < parms.names.size (); i++)
   {
 	out << "  " << parms.names[i] << " = " << parms.values[i] << endl;
   }
 
-  out << "fileNames:" << endl;
+  out << "fileNames: " << parms.fileNames.size () << endl;
   for (int i = 0; i < parms.fileNames.size (); i++)
   {
 	out << "  " << parms.fileNames[i] << endl;

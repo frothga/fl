@@ -64,7 +64,7 @@ namespace fl
 	std::vector<std::string> fileNames;  ///< All strings that didn't have the form name=value. Not necessarily file names, but we imagine so.
   };
 
-  std::ostream & operator << (std::ostream & out, const Parameters & parms);  ///< Dump a human readable summary of the parameters to a stream.
+  SHARED std::ostream & operator << (std::ostream & out, const Parameters & parms);  ///< Dump a human readable summary of the parameters to a stream.
 }
 
 
