@@ -1632,6 +1632,11 @@ testMatch ()
 void
 testTransform ()
 {
+  // TODO: This could be extended to pass all the major variants of transform
+  // to the the subroutine: TransformGauss, TransformNeighbor, TransformEagle.
+  // In addition, there is a specific test below for TransformEagle, since it
+  // does a special kind of interpolation.
+
 # ifdef HAVE_LAPACK
   Image image (640, 480, GrayFloat);
   testTransform (image);
@@ -1642,6 +1647,29 @@ testTransform ()
 # else
   cout << "WARNING: Transform not tested due to lack of LAPACK" << endl;
 # endif
+
+  // TransformEagle
+  ImageOf<float> test (20, 20, GrayFloat);
+  test.clear ();
+
+  test(5,5) = 1;
+  test(4,5) = 1;
+  test(5,4) = 1;
+
+  test(15,5) = 1;
+  test(15,4) = 1;
+  test(16,5) = 1;
+
+  test(15,15) = 1;
+  test(16,15) = 1;
+  test(15,16) = 1;
+
+  test(5,15) = 1;
+  test(4,15) = 1;
+  test(5,16) = 1;
+
+  test *= TransformEagle (4, 4);
+  // TODO: The above exercises the function, but does not verify results.
 }
 
 // VideoFileFormatFFMPEG
