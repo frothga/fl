@@ -40,25 +40,29 @@ for details.
 #endif
 
 
-// The linear algebra package has the following goals:
-// * Be simple and straightforward for a programmer to use.  It should be
-//   easy to express most common linear algebra calculations using
-//   overloaded operators.
-// * Work seamlessly with LAPACK.  To this end, storage is always column
-//   major.
-// * Be lightweight to compile.  We avoid putting much implementation in
-//   the headers, even though we are using templates.
-// * Be lightweight at run-time.  Eg: shallow copy semantics, and only a
-//   couple of variables that need to be copied.  Should limit total copying
-//   to 16 bytes or less.
+/**
+   @file
+   The linear algebra package has the following goals:
+   <ul>
+   <li>Be simple and straightforward for a programmer to use. It should be
+   easy to express most common linear algebra calculations using
+   overloaded operators.
+   <li>Work seamlessly with LAPACK. To this end, storage is always column
+   major.
+   <li>Be lightweight to compile. We avoid putting much implementation in
+   the headers, even though we are using templates.
+   <li>Be lightweight at run-time.  Eg: shallow copy semantics, and only a
+   couple of variables that need to be copied.  Should limit total copying
+   to 16 bytes or less.
+   </ul>
 
-// Other notes:
-// * In general, the implementation does not protect you from shooting yourself
-//   in the foot.  Specifically, there is no range checking or verification
-//   that memory addresses are valid.  All these do is make a bug easier to
-//   find (rather than eliminate it), and they cost at runtime.  In cases
-//   where there is some legitimate interpretation of bizarre parameter values,
-//   we assume the programmer meant that interpretation and plow on.
+   In general, the implementation does not protect you from shooting yourself
+   in the foot. Specifically, there is no range checking or verification
+   that memory addresses are valid. All these do is make a bug easier to
+   find (rather than eliminate it), and they cost at runtime. In cases
+   where there is some legitimate interpretation of bizarre parameter values,
+   we assume the programmer meant that interpretation and plow on.
+**/
 
 
 namespace fl

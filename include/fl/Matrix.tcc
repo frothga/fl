@@ -55,6 +55,12 @@ namespace fl
   void
   MatrixAbstract<T>::copyFrom (const MatrixAbstract<T> & that, bool deep)
   {
+	if (that.classID () & MatrixResultID)
+	{
+	  copyFrom (* ((const MatrixResult<T> &) that).result, deep);  // remove one level of indirection
+	  return;
+	}
+
 	int h = that.rows ();
 	int w = that.columns ();
 	resize (h, w);
@@ -211,6 +217,7 @@ namespace fl
   MatrixResult<T>
   MatrixAbstract<T>::transposeTimes (const MatrixAbstract<T> & B) const
   {
+	if (B.classID () & MatrixResultID) return transposeTimes (* ((const MatrixResult<T> &) B).result);
 	return ~(*this) * B;
   }
 
@@ -249,6 +256,8 @@ namespace fl
   T
   MatrixAbstract<T>::dot (const MatrixAbstract<T> & B) const
   {
+	if (B.classID () & MatrixResultID) return dot (* ((const MatrixResult<T> &) B).result);
+
 	int h = std::min (rows (), B.rows ());
 	register T result = (T) 0;
 	for (int r = 0; r < h; r++) result += (*this)(r,0) * B(r,0);
@@ -302,6 +311,8 @@ namespace fl
   bool
   MatrixAbstract<T>::operator == (const MatrixAbstract<T> & B) const
   {
+	if (B.classID () & MatrixResultID) return operator == (* ((const MatrixResult<T> &) B).result);
+
 	int h = rows ();
 	int w = columns ();
 	if (B.rows () != h  ||  B.columns () != w)
@@ -339,6 +350,8 @@ namespace fl
   MatrixResult<T>
   MatrixAbstract<T>::operator ^ (const MatrixAbstract<T> & B) const
   {
+	if (B.classID () & MatrixResultID) return operator ^ (* ((const MatrixResult<T> &) B).result);
+
 	// This version is only good for 3 element vectors.  Need to choose
 	// a cross-product hack for higher dimensions
 
@@ -354,6 +367,8 @@ namespace fl
   MatrixResult<T>
   MatrixAbstract<T>::operator & (const MatrixAbstract<T> & B) const
   {
+	if (B.classID () & MatrixResultID) return operator & (* ((const MatrixResult<T> &) B).result);
+
 	int h = rows ();
 	int w = columns ();
 	int oh = std::min (h, B.rows ());
@@ -383,6 +398,7 @@ namespace fl
   MatrixResult<T>
   MatrixAbstract<T>::operator * (const MatrixAbstract<T> & B) const
   {
+	if (B.classID () & MatrixResultID) return operator * (* ((const MatrixResult<T> &) B).result);
 	return MatrixStrided<T> (*this) * MatrixStrided<T> (B);
   }
 
@@ -407,6 +423,8 @@ namespace fl
   MatrixResult<T>
   MatrixAbstract<T>::operator / (const MatrixAbstract<T> & B) const
   {
+	if (B.classID () & MatrixResultID) return operator / (* ((const MatrixResult<T> &) B).result);
+
 	int h = rows ();
 	int w = columns ();
 	int oh = std::min (h, B.rows ());
@@ -445,6 +463,8 @@ namespace fl
   MatrixResult<T>
   MatrixAbstract<T>::operator + (const MatrixAbstract<T> & B) const
   {
+	if (B.classID () & MatrixResultID) return operator + (* ((const MatrixResult<T> &) B).result);
+
 	int h = rows ();
 	int w = columns ();
 	int oh = std::min (h, B.rows ());
@@ -483,6 +503,8 @@ namespace fl
   MatrixResult<T>
   MatrixAbstract<T>::operator - (const MatrixAbstract<T> & B) const
   {
+	if (B.classID () & MatrixResultID) return operator - (* ((const MatrixResult<T> &) B).result);
+
 	int h = rows ();
 	int w = columns ();
 	int oh = std::min (h, B.rows ());
@@ -521,6 +543,7 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator ^= (const MatrixAbstract<T> & B)
   {
+	if (B.classID () & MatrixResultID) return operator ^= (* ((const MatrixResult<T> &) B).result);
 	copyFrom ((*this) ^ B);
 	return *this;
   }
@@ -529,6 +552,7 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator &= (const MatrixAbstract<T> & B)
   {
+	if (B.classID () & MatrixResultID) return operator &= (* ((const MatrixResult<T> &) B).result);
 	copyFrom ((*this) & B);
 	return *this;
   }
@@ -537,6 +561,7 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator *= (const MatrixAbstract<T> & B)
   {
+	if (B.classID () & MatrixResultID) return operator *= (* ((const MatrixResult<T> &) B).result);
 	copyFrom ((*this) * B);
 	return *this;
   }
@@ -553,6 +578,7 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator /= (const MatrixAbstract<T> & B)
   {
+	if (B.classID () & MatrixResultID) return operator /= (* ((const MatrixResult<T> &) B).result);
 	copyFrom ((*this) / B);
 	return *this;
   }
@@ -569,6 +595,7 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator += (const MatrixAbstract<T> & B)
   {
+	if (B.classID () & MatrixResultID) return operator += (* ((const MatrixResult<T> &) B).result);
 	copyFrom ((*this) + B);
 	return *this;
   }
@@ -585,6 +612,7 @@ namespace fl
   MatrixAbstract<T> &
   MatrixAbstract<T>::operator -= (const MatrixAbstract<T> & B)
   {
+	if (B.classID () & MatrixResultID) return operator -= (* ((const MatrixResult<T> &) B).result);
 	copyFrom ((*this) - B);
 	return *this;
   }
