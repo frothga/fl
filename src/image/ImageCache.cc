@@ -318,12 +318,18 @@ EntryPyramid::generate (ImageCache & cache)
   resample (cache, bestEntry);
 }
 
+/**
+   This function will also match subclasses of EntryPyramid. This means that
+   subclasses will be treated as the same kind of resource. The only value
+   in overriding EntryPyramid is to adjust details about how it functions,
+   not to create new resource types. A new resource type can, of course, copy
+   code from this class, or even contain an instance of it.
+ **/
 bool
 EntryPyramid::compare (const ImageCacheEntry & that) const
 {
-  if (typeid (*this).before (typeid (that))) return true;
   const EntryPyramid * o = dynamic_cast<const EntryPyramid *> (&that);
-  if (! o) return false;
+  if (! o) return typeid (*this).before (typeid (that));
 
   if (image.format != 0  &&  o->image.format != 0)
   {
@@ -345,12 +351,12 @@ EntryPyramid::compare (const ImageCacheEntry & that) const
 float
 EntryPyramid::distance (const ImageCacheEntry & that) const
 {
-  if (typeid (*this) != typeid (that)) return INFINITY;
-  EntryPyramid & o = (EntryPyramid &) that;
+  const EntryPyramid * o = dynamic_cast<const EntryPyramid *> (&that);
+  if (! o) return INFINITY;
 
-  if (*image.format != *o.image.format) return INFINITY;
+  if (*image.format != *o->image.format) return INFINITY;
 
-  return ratioDistance (scale, o.scale) * 4 + ratioDistance (image.width, o.image.width);
+  return ratioDistance (scale, o->scale) * 4 + ratioDistance (image.width, o->image.width);
 }
 
 void
