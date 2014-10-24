@@ -906,6 +906,31 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 void
 testPixelFormat ()
 {
+  // Attempt to serialize and deserialize a format
+  {
+	PointerPoly<PixelFormat> temp;
+	temp = &RGBChar;
+	Archive archive (dataDir + "test.format", "w");
+	PixelFormat::registerClasses (archive);
+	archive & temp;
+	cerr << "Serialized PixelFormatRGBChar" << endl;
+  }
+  {
+	PointerPoly<PixelFormat> temp;
+	Archive archive (dataDir + "test.format", "r");
+	PixelFormat::registerClasses (archive);
+	archive & temp;
+	if (*temp != RGBChar  ||  *temp == GrayChar)  // Note that the second comparison is completely arbitrary. It simply tests whether the restored format always reports equal.
+	{
+	  throw "Unexpected comparison between serialized PixelFormat and original";
+	}
+	if (temp->PointerPolyReferenceCount != 1)
+	{
+	  throw "Unexpected reference count on PointerPoly<PixelFormat>";
+	}
+	cerr << "Deserialized PixelFormatRGBChar" << endl;
+  }
+
 # ifdef HAVE_JPEG
   // Create some formats to more fully test RGBABits
   PointerPoly<fl::PixelFormat> R2G3B2A0 = new PixelFormatRGBABits (1, 0x03, 0x1C, 0x60, 0);

@@ -525,6 +525,10 @@ namespace fl
   public:
 	virtual ~PixelFormat ();
 
+	static uint32_t serializeVersion;
+	void serialize (Archive & archive, uint32_t version);
+	static void registerClasses (Archive & archive);  ///< Explicitly register all predefined PixelFormat classes for serialization.
+
 	virtual Image filter (const Image & image);  ///< Return an Image in this format
 	virtual void fromAny (const Image & image, Image & result) const;
 
@@ -590,7 +594,9 @@ namespace fl
   class SHARED PixelFormatPalette : public PixelFormat, public Macropixel
   {
   public:
-	PixelFormatPalette (uint8_t * r, uint8_t * g, uint8_t * b, int stride = 1, int bits = 8, bool bigendian = true);  ///< r, g, b and stride specify the structure of the source table, which we copy into our internal format.
+	PixelFormatPalette (uint8_t * r = 0, uint8_t * g = 0, uint8_t * b = 0, int stride = 1, int bits = 8, bool bigendian = true);  ///< r, g, b and stride specify the structure of the source table, which we copy into our internal format.
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual PixelBuffer * attach (void * block, int width, int height, bool copy = false) const;
 
@@ -626,6 +632,8 @@ namespace fl
 	**/
 	PixelFormatGrayBits (int bits = 1, bool bigendian = true);
 
+	void serialize (Archive & archive, uint32_t version);
+
 	virtual PixelBuffer * attach (void * block, int width, int height, bool copy = false) const;
 
 	virtual bool operator == (const PixelFormat & that) const;
@@ -642,6 +650,8 @@ namespace fl
   {
   public:
 	PixelFormatGrayChar ();
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual Image filter (const Image & image);
 	virtual void fromAny (const Image & image, Image & result) const;
@@ -669,6 +679,8 @@ namespace fl
   public:
 	PixelFormatGrayAlphaChar ();
 
+	void serialize (Archive & archive, uint32_t version);
+
 	virtual uint32_t getRGBA (void * pixel) const;
 	virtual void     setRGBA (void * pixel, uint32_t rgba) const;
   };
@@ -677,6 +689,8 @@ namespace fl
   {
   public:
 	PixelFormatGrayShort (uint16_t grayMask = 0xFFFF);
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual Image filter (const Image & image);
 	virtual void fromAny (const Image & image, Image & result) const;
@@ -707,6 +721,8 @@ namespace fl
   public:
 	PixelFormatGrayShortSigned (int32_t bias = 0x8000, int32_t scale = 0xFFFF);
 
+	void serialize (Archive & archive, uint32_t version);
+
 	virtual bool operator == (const PixelFormat & that) const;
 
 	virtual uint32_t getRGBA (void * pixel                   ) const;
@@ -727,6 +743,8 @@ namespace fl
   public:
 	PixelFormatGrayAlphaShort ();
 
+	void serialize (Archive & archive, uint32_t version);
+
 	virtual uint32_t getRGBA (void * pixel) const;
 	virtual void     setRGBA (void * pixel, uint32_t rgba) const;
   };
@@ -735,6 +753,8 @@ namespace fl
   {
   public:
 	PixelFormatGrayFloat ();
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual Image filter (const Image & image);
 	virtual void fromAny (const Image & image, Image & result) const;
@@ -762,6 +782,8 @@ namespace fl
   {
   public:
 	PixelFormatGrayDouble ();
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual Image filter (const Image & image);
 	virtual void fromAny (const Image & image, Image & result) const;
@@ -797,7 +819,13 @@ namespace fl
   class SHARED PixelFormatRGBABits : public PixelFormat
   {
   public:
-	PixelFormatRGBABits (int depth, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask);
+#if BYTE_ORDER == LITTLE_ENDIAN
+	PixelFormatRGBABits (int depth = 4, uint32_t redMask = 0xFF, uint32_t greenMask = 0xFF00, uint32_t blueMask = 0xFF0000, uint32_t alphaMask = 0xFF000000);
+#else
+	PixelFormatRGBABits (int depth = 4, uint32_t redMask = 0xFF000000, uint32_t greenMask = 0xFF0000, uint32_t blueMask = 0xFF00, uint32_t alphaMask = 0xFF);
+#endif
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual Image filter (const Image & image);
 	void fromGrayChar    (const Image & image, Image & result) const;
@@ -832,6 +860,8 @@ namespace fl
   public:
 	PixelFormatRGBAChar ();
 
+	void serialize (Archive & archive, uint32_t version);
+
 	virtual Image filter (const Image & image);
 	virtual void fromAny (const Image & image, Image & result) const;
 	void fromGrayChar    (const Image & image, Image & result) const;
@@ -851,6 +881,8 @@ namespace fl
   public:
 	PixelFormatRGBChar ();
 
+	void serialize (Archive & archive, uint32_t version);
+
 	virtual Image filter (const Image & image);
 	void fromGrayChar    (const Image & image, Image & result) const;
 	void fromGrayShort   (const Image & image, Image & result) const;
@@ -867,6 +899,8 @@ namespace fl
   public:
 	PixelFormatRGBAShort ();
 
+	void serialize (Archive & archive, uint32_t version);
+
 	virtual uint32_t getRGBA  (void * pixel                   ) const;
 	virtual void     getRGBA  (void * pixel, float    values[]) const;
 	virtual uint8_t  getAlpha (void * pixel                   ) const;
@@ -880,6 +914,8 @@ namespace fl
   public:
 	PixelFormatRGBShort ();
 
+	void serialize (Archive & archive, uint32_t version);
+
 	virtual uint32_t getRGBA  (void * pixel) const;
 	virtual void     setRGBA  (void * pixel, uint32_t rgba) const;
   };
@@ -888,6 +924,8 @@ namespace fl
   {
   public:
 	PixelFormatRGBAFloat ();
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual void fromAny (const Image & image, Image & result) const;  ///< This method is necessary because the default conversion goes through RGBAChar, sometimes producing uncecessary information loss.
 
@@ -903,7 +941,9 @@ namespace fl
   class SHARED PixelFormatYUV : public PixelFormat
   {
   public:
-	PixelFormatYUV (int ratioH, int ratioV) : ratioH (ratioH), ratioV (ratioV) {}
+	PixelFormatYUV (int ratioH = 1, int ratioV = 1);
+
+	void serialize (Archive & archive, uint32_t version);
 
 	int ratioH;  ///< How many horizontal luma samples per chroma sample.
 	int ratioV;  ///< How many vertical luma samples per chroma sample.
@@ -919,7 +959,10 @@ namespace fl
 	  int v;
 	};
 
-	PixelFormatPackedYUV (YUVindex * table);
+	PixelFormatPackedYUV (YUVindex * table = 0);
+	virtual ~PixelFormatPackedYUV ();
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual Image filter (const Image & image);
 	virtual void fromAny (const Image & image, Image & result) const;
@@ -941,7 +984,9 @@ namespace fl
   class SHARED PixelFormatPlanarYUV : public PixelFormatYUV
   {
   public:
-	PixelFormatPlanarYUV (int ratioH, int ratioV);
+	PixelFormatPlanarYUV (int ratioH = 1, int ratioV = 1);
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual void fromAny (const Image & image, Image & result) const;
 
@@ -964,7 +1009,9 @@ namespace fl
   class SHARED PixelFormatPlanarYCbCr : public PixelFormatYUV
   {
   public:
-	PixelFormatPlanarYCbCr (int ratioH, int ratioV);
+	PixelFormatPlanarYCbCr (int ratioH = 1, int ratioV = 1);
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual void fromAny (const Image & image, Image & result) const;
 
@@ -992,6 +1039,8 @@ namespace fl
   public:
 	PixelFormatHSLFloat ();
 
+	void serialize (Archive & archive, uint32_t version);
+
 	virtual uint32_t getRGBA (void * pixel                   ) const;
 	virtual void     getRGBA (void * pixel, float    values[]) const;
 	virtual void     getHSL  (void * pixel, float    values[]) const;
@@ -1004,6 +1053,8 @@ namespace fl
   {
   public:
 	PixelFormatHSVFloat ();
+
+	void serialize (Archive & archive, uint32_t version);
 
 	virtual uint32_t getRGBA (void * pixel                   ) const;
 	virtual void     getRGBA (void * pixel, float    values[]) const;

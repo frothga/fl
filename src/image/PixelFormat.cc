@@ -328,6 +328,46 @@ PixelFormat::~PixelFormat ()
 {
 }
 
+uint32_t PixelFormat::serializeVersion = 1;
+
+void
+PixelFormat::serialize (Archive & archive, uint32_t version)
+{
+  archive & planes;
+  archive & depth;
+  archive & precedence;
+  archive & monochrome;
+  archive & hasAlpha;
+}
+
+void
+PixelFormat::registerClasses (Archive & archive)
+{
+  // Note that this forces the creation of wrapper functions for all these
+  // classes. These will always be compiled, even if not used by an application.
+  // With function-level linking, this would not be a problem.
+  archive.registerClass<PixelFormatPalette        > ("PixelFormatPalette");
+  archive.registerClass<PixelFormatGrayBits       > ("PixelFormatGrayBits");
+  archive.registerClass<PixelFormatGrayChar       > ("PixelFormatGrayChar");
+  archive.registerClass<PixelFormatGrayAlphaChar  > ("PixelFormatGrayAlphaChar");
+  archive.registerClass<PixelFormatGrayShort      > ("PixelFormatGrayShort");
+  archive.registerClass<PixelFormatGrayShortSigned> ("PixelFormatGrayShortSigned");
+  archive.registerClass<PixelFormatGrayAlphaShort > ("PixelFormatGrayAlphaShort");
+  archive.registerClass<PixelFormatGrayFloat      > ("PixelFormatGrayFloat");
+  archive.registerClass<PixelFormatGrayDouble     > ("PixelFormatGrayDouble");
+  archive.registerClass<PixelFormatRGBABits       > ("PixelFormatRGBABits");
+  archive.registerClass<PixelFormatRGBAChar       > ("PixelFormatRGBAChar");
+  archive.registerClass<PixelFormatRGBChar        > ("PixelFormatRGBChar");
+  archive.registerClass<PixelFormatRGBAShort      > ("PixelFormatRGBAShort");
+  archive.registerClass<PixelFormatRGBShort       > ("PixelFormatRGBShort");
+  archive.registerClass<PixelFormatRGBAFloat      > ("PixelFormatRGBAFloat");
+  archive.registerClass<PixelFormatPackedYUV      > ("PixelFormatPackedYUV");
+  archive.registerClass<PixelFormatPlanarYUV      > ("PixelFormatPlanarYUV");
+  archive.registerClass<PixelFormatPlanarYCbCr    > ("PixelFormatPlanarYCbCr");
+  archive.registerClass<PixelFormatHSLFloat       > ("PixelFormatHSLFloat");
+  archive.registerClass<PixelFormatHSVFloat       > ("PixelFormatHSVFloat");
+}
+
 Image
 PixelFormat::filter (const Image & image)
 {
@@ -698,16 +738,31 @@ PixelFormatPalette::PixelFormatPalette (uint8_t * r, uint8_t * g, uint8_t * b, i
   }
 
   // Build palette
-  uint32_t * p   = palette;
-  uint32_t * end = p + (0x1 << bits);
-  while (p < end)
+  if (r  &&  g  &&  b)
   {
-	*p++ = (*r << 24) | (*g << 16) | (*b << 8) | 0xFF;
-	if (*r != *g  ||  *g != *b) monochrome = false;
-	r += stride;
-	g += stride;
-	b += stride;
+	uint32_t * p   = palette;
+	uint32_t * end = p + (0x1 << bits);
+	while (p < end)
+	{
+	  *p++ = (*r << 24) | (*g << 16) | (*b << 8) | 0xFF;
+	  if (*r != *g  ||  *g != *b) monochrome = false;
+	  r += stride;
+	  g += stride;
+	  b += stride;
+	}
   }
+}
+
+void
+PixelFormatPalette::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+  archive & pixels;
+  archive & bytes;
+  archive & bits;
+  for (int i = 0; i < 8;   i++) archive & masks[i];
+  for (int i = 0; i < 8;   i++) archive & shifts[i];
+  for (int i = 0; i < 256; i++) archive & palette[i];
 }
 
 PixelBuffer *
@@ -812,6 +867,17 @@ PixelFormatGrayBits::PixelFormatGrayBits (int bits, bool bigendian)
   }
 }
 
+void
+PixelFormatGrayBits::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+  archive & pixels;
+  archive & bytes;
+  archive & bits;
+  for (int i = 0; i < 8; i++) archive & masks[i];
+  for (int i = 0; i < 8; i++) archive & shifts[i];
+}
+
 PixelBuffer *
 PixelFormatGrayBits::attach (void * block, int width, int height, bool copy) const
 {
@@ -871,6 +937,12 @@ PixelFormatGrayChar::PixelFormatGrayChar ()
   precedence = 0;  // Below everything
   monochrome = true;
   hasAlpha   = false;
+}
+
+void
+PixelFormatGrayChar::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
 }
 
 Image
@@ -1299,6 +1371,12 @@ PixelFormatGrayAlphaChar::PixelFormatGrayAlphaChar ()
   hasAlpha   = true;
 }
 
+void
+PixelFormatGrayAlphaChar::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+}
+
 uint32_t
 PixelFormatGrayAlphaChar::getRGBA (void * pixel) const
 {
@@ -1332,6 +1410,14 @@ PixelFormatGrayShort::PixelFormatGrayShort (uint16_t grayMask)
   grayShift = 0;
   while (grayMask >>= 1) {grayShift++;}
   grayShift = 15 - grayShift;
+}
+
+void
+PixelFormatGrayShort::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+  archive & grayMask;
+  archive & grayShift;
 }
 
 Image
@@ -1567,6 +1653,14 @@ PixelFormatGrayShortSigned::PixelFormatGrayShortSigned (int32_t bias, int32_t sc
   hasAlpha   = false;
 }
 
+void
+PixelFormatGrayShortSigned::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+  archive & bias;
+  archive & scale;
+}
+
 bool
 PixelFormatGrayShortSigned::operator == (const PixelFormat & that) const
 {
@@ -1651,6 +1745,12 @@ PixelFormatGrayAlphaShort::PixelFormatGrayAlphaShort ()
   hasAlpha   = true;
 }
 
+void
+PixelFormatGrayAlphaShort::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+}
+
 uint32_t
 PixelFormatGrayAlphaShort::getRGBA (void * pixel) const
 {
@@ -1681,6 +1781,12 @@ PixelFormatGrayFloat::PixelFormatGrayFloat ()
   precedence  = 4;  // Above all integer formats and below GrayDouble
   monochrome  = true;
   hasAlpha    = false;
+}
+
+void
+PixelFormatGrayFloat::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
 }
 
 Image
@@ -2129,6 +2235,12 @@ PixelFormatGrayDouble::PixelFormatGrayDouble ()
   precedence  = 6;  // above all integer formats and above GrayFloat
   monochrome  = true;
   hasAlpha    = false;
+}
+
+void
+PixelFormatGrayDouble::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
 }
 
 Image
@@ -2591,6 +2703,20 @@ PixelFormatRGBABits::PixelFormatRGBABits (int depth, uint32_t redMask, uint32_t 
   precedence = 3;  // Above GrayChar and below all floating point formats
   monochrome = redMask == greenMask  &&  greenMask == blueMask;
   hasAlpha   = alphaMask;
+}
+
+void
+PixelFormatRGBABits::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+  archive & redMask;
+  archive & greenMask;
+  archive & blueMask;
+  archive & alphaMask;
+  archive & redBits;
+  archive & greenBits;
+  archive & blueBits;
+  archive & alphaBits;
 }
 
 Image
@@ -3733,6 +3859,12 @@ PixelFormatRGBAChar::PixelFormatRGBAChar ()
 {
 }
 
+void
+PixelFormatRGBAChar::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormatRGBABits *) this);
+}
+
 Image
 PixelFormatRGBAChar::filter (const Image & image)
 {
@@ -4042,6 +4174,12 @@ PixelFormatRGBChar::PixelFormatRGBChar ()
 {
 }
 
+void
+PixelFormatRGBChar::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormatRGBABits *) this);
+}
+
 Image
 PixelFormatRGBChar::filter (const Image & image)
 {
@@ -4256,6 +4394,12 @@ PixelFormatRGBAShort::PixelFormatRGBAShort ()
   hasAlpha   = true;
 }
 
+void
+PixelFormatRGBAShort::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+}
+
 uint32_t
 PixelFormatRGBAShort::getRGBA (void * pixel) const
 {
@@ -4316,6 +4460,12 @@ PixelFormatRGBShort::PixelFormatRGBShort ()
   hasAlpha   = false;
 }
 
+void
+PixelFormatRGBShort::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+}
+
 uint32_t
 PixelFormatRGBShort::getRGBA (void * pixel) const
 {
@@ -4343,6 +4493,12 @@ PixelFormatRGBAFloat::PixelFormatRGBAFloat ()
   precedence = 7;  // Above everything
   monochrome = false;
   hasAlpha   = true;
+}
+
+void
+PixelFormatRGBAFloat::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
 }
 
 void
@@ -4449,6 +4605,23 @@ PixelFormatRGBAFloat::blend (void * pixel, float values[]) const
 }
 
 
+// class PixelFormatYUV -------------------------------------------------------
+
+PixelFormatYUV::PixelFormatYUV (int ratioH, int ratioV)
+: ratioH (ratioH),
+  ratioV (ratioV)
+{
+}
+
+void
+PixelFormatYUV::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+  archive & ratioH;
+  archive & ratioV;
+}
+
+
 // class PixelFormatPackedYUV -------------------------------------------------
 
 PixelFormatPackedYUV::PixelFormatPackedYUV (YUVindex * table)
@@ -4463,20 +4636,55 @@ PixelFormatPackedYUV::PixelFormatPackedYUV (YUVindex * table)
   this->table = table;
   pixels = 0;
   bytes = 0;
-  set<int> Usamples;
-  set<int> Vsamples;
-  YUVindex * i = table;
-  while (i->y >= 0)
+  depth = 0;
+  if (table)
   {
-	pixels++;
-	bytes = max (bytes, i->y, i->u, i->v);
-	Usamples.insert (i->u);
-	Vsamples.insert (i->v);
-	i++;
+	// Count number of entries in table, which is same as pixels in macropixel.
+	YUVindex * i = table;
+	while (i->y >= 0)
+	{
+	  i++;
+	  pixels++;
+	}
+	this->table = new YUVindex[pixels + 1];
+
+	set<int> Usamples;
+	set<int> Vsamples;
+	i = table;
+	YUVindex * j = this->table;
+	while (i->y >= 0)
+	{
+	  bytes = max (bytes, i->y, i->u, i->v);
+	  Usamples.insert (i->u);
+	  Vsamples.insert (i->v);
+	  *j++ = *i++;
+	}
+	j->y = -1;
+	bytes++;  // Up to now, bytes is the index of highest byte in group.  Must convert to quantity of bytes.
+	depth = (float) bytes / pixels;
+	ratioH = pixels / min (Usamples.size (), Vsamples.size ());
   }
-  bytes++;  // Up to now, bytes is the index of highest byte in group.  Must convert to quantity of bytes.
-  depth = (float) bytes / pixels;
-  ratioH = pixels / min (Usamples.size (), Vsamples.size ());
+}
+
+PixelFormatPackedYUV::~PixelFormatPackedYUV ()
+{
+  delete [] table;
+}
+
+void
+PixelFormatPackedYUV::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormatYUV *) this);
+  archive & pixels;
+  archive & bytes;
+  if (archive.in) table = new YUVindex[pixels + 1];
+  for (int i = 0; i < pixels; i++)
+  {
+	archive & table[i].y;
+	archive & table[i].u;
+	archive & table[i].v;
+  }
+  if (archive.in) table[pixels].y = -1;
 }
 
 Image
@@ -4754,6 +4962,12 @@ PixelFormatPlanarYUV::PixelFormatPlanarYUV (int ratioH, int ratioV)
   precedence = 1;
   monochrome = false;
   hasAlpha   = false;
+}
+
+void
+PixelFormatPlanarYUV::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormatYUV *) this);
 }
 
 void
@@ -5102,6 +5316,12 @@ PixelFormatPlanarYCbCr::buildAll ()
 }
 
 void
+PixelFormatPlanarYCbCr::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormatYUV *) this);
+}
+
+void
 PixelFormatPlanarYCbCr::fromAny (const Image & image, Image & result) const
 {
   assert (image.width % ratioH == 0  &&  image.height % ratioV == 0);
@@ -5356,6 +5576,12 @@ PixelFormatHSLFloat::PixelFormatHSLFloat ()
   hasAlpha   = false;
 }
 
+void
+PixelFormatHSLFloat::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+}
+
 uint32_t
 PixelFormatHSLFloat::getRGBA (void * pixel) const
 {
@@ -5526,6 +5752,12 @@ PixelFormatHSVFloat::PixelFormatHSVFloat ()
   precedence = 7;  // on par with RGBAFloat
   monochrome = false;
   hasAlpha   = false;
+}
+
+void
+PixelFormatHSVFloat::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
 }
 
 uint32_t

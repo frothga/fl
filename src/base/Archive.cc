@@ -87,6 +87,7 @@ Archive::close ()
   map<string, ClassDescription *>::iterator it;
   for (it = classesOut.begin (); it != classesOut.end (); it++) delete it->second;
   classesOut .clear ();
+  alias      .clear ();
 
   if (ownStream)
   {

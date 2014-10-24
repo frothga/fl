@@ -207,8 +207,8 @@ namespace fl
 			std::map<std::string, ClassDescription *>::iterator a = alias.find (name);
 			if (a == alias.end ())
 			{
-			  sprintf (message, "Unregistered alias: %s", name.c_str ());
-			  throw message;
+			  std::cerr << "Unregistered alias: " << name << std::endl;
+			  throw "Polymorphic classes require explicit registration. See stderr for details.";
 			}
 			a->second->index = classIndex;
 			classesIn.push_back (a->second);
@@ -219,13 +219,13 @@ namespace fl
 		  ClassDescription * d = classesIn[classIndex];
 		  if (d->create == 0  ||  d->serialize == 0)
 		  {
-			sprintf (message, "Please explicitly register: %s", d->name.c_str ());
-			throw message;
+			std::cerr << "Please explicitly register: " << d->name << std::endl;
+			throw "Polymorphic classes require explicit registration. See stderr for details.";
 		  }
 		  data = (T *) d->create ();
 		  pointersOut.insert (std::make_pair (data, pointersOut.size ()));
 		  pointersIn.push_back (data);
-		  d->serialize (data, *this, d->version);
+		  d->serialize (const_cast<void *> ((const void *) data), *this, d->version);
 		}
 	  }
 	  else
@@ -235,7 +235,7 @@ namespace fl
 		  uint32_t nullPointer = 0xFFFFFFFF;
 		  return (*this) & nullPointer;
 		}
-		std::map<void *, uint32_t>::iterator p = pointersOut.find (data);
+		std::map<const void *, uint32_t>::iterator p = pointersOut.find (data);
 		if (p != pointersOut.end ()) (*this) & p->second;
 		else
 		{
@@ -246,8 +246,8 @@ namespace fl
 		  std::map<std::string, ClassDescription *>::iterator c = classesOut.find (typeidName);
 		  if (c == classesOut.end ())
 		  {
-			sprintf (message, "Unregistered class %s", typeidName.c_str ());
-			throw message;
+			std::cerr << "Unregistered class " << typeidName << std::endl;
+			throw "Polymorphic classes require explicit registration. See stderr for details.";
 		  }
 		  if (c->second->index < 0xFFFFFFFF) (*this) & c->second->index;
 		  else
@@ -261,10 +261,10 @@ namespace fl
 
 		  if (c->second->serialize == 0)
 		  {
-			sprintf (message, "Please explicitly register: %s", typeidName.c_str ());
-			throw message;
+			std::cerr << "Please explicitly register: " << typeidName << std::endl;
+			throw "Polymorphic classes require explicit registration. See stderr for details.";
 		  }
-		  c->second->serialize (data, *this, c->second->version);
+		  c->second->serialize (const_cast<void *> ((const void *) data), *this, c->second->version);
 		}
 	  }
 	  return *this;
@@ -315,14 +315,12 @@ namespace fl
 	std::ostream * out;
 	bool ownStream;
 
-	std::vector<void *>        pointersIn;   ///< mapping from serial # to pointer
-	std::map<void *, uint32_t> pointersOut;  ///< mapping from pointer to serial #; @todo change this to unordered_map when broadly available
+	std::vector<const void *>        pointersIn;   ///< mapping from serial # to pointer
+	std::map<const void *, uint32_t> pointersOut;  ///< mapping from pointer to serial #; @todo change this to unordered_map when broadly available
 
 	std::vector<ClassDescription *>           classesIn;   ///< mapping from serial # to class description; ClassDescription objects are held by classesOut
 	std::map<std::string, ClassDescription *> classesOut;  ///< mapping from RTTI name to class description; one-to-one
 	std::map<std::string, ClassDescription *> alias;       ///< mapping from user-assigned name to class description; can be many-to-one
-
-	char message[256];  ///< buffer for constructing detailed exceptions
   };
 
   // These are necessary, because any type that does not have an explicit
