@@ -14,8 +14,8 @@ for details.
 */
 
 
-#ifndef random_h
-#define random_h
+#ifndef fl_random_h
+#define fl_random_h
 
 
 #include <stdlib.h>
