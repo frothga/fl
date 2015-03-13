@@ -1577,6 +1577,7 @@ testInterest ()
 # endif
 }
 
+#ifdef HAVE_LAPACK
 void
 testMatch (int dof)
 {
@@ -1636,6 +1637,7 @@ testMatch (int dof)
 	throw "HomographyMethod failed to solve for correct transform";
   }
 }
+#endif
 
 // Match
 // MatchSet
@@ -1646,11 +1648,15 @@ testMatch (int dof)
 void
 testMatch ()
 {
+# ifdef HAVE_LAPACK
   testMatch (2);
   testMatch (4);
   testMatch (6);
   testMatch (8);
   cout << "Match framework passes" << endl;
+# else
+  cout << "Match framework not tested due to lack of LAPACK" << endl;
+# endif
 }
 
 // Transform -- {8dof 6dof} X {float double}
