@@ -147,7 +147,7 @@ namespace fl
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  result += (*this) (r, c);
+		  result += std::abs ((*this) (r, c));
 		}
 	  }
 	  return result;
@@ -172,7 +172,7 @@ namespace fl
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  result += (T) std::pow ((*this) (r, c), (T) n);
+		  result += (T) std::pow (std::abs ((*this) (r, c)), (T) n);
 		}
 	  }
 	  return (T) std::pow (result, (T) (1.0 / n));
@@ -758,7 +758,7 @@ namespace fl
 		trim (line);
 		while (line.size ())
 		{
-		  int position = line.find_first_of (" \t");
+		  int position = line.find_first_of (", \t");
 		  element = line.substr (0, position);
 		  row.push_back (elementFromString<T> (element));
 		  if (position == std::string::npos) break;
@@ -1037,7 +1037,7 @@ namespace fl
 		T * columnEnd = i + rows_ * strideR;
 		while (i != columnEnd)
 		{
-		  result += *i;
+		  result += std::abs (*i);
 		  i += strideR;
 		}
 		i += stepC;
@@ -1074,7 +1074,7 @@ namespace fl
 		T * columnEnd = i + rows_ * strideR;
 		while (i != columnEnd)
 		{
-		  result += (T) std::pow (*i, (T) n);
+		  result += (T) std::pow (std::abs (*i), (T) n);
 		  i += strideR;
 		}
 		i += stepC;

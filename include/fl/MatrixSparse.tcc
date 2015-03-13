@@ -243,7 +243,7 @@ namespace fl
 		typename std::map<int,T>::iterator i = C.begin ();
 		while (i != C.end ())
 		{
-		  result += i->second;
+		  result += std::abs (i->second);
 		  i++;
 		}
 	  }
@@ -273,7 +273,7 @@ namespace fl
 		typename std::map<int,T>::iterator i = C.begin ();
 		while (i != C.end ())
 		{
-		  result += (T) std::pow (i->second, (T) n);
+		  result += (T) std::pow (std::abs (i->second), (T) n);
 		  i++;
 		}
 	  }
