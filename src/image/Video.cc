@@ -50,6 +50,12 @@ VideoIn::close ()
 }
 
 void
+VideoIn::pause ()
+{
+  if (file) file->pause ();
+}
+
+void
 VideoIn::seekFrame (int frame)
 {
   if (file) file->seekFrame (frame);

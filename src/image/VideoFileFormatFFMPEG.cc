@@ -50,6 +50,7 @@ public:
   VideoInFileFFMPEG (const std::string & fileName);
   virtual ~VideoInFileFFMPEG ();
 
+  virtual void pause ();
   virtual void seekFrame (int frame);
   virtual void seekTime (double timestamp);
   virtual void readNext (Image & image);
@@ -78,8 +79,8 @@ public:
   bool seekLinear;  ///< Indicates that the file only supports linear seeking, not random seeking.  Generally due to lack of timestamps in stream.
   int64_t nextPTS;  ///< DTS of most recent packet pushed into decoder.  In MPEG, this will be the PTS of the next picture to come out of decoder, which occurs next time a packet is pushed in.
   double startTime;  ///< Best estimate of timestamp on first image in video.
-
-  std::string fileName;
+  bool interleaveRTP;  ///< Forces RTP interleaving over a TCP connection. This is the only way to guarantee 100% packet delivery.
+  bool paused;  ///< If this is a network stream, indicates that streaming is paused.
 };
 
 VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName)
@@ -91,8 +92,8 @@ VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName)
   av_init_packet (&packet);
   timestampMode = false;
   seekLinear = false;
-
-  this->fileName = fileName;
+  interleaveRTP = true;
+  paused = true;
 
   open (fileName);
 }
@@ -100,6 +101,13 @@ VideoInFileFFMPEG::VideoInFileFFMPEG (const std::string & fileName)
 VideoInFileFFMPEG::~VideoInFileFFMPEG ()
 {
   close ();
+}
+
+void
+VideoInFileFFMPEG::pause ()
+{
+  if (fc) av_read_pause (fc);
+  paused = true;
 }
 
 /**
@@ -134,10 +142,7 @@ VideoInFileFFMPEG::seekFrame (int frame)
 	while (cc->frame_number < frame)
 	{
 	  readNext (0);
-	  if (! gotPicture)
-	  {
-		return;
-	  }
+	  if (! gotPicture) return;
 	  gotPicture = 0;
 	}
   }
@@ -157,10 +162,7 @@ VideoInFileFFMPEG::seekFrame (int frame)
 void
 VideoInFileFFMPEG::seekTime (double timestamp)
 {
-  if (state  ||  ! stream)
-  {
-	return;
-  }
+  if (state  ||  ! stream) return;
 
   timestamp = max (timestamp, startTime);
 
@@ -208,6 +210,8 @@ VideoInFileFFMPEG::seekTime (double timestamp)
 	  // other than a key frame.  For example, if an mpeg has timestamps on
 	  // packets other than I frames.
 	  avcodec_flush_buffers (cc);
+	  if (paused) av_read_play (fc);
+	  paused = false;
 	  do
 	  {
 		av_free_packet (&packet);
@@ -280,6 +284,9 @@ void
 VideoInFileFFMPEG::readNext (Image * image)
 {
   if (state) return;  // Don't attempt to read when we are in an error state.
+
+  if (paused) av_read_play (fc);
+  paused = false;
 
   while (! gotPicture)
   {
@@ -379,11 +386,13 @@ VideoInFileFFMPEG::get (const std::string & name, string & value)
 		sprintf (buffer, "%g", (double) fc->duration / AV_TIME_BASE);
 		value = buffer;
 	  }
+	  return;
 	}
 	else if (name == "startTime")
 	{
 	  sprintf (buffer, "%g", startTime);
 	  value = buffer;
+	  return;
 	}
 	else if (name == "startTimeNTP")
 	{
@@ -399,8 +408,14 @@ VideoInFileFFMPEG::get (const std::string & name, string & value)
 		  value = buffer;
 		}
 	  }
+	  return;
 	}
-	return;
+	else if (name == "framePeriod")
+	{
+	  sprintf (buffer, "%g", (double) stream->r_frame_rate.den / stream->r_frame_rate.num);
+	  value = buffer;
+	  return;
+	}
   }
   if (fc)
   {
@@ -410,11 +425,22 @@ VideoInFileFFMPEG::get (const std::string & name, string & value)
 	}
 	return;
   }
+  if (name == "interleaveRTP")
+  {
+	if (interleaveRTP) value = "1";
+	else               value = "0";
+	return;
+  }
 }
 
 void
 VideoInFileFFMPEG::set (const std::string & name, const string & value)
 {
+  if (name == "interleaveRTP")
+  {
+	interleaveRTP = atoi (value.c_str ());
+	return;
+  }
 }
 
 void
@@ -424,7 +450,10 @@ VideoInFileFFMPEG::open (const string & fileName)
   memset (&picture, 0, sizeof (picture));
   gotPicture = 0;
 
-  state = avformat_open_input (&fc, fileName.c_str (), 0, 0);
+  AVDictionary * options = 0;
+  if (interleaveRTP) av_dict_set (&options, "rtsp_transport", "tcp", 0);  // It doesn't hurt to set this option, even if we are not doing RTP.
+  state = avformat_open_input (&fc, fileName.c_str (), 0, &options);
+  av_dict_free (&options);
   if (state < 0)
   {
 	return;
@@ -435,6 +464,7 @@ VideoInFileFFMPEG::open (const string & fileName)
   {
 	return;
   }
+  paused = false;  // finding stream info requires streaming, so assume its on
 
   stream = 0;
   for (int i = 0; i < fc->nb_streams; i++)

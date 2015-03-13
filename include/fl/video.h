@@ -58,6 +58,7 @@ namespace fl
 
 	void open (const std::string & fileName);
 	void close ();
+	void pause ();  ///< If this is a network stream, then temporarily suspend streaming. The next call to operator>>() will restart streaming.
 	void seekFrame (int frame);  ///< Position stream just before the given frame.  Numbers are zero based.  (Maybe they should be one-based.  Research the convention.)
 	void seekTime (double timestamp);  ///< Position stream so that next frame will have the smallest timestamp >= the given timestamp.
 	VideoIn & operator >> (Image & image);  ///< Extract next image frame.  image may end up attached to a buffer used internally by the video device or library, so it may be freed unexpectedly.  However, this clss guarantees that the memory will not be freed before the next call to a method of this class.
@@ -100,11 +101,12 @@ namespace fl
   public:
 	virtual ~VideoInFile ();
 
-	virtual void seekFrame (int frame) = 0;  ///< Position stream just before the given frame.  Numbers follow same convention as Video class.
-	virtual void seekTime (double timestamp) = 0;  ///< Position stream so that next frame will have the smallest timestamp >= the given timestamp.
-	virtual void readNext (Image & image) = 0;  ///< Reads the next frame and stores it in image.  image may end up attached to a buffer used internally by the video device or library, so it may be freed unexpectedly.  However, this clss guarantees that the memory will not be freed before the next call to a method of this class.
-	virtual bool good () const = 0;  ///< Indicates that the stream is open and the last read (if any) succeeded.
-	virtual void setTimestampMode (bool frames = false) = 0;  ///< Changes image.timestamp from presentation time to frame number.
+	virtual void pause () = 0;
+	virtual void seekFrame (int frame) = 0;
+	virtual void seekTime (double timestamp) = 0;
+	virtual void readNext (Image & image) = 0;
+	virtual bool good () const = 0;
+	virtual void setTimestampMode (bool frames = false) = 0;
 	virtual void get (const std::string & name,       std::string & value) = 0;
 	virtual void set (const std::string & name, const std::string & value) = 0;
   };

@@ -25,6 +25,8 @@ using namespace std;
 using namespace fl;
 
 
+pthread_t noThread;
+
 class EventPredicateMotion3 : public EventPredicate
 {
 public:
@@ -55,17 +57,24 @@ public:
 	vin.get ("startTime", startTime);
 	duration = 0;
 	vin.get ("duration", duration);
+	framePeriod = 0.0334;
+	vin.get ("framePeriod", framePeriod);
 
 	playing = false;
 	sizeSet = false;
 
 	stem = fileName;
 	stem = stem.substr (0, stem.find_last_of ('.'));
+
+	pid = noThread;
+	pthread_mutex_init (&mutexPlaying, 0);
   }
 
+  /// Single-step. Assumes streaming (if applicable) is paused.
   void showFrame ()
   {
 	vin >> image;
+	vin.pause ();
 	if (vin.good ())
 	{
 	  cerr << image.timestamp << endl;
@@ -94,18 +103,12 @@ public:
 	  {
 		if (event.xbutton.button == Button1)
 		{
-		  if (playing)
-		  {
-			pause ();
-		  }
-		  else
-		  {
-			play ();
-		  }
+		  if (playing) pause ();
+		  else         play ();
 		}
 		else if (event.xbutton.button == Button3)
 		{
-		  pause ();
+		  if (playing) pause ();
 		  double t = duration * event.xbutton.x / image.width;
 		  t = max (0.0, min (duration, t));
 		  vin.seekTime (startTime + t);
@@ -113,20 +116,28 @@ public:
 		}
 		else if (event.xbutton.button == Button4)
 		{
-		  pause ();
+		  if (playing) pause ();
 		  if (useFrames)
 		  {
 			vin.seekFrame (max (0, (int) image.timestamp - 1));
 		  }
 		  else
 		  {
-			vin.seekTime (image.timestamp - 1e-3);  // 1ms back in time is sufficient to catch previous frame
+			vin.seekTime (max (startTime, image.timestamp - 1e-3));  // 1ms back in time is sufficient to catch previous frame
 		  }
 		  showFrame ();
 		}
 		else if (event.xbutton.button == Button5)
 		{
-		  pause ();
+		  if (playing) pause ();
+		  if (useFrames)
+		  {
+			vin.seekFrame ((int) image.timestamp + 1);
+		  }
+		  else
+		  {
+			vin.seekTime (image.timestamp + framePeriod + 1e-3);
+		  }
 		  showFrame ();
 		}
 		return true;
@@ -144,7 +155,7 @@ public:
 		  while (checkIfEvent (event, predicate)) found = true;
 		  if (! found)
 		  {
-			pause ();
+			if (playing) pause ();
 			double t = duration * event.xbutton.x / image.width;
 			t = max (0.0, min (duration, t));
 			vin.seekTime (startTime + t);
@@ -160,7 +171,7 @@ public:
 		{
 		  case 'j':
 		  {
-			pause ();
+			if (playing) pause ();
 			char buffer[1024];
 			sprintf (buffer, "%s.frame%g.jpg", stem.c_str (), image.timestamp);
 			cerr << "writing " << buffer << endl;
@@ -169,7 +180,7 @@ public:
 		  }
 		  case 'p':
 		  {
-			pause ();
+			if (playing) pause ();
 			char buffer[1024];
 			sprintf (buffer, "%s.frame%g.ppm", stem.c_str (), image.timestamp);
 			cerr << "writing " << buffer << endl;
@@ -195,6 +206,7 @@ public:
 			return true;
 		  }
 		  case 'q':
+		  case XK_Escape:
 		  {
 			pause ();
 			stopWaiting ();
@@ -210,38 +222,53 @@ public:
 
   static void * playThread (void * data)
   {
-	VideoShow * me = (VideoShow *) data;
-	while (me->vin.good ()  &&  me->playing)
+	((VideoShow *) data)->playLoop ();
+	return 0;
+  }
+
+  void playLoop ()
+  {
+	playing = true;
+	while (playing)
 	{
-	  me->vin >> me->image;
-	  if (! me->vin.good ()) break;
+	  vin >> image;
+	  if (! vin.good ()) break;
 	  string rtsp;
-	  me->vin.get ("startTimeNTP", rtsp);
-	  cerr << me->image.timestamp << " " << rtsp << endl;
-	  if (! me->sizeSet)
+	  vin.get ("startTimeNTP", rtsp);
+	  cerr << image.timestamp << " " << rtsp << endl;
+	  if (! sizeSet)
 	  {
-		cerr << "size = " << me->image.width << " " << me->image.height << endl;
-		me->resize (me->image.width, me->image.height);
-		me->width = me->image.width;
-		me->height = me->image.height;
-		me->sizeSet = true;
+		cerr << "size = " << image.width << " " << image.height << endl;
+		resize (image.width, image.height);
+		width = image.width;
+		height = image.height;
+		sizeSet = true;
 	  }
-	  me->show (me->image);
+	  show (image);
 	}
-	if (! me->vin.good ()  &&  me->playing)
+	vin.pause ();
+	playing = false;
+
+	if (! vin.good ())  // Terminated by EOF or error
 	{
 	  string filename;
-	  me->vin.get ("filename", filename);
-	  me->vin.open (filename);  // forces close() first
-	  me->vin.setTimestampMode (me->useFrames);
+	  vin.get ("filename", filename);
+	  vin.open (filename);  // forces close() first
+	  vin.setTimestampMode (useFrames);
 	}
-	me->playing = false;
+
+	pthread_mutex_lock (&mutexPlaying);
+	if (! pthread_equal (pid, noThread))
+	{
+	  pthread_detach (pid);  // Our thread structures will self-destruct when we exit this function.
+	  pid = noThread;
+	}
+	pthread_mutex_unlock (&mutexPlaying);
   }
 
   void play ()
   {
-	playing = true;
-	if (pthread_create (&pidPlayThread, NULL, playThread, this) != 0)
+	if (pthread_create (&pid, NULL, playThread, this) != 0)
 	{
 	  throw "Failed to start play thread.";
 	}
@@ -249,12 +276,18 @@ public:
 
   void pause ()
   {
-	if (playing)
+	playing = false;
+	pthread_t join = noThread;
+
+	pthread_mutex_lock (&mutexPlaying);
+	if (! pthread_equal (pid, noThread))
 	{
-	  playing = false;
-	  void * result;
-	  pthread_join (pidPlayThread, &result);
+	  join = pid;
+	  pid = noThread;
 	}
+	pthread_mutex_unlock (&mutexPlaying);
+
+	if (! pthread_equal (join, noThread)) pthread_join (join, 0);
   }
 
   VideoIn vin;
@@ -262,8 +295,10 @@ public:
   bool useFrames;
   double startTime;
   double duration;
+  double framePeriod;
   string stem;
-  pthread_t pidPlayThread;
+  pthread_t pid;
+  pthread_mutex_t mutexPlaying;
   bool playing;
   bool sizeSet;
 };
@@ -289,6 +324,8 @@ main (int argc, char * argv[])
 	ImageFileFormatPGM   ::use ();
 	ImageFileFormatJPEG  ::use ();
 	VideoFileFormatFFMPEG::use ();
+
+	noThread = pthread_self ();
 
 	VideoShow window (parms.fileNames[0]);
 	if (frame > 0)
