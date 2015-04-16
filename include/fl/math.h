@@ -66,21 +66,7 @@ namespace std
   }
 #endif
 
-#ifndef _MSC_VER
-
-  inline int
-  isinf (float a)
-  {
-	return isinff (a);
-  }
-
-  inline int
-  isnan (float a)
-  {
-	return isnanf (a);
-  }
-
-#else
+#ifdef _MSC_VER
 
   inline int
   isnan (double a)
@@ -120,6 +106,20 @@ namespace std
 	double t = 1.0 / (1.0 + p * x);
 	double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * exp (- x * x);
 	return sign * y;
+  }
+
+#else
+
+  inline int
+  isinf (float a)
+  {
+	return isinff (a);
+  }
+
+  inline int
+  isnan (float a)
+  {
+	return isnanf (a);
   }
 
 #endif
@@ -207,17 +207,6 @@ namespace fl
 	return floor (a + 0.5);
   }
 
-  inline double
-  mod2pi (double a)
-  {
-	a = fmod (a, TWOPI);
-	if (a < 0)
-	{
-	  a += TWOPI;
-	}
-	return a;
-  }
-
   inline float
   mod2pi (float a)
   {
@@ -225,6 +214,17 @@ namespace fl
 	if (a < 0)
 	{
 	  a += TWOPIf;
+	}
+	return a;
+  }
+
+  inline double
+  mod2pi (double a)
+  {
+	a = fmod (a, TWOPI);
+	if (a < 0)
+	{
+	  a += TWOPI;
 	}
 	return a;
   }
