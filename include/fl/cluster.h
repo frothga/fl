@@ -175,7 +175,7 @@ namespace fl
   class SHARED KMeans : public ClusterMethod
   {
   public:
-	KMeans (int K = 0);
+	KMeans (int K = 3);
 
 	virtual void          run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
 	using ClusterMethod::run;
@@ -196,7 +196,7 @@ namespace fl
   class SHARED KMeansTree : public ClusterMethod
   {
   public:
-	KMeansTree (int K = 0, int depth = 1);
+	KMeansTree (int K = 3, int depth = 1);
 	virtual ~KMeansTree ();
 	void clear ();
 
@@ -234,7 +234,7 @@ namespace fl
 	Matrix<float> map;
 	int width;  ///< Number of discrete positions in one dimension.
 	float sigma;  ///< Of Gaussian that determines neighborhood to be updated.
-	float learningRate;  ///< How much to scale feature vector during update.
+	float learningRate;  ///< How much to change feature vector during update.
 	float decayRate;  ///< How much to scale learningRate after each iteration.
   };
 

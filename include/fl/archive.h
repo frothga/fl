@@ -80,6 +80,7 @@ namespace fl
   class Archive
   {
   public:
+	SHARED Archive ();  ///< Creates archive in the closed state. Must call open() before inserting or extracting data. However, classes may be registered before call to open().
 	SHARED Archive (std::istream & in,  bool ownStream = false);
 	SHARED Archive (std::ostream & out, bool ownStream = false);
 	SHARED Archive (const std::string & fileName, const std::string & mode);
@@ -88,7 +89,8 @@ namespace fl
 	SHARED void open (std::istream & in, bool ownStream = false);
 	SHARED void open (std::ostream & out, bool ownStream = false);
 	SHARED void open (const std::string & fileName, const std::string & mode);
-	SHARED void close ();
+	SHARED void close ();  ///< Closes current stream, but retains class registry. Archive may be used for another file operation involving the same set of classes.
+	SHARED void clear ();  ///< Closes current stream and deletes class registry. Archive is reset to newly constructed state, and may be reused for any purpose.
 
 	/**
 	   Create a class description record in memory.

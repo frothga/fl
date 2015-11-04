@@ -216,20 +216,20 @@ Image::resize (int width, int height, bool preserve)
 }
 
 void
-Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int width, int height)
+Image::bitblt (const Image & from, int toX, int toY, int fromX, int fromY, int width, int height)
 {
   // Adjust parameters
-  if (fromX >= that.width  ||  fromY >= that.height)
+  if (fromX >= from.width  ||  fromY >= from.height)
   {
 	return;
   }
   if (width < 0)
   {
-	width = that.width;
+	width = from.width;
   }
   if (height < 0)
   {
-	height = that.height;
+	height = from.height;
   }
   if (toX < 0)
   {
@@ -255,15 +255,15 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
 	toY    -= fromY;
 	fromY  -= fromY;
   }
-  width = min (fromX + width, that.width) - fromX;
-  height = min (fromY + height, that.height) - fromY;
+  width  = min (fromX + width,  from.width ) - fromX;
+  height = min (fromY + height, from.height) - fromY;
   if (width <= 0  ||  height <= 0)
   {
 	return;
   }
 
   // Adjust size of target Image (ie: this)
-  int needWidth = toX + width;
+  int needWidth  = toX + width;
   int needHeight = toY + height;
   if (needWidth > this->width  ||  needHeight > this->height)
   {
@@ -276,7 +276,7 @@ Image::bitblt (const Image & that, int toX, int toY, int fromX, int fromY, int w
   // TODO: Generalize so that the PixelBufferGroups case will work any time the
   // source, destination and number of bytes being moved are all integral
   // multiples of the group size.
-  Image source = that * *this->format;  // should also force conversion to packed format
+  Image source = from * *this->format;  // should also force conversion to packed format
   char * fromBase = 0;
   int    fromStride;
   int    fromDepth;

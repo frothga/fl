@@ -81,7 +81,7 @@ namespace fl
 	template<class T> void attach (const MatrixStrided<T> & A, const PixelFormat & format);  ///< Binds to the contents of the given matrix.  width and height are taken from rows() and columns() respectively.
 
 	void resize (int width, int height, bool preserve = false);
-	void bitblt (const Image & that, int toX = 0, int toY = 0, int fromX = 0, int fromY = 0, int width = -1, int height = -1);  ///< -1 for width or height means "maximum possible value"
+	void bitblt (const Image & from, int toX = 0, int toY = 0, int fromX = 0, int fromY = 0, int width = -1, int height = -1);  ///< -1 for width or height means "maximum possible value"
 	void clear (uint32_t rgba = 0);  ///< Initialize buffer, if it exists, to given color.  In case rgba == 0, simply zeroes out memory, since this generally results in black in most pixel formats.
 
 	Image operator + (const Image & that);  ///< Creates an image that sums pixel values from this and that.

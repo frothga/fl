@@ -422,7 +422,9 @@ namespace fl
 
   /**
 	 Implements David Lowe's SIFT descriptor.
-	 Note on supportRadial: supportRadial * point.scale gives pixel distance from center to edge of bins when they overlay the image.  The pixel diameter of one bin is 2 * supportRadial * point.scale / width.
+	 Note on supportRadial: supportRadial * point.scale gives pixel distance
+	 from center to edge of bins when they overlay the image. The pixel
+	 diameter of one bin is 2 * supportRadial * point.scale / width.
   **/
   class SHARED DescriptorSIFT : public Descriptor
   {

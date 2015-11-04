@@ -18,6 +18,13 @@ using namespace std;
 
 // class Archive --------------------------------------------------------------
 
+Archive::Archive ()
+{
+  in        = 0;
+  out       = 0;
+  ownStream = false;
+}
+
 Archive::Archive (istream & in, bool ownStream)
 : in (&in),
   out (0),
@@ -84,10 +91,6 @@ Archive::close ()
   pointersIn .clear ();
   pointersOut.clear ();
   classesIn  .clear ();
-  map<string, ClassDescription *>::iterator it;
-  for (it = classesOut.begin (); it != classesOut.end (); it++) delete it->second;
-  classesOut .clear ();
-  alias      .clear ();
 
   if (ownStream)
   {
@@ -96,6 +99,18 @@ Archive::close ()
   }
   in  = 0;
   out = 0;
+  ownStream = false;
+}
+
+void
+Archive::clear ()
+{
+  close ();  // Because once we delete the class descriptions, some semantics of the current stream may be lost.
+
+  map<string, ClassDescription *>::iterator it;
+  for (it = classesOut.begin (); it != classesOut.end (); it++) delete it->second;
+  classesOut .clear ();
+  alias      .clear ();
 }
 
 template<>

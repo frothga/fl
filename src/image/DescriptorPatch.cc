@@ -26,7 +26,7 @@ using namespace fl;
 DescriptorPatch::DescriptorPatch (int width, float supportRadial)
 {
   this->width = width;
-  if (supportRadial == 0) this->supportRadial = width;  // causes width to be in natural pixel units at point.scale
+  if (supportRadial == 0) this->supportRadial = width;  // If source image scale is same as point.scale, then this causes the patch to be exactly "width" pixels in the source image.
   else                    this->supportRadial = supportRadial;
 }
 
@@ -40,19 +40,23 @@ DescriptorPatch::value (ImageCache & cache, const PointAffine & point)
   // Find or generate gray image at appropriate blur level
   EntryPyramid * entry = (EntryPyramid *) cache.getLE (new EntryPyramid (GrayFloat, point.scale));
   float originalScale = cache.original->scale;
-  float octave = originalScale * pow (2.0, EntryPyramid::octave (point.scale, originalScale));
-  if (! entry  ||  entry->scale < octave)
+  float targetScale = originalScale * pow (2.0, EntryPyramid::octave (point.scale, originalScale));
+  if (! entry  ||  entry->scale < targetScale)
   {
-	entry = (EntryPyramid *) cache.get (new EntryPyramid (GrayFloat, octave));
+	entry = (EntryPyramid *) cache.get (new EntryPyramid (GrayFloat, targetScale));
   }
 
   // Adjust point position to scale of selected image
-  octave = (float) cache.original->image.width / entry->image.width;
+  float scaleRatio = (float) cache.original->image.width / entry->image.width;
   PointAffine p = point;
-  p.x = (p.x + 0.5f) / octave - 0.5f;
-  p.y = (p.y + 0.5f) / octave - 0.5f;
+  p.x = (p.x + 0.5f) / scaleRatio - 0.5f;
+  p.y = (p.y + 0.5f) / scaleRatio - 0.5f;
   float half = width / 2.0;
-  p.scale *= supportRadial / (octave * width);  // apply all three scale adjustments at once
+  // There are 3 scale adjustments combined in the following statement
+  // 1) p.scale / scaleRatio rescales point to match entry.image, just like p.x and p.y were scaled above
+  // 2) p.scale * supportRadial gives patch radius in entry.image
+  // 3) dividing by half-width of output patch gives scale change for Transform
+  p.scale *= supportRadial / (scaleRatio * half);
 
   // Extract patch
   Transform t (p.projection (), true);
