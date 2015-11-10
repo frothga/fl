@@ -283,7 +283,7 @@ testSearch ()
 	  T epsilon = epsilons(i,j);
 	  Search<T> * s = searches[j];
 	  cerr << typeid (*s).name () << " searching " << typeid (*function).name () << endl;
-	  if (isinf (epsilon))
+	  if (std::isinf (epsilon))
 	  {
 		cerr << "  skipping" << endl;
 		continue;

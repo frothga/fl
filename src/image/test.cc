@@ -232,7 +232,7 @@ testConvolutionDiscrete1D (const Image & image, const ConvolutionDiscrete1D & ke
 	  int fromX = x + offsetX;
 
 	  double t = conv.response (fromX, fromY);
-	  if (isnan (t)) continue;  // indicates border when mode == Undefined
+	  if (std::isnan (t)) continue;  // indicates border when mode == Undefined
 
 	  float fr;
 	  result.getGray (x, y, fr);

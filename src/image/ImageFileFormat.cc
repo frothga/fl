@@ -119,7 +119,7 @@ ImageFile::read (Image & image, int x, int y, int width, int height)
 {
   if (! delegate.memory) throw "ImageFile not open";
   delegate->read (image, x, y, width, height);
-  if (! isnan (timestamp)) image.timestamp = timestamp;
+  if (! std::isnan (timestamp)) image.timestamp = timestamp;
 }
 
 void

@@ -319,7 +319,7 @@ ResponderFile::setContentLength (Request & request, Response & response, const w
 	if (position < 0) position = 0;
 	filelength -= position;
 	char temp[20];
-	sprintf (temp, "%"PRIu64, filelength);
+	sprintf (temp, "%" PRIu64, filelength);
 	response.addHeader ("Content-Length", temp);
   }
 }
@@ -464,7 +464,7 @@ ResponderFile::scan (const wstring & dirName, int sortBy, multimap<string, DirEn
 	switch (sortBy)
 	{
 	  case 1:
-		sprintf (buffer, "%020"PRIu64, entry.size);
+		sprintf (buffer, "%020" PRIu64, entry.size);
 		key = buffer;
 		break;
 	  case 2:
@@ -503,7 +503,7 @@ ResponderFile::scan (const wstring & dirName, int sortBy, multimap<string, DirEn
 	switch (sortBy)
 	{
 	  case 1:
-		sprintf (buffer, "%020"PRIu64, entry.size);
+		sprintf (buffer, "%020" PRIu64, entry.size);
 		key = buffer;
 		break;
 	  case 2:

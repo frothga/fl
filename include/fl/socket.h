@@ -33,16 +33,6 @@ for details.
 #  define CLOSESOCKET closesocket
 
 #  define GETLASTERROR WSAGetLastError ()
-#  define EADDRINUSE  WSAEADDRINUSE
-#  define EINTR       WSAEINTR
-#  define EINPROGRESS WSAEINPROGRESS
-#  define EMFILE      WSAEMFILE
-#  define ENOBUFS     WSAENOBUFS
-#  define ENOTSOCK    WSAENOTSOCK
-#  define EOPNOTSUPP  WSAEOPNOTSUPP
-#  define EBADF       WSAEBADF
-#  define EINVAL      WSAEINVAL
-#  define EFAULT      WSAEFAULT
 
 #else
 

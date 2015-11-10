@@ -56,7 +56,7 @@ KMeans::run (const vector<Vector<float> > & data, const vector<int> & classes)
 	for (int i = 0; i < K; i++)
 	{
 	  if (clusterSizes[i] > 0) clusters[i] /= clusterSizes[i];
-	  else                     clusters[i].copyFrom (data[random () % count]);  // no features were assigned to cluster, so reseed
+	  else                     clusters[i].copyFrom (data[rand () % count]);  // no features were assigned to cluster, so reseed
 	}
 
 	// Assign data to clusters

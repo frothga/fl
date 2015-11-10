@@ -94,7 +94,7 @@ KLT::KLT (int searchRadius, int windowRadius, float scaleRatio)
 	// "downsample", resulting in an image with blur scale 0.5.
 	double blurAfterDecimation;
 	double applyBlur = sqrt (downsample * downsample / 4.0 - currentBlur * currentBlur);
-	if (isnan (applyBlur)  ||  applyBlur < minBlur)  // blur too small
+	if (std::isnan (applyBlur)  ||  applyBlur < minBlur)  // blur too small
 	{
 	  blursPre[level] = 0;
 	  blurAfterDecimation = currentBlur / downsample;
@@ -107,7 +107,7 @@ KLT::KLT (int searchRadius, int windowRadius, float scaleRatio)
 
 	// Generate a kernal to blur the decimated image to targetBlur.
 	applyBlur = sqrt (targetBlur * targetBlur - blurAfterDecimation * blurAfterDecimation);
-	if (isnan (applyBlur)  ||  applyBlur < minBlur)
+	if (std::isnan (applyBlur)  ||  applyBlur < minBlur)
 	{
 	  blursPost[level] = 0;
 	  currentBlur = blurAfterDecimation;

@@ -21,7 +21,7 @@ namespace std
   inline complex<double>
   max (const double & a, const complex<double> & b)
   {
-	return complex<double> (max (a, b.real ()), 0);
+	return complex<double> (max (a, b.real ()));
   }
 }
 

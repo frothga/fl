@@ -165,6 +165,7 @@ namespace fl
   {
   public:
 	Response (std::wstreambuf * buffer);
+	Response (Response &&) = delete;  ///< Having a move ctor conflicts with MSVC version of basic_ios. Move construction isn't used in normal operation of Server.
 
 	virtual void raw (const char * data, int length) = 0;  ///< Writes raw bytes to stream, ie: without any code conversion.
 	virtual void done () = 0;  ///< Finalizes message. No more data should be inserted after this method is called. Flushes self and all underlying streams.

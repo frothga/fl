@@ -119,6 +119,6 @@ IntensityStatistics::filter (const Image & image)
 double
 IntensityStatistics::deviation (double average)
 {
-  if (isnan (average)) average = this->average;
+  if (std::isnan (average)) average = this->average;
   return sqrt (averageSquare - average * average);
 }

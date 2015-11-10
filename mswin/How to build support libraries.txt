@@ -10,50 +10,28 @@ The directory mswin generally resides directly under the root FL directory.  It 
 
 Most files retain the name they normally receive from the build process in their respective projects.  However, libraries are renamed to be simple and follow MS naming conventions.  In particular, all libraries end in ".lib", and they generally do not have a leading or trailing "lib" in the name.  The following are desirable library names:
 
-	jpeg.lib        // drop extraneous "lib"
-	z.lib           // drop extraneous "lib"
-	tiff.lib        // drop extraneous "lib"
-	freetype.lib    // No version number
+	jpeg.lib        // drop extraneous "lib" prefix
+	z.lib           // cute way to get "zlib" while being terse
+	tiff.lib        // drop extraneous "lib" prefix
+	freetype.lib    // No version number. We have no interest in keeping multiple versions.
 
 
 Build environment and tools
 ---------------------------
-The preferred approach is to use the MS toolchain itself.  Some of these packages come with Visual Studio projects.  Other packages come with nmake scripts, and build best in a command window, often called a "Visual Studio Command Prompt".  When Visual Studio is installed, there sould be a Start menu item under the VS program group for launching such a command prompt.
+The preferred approach is to use the MS toolchain itself. Many of the packages come with CMake scripts, which conveniently generate Visual Studio projects. Best practice is to configure build and install directories separate from (or under) the source directory. Suggested names are "build" and "encap" respectively. The correct libraries and include files can then be copied out of the install tree to the mswin tree. Not all resources need to be copied.
 
-To build 64bit versions, you will need the x64 cross-compiler supplied with Visual Studio Pro (or higher) editions.  Alternately, you can install the latest Windows SDK and select the 64bit toolchain.  You can then run nmake, or launch an express edition from the command line:
+Some packages require the MinGW cross-compiler. The optimal configuration is to use a Linux system (for example, one running inside of VirtualBox on Windows). Avoid MSYS. Also avoid using the original MinGW project. Instead, use both 32-bit and 64-bit resources from the MinGW-w64 fork: http://sourceforge.net/projects/mingw-w64
 
-	vcexpress /useenv
-
-Some of these packages can only be built using the MinGW cross-compiler.  The optimal configuration is to use a Linux system (for example, one running inside of VirtualBox on Windows).  Avoid MSYS.  Also avoid using the original MinGW project.  Instead, use both 32-bit and 64-bit resources from the MinGW-w64 fork:  http://sourceforge.net/projects/mingw-w64
-
-The rest of these instructions assume that "mingw32" and "mingw64" refer to the root directories where the respective tool-chains have been installed.  When cross-compiling, it is important to add the mingw bin directory to the path:
+The rest of these instructions assume that "mingw32" and "mingw64" refer to the root directories where the respective tool-chains have been installed. When cross-compiling, it is important to add the mingw bin directory to the path:
 
 	export PATH={mingw32 or mingw64}/bin:$PATH
 
 
-FL supplied headers
--------------------
-As of this writing, MS does not provide inttypes.h. Instead, there is a minimal substitutes already present in mswin/include. Remove these if MS ever achieves better standards compliance.
-
-
-FreeType
---------
-Solution file is builds/win32/{latest vc}/freetype.sln.  For 64-bit, open the configuration manager and add the x64 platform.  Build the "LIB Release Multithreaded" configuration.
-
-Copy the library to mswin/lib or lib64 and rename:
-
-	objs/win32/{latest vc}/freetype{version}.lib  --> freetype.lib
-
-Copy the contents of the include directory into mswin/include.
-
-
 Pthreads-w32
 ------------
-The original source for pthreads-w32 may be found at http://sourceware.org/pthreads-win32.  However, the site does not seem to be actively maintained, and more current code is available than is posted on the site.  Instructions for either getting the pre-built binaries or building using the MinGW cross-compiler are available at: http://sourceforge.net/apps/trac/mingw-w64/wiki/Compile%20pthreads
+The original source for pthreads-w32 may be found at http://sourceware.org/pthreads-win32. The most current pre-built binaries may be downloaded from that site.
 
-You can download pthreads-20100604.zip (or more recent) and find both pre-built binaries and the source code.
-
-To build with Visual Studio, patch the source per the directions.  In the resulting "pthreads" directory, open pthread.dsw and allow VS to convert it.  You may need to convert the line endings in pthread.dsp for VS to accept it.  For 64-bit, open configuration manager and add the x64 platform.  Select Release mode and compile.
+The MinGW-w64 site also maintains a patch and binaries (http://sourceforge.net/projects/mingw-w64/files/External%20binary%20packages%20%28Win64%20hosted%29/pthreads). These are now older than the ones on the original site, but it is worth comparing to be sure. It is noted there that as of pthreads-w32 2.9.0, the patch may no longer be necessary.
 
 Copy the library to mswin/lib or lib64 and rename:
 
@@ -63,7 +41,7 @@ Copy the DLL to mswin/bin or bin64:
 
 	pthreadVC2.dll
 
-Keep the version suffix in pthreadXXX.dll, since the lib creates a dependency on a DLL with that specific suffix in its name.  You may want to customize the project to compile in a suffix that distinguishes 32 versus 64 bit.
+Keep the version suffix in pthreadXXX.dll, since the lib creates a dependency on a DLL with that specific suffix in its name.
 
 Copy headers to mswin/include:
 
@@ -75,7 +53,6 @@ Copy headers to mswin/include:
 LAPACK and BLAS
 ---------------
 Prebuilt binaries are available from the LAPACK for Windows project:  http://icl.cs.utk.edu/lapack-for-windows/lapack/index.html
-As of this writing, the links for 64-bit binaries are broken, so you need to go straight to the directories.
 
 32-bit:
 
@@ -89,17 +66,17 @@ Copy to mswin/bin:
 	libblas.dll      (never rename a dll)
 	liblapack.dll
 
-64-bit:  The download is buggy.  They will probably fix this at some point...
+64-bit:
 
 Copy to mswin/lib64:
 
-	BLAS.lib        --> blas.lib
-	LAPACK.lib      --> lapack.lib
+	libblas.lib        --> blas.lib
+	liblapack.lib      --> lapack.lib
 
 Copy to mswin/bin64:
 
-	BLAS.dll        --> libblas.dll  (they broke the golden rule given above)
-	LAPACK.dll      --> liblapack.dll
+	libblas.dll
+	liblapack.dll
 	mingw64/x86_64-w64-mingw32/lib/libgfortran-3.dll
 	mingw64/x86_64-w64-mingw32/lib/libquadmath-0.dll
 	mingw64/x86_64-w64-mingw32/lib/libgcc_s_sjlj-1.dll
@@ -128,37 +105,45 @@ Copy to mswin/bin or bin64:
 JPEG
 ----
 Download from http://www.libjpeg-turbo.org/
-This group seems to have taken up the mantel of JPEG development.
+This group seems to have taken up the mantle of JPEG development.
 
-Use CMake gui to generate a Visual Studio project.  SIMD build is broken, so uncheck it.  Select "Release" configuration and build.
+Use CMake gui to generate a Visual Studio project.
+	select the appropriate compiler (32 or 64 bit)
+ 	Uncheck ENABLE_SHARED   (unecessary)
+	Uncheck WITH_SIMD       (SIMD build is broken)
+	Uncheck WITH_TURBOJPEG  (unecessary)
+	Set CMAKE_INSTALL_PREFIX={build dir}/encap
+
+In Visual Studio, select "Release" configuration and build. Ideally, you would build the INSTALL project to set up files in encap. Presently this is broken, such that it never gets to copying the header files.
 
 Copy the library to mswin/lib or lib64, and rename:
 
-	release/turbojpeg-static.lib  --> jpeg.lib
+	jpeg-static.lib --> jpeg.lib
 
 Copy the headers to mswin/include:
 
-	jpeglib.h
-	jconfig.h
-	jmorecfg.h
-	jerror.h
+	{source dir}/jpeglib.h
+	{build dir}/jconfig.h
+	{source dir}/jmorecfg.h
+	{source dir}/jerror.h
 
 
-Z
--
+zlib
+----
 Download from http://zlib.net/
-Use CMake gui to generate Visual Studio project.  Be sure to turn off BUILD_SHARED_LIBS.
+Use CMake gui to generate Visual Studio project. Note: has non-standard CMake script which ignores CMAKE_INSTALL_PREFIX.
+	select the appropriate compiler (32 or 64 bit)
+	set INSTALL_BIN_DIR       = {build dir}/encap/bin
+	set INSTALL_INC_DIR       = {build dir}/encap/include
+	set INSTALL_LIB_DIR       = {build dir}/encap/lib
+	set INSTALL_MAN_DIR       = {build dir}/encap/share/man
+	set INSTALL_PKGCONFIG_DIR = {build dir}/encap/share/pkgconfig
 
-Select "Release" mode.
-For 64-bit build, set /MACHINE:X64 for the zlib project.  (For some reason, CMake doesn't seem to take care of this right.):
-	Select "Properties" on the zlip project.
-	Click "Librarian"
-	Click the dropdown list for "Target Machine" and select correct type.
-Compile.
+In Visual Studio, select "Release" mode and build the INSTALL project.
 
 Copy the library to mswin/lib or lib64 and rename:
 
-	Release/zlib.lib  --> z.lib
+	zlibstatic.lib --> z.lib
 
 Copy the headers to mswin/include:
 
@@ -168,81 +153,101 @@ Copy the headers to mswin/include:
 
 TIFF
 ----
-Build JPEG and Z first, so that TIFF can refer to them.
+Build JPEG and zlib first, so that TIFF can refer to them.
+Download from http://www.remotesensing.org/libtiff
 
-Modify nmake.opt by uncommenting the lines for JPEG and ZLIB support.  Point each one to mswin to get the built libraries.
+Use CMake gui to generate Visual Studio project.
+	select the appropriate compiler (32 or 64 bit)
+	uncheck BUILD_SHARED_LIBS
+	set JPEG_INCLUDE_DIR = {mswin}/include
+	set ZLIB_INCLUDE_DIR = {mswin}/include
+	set JPEG_LIBRARY     = {mswin}/{lib or lib64}/jpeg.lib
+	set ZLIB_LIBRARY     = {mswin}/{lib or lib64}/z.lib
+	set CMAKE_INSTALL_PREFIX = {build dir}/encap
 
-	JPEGDIR = {absolute path to mswin; may need quote marks}
-	JPEG_INCLUDE = -I$(JPEGDIR)/include
-	JPEG_LIB = $(JPEGDIR)/{lib or lib64}/jpeg.lib
+In Visual Studio, select "Release" mode and build the INSTALL project.
 
-	ZLIBDIR = {absolute path to mswin; may need quote marks}
-	ZLIB_INCLUDE = -I$(ZLIBDIR)/include
-	ZLIB_LIB = $(ZLIBDIR)/{lib or lib64}/z.lib
+Copy the library to mswin/lib or lib64:
 
-Open a Visual Studio Command Prompt and type:
+	encap/lib/tiff.lib
 
-	cd {mswin}/build/{tiff project directory}
-	nmake /f Makefile.vc clean    // if you want to clean out a previous build
-	nmake /f Makefile.vc
+Copy header to mswin/include:
 
-Copy the library to mswin/lib or lib64 and rename:
+	encap/include/tiff.h
+	encap/include/tiffconf.h
+	encap/include/tiffio.h
+	encap/include/tiffvers.h
 
-	libtiff/libtiff.lib  --> tiff.lib
-
-(Note that libtiff.lib is a static version, while libtiff_i.lib is an import library associated with libtiff.dll.  The instructions here assume a preference for static linking.)
-
-Copy the headers to mswin/include:
-
-	libtiff/tiff.h
-	libtiff/tiffconf.h
-	libtiff/tiffio.h
-	libtiff/tiffvers.h
+Note: FL does not currently use the C++ I/O interface.
 
 
 GeoTIFF
 -------
 Download from http://download.osgeo.org/geotiff/libgeotiff
 
-Overwrite configuration with vc specific files:
+Use CMake gui to generate Visual Studio project.
+	select the appropriate compiler (32 or 64 bit)
+	set TIFF_INCLUDE_DIR = {mswin}/include
+	set TIFF_LIBRARY     = {mswin}/{lib or lib64}/tiff.lib
+	set CMAKE_INSTALL_PREFIX = {build dir}/encap
+	uncheck WITH_UTILITIES
+	uncheck WITH_PROJ4
 
-	geo_config.h.vc --> geo_config.h
-	makefile.vc     --> makefile
+Delete {source dir}/geo_config.h, as it conflicts with the one generated by CMake.
 
-Edit makefile:
+In Visual Studio, select "Release" mode and build the INSTALL project.
 
-	TIFF_DIR = ..\{tiff project directory}\libtiff
-	PREFIX = {absolute path to mswin directory; may need quotes}
-	BINDIR = $(PREFIX)\{bin or bin64}
-	LIBDIR = $(PREFIX)\{lib or lib64}
+Copy the library to mswin/lib or lib64:
 
-Compile and install with nmake:
+	encap/lib/geotiff.lib
 
-	nmake clean
-	nmake devinstall
-
-Optionally, get rid of mswin/bin/geotiff.dll and mswin/lib/geotiff_i.lib
+Copy encap/include/* to mswin/include.
+Copy encap/share/* to mswin/share.
 
 
 PNG
 ---
 Download from http://www.libpng.org/pub/png
 
-Follow directions in projects/vstudio/readme.txt for setting path to zlib.  Default seems work with the mswin/build structure.
-Open projects/vstudio/libpng.sln.  Select "Release Library" mode.  For 64-bit, open the configuration manager and add the x64 platform.
+Follow directions in projects/vstudio/readme.txt for setting path to zlib. Default seems work with the mswin/build structure. Copy zconf.h from mswin/include back to mswin/build/{zlib dir} so png build can find it.
 
-Build only the libpng project.  Either delete or disable other projects besides "libpng", or use a project-only option from the build menu.
+Open projects/vstudio/libpng.sln. Allow VS to upgrade the projects. Select "Release Library" mode. For 64-bit, open the configuration manager and add the x64 platform.
+
+Build only the libpng project. Either delete or disable other projects besides "libpng", or use a project-only option from the build menu.
 
 Copy the library up to mswin/lib or lib64 and rename:
 
-	projects/vstudio/x64/Release Library/libpng{version}.lib  --> lib64/png.lib
-or	projects/vstudio/Release Library/libpng{version}.lib      --> lib/png.lib
+	projects/vstudio/x64/Release Library/libpng{version}.lib --> lib64/png.lib
+or	projects/vstudio/Release Library/libpng{version}.lib     --> lib/png.lib
 
 Copy the headers up to mswin/include:
 
 	png.h
 	pngconf.h
 	pnglibconf.h
+
+
+FreeType
+--------
+Build PNG and zlib first, so FreeType can make use of them.
+Download from http://www.freetype.org/download.html
+
+Use CMake gui to generate Visual Studio project.
+	select the appropriate compiler (32 or 64 bit)
+	set CMAKE_INSTALL_PREFIX = {build dir}/encap
+	set ZLIB_INCLUDE_DIR = {mswin}/include
+	set ZLIB_LIBRARY     = {mswin}/{lib or lib64}/z.lib
+	(Note: Had to rerun configure at this point, before PNG became visible as an option.)
+	set PNG_INCLUDE_DIR = {mswin}/include
+	set PNG_LIBRARY     = {mswin}/{lib or lib64}/png.lib
+
+In Visual Studio, select "Release" mode and build the INSTALL project.
+
+Copy the library to mswin/lib or lib64.
+
+	freetype.lib
+
+Copy encap/include/freetype2/* into mswin/include. This is effectively removing one level of directory complexity from the freetype include path.
 
 
 FFmpeg

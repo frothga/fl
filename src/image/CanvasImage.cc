@@ -980,10 +980,10 @@ CanvasImage::drawText (const string & text, const Point & point, uint32_t color,
 	int left = (int) roundp (pen.x + slot->bitmap_left);
 	int top  = (int) roundp (pen.y - slot->bitmap_top);
 
-	int xl = max (0,            -left);
-	int xh = min (bitmap.width, width - left) - 1;
-	int yl = max (0,            -top);
-	int yh = min (bitmap.rows,  height - top) - 1;
+	int xl = max (0,                  -left);
+	int xh = min ((int) bitmap.width, width - left) - 1;
+	int yl = max (0,                  -top);
+	int yh = min ((int) bitmap.rows,  height - top) - 1;
 
 	switch (bitmap.pixel_mode)
 	{
