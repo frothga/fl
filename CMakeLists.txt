@@ -9,8 +9,6 @@
 project (FL)
 cmake_minimum_required (VERSION 3.1)
 option (BUILD_SHARED_LIBS "Generate shared rather than static libraries" ON)
-set (CMAKE_CXX_STANDARD 11)
-set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)

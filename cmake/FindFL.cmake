@@ -14,6 +14,9 @@
 
 set (FL_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/.. CACHE PATH "Base directory containing FL installation.  This would be the directory that contains bin, lib, include, etc., for FL.")
 
+set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if    (CMAKE_CL_64)
   set_property (GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS TRUE)
 endif (CMAKE_CL_64)
