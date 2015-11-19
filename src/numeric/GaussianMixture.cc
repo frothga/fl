@@ -28,6 +28,11 @@ using namespace std;
 using namespace fl;
 
 
+const float smallestNormalFloat = 1e-38;
+const float largestNormalFloat = 1e38;
+const float largestDistanceFloat = 87;  ///< = ln (1 / smallestNormalFloat); Actually distance squared, not distance.
+
+
 // class ClusterGauss ---------------------------------------------------------
 
 uint32_t ClusterGauss::serializeVersion = 0;
@@ -36,7 +41,7 @@ ClusterGauss::ClusterGauss ()
 {
 }
 
-ClusterGauss::ClusterGauss (Vector<float> & center, float alpha)
+ClusterGauss::ClusterGauss (const Vector<float> & center, float alpha)
 {
   this->alpha = alpha;
   this->center.copyFrom (center);
@@ -45,7 +50,7 @@ ClusterGauss::ClusterGauss (Vector<float> & center, float alpha)
   prepareInverse ();
 }
 
-ClusterGauss::ClusterGauss (Vector<float> & center, Matrix<float> & covariance, float alpha)
+ClusterGauss::ClusterGauss (const Vector<float> & center, const Matrix<float> & covariance, float alpha)
 {
   this->alpha = alpha;
   this->center.copyFrom (center);
@@ -61,42 +66,56 @@ void
 ClusterGauss::prepareInverse ()
 {
   syev (covariance, eigenvalues, eigenvectors);
-  eigenverse.resize (eigenvectors.columns (), eigenvectors.rows ());
-  float d = 1.0;
-  int scale = 0;
-  for (int i = 0; i < eigenverse.rows (); i++)
+  const int rows = eigenvectors.columns ();  // rows of eigenverse, which is transpose of eigenvectors
+  const int cols = eigenvectors.rows ();
+  eigenverse.resize (rows, cols);
+  float mantissa = 1.0;
+  int exponent = 0;  // determinant=mantissa*2^exponent
+  int dimension = 0;
+  for (int i = 0; i < rows; i++)
   {
 	float s = sqrt (fabs (eigenvalues[i]));
 	if (s == 0)
 	{
-	  for (int j = 0; j < eigenverse.columns (); j++)
+	  for (int j = 0; j < cols; j++)
 	  {
 		eigenverse (i, j) = 0;
 	  }
 	}
 	else
 	{
-	  for (int j = 0; j < eigenverse.columns (); j++)
+	  for (int j = 0; j < cols; j++)
 	  {
 		eigenverse (i, j) = eigenvectors (j, i) / s;
 	  }
 	}
-	d *= TWOPIf * eigenvalues[i];
-	int ts;  // "temp scale"
-	d = frexp (d, &ts);
-	scale += ts;
+
+	// If an eigenvalue is zero, then we are effectively flat in some dimension.
+	// Simply act as if we are a lower-dimensional cluster, so still compute
+	// normalization factor for non-zero values.
+	if (eigenvalues[i] != 0)
+	{
+	  dimension++;
+	  mantissa *= TWOPIf * eigenvalues[i];
+	  int te;  // "temp exponent"
+	  mantissa = frexp (mantissa, &te);
+	  exponent += te;
+	}
   }
-  if (d < 0)
+  if (mantissa < 0)
   {
-	cerr << "warning: there is a negative eigenvalue" << endl;
-	d = fabsf (d);
+	cerr << "warning: negative determinant" << endl;
+	mantissa = -mantissa;
   }
-  det = 0.5 * (logf (d) + scale * logf (2.0));
+  if (dimension == 0) det = 0;  // this cluster is bad
+  else                det = 0.5 * (logf (mantissa) + exponent * logf (2.0));  // when applied below, turns into sqrt(determinant) in denominator of probability expression
 }
 
 float
 ClusterGauss::probability (const Vector<float> & point, float * scale, float * minScale)
 {
+  if (det == 0) return 0;  // can no longer function as a cluster, because our covariance has collapsed
+
   Vector<float> tm = eigenverse * (point - center);
   float d2 = tm.dot (tm);  // d2 is the true distance squared.
   d2 = min (d2, largestNormalFloat);
@@ -149,13 +168,18 @@ GaussianMixture::run (const vector<Vector<float> > & data, const vector<int> & c
 {
   stop = false;
   initialize (data);
+  Matrix<float> member (clusters.size (), data.size ());
+  member.clear ();
+  bestChange = data.size ();
+  bestRadius = INFINITY;
+  lastChange = 0;
+  lastRadius = 0;
 
   // Iterate to convergence.  Convergence condition is that cluster
   // centers are stable and that all features fall within maxSize of
   // nearest cluster center.
   int iteration = 0;
-  bool converged = false;
-  while (! converged  &&  ! stop)
+  while (! stop)
   {
 	cerr << "========================================================" << iteration++ << endl;
 	double timestamp = getTimestamp ();
@@ -166,27 +190,15 @@ GaussianMixture::run (const vector<Vector<float> > & data, const vector<int> & c
 	if (clusterFileName.size ()) Archive (clusterFileName, "w") & *this;
 
 	// Estimation: Generate probability of membership for each datum in each cluster.
-	Matrix<float> member (clusters.size (), data.size ());
-	estimate (data, member, 0, data.size ());
-	if (stop)
-	{
-	  break;
-	}
+	float changes = estimate (data, member, 0, data.size ());
+	if (stop) break;
 
 	// Maximization: Update clusters based on member data.
 	cerr << clusters.size () << endl;
-	float largestChange = 0;
-	for (int i = 0; i < clusters.size (); i++)
-	{
-	  float change = maximize (data, member, i);
-	  largestChange = max (largestChange, change);
-	}
-	if (stop)
-	{
-	  break;
-	}
+	for (int i = 0; i < clusters.size (); i++) maximize (data, member, i);
+	if (stop) break;
 
-	converged = convergence (data, member, largestChange);
+	if (convergence (data, member, changes)) stop = true;
 
 	cerr << "time = " << getTimestamp () - timestamp << endl;
   }
@@ -196,7 +208,7 @@ void
 GaussianMixture::initialize (const vector<Vector<float> > & data)
 {
   // Generate set of random clusters
-  int K = min (initialK, (int) data.size () / 2);
+  int K = min (initialK, (int) data.size ());
   if (clusters.size () < K)
   {
 	cerr << "Creating " << K - clusters.size () << " clusters" << endl;
@@ -207,10 +219,7 @@ GaussianMixture::initialize (const vector<Vector<float> > & data)
 	for (int i = 0; i < data.size (); i++)
     {
 	  center += data[i];
-	  if (i % 1000 == 0)
-	  {
-		cerr << ".";
-	  }
+	  if (i % 1000 == 0) cerr << ".";
 	}
 	cerr << endl;
 	center /= data.size ();
@@ -221,10 +230,7 @@ GaussianMixture::initialize (const vector<Vector<float> > & data)
 	{
 	  Vector<float> delta = data[i] - center;
 	  covariance += delta * ~delta;
-	  if (i % 1000 == 0)
-	  {
-		cerr << ".";
-	  }
+	  if (i % 1000 == 0) cerr << ".";
 	}
 	cerr << endl;
 	covariance /= data.size ();
@@ -233,7 +239,7 @@ cerr << "center: " << center << endl;
 	// Prepare matrix of basis vectors on which to project the cluster centers
 	Matrix<float> eigenvectors;
 	Vector<float> eigenvalues;
-	syev (covariance, eigenvalues, eigenvectors, true);
+	syev (covariance, eigenvalues, eigenvectors);
 	float minev = largestNormalFloat;
 	float maxev = 0;
 	for (int i = 0; i < eigenvalues.rows (); i++)
@@ -249,60 +255,60 @@ cerr << "center: " << center << endl;
 	}
 
 	// Throw points into the space and create clusters around them
-	for (int i = clusters.size (); i < K; i++)
+	if (K == 1)
 	{
-	  Vector<float> point (center.rows ());
-	  for (int row = 0; row < point.rows (); row++)
-	  {
-		point[row] = randGaussian ();
-	  }
-
-	  point = center + eigenvectors * point;
-
-	  ClusterGauss c (point, 1.0 / K);
+	  ClusterGauss c (center, covariance, 1);
 	  clusters.push_back (c);
 	}
+	else
+	{
+	  for (int i = clusters.size (); i < K; i++)
+	  {
+		Vector<float> point (center.rows ());
+		for (int row = 0; row < point.rows (); row++)
+		{
+		  point[row] = randGaussian ();
+		}
+
+		point = center + eigenvectors * point;
+
+		ClusterGauss c (point, covariance, 1.0 / K);
+		clusters.push_back (c);
+	  }
+	}
   }
-  else
+  else if (clusters.size () > 0)
   {
 	cerr << "GaussianMixture already initialized with:" << endl;
 	cerr << "  clusters = " << clusters.size () << endl;
 	cerr << "  maxSize  = " << maxSize << endl;
 	cerr << "  minSize  = " << minSize << endl;
 	cerr << "  maxK     = " << maxK << endl;
-	cerr << "  changes: ";
-	for (int i = 0; i < changes.size (); i++)
-	{
-	  cerr << changes[i] << " ";
-	}
-	cerr << endl;
-	cerr << "  velocities: ";
-	for (int i = 0; i < velocities.size (); i++)
-	{
-	  cerr << velocities[i] << " ";
-	}
-	cerr << endl;
   }
 }
 
-void
+float
 GaussianMixture::estimate (const vector<Vector<float> > & data, Matrix<float> & member, int jbegin, int jend)
 {
+  float changes = 0;
+
   for (int j = jbegin; j < jend; j++)
   {
     // TODO: The current approach to normalization below forces everything
 	// to be calculated twice.  Instead, we should remember the "scale" value
 	// for each feature between calls and adapt it as we go.
-	float sum = 0;
 	float scale = 0;
 	float minScale = largestNormalFloat;
+	Vector<float> newMembership (clusters.size ());
+	MatrixResult<float> oldMembership = member.column (j);
 	for (int i = 0; i < clusters.size (); i++)
 	{
 	  float value = clusters[i].probability (data[j], &scale, &minScale);
-	  member (i, j) = value;
-	  sum += value;
+	  newMembership[i] = value;
 	}
+
 	// The following case compensates for lack of numerical resolution.
+	float sum = newMembership.norm (1);
 	if (sum <= smallestNormalFloat * (clusters.size () + 1)  ||  isinf (sum)  ||  isnan (sum))
 	{
 	  const float safetyMargin = 10;
@@ -314,23 +320,30 @@ GaussianMixture::estimate (const vector<Vector<float> > & data, Matrix<float> & 
 	  {
 		scale += safetyMargin;
 	  }
-	  sum = 0;
 	  for (int i = 0; i < clusters.size (); i++)
 	  {
 		float value = clusters[i].probability (data[j], &scale);
-		member (i, j) = value;
-		sum += value;
+		newMembership[i] = value;
 	  }
 	}
-	member.column (j) /= sum;
+
+	newMembership /= newMembership.norm (1); // Divide by sum (1-norm) rather than 2-norm, because we want a probability distribution (sum to 1) rather than a unit vector.
+	float oldNorm = oldMembership.norm (2);
+	if (oldNorm == 0) changes += 1;
+	else              changes += 1 - oldMembership.dot (newMembership) / (oldNorm * newMembership.norm (2));
+	oldMembership = newMembership;
   }
+
+  return changes;
 }
 
-float
+void
 GaussianMixture::maximize (const vector<Vector<float> > & data, const Matrix<float> & member, int i)
 {
+  if (clusters[i].det == 0) return;  // no point in maintaining a cluster that has collapsed
+
   // Calculute new cluster center
-  Vector<float> center (data[0].rows ());
+  Vector<float> & center = clusters[i].center;
   center.clear ();
   float sum = 0;
   for (int j = 0; j < data.size (); j++)
@@ -354,80 +367,55 @@ GaussianMixture::maximize (const vector<Vector<float> > & data, const Matrix<flo
   for (int j = 0; j < data.size (); j++)
   {
 	Vector<float> delta = data[j] - center;
-	covariance += delta * ~delta *= member (i, j);
+	delta *= member(i,j);
+	covariance += delta * ~delta;
   }
   covariance /= sum;
   if (covariance.norm (1) == 0)
   {
-	cerr << "covariance went to zero; setting to I * " << smallestNormalFloat << endl;
-	covariance.identity (smallestNormalFloat);
+	cerr << "warning: covariance went to zero; computing fallback value" << endl;
+	// Most likely cause is not enough data to compute covariance.
+	// This can happen, for example, if the cluster has effectively only 1 member.
+	// Solution is to create a sphere that reaches half way to nearest cluster,
+	// so this cluster can claim a reasonable share of surrounding points.
+	float smallestDistance = INFINITY;
+	for (int j = 0; j < clusters.size (); j++)
+	{
+	  if (j == i) continue;  // don't compare to ourselves!
+	  smallestDistance = min (smallestDistance, (center - clusters[j].center).sumSquares ());
+	}
+	covariance.identity (smallestDistance / 4);  // (half of Euclidean distance)^2
   }
 
-  // Record changes to cluster.  While we are at it, detect if we have
-  // converged.
-  float result = (center - clusters[i].center).norm (2);
-  clusters[i].center = center;
   clusters[i].prepareInverse ();
-
-  return result;
 }
 
 bool
-GaussianMixture::convergence (const vector<Vector<float> > & data, const Matrix<float> & member, float largestChange)
+GaussianMixture::convergence (const vector<Vector<float> > & data, Matrix<float> & member, float changes)
 {
+  // Evaluate if we have converged under the current cluster arrangement
+  cerr << "changes = " << changes << " " << bestChange << " " << lastChange << endl;
   bool converged = false;
-
-  // Analyze movement data to detect convergence
-  cerr << "change = " << largestChange << "\t";
-  largestChange /= maxSize * sqrtf ((float) data[0].rows ());
-  cerr << largestChange << "\t";
-  // Calculate velocity
-  changes.push_back (largestChange);
-  if (changes.size () > 4)
-  {
-	changes.erase (changes.begin ()); // Limit size of history
-	float xbar  = (changes.size () - 1) / 2.0;
-	float sxx   = 0;
-	float nybar = 0;
-	float sxy   = 0;
-	for (int x = 0; x < changes.size (); x++)
-	{
-	  sxx   += powf (x - xbar, 2);
-	  nybar += changes[x];
-	  sxy   += x * changes[x];
-	}
-	sxy -= xbar * nybar;
-	float velocity = sxy / sxx;
-	cerr << velocity << "\t";
-
-	// Calculate acceleration
-	velocities.push_back (velocity);
-	if (velocities.size () > 4)
-	{
-	  velocities.erase (velocities.begin ());
-	  xbar  = (velocities.size () - 1) / 2.0;
-	  sxx   = 0;
-	  nybar = 0;
-	  sxy   = 0;
-	  for (int x = 0; x < velocities.size (); x++)
-	  {
-		sxx   += powf (x - xbar, 2);
-		nybar += velocities[x];
-		sxy   += x * velocities[x];
-	  }
-	  sxy -= xbar * nybar;
-	  float acceleration = sxy / sxx;
-	  cerr << acceleration;
-	  if (fabs (acceleration) < 1e-4  &&  velocity > -1e-2)
-	  {
-		converged = true;
-	  }
-	}
-  }
-  cerr << endl;
-  if (largestChange < 1e-4)
+  if (changes < 1e-4)  // A "change" value of 1 is equivalent to one data item moving entirely from one cluster to another in KMeans.
   {
 	converged = true;
+  }
+  else if (changes < bestChange)
+  {
+	bestChange = changes;
+	lastChange = 0;
+  }
+  else if (++lastChange > 3) converged = true;
+
+  // Purge collapsed clusters
+  for (int i = clusters.size () - 1; i >= 0; i--)
+  {
+	if (clusters[i].det == 0)
+	{
+	  clusters.erase (clusters.begin () + i);
+	  if (i < member.rows () - 1) member.region (i, 0) = member.region (i+1, 0);
+	  member.rows_--;
+	}
   }
 
   // Change number of clusters, if necessary
@@ -437,7 +425,7 @@ GaussianMixture::convergence (const vector<Vector<float> > & data, const Matrix<
 
 	// The basic approach is to check the eigenvalues of each cluster
 	// to see if the shape of the cluster exceeds the arbitrary limit
-	// maxSize.  If so, pick the worst offending cluster and  split
+	// maxSize.  If so, pick the worst offending cluster and split
 	// it into two along the dominant axis.
 	float largestEigenvalue = 0;
 	Vector<float> largestEigenvector (data[0].rows ());
@@ -463,51 +451,68 @@ GaussianMixture::convergence (const vector<Vector<float> > & data, const Matrix<
 	largestEigenvalue = sqrtf (largestEigenvalue);
 	if (largestEigenvalue > maxSize  &&  clusters.size () < maxK)
 	{
-	  Vector<float> le;
-	  le.copyFrom (largestEigenvector);
-	  largestEigenvector *= largestEigenvalue / 2;  // largestEigenvector is already unit length
-	  le                 *= -largestEigenvalue / 2;
-	  largestEigenvector += clusters[largestCluster].center;
-	  clusters[largestCluster].center += le;
-	  clusters[largestCluster].alpha /= 2;
-	  ClusterGauss c (largestEigenvector, clusters[largestCluster].covariance, clusters[largestCluster].alpha);
-	  clusters.push_back (c);
-	  cerr << "  splitting: " << largestCluster << " " << largestEigenvalue << endl; // " "; print_vector (c.center);
-	  converged = false;
+	  if (largestEigenvalue < bestRadius)
+	  {
+		bestRadius = largestEigenvalue;
+		lastRadius = 0;
+	  }
+	  else lastRadius++;
+
+	  if (lastRadius < 3)
+	  {
+		converged = false;  // change in # of clusters, so keep going
+		cerr << "  splitting: " << largestCluster << " " << largestEigenvalue << " " << bestRadius << " " << lastRadius << endl;
+
+		Vector<float> half;
+		half.copyFrom (largestEigenvector);
+		half *= largestEigenvalue / 2;  // largestEigenvector is already unit length
+		clusters[largestCluster].alpha /= 2;
+		clusters.push_back (ClusterGauss (clusters[largestCluster].center - half, clusters[largestCluster].covariance, clusters[largestCluster].alpha));
+		clusters[largestCluster].center += half;
+
+		int newRows = clusters.size ();
+		Matrix<float> newMember (newRows, member.columns ());
+		newMember.region (0, 0) = member;
+		newMember.row (newRows - 1).clear ();
+		member = newMember;
+	  }
 	}
 
 	// Also check if we need to merge clusters.
 	// Merge when clusters are closer then minSize to each other by Euclidean distance.
 	int remove = -1;
 	int merge;
-	float closestDistance = largestNormalFloat;
+	float closestGap = largestNormalFloat;
 	for (int i = 0; i < clusters.size (); i++)
 	{
 	  for (int j = i + 1; j < clusters.size (); j++)
 	  {
-		float distance = (clusters[i].center - clusters[j].center).norm (2);
-		if (distance < minSize  &&  distance < closestDistance)
+		float gap = (clusters[i].center - clusters[j].center).norm (2);
+		if (gap < minSize  &&  gap < closestGap)
 		{
 		  merge = i;
 		  remove = j;
-		  closestDistance = distance;
+		  closestGap = gap;
 		}
 	  }
 	}
 	if (remove > -1)
 	{
-	  cerr << "  merging: " << merge << " " << remove << " " << closestDistance << endl;
 	  converged = false;
+	  cerr << "  merging: " << merge << " " << remove << " " << closestGap << endl;
+
 	  // Cluster "merge" claims all of cluster "remove"s points.
-	  if (remove < member.rows ())  // Test is necessary because "remove" could be newly created cluster (see above) with no row in member yet.
-	  {
-		for (int j = 0; j < data.size (); j++)
-		{
-		  member (merge, j) += member (remove, j);
-		}
-		maximize (data, member, merge);
-	  }
+	  member.row (merge) += member.row (remove);
+	  if (remove < member.rows () - 1) member.region (remove, 0) = member.region (remove+1, 0);  // in-place move
+	  member.rows_--;  // hack into matrix structure to claim smaller size; TODO: create functions in Matrix interface for adding/removing rows/columns
+	  maximize (data, member, merge);
 	  clusters.erase (clusters.begin () + remove);
+	}
+
+	if (! converged)
+	{
+	  bestChange = data.size ();
+	  lastChange = 0;
 	}
   }
 
@@ -557,21 +562,21 @@ GaussianMixture::representative (int group)
 void
 GaussianMixture::serialize (Archive & archive, uint32_t version)
 {
-  cerr << "top of write" << endl;
   if (archive.out) clusterFileTime = time (NULL);
 
   archive & *((ClusterMethod *) this);
 
   archive & maxSize;
   archive & minSize;
-  initialK = clusters.size ();
   archive & initialK;
   archive & maxK;
 
   archive & clusters;
-  archive & changes;
-  archive & velocities;
+
+  archive & bestChange;
+  archive & bestRadius;
+  archive & lastChange;
+  archive & lastRadius;
 
   if (archive.out) clusterFileSize = archive.out->tellp ();
-  cerr << "bottom of write" << endl;
 }

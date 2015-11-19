@@ -834,7 +834,7 @@ namespace fl
   {
 	if (that.classID () & MatrixStridedID)
 	{
-	  this->operator = ((const MatrixStrided<T> &) that);
+	  this->operator = ((const MatrixStrided<T> &) that);  // compiler-defined operator= will copy all fields
 	}
 	else
 	{

@@ -254,8 +254,8 @@ namespace fl
   {
   public:
 	MatrixResult (MatrixAbstract<T> * result) : result (result)                {}
-	MatrixResult (const MatrixResult<T> & that) : result (that.result)         {const_cast<MatrixResult &> (that).result = 0;}
-	virtual ~MatrixResult ()                                                   {if (result) delete result;}
+	MatrixResult (const MatrixResult<T> & that) : result (that.result)         {const_cast<MatrixResult &> (that).result = 0;}  // TODO: make this into a move ctor
+	virtual ~MatrixResult ()                                                   {delete result;}
 	virtual uint32_t classID () const                                          {return MatrixAbstractID | MatrixResultID;}
 
 	operator MatrixAbstract<T> & () const                                      {return *result;}

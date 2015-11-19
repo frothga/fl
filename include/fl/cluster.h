@@ -75,8 +75,8 @@ namespace fl
   {
   public:
 	ClusterGauss ();
-	ClusterGauss (Vector<float> & center, float alpha = 1.0);
-	ClusterGauss (Vector<float> & center, Matrix<float> & covariance, float alpha = 1.0);
+	ClusterGauss (const Vector<float> & center,                                   float alpha = 1.0);
+	ClusterGauss (const Vector<float> & center, const Matrix<float> & covariance, float alpha = 1.0);
 	~ClusterGauss ();
 
 	void prepareInverse ();  ///< When covariance is changed, update cached information necessary to compute Mahalanobis distance.
@@ -109,10 +109,10 @@ namespace fl
 
 	void serialize (Archive & archive, uint32_t version);
 
-	void initialize (const std::vector< Vector<float> > & data);
-	void estimate (const std::vector< Vector<float> > & data, Matrix<float> & member, int jbegin, int jend);
-	float maximize (const std::vector< Vector<float> > & data, const Matrix<float> & member, int i);
-	bool convergence (const std::vector< Vector<float> > & data, const Matrix<float> & member, float largestChange);
+	void  initialize  (const std::vector< Vector<float> > & data);
+	float estimate    (const std::vector< Vector<float> > & data,       Matrix<float> & member, int jbegin, int jend);
+	void  maximize    (const std::vector< Vector<float> > & data, const Matrix<float> & member, int i);
+	bool  convergence (const std::vector< Vector<float> > & data,       Matrix<float> & member, float changes);
 
 	// State of clustering process
 	float maxSize;  ///< Largest length of dominant axis of covariance matrix.  If any cluster exceeds this value, create a new cluster.
@@ -120,54 +120,16 @@ namespace fl
 	int initialK;  ///< Lower bound on expected number of clusters.
 	int maxK;  ///< Largest number of clusters allowed.
 	std::vector<ClusterGauss> clusters;
-	std::vector<float> changes;
-	std::vector<float> velocities;
+	float bestChange;
+	float bestRadius;
+	int   lastChange;
+	int   lastRadius;
 
 	// Control information
 	std::string clusterFileName;
 	time_t clusterFileTime;  ///< Time in seconds
 	off_t clusterFileSize;
   };
-
-# ifdef HAVE_PTHREAD
-  class SHARED GaussianMixtureParallel : public GaussianMixture, public Listener
-  {
-  public:
-	GaussianMixtureParallel (float maxSize, float minSize, int initialK, int maxK, const std::string & clusterFileName = "");
-	GaussianMixtureParallel (const std::string & clusterFileName = "");
-
-	virtual void run (const std::vector< Vector<float> > & data, const std::vector<int> & classes);
-	using ClusterMethod::run;
-	virtual void processConnection (fl::SocketStream & ss, struct sockaddr_in & clientAddress);
-
-	static void * listenThread (void * arg);
-	void client (std::string serverName);
-
-	// Shared state for parallel processing
-	int iteration;
-	const std::vector<Vector<float> > * data;
-	Matrix<float> member;
-	float largestChange;
-	enum EMstate
-	{
-	  initializing,
-	  estimating,
-	  maximizing,
-	  checking
-	};
-	EMstate          state;
-	pthread_mutex_t  stateLock;  ///< Used for all access to shared structures
-	std::vector<int> workUnits;  ///< List of current tasks, identified only by ints.  Basically, these are positions in a well-defined loop.
-	int              unitsPending;  ///< Number of workUnits still being worked on.  Allows for error recovery by monitoring completion as a separate concept from tasks claimed by a thread.
-  };
-# endif
-
-  // Find a more elegant way to disseminate these constants!
-#define workUnitSize 1000
-#define portNumber   60000
-  const float smallestNormalFloat = 1e-38;
-  const float largestNormalFloat = 1e38;
-  const float largestDistanceFloat = 87;  ///< = ln (1 / smallestNormalFloat); Actually distance squared, not distance.
 
 
   // KMeans -------------------------------------------------------------------

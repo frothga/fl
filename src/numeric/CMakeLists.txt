@@ -57,9 +57,6 @@ if (LAPACK_FOUND)
     GaussianMixture.cc
     SVM.cc
   )
-  if (CMAKE_USE_PTHREADS_INIT)
-    set (maybeCluster ${maybeCluster} GaussianMixtureParallel.cc)
-  endif (CMAKE_USE_PTHREADS_INIT)
 
   set (maybeDimensionality
     PCA.cc
