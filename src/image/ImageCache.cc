@@ -165,10 +165,14 @@ ImageCache::getClosest (ImageCacheEntry * query)
   float di = INFINITY;
   float dj = INFINITY;
   pthread_mutex_lock (&mutex);
-  cacheType::iterator i = cache.lower_bound (query);
-  cacheType::iterator j = i--;  // postdecrement, so j comes after i in sequence
-  if (i != cache.end ()) di = query->distance (**i);
-  if (j != cache.end ()) dj = query->distance (**j);
+  cacheType::iterator j = cache.lower_bound (query);
+  cacheType::iterator i = j;  // i is supposed to come before j, but only if j is a valid entry
+  if (j != cache.end ())
+  {
+	dj = query->distance (**j);
+	i--;  // one entry before j
+	if (i != cache.end ()) di = query->distance (**i);
+  }
   pthread_mutex_unlock (&mutex);
   if      (dj < di)        result = *j;
   else if (di != INFINITY) result = *i;
@@ -227,7 +231,7 @@ EntryPyramid::EntryPyramid (const Image & that, float scale)
 int
 EntryPyramid::octave (float scale, float base)
 {
-  float octave = log (scale / base) / M_LN2;
+  float octave = log2 (scale / base);
   int o = (int) floor (octave);
   if (o + 1 - octave < FLT_EPSILON) o++;  // If it was extremely close to, but just short of, and octave boundary then don't drop to lower octave.
   return o;
