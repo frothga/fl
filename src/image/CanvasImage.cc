@@ -154,7 +154,9 @@ CanvasImage::scanCircle (const Point & p, double radius, uint32_t color)
 {
   if (radius == 0.5)
   {
-	setRGBA ((int) roundp (p.x), (int) roundp (p.y), color);
+	int x = (int) roundp (p.x);
+	int y = (int) roundp (p.y);
+	if (x >= 0  &&  y >= 0  &&  x < width  &&  y < height) setRGBA (x, y, color);
 	return;
   }
 
