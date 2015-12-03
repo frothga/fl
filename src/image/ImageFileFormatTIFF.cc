@@ -44,6 +44,22 @@ using namespace std;
 using namespace fl;
 
 
+// Extend TIFF tags -----------------------------------------------------------
+
+static const TIFFFieldInfo privateFieldInfo[] =
+{
+  {65000, TIFF_VARIABLE, TIFF_VARIABLE, TIFF_ASCII, FIELD_CUSTOM, 1, 0, (char *) "flMetadata"}
+};
+
+static TIFFExtendProc previousExtender = 0;
+
+static void registerCustomTags (TIFF * tif)
+{
+  TIFFMergeFieldInfo (tif, privateFieldInfo, sizeof (privateFieldInfo) / sizeof (privateFieldInfo[0]));
+  if (previousExtender) (*previousExtender)(tif);
+}
+
+
 // class ImageFileDelegateTIFF ------------------------------------------------
 
 class ImageFileDelegateTIFF : public ImageFileDelegate
@@ -69,11 +85,14 @@ public:
   static int     tiffMap   (thandle_t handle, tdata_t * data, toff_t * offset);
   static void    tiffUnmap (thandle_t handle, tdata_t data, toff_t offset);
 
+  static void tiffErrorHandler (const char * module, const char * format, va_list arguments);
+
   istream * in;
   ostream * out;
   bool ownStream;
   toff_t startPosition;
   bool bigtiff;
+  NamedValueSet metadata;
 
   TIFF * tif;
 # ifdef HAVE_GEOTIFF
@@ -141,6 +160,15 @@ ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
 	  GTIFFree (gtif);
 	}
 #   endif
+
+	if (metadata.namedValues.size () > 0)
+	{
+	  string value;
+	  metadata.write (value);
+	  const TIFFField * fi = TIFFFieldWithName (tif, "flMetadata");
+	  TIFFSetField (tif, TIFFFieldTag (fi), (char *) value.c_str ());
+	}
+
 	TIFFClose (tif);
   }
 
@@ -864,9 +892,8 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
   {
 	if (TIFFFieldDataType (fi) == TIFF_ASCII)
 	{
-	  uint16 count;
 	  char * v;
-	  if (TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &count, &v)) value = v;
+	  if (TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &v)) value = v;
 	  return;
 	}
 	if (name == "Compression")
@@ -1051,8 +1078,19 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 		return;
 	  }
 	}
+
+	return;
   }
 # endif
+
+  // Final resort: see if the key is in our custom tag for generic metadata
+  if (metadata.namedValues.size () == 0)
+  {
+	const TIFFField * fi = TIFFFieldWithName (tif, "flMetadata");
+	char * v;
+	if (TIFFGetField (tif, TIFFFieldTag (fi), &v)) metadata.read (v);
+  }
+  metadata.get (name, value);
 }
 
 #ifdef HAVE_GEOTIFF
@@ -1332,8 +1370,13 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 		GTIFKeySet (gtif, (geokey_t) key, TYPE_ASCII, value.size (), value.c_str ());
 	  }
 	}
+
+	return;
   }
 # endif
+
+  // All unrecognized tags get stashed in nameValues
+  metadata.set (name, value);
 }
 
 tsize_t
@@ -1434,6 +1477,15 @@ ImageFileDelegateTIFF::tiffUnmap (thandle_t handle, tdata_t data, toff_t offset)
 {
 }
 
+void
+ImageFileDelegateTIFF::tiffErrorHandler (const char * module, const char * format, va_list arguments)
+{
+  if (module  &&  strcmp (module, "TIFFFieldWithName") == 0  &&  strncmp (format, "Internal error, unknown tag", 27) == 0) return;
+  if (module) fprintf (stderr, "%s: ", module);
+  vfprintf (stderr, format, arguments);
+  cerr << endl;
+}
+
 
 // class ImageFileFormatTIFF --------------------------------------------------
 
@@ -1451,7 +1503,13 @@ ImageFileFormatTIFF::use ()
 ImageFileFormatTIFF::ImageFileFormatTIFF ()
 {
   TIFFSetWarningHandler (0);  // suppress warning messagse
-  //TIFFSetErrorHandler (0);  // don't suppress error messages
+  TIFFSetErrorHandler (ImageFileDelegateTIFF::tiffErrorHandler);  // filter error messages
+
+  // Install our extender
+  // Online examples use a boolean flag to guard against multiple installs,
+  // but we theoretically don't need one, because ImageFileFormats are
+  // singletons and this constructor should only be called once.
+  previousExtender = TIFFSetTagExtender (registerCustomTags);
 
 # ifdef HAVE_GEOTIFF
   XTIFFInitialize ();

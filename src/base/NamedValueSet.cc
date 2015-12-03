@@ -10,6 +10,10 @@ for details.
 
 
 #include "fl/metadata.h"
+#include "fl/string.h"
+
+#include <sstream>
+
 
 using namespace fl;
 using namespace std;
@@ -18,6 +22,12 @@ using namespace std;
 // class NamedValueSet --------------------------------------------------------
 
 uint32_t NamedValueSet::serializeVersion = 0;
+
+void
+NamedValueSet::clear ()
+{
+  namedValues.clear ();
+}
 
 void
 NamedValueSet::serialize (Archive & archive, uint32_t version)
@@ -61,10 +71,76 @@ NamedValueSet::set (const string & name, const string & value)
   else                          it->second = value;
 }
 
+void
+NamedValueSet::read (istream & stream)
+{
+  while (stream.good ())
+  {
+	string line;
+	getline (stream, line);
+
+	// Check for multi-line literal, which is delimited by double-quote marks.
+	int first = line.find_first_of ('"');
+	int last  = line.find_last_of  ('"');
+	if (first != string::npos)
+	{
+	  line = line.erase (first, 1);
+	  if (last != first)
+	  {
+		line.erase (last - 1, 1);
+	  }
+	  else
+	  {
+		line += '\n';
+		while (true)
+		{
+		  char c;
+		  stream.get (c);
+		  if (! stream.good ()  ||  c == '"') break;
+		  line += c;
+		}
+	  }
+	}
+
+	string name;
+	string value;
+	split (line, "#", name, value);
+	trim (name);
+	if (name.size () > 0)
+	{
+	  split (name, "=", name, value);
+	  trim (name);
+	  trim (value);
+	  set (name, value);
+	}
+  }
+}
+
+void
+NamedValueSet::read (const string & text)
+{
+  istringstream iss (text);
+  read (iss);
+}
+
+void
+NamedValueSet::write (ostream & stream) const
+{
+  map<string, string>::const_iterator it;
+  for (it = namedValues.begin (); it != namedValues.end (); it++) stream << it->first << " = " << it->second << endl;
+}
+
+void
+NamedValueSet::write (string & text) const
+{
+  ostringstream oss;
+  write (oss);
+  text = oss.str ();
+}
+
 ostream &
 fl::operator << (ostream & out, const NamedValueSet & data)
 {
-  map<string, string>::const_iterator it;
-  for (it = data.namedValues.begin (); it != data.namedValues.end (); it++) out << it->first << " = " << it->second << endl;
+  data.write (out);
   return out;
 }

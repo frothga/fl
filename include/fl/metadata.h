@@ -80,6 +80,8 @@ namespace fl
   class SHARED NamedValueSet : public Metadata
   {
   public:
+	void clear ();  ///< Remove any existing entries
+
 	void serialize (fl::Archive & archive, uint32_t version);
 	static uint32_t serializeVersion;
 
@@ -87,6 +89,11 @@ namespace fl
 	virtual void set (const std::string & name, const std::string & value);
 	using Metadata::get;
 	using Metadata::set;
+
+	void read  (std::istream & stream);  ///< Treats stream as a plain text file (not the same as serialization). Extracts newline-delimited name=value pairs. Also supports multi-line quoted text values.
+	void read  (const std::string & text);  ///< Convenience function for calling read(istringstream).
+	void write (std::ostream & stream) const;  ///< Outputs entries to plain text (not the same as serialization).
+	void write (std::string & text) const;  ///< Convenience function for calling write(ostringstream).
 
 	std::map<std::string, std::string> namedValues;
   };

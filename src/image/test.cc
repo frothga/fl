@@ -1463,6 +1463,7 @@ testImageFileFormat ()
   {
 	ImageFile outFile (dataDir + "test.tif", "w");
 	outFile.set ("Compression", "LZW");
+	outFile.set ("FL arbitrary tag name", "yes, this really got set");
 	outFile.write (test);
   }
   {
@@ -1473,6 +1474,8 @@ testImageFileFormat ()
 	string value;
 	inFile.get ("Compression", value);
 	if (value != "LZW") throw "TIFF did not set compression as requested";
+	inFile.get ("FL arbitrary tag name", value);
+	if (value != "yes, this really got set") throw "TIFF did not record arbitrary metadata";
 	cout << "TIFF passes" << endl;
   }
 # endif
