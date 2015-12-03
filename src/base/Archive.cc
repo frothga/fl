@@ -55,7 +55,7 @@ Archive::~Archive ()
 void
 Archive::open (istream & in, bool ownStream)
 {
-  close ();
+  if (in || out) close ();
   this->in        = &in;
   this->ownStream = ownStream;
 }
@@ -63,7 +63,7 @@ Archive::open (istream & in, bool ownStream)
 void
 Archive::open (ostream & out, bool ownStream)
 {
-  close ();
+  if (in || out) close ();
   this->out       = &out;
   this->ownStream = ownStream;
 }
@@ -71,7 +71,7 @@ Archive::open (ostream & out, bool ownStream)
 void
 Archive::open (const string & fileName, const string & mode)
 {
-  close ();
+  if (in || out) close ();
   if (mode == "r")
   {
 	in        = new ifstream (fileName.c_str (), ios::binary);
@@ -86,11 +86,23 @@ Archive::open (const string & fileName, const string & mode)
 }
 
 void
-Archive::close ()
+Archive::close (bool reuseRegistrations)
 {
   pointersIn .clear ();
   pointersOut.clear ();
   classesIn  .clear ();
+
+  map<string, ClassDescription *>::iterator it;
+  if (reuseRegistrations)
+  {
+	for (it = classesOut.begin (); it != classesOut.end (); it++) it->second->index = 0xFFFFFFFF;  // reset class index, since it may be different in next serialization
+  }
+  else
+  {
+	for (it = classesOut.begin (); it != classesOut.end (); it++) delete it->second;
+	classesOut.clear ();
+	alias     .clear ();
+  }
 
   if (ownStream)
   {
@@ -100,17 +112,6 @@ Archive::close ()
   in  = 0;
   out = 0;
   ownStream = false;
-}
-
-void
-Archive::clear ()
-{
-  close ();  // Because once we delete the class descriptions, some semantics of the current stream may be lost.
-
-  map<string, ClassDescription *>::iterator it;
-  for (it = classesOut.begin (); it != classesOut.end (); it++) delete it->second;
-  classesOut .clear ();
-  alias      .clear ();
 }
 
 template<>
