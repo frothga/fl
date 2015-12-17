@@ -57,7 +57,7 @@ namespace fl
 
 	virtual void      generate (ImageCache & cache);  ///< Fill the image member.  Note on thread-safety: cache always locks its mutex before calling this function.
 	virtual ptrdiff_t memory   () const;  ///< @return an estimate of how many bytes this entry uses.  Need only account for large things like the pixel buffer itself.
-	virtual bool      compare  (const ImageCacheEntry & that) const;
+	virtual bool      compare  (const ImageCacheEntry & that) const;  ///< @return true if this < that. IE: true if this comes before that. false if this comes after that OR this sorts the same as that.
 	virtual float     distance (const ImageCacheEntry & that) const;  ///< Returns zero if that is exactly same as this, otherwise a positive number that indicates how different they are.  Returns INFINITY if that is not same class as this, or otherwise not substitutable.
 	virtual void      print    (std::ostream & stream) const;
 
@@ -76,7 +76,9 @@ namespace fl
 	void clear ();
 	void clear (ImageCacheEntry * query);  ///< Remove all entries that have equivalent ordering to query.  query itself will also be deleted.
 
-	void setOriginal (const Image & image, float scale = 0.5f);  ///< Compares image to original.  If same, does nothing.  If different, flushes cache and sets new original.
+	void setOriginal (const Image & image, float scale = 0.5f);  ///< Compares image to original. If same, does nothing. If different, flushes cache and sets new original.
+	void setOriginal (EntryPyramid * entry);                     ///< If entry is already in cache, simply sets original=entry. Otherwise, flushes cache first.
+
 	ImageCacheEntry * get        (ImageCacheEntry * query);  ///< Ensures that the desired datum exists.  Assumes ownership of the query object.  Result will be equivalent, but may or may not be the same as the query object.
 	ImageCacheEntry * getClosest (ImageCacheEntry * query);  ///< Returns entry with smallest distance from query, or null if no acceptable entry exists.  Always deletes query before returning.
 	ImageCacheEntry * getLE      (ImageCacheEntry * query);  ///< Returns entry that satisfies the query, or the closest one for which entry < query, or null if no acceptable entry exists.  Always deletes query before returning.

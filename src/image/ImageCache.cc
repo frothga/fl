@@ -113,7 +113,8 @@ ImageCache::clear (ImageCacheEntry * query)
   while (i != cache.end ())
   {
 	memory -= (*i)->memory ();
-	if (*i != query) delete *i;
+	if (*i == original) original = 0;  // don't keep pointer to something we delete
+	if (*i != query) delete *i;  // query itself will be deleted below; this avoids double free
 	cache.erase (i);
 	i = cache.find (query);
   }
@@ -125,18 +126,24 @@ void
 ImageCache::setOriginal (const Image & image, float scale)
 {
   pthread_mutex_lock (&mutex);
-  if (original)
+  if (original == 0  ||  original->image != image  ||  original->scale != scale)
   {
-	if (original->image == image)  // ignore scale in this case
-	{
-	  pthread_mutex_unlock (&mutex);
-	  return;
-	}
-	clear ();
+	setOriginal (new EntryPyramid (image, scale));
   }
-  original = new EntryPyramid (image, scale);
-  cache.insert (original);
-  memory += original->memory ();
+  pthread_mutex_unlock (&mutex);
+}
+
+void
+ImageCache::setOriginal (EntryPyramid * entry)
+{
+  pthread_mutex_lock (&mutex);
+  if (cache.find (entry) == cache.end ())
+  {
+	clear ();
+	cache.insert (entry);
+	memory = entry->memory ();
+  }
+  original = entry;
   pthread_mutex_unlock (&mutex);
 }
 
@@ -307,7 +314,7 @@ EntryPyramid::generate (ImageCache & cache)
 	{
 	  float originalScale = cache.original->scale;
 	  int   originalWidth = cache.original->image.width;
-	  float octave     = log (scale / originalScale) / M_LN2;
+	  float octave     = log2 (scale / originalScale);
 	  float nextOctave = floor (octave);  // quantize to the nearest containing octave
 	  float ratio      = pow (2, octave);
 	  float nextRatio  = pow (2, nextOctave);
