@@ -1098,7 +1098,7 @@ testCluster ()
 class VecInt : public Vector<float>
 {
 public:
-  VecInt (const Vector<float> & A) : Vector (A) {}
+  VecInt (const Vector<float> & A) : Vector<float> (A) {}
   int rank;
 };
 
