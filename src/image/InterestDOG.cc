@@ -89,9 +89,9 @@ InterestDOG::fitQuadratic (ImageOf<float> & dog0, ImageOf<float> & dog1, ImageOf
   g[2] = (dog1(x,  y+1) - dog1(x,  y-1)) / 2.0f;
 
   MatrixFixed<float,3,3> H;
-  H(0,0) = dog0(x,  y  ) - 2.0f * dog1(x,y) + dog2(x,  y  );
-  H(1,1) = dog1(x-1,y  ) - 2.0f * dog1(x,y) + dog1(x+1,y  );
-  H(2,2) = dog1(x,  y-1) - 2.0f * dog1(x,y) + dog1(x,  y+1);
+  H(0,0) = dog2(x,  y  ) - 2.0f * dog1(x,y) + dog0(x,  y  );  // Note: no division by 4. This is correct, because we are doing finite differences between immediate neighbors.
+  H(1,1) = dog1(x+1,y  ) - 2.0f * dog1(x,y) + dog1(x-1,y  );
+  H(2,2) = dog1(x,  y+1) - 2.0f * dog1(x,y) + dog1(x,  y-1);
   H(0,1) = ((dog2(x+1,y  ) - dog2(x-1,y  )) - (dog0(x+1,y  ) - dog0(x-1,y  ))) / 4.0f;
   H(0,2) = ((dog2(x,  y+1) - dog2(x,  y-1)) - (dog0(x,  y+1) - dog0(x,  y-1))) / 4.0f;
   H(1,2) = ((dog1(x+1,y+1) - dog1(x+1,y-1)) - (dog1(x-1,y+1) - dog1(x-1,y-1))) / 4.0f;
