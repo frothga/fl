@@ -61,7 +61,7 @@ Listener::listen (int port, int lastPort, int scanTimeout)
   while (port <= lastPort  &&  ! stop)
   {
 	address.sin_port = htons (port);
-	if (bind (sock, (struct sockaddr *) &address, sizeof (address)))
+	if (::bind (sock, (struct sockaddr *) &address, sizeof (address)))
 	{
 	  int error = GETLASTERROR;
 	  if (error == EADDRINUSE  &&  port < lastPort)
