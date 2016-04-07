@@ -1,5 +1,5 @@
 # Author: Fred Rothganger
-# Copyright 2009 Sandia Corporation.
+# Copyright 2009, 2010 Sandia Corporation.
 # Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 # the U.S. Government retains certain rights in this software.
 # Distributed under the GNU Leser General Public License.  See the file
@@ -21,6 +21,7 @@ add_library (flBase
   NamedValueSet.cc
   Parameters.cc
   Pointer.cc
+  Time.cc
 )
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -40,4 +41,5 @@ endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 add_executable (testBase test.cc)
 target_link_libraries (testBase
   flBase
+  ${FL_LIBRARIES}
 )

@@ -18,7 +18,12 @@ for details.
 #define fl_time_h
 
 
+#if __GLIBCXX__ <= 20120305
+#  define _GLIBCXX_USE_NANOSLEEP
+#endif
+
 #include <ostream>
+#include <thread>
 
 #if defined(WIN32) || defined(__CYGWIN__)
 #  define _WINSOCKAPI_
@@ -34,70 +39,34 @@ for details.
 #  define localtime_r(A,B) localtime_s(B,A)
 #endif
 
+#undef SHARED
+#ifdef _MSC_VER
+#  ifdef flBase_EXPORTS
+#    define SHARED __declspec(dllexport)
+#  else
+#    define SHARED __declspec(dllimport)
+#  endif
+#else
+#  define SHARED
+#endif
+
+
 namespace fl
 {
   inline void sleep (double seconds)
   {
-#   if defined(WIN32)  &&  ! defined(__CYGWIN__)
-
-	Sleep ((int) floor (seconds * 1000 + 0.5));
-
-#   else   // Posix sleep
-
-	struct timespec delay;
-	delay.tv_sec = (int) seconds; // should truncate
-	delay.tv_nsec = (int) ((seconds - delay.tv_sec) * 1000000000);
-	nanosleep (&delay, 0);
-
-#   endif
+	std::this_thread::sleep_for (std::chrono::duration<double> (seconds));
   }
 
-  /**
-	 Read time at highest available resolution.  In most cases this is
-	 wall-clock time, but under Linux it can be switched to other timing
-	 sources by defining CLOCK_SOURCE before loading this header file.
-	 A key side-effect of this is to modify the behavior of Stopwatch.
-	 Some common clock sources under Linux:
-	 <dl>
-	 <dt>CLOCK_REALTIME
-	     <dd>System-wide realtime clock.
-	 <dt>CLOCK_MONOTONIC
-	     <dd>Represents monotonic time since some unspecified starting point.
-		 (Presumably not affected by modifying system time.)
-	 <dt>CLOCK_PROCESS_CPUTIME_ID
-	     <dd>High-resolution per-process timer from the CPU.
-	 <dt>CLOCK_THREAD_CPUTIME_ID
-	     <dd>Thread-specific CPU-time clock.
-	 </dl>
-   **/
+  SHARED double ClockRealtime  ();  ///< @return Number of seconds since epoch, as defined by the OS. (Unix=1970/1/1. Windows=1601/1/1.)
+  SHARED double ClockMonotonic ();  ///< @return A time value (in seconds) that never goes backward
+  SHARED double ClockProcess   ();  ///< @return Amount of time (in seconds) that this process (all threads added together) has spent in the CPU. Includes both kernel and user time.
+  SHARED double ClockThread    ();  ///< @return Amount of time (in seconds) that this thread has spent in the CPU. Includes both kernel and user time.
+
   inline double
   getTimestamp ()
   {
-#   if defined(WIN32) || defined(__CYGWIN__)
-
-	LARGE_INTEGER count;
-	LARGE_INTEGER frequency;
-	QueryPerformanceCounter (&count);
-	QueryPerformanceFrequency (&frequency);
-	return (double) count.QuadPart / frequency.QuadPart;
-
-#   elif defined(linux)
-
-#     ifndef CLOCK_SOURCE
-#     define CLOCK_SOURCE CLOCK_MONOTONIC
-#     endif
-
-	struct timespec t;
-	clock_gettime (CLOCK_SOURCE, &t);
-	return t.tv_sec + (double) t.tv_nsec / 1e9;
-
-#   else   // other posix systems
-
-	struct timeval t;
-	gettimeofday (&t, NULL);
-	return t.tv_sec + (double) t.tv_usec / 1e6;
-
-#   endif
+	return ClockMonotonic ();
   }
 
   /**
@@ -112,12 +81,13 @@ namespace fl
 	/**
 	   /param run Indicates that we should start accumulating time immediately.
 	 **/
-	Stopwatch (bool run = true)
+	Stopwatch (bool run = true, double (* clock) () = ClockMonotonic)
+	: clock (clock)
 	{
 	  accumulator = 0;
 	  if (run)
 	  {
-		timestamp = getTimestamp ();
+		timestamp = (*clock) ();
 	  }
 	  else
 	  {
@@ -131,7 +101,7 @@ namespace fl
 	void reset ()
 	{
 	  accumulator = 0;
-	  if (timestamp) timestamp = getTimestamp ();  // Only start if already running before call to this function.
+	  if (timestamp) timestamp = (*clock) ();  // Only start if already running before call to this function.
 	}
 
 	/**
@@ -142,7 +112,7 @@ namespace fl
 	 **/
 	void start ()
 	{
-	  timestamp = getTimestamp ();
+	  timestamp = (*clock) ();
 	}
 
 	/**
@@ -151,7 +121,7 @@ namespace fl
 	**/
 	void stop ()
 	{
-	  double current = getTimestamp ();
+	  double current = (*clock) ();
 	  if (timestamp)
 	  {
 		accumulator += current - timestamp;
@@ -161,7 +131,7 @@ namespace fl
 
 	double total () const
 	{
-	  double current = getTimestamp ();
+	  double current = (*clock) ();
 	  if (timestamp)
 	  {
 		return accumulator + current - timestamp;
@@ -172,6 +142,7 @@ namespace fl
 	  }
 	}
 
+	double (* clock) ();
 	double accumulator;
 	double timestamp;
   };

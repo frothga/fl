@@ -36,5 +36,6 @@ endif (CMAKE_SIZEOF_VOID_P EQUAL 8)
 add_executable (testNet test.cc)
 target_link_libraries (testNet
   flNet
+  flBase
   ${FL_LIBRARIES}
 )
