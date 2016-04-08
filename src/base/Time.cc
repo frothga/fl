@@ -20,29 +20,14 @@ using namespace std;
 
 // Clock functions ------------------------------------------------------------
 
-// Why keep native implementations of these, rather than relying entirely on
-// std::chrono? Because this way we are assured of the best imlementation.
-
 double fl::ClockRealtime ()
 {
-# if defined(WIN32) || defined(__CYGWIN__)
-
-  FILETIME time;
-  GetSystemTimeAsFileTime (&time);
-  return (double) ((ULONGLONG) time) / 1e7;  // could convert this to linux epoch by subtracting 116444736000000000
-
-# elif defined(_POSIX_VERSION)  // May need to be more specific here. clock_gettime() is defined at least in POSIX1.2008
-
-  struct timespec t;
-  clock_gettime (CLOCK_REALTIME, &t);
-  return t.tv_sec + (double) t.tv_nsec / 1e9;
-
-# else
-
   return std::chrono::time_point_cast<std::chrono::duration<double>> (std::chrono::system_clock::now ()).time_since_epoch ().count ();
-
-# endif
 }
+
+// Why keep native implementations of these, rather than relying entirely on
+// std::chrono? The c++ standard (as of 2016) does not offer process and thread
+// clocks. Furthermore, steady_clock is not guaranteed to be high resolution.
 
 double fl::ClockMonotonic ()
 {
@@ -60,7 +45,7 @@ double fl::ClockMonotonic ()
   clock_gettime (CLOCK_MONOTONIC, &t);
   return t.tv_sec + (double) t.tv_nsec / 1e9;
 
-# elif __GLIBCXX__ <= 20120305
+# elif __GLIBCXX__ <= 20120305  // Not sure of exact date when GLIBCXX fixed their naming to match the standard.
 
   return std::chrono::time_point_cast<std::chrono::duration<double>> (std::chrono::monotonic_clock::now ()).time_since_epoch ().count ();
 
@@ -78,7 +63,6 @@ double fl::ClockProcess ()
   FILETIME Dummy;
   FILETIME Kernel;
   FILETIME User;
-
   GetProcessTimes (GetCurrentProcess (), &Dummy, &Dummy, &Kernel, &User);
   return (double) ((ULONGLONG) Kernel + (ULONGLONG) User) / 1e7;
 
@@ -102,7 +86,6 @@ double fl::ClockThread ()
   FILETIME Dummy;
   FILETIME Kernel;
   FILETIME User;
-
   GetThreadTimes (GetCurrentProcess (), &Dummy, &Dummy, &Kernel, &User);
   return (double) ((ULONGLONG) Kernel + (ULONGLONG) User) / 1e7;
 
