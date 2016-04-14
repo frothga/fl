@@ -15,6 +15,8 @@ for details.
 #include <fl/vectorsparse.h>
 #include <fl/archive.h>
 #include <fl/factory.h>
+#include <fl/thread.h>
+#include <fl/time.h>
 
 #include <iostream>
 #include <fstream>
@@ -23,6 +25,108 @@ for details.
 using namespace std;
 using namespace fl;
 
+
+void
+testParallelFor ()
+{
+  int hardwareThreads = fl::hardwareThreads ();
+  int dataCount = hardwareThreads * 10;
+  int truth = 0;
+  for (int i = 1; i <= dataCount; i++) truth += i;
+  truth *= 2;  // because we run the sum twice
+
+  // Tests on int specialization
+  {
+	class Test : public ParallelFor<int>
+	{
+	public:
+	  Test ()
+	  {
+		sum = 0;
+	  }
+	  virtual void process (const int i)
+	  {
+		sum += i;
+	  }
+	  atomic_int sum;
+	};
+
+	class Benchmark : public ParallelFor<int>
+	{
+	public:
+	  Benchmark (float threadRequest) : ParallelFor<int> (threadRequest) {}
+	  virtual void process (const int i) {} // Do nothing. This focuses the benchmark on threading overhead.
+	};
+
+	// Synchronization test
+	Test test;
+	test.run (1, dataCount+1);
+	test.run (1, dataCount+1);  // second run, to verify that threads come to full stop after first run
+	cerr << "int sum = " << test.sum << " " << truth << endl;
+	if (test.sum != truth) throw "Unexpected sum from ParallelFor";
+
+	// Benchmarking run
+	// This benchmark focuses on exposing overhead cost for using threads.
+	cerr << "ParallelFor<int> benchmark, showing total proces time (mostly thread overhead)." << endl;
+	for (int i = 1; i <= hardwareThreads; i++)
+	{
+	  Benchmark bench (i);
+	  Stopwatch timer (true, ClockProcess);  // ClockProcess reveals threading overhead. Ideally it remains flat across all values of i.
+	  // By running parfor multiple times, we expose overhead in the barrier between runs.
+	  for (int j = 0; j < 1000; j++) bench.run (0, dataCount);
+	  timer.stop ();
+	  cerr << i << ": " << timer << endl;
+	}
+  }
+
+  // Tests on general template using an iterator
+  {
+	class Test : public ParallelFor<vector<int>::iterator>
+	{
+	public:
+	  Test ()
+	  {
+		sum = 0;
+	  }
+	  virtual void process (const vector<int>::iterator i)
+	  {
+		sum += *i;
+	  }
+	  atomic_int sum;
+	};
+
+	class Benchmark : public ParallelFor<vector<int>::iterator>
+	{
+	public:
+	  // Note: The template parameters shouldn't be necessary on the call to
+	  // the superclass constructor, but older GCC doesn't handle this right.
+	  Benchmark (float threadRequest) : ParallelFor<vector<int>::iterator> (threadRequest) {}
+	  virtual void process (const vector<int>::iterator i) {}
+	};
+
+	// Synchronization test
+	vector<int> numbers;
+	for (int i = 1; i <= dataCount; i++) numbers.push_back (i);
+	Test test;
+	test.run (numbers.begin (), numbers.end ());
+	test.run (numbers.begin (), numbers.end ());
+	cerr << "vector<int> sum = " << test.sum << " " << truth << endl;
+	if (test.sum != truth) throw "Unexpected sum from ParallelFor";
+
+	// Benchmarking run
+	cerr << "ParallelFor<vector<int>> benchmark." << endl;
+	for (int i = 1; i <= hardwareThreads; i++)
+	{
+	  Benchmark bench (i);
+	  Stopwatch timer (true, ClockProcess);
+	  for (int j = 0; j < 1000; j++) bench.run (numbers.begin (), numbers.end ());
+	  timer.stop ();
+	  cerr << i << ": " << timer << endl;
+	}
+  }
+
+  cout << "ParallelFor passes" << endl;
+}
 
 void
 testParameters (int argc, char * argv[])
@@ -385,6 +489,7 @@ int main (int argc, char * argv[])
 {
   try
   {
+	testParallelFor ();
 	testParameters (argc, argv);
 	testFactory ();
 	testArchive ();
