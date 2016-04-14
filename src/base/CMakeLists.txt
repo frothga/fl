@@ -20,7 +20,6 @@ add_library (flBase
   Metadata.cc
   NamedValueSet.cc
   Parameters.cc
-  Pointer.cc
   Time.cc
 )
 

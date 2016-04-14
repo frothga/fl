@@ -2,7 +2,7 @@
 Author: Fred Rothganger
 
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -48,7 +48,7 @@ fl::reshapeBuffer (Pointer & memory, int oldStride, int newStride, int newHeight
 	  memory.detach ();
 	  memory.grow (newStride * newHeight + pad);
 	  int count = newStride * copyHeight;
-	  memcpy (memory.memory, temp.memory, count);
+	  memcpy ((char *) memory, (char *) temp, count);
 	  assert (count >= 0  &&  count < memory.size ());
 	  memset ((char *) memory + count, 0, memory.size () - count);
 	}
