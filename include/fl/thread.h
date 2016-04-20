@@ -79,7 +79,7 @@ namespace fl
 	  for (int t = 0; t < threads.size (); t++) threads[t].join ();
 	}
 
-	void run (const I startAt, const I stopBefore)
+	void run (const I startAt, const I stopBefore, bool block = true)
 	{
 	  // Store new range to work on
 	  std::unique_lock<std::mutex> lock (mutexI);
@@ -122,8 +122,20 @@ namespace fl
 	  }
 
 	  // Block until all work is completed
-	  lock.lock ();
-	  conditionActive.wait (lock, [this]{return i == this->end  &&  active == 0;});
+	  if (block)
+	  {
+		lock.lock ();
+		conditionActive.wait (lock, [this]{return i == end  &&  active == 0;});
+	  }
+	}
+
+	/**
+	   Blocks until all items passed to last run() are completed.
+	**/
+	void wait ()
+	{
+	  std::unique_lock<std::mutex> lock (mutexI);
+	  conditionActive.wait (lock, [this]{return i == end  &&  active == 0;});
 	}
 
 	virtual void process (const I i) = 0;
@@ -141,8 +153,7 @@ namespace fl
 
   /**
 	 Specialization of ParallelFor to take advantage of additional efficiency
-	 afforded by int. It is necessary to repeat the entire class in order to
-	 change i to atomic_int.
+	 afforded by int.
   **/
   template<>
   class ParallelFor<int>
@@ -201,7 +212,7 @@ namespace fl
 	  for (int t = 0; t < threads.size (); t++) threads[t].join ();
 	}
 
-	void run (const int startAt, const int stopBefore)
+	void run (const int startAt, const int stopBefore, bool block = true)
 	{
 	  // Store new range to work on
 	  std::unique_lock<std::mutex> lock (mutexI);
@@ -211,8 +222,17 @@ namespace fl
 	  conditionI.notify_all ();
 
 	  // Block until all work is completed
-	  lock.lock ();
-	  conditionActive.wait (lock, [this]{return i >= this->end  &&  active == 0;});
+	  if (block)
+	  {
+		lock.lock ();
+		conditionActive.wait (lock, [this]{return i >= end  &&  active == 0;});
+	  }
+	}
+
+	void wait ()
+	{
+	  std::unique_lock<std::mutex> lock (mutexI);
+	  conditionActive.wait (lock, [this]{return i >= end  &&  active == 0;});
 	}
 
 	virtual void process (const int i) = 0;

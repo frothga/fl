@@ -20,6 +20,7 @@ for details.
 
 #include <iostream>
 #include <fstream>
+#include <list>
 
 
 using namespace std;
@@ -81,40 +82,40 @@ testParallelFor ()
 
   // Tests on general template using an iterator
   {
-	class Test : public ParallelFor<vector<int>::iterator>
+	class Test : public ParallelFor<list<int>::iterator>
 	{
 	public:
 	  Test ()
 	  {
 		sum = 0;
 	  }
-	  virtual void process (const vector<int>::iterator i)
+	  virtual void process (const list<int>::iterator i)
 	  {
 		sum += *i;
 	  }
 	  atomic_int sum;
 	};
 
-	class Benchmark : public ParallelFor<vector<int>::iterator>
+	class Benchmark : public ParallelFor<list<int>::iterator>
 	{
 	public:
 	  // Note: The template parameters shouldn't be necessary on the call to
 	  // the superclass constructor, but older GCC doesn't handle this right.
-	  Benchmark (float threadRequest) : ParallelFor<vector<int>::iterator> (threadRequest) {}
-	  virtual void process (const vector<int>::iterator i) {}
+	  Benchmark (float threadRequest) : ParallelFor<list<int>::iterator> (threadRequest) {}
+	  virtual void process (const list<int>::iterator i) {}
 	};
 
 	// Synchronization test
-	vector<int> numbers;
+	list<int> numbers;
 	for (int i = 1; i <= dataCount; i++) numbers.push_back (i);
 	Test test;
 	test.run (numbers.begin (), numbers.end ());
 	test.run (numbers.begin (), numbers.end ());
-	cerr << "vector<int> sum = " << test.sum << " " << truth << endl;
+	cerr << "list<int> sum = " << test.sum << " " << truth << endl;
 	if (test.sum != truth) throw "Unexpected sum from ParallelFor";
 
 	// Benchmarking run
-	cerr << "ParallelFor<vector<int>> benchmark." << endl;
+	cerr << "ParallelFor<list<int>> benchmark." << endl;
 	for (int i = 1; i <= hardwareThreads; i++)
 	{
 	  Benchmark bench (i);
