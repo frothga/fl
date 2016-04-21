@@ -19,8 +19,8 @@ for details.
 
 #include <set>
 #include <ostream>
+#include <mutex>
 #include <stddef.h>
-#include <pthread.h>
 
 #undef SHARED
 #ifdef _MSC_VER
@@ -91,7 +91,7 @@ namespace fl
 	  }
 	};
 
-	pthread_mutex_t mutex;  ///< All accesses that change or depend on the cache structure must be thread-safe.
+	std::recursive_mutex mutex;  ///< All accesses that change or depend on the cache structure must be thread-safe.
 	ptrdiff_t memory;  ///< Total amount of memory used by entries.  Must be maintained any time an entry is added or removed.
 	EntryPyramid * original;  ///< Base image from which all others are derived
 	typedef std::set<ImageCacheEntry *, EntryCompare> cacheType;

@@ -48,29 +48,15 @@ SlideShow::SlideShow ()
 	width    = 640;
 	height   = 480;
 
-	pthread_mutex_init (&mutexImage,       0);
-	pthread_mutex_init (&waitingMutex,     0);
-	pthread_cond_init  (&waitingCondition, 0);
-
-	if (pthread_create (&messagePumpThread, 0, messagePump, this))
-	{
-		throw "Unable to start message pump";
-	}
-
-	pthread_mutex_lock   (&waitingMutex);
-	pthread_cond_wait    (&waitingCondition, &waitingMutex);
-	pthread_mutex_unlock (&waitingMutex);
+	messagePumpThread = thread (&SlideShow::messagePump, this);
+	unique_lock<mutex> lock (waitingMutex);
+	waitingCondition.wait (lock);
 }
 
 SlideShow::~SlideShow ()
 {
 	PostMessage (window, WM_DESTROY, 0, 0);  // Induce a PostQuitMessage() within the message pump, creating a WM_QUIT that causes the message pump to exit.
-	void * result;
-	pthread_join (messagePumpThread, &result);
-
-	pthread_cond_destroy  (&waitingCondition);
-	pthread_mutex_destroy (&waitingMutex);
-	pthread_mutex_destroy (&mutexImage);
+	messagePumpThread.join ();
 
 	if (image) DeleteObject (image);
 }
@@ -96,7 +82,7 @@ SlideShow::show (const Image & image, int centerX, int centerY)
 	bmi.bmiHeader.biClrUsed       = 0;
 	bmi.bmiHeader.biClrImportant  = 0;
 
-	pthread_mutex_lock   (&mutexImage);
+	mutexImage.lock ();
 	if (this->image) DeleteObject (this->image);
 	this->image = CreateDIBitmap
 	(
@@ -107,7 +93,7 @@ SlideShow::show (const Image & image, int centerX, int centerY)
 		&bmi,
 		DIB_RGB_COLORS
 	);
-	pthread_mutex_unlock (&mutexImage);
+	mutexImage.unlock ();
 
 	ReleaseDC (window, windowDC);
 
@@ -132,26 +118,21 @@ SlideShow::show (const Image & image, int centerX, int centerY)
 void
 SlideShow::waitForClick ()
 {
-	pthread_mutex_lock   (&waitingMutex);
-	pthread_cond_wait    (&waitingCondition, &waitingMutex);
-	pthread_mutex_unlock (&waitingMutex);
+	unique_lock<mutex> lock (waitingMutex);
+	waitingCondition.wait (lock);
 }
 
 void
 SlideShow::stopWaiting ()
 {
-	pthread_mutex_lock     (&waitingMutex);
-	pthread_cond_broadcast (&waitingCondition);
-	pthread_mutex_unlock   (&waitingMutex);
+	waitingCondition.notify_all ();
 }
 
-void *
-SlideShow::messagePump (void * arg)
+void
+SlideShow::messagePump ()
 {
-	SlideShow * me = (SlideShow *) arg;
-
 	// Create window
-	me->window = CreateWindow
+	window = CreateWindow
 	(
 		"SlideShow",
 		"FL SlideShow",
@@ -165,13 +146,13 @@ SlideShow::messagePump (void * arg)
 		windowClass.hInstance,
 		0
 	);
-	me->stopWaiting ();
-	if (! me->window)
+	stopWaiting ();
+	if (! window)
 	{
 		cerr << "Couldn't create window" << endl;
 		return (void *) 1;
 	}
-	SetWindowLongPtr (me->window, 0, (LONG_PTR) me);
+	SetWindowLongPtr (window, 0, (LONG_PTR) this);
 
 	// Message pump
 	MSG message;
@@ -181,8 +162,8 @@ SlideShow::messagePump (void * arg)
 		DispatchMessage (&message);
 	}
 
-	DestroyWindow (me->window);
-	me->stopWaiting ();
+	DestroyWindow (window);
+	stopWaiting ();
 	return (void *) message.wParam;
 }
 
@@ -203,7 +184,7 @@ SlideShow::windowProcedure (HWND window, UINT message, WPARAM wParam, LPARAM lPa
 			HDC windowDC = BeginPaint (window, &ps);
 			HDC imageDC = CreateCompatibleDC (windowDC);
 
-			pthread_mutex_lock (& me->mutexImage);
+			me->mutexImage.lock ();
 			HGDIOBJ originalBMP = SelectObject (imageDC, me->image);
 			BitBlt
 			(
@@ -215,7 +196,7 @@ SlideShow::windowProcedure (HWND window, UINT message, WPARAM wParam, LPARAM lPa
 				SRCCOPY
 			);
 			SelectObject (imageDC, originalBMP);
-			pthread_mutex_unlock (& me->mutexImage);
+			me->mutexImage.unlock ();
 
 			DeleteDC (imageDC);
 			EndPaint (window, &ps);

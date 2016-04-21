@@ -20,13 +20,16 @@ for details.
 
 #include "fl/image.h"
 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
 #ifdef _MSC_VER
 
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
 #  undef min
 #  undef max
-#  include <pthread.h>
 
 #  undef SHARED
 #  ifdef flX_EXPORTS
@@ -49,8 +52,9 @@ namespace fl
 
 	//virtual bool processMessage (HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
+	HWND               window;
 	HBITMAP            image;
-	pthread_mutex_t    mutexImage;
+	std::mutex         mutexImage;
 
 	bool               modeDrag;  ///< Indicates that there was motion between button down and button up
 	int                lastX;  ///< Where the last button event occurred
@@ -60,10 +64,9 @@ namespace fl
 	int                width;   ///< Current size of window
 	int                height;
 
-	pthread_t          messagePumpThread;
-	pthread_mutex_t    waitingMutex;
-	pthread_cond_t     waitingCondition;
-	HWND               window;
+	std::thread             messagePumpThread;
+	std::mutex              waitingMutex;
+	std::condition_variable waitingCondition;
 
 	// Static functions that implement window class
 	static void *           messagePump (void * arg);
@@ -97,7 +100,7 @@ namespace fl
 	fl::GC *           gc;
 	Image              image;
 	XImage *           ximage;
-	pthread_mutex_t    mutexImage;
+	std::mutex         mutexImage;
 	Atom               WM_DELETE_WINDOW;
 	Atom               WM_PROTOCOLS;  ///< For some reason, this isn't defined in Xatom.h
 
@@ -109,8 +112,8 @@ namespace fl
 	int                width;   ///< Current size of window
 	int                height;
 
-	pthread_mutex_t    waitingMutex;
-	pthread_cond_t     waitingCondition;
+	std::mutex              waitingMutex;
+	std::condition_variable waitingCondition;
   };
 }
 

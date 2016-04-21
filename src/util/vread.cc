@@ -25,8 +25,6 @@ using namespace std;
 using namespace fl;
 
 
-pthread_t noThread;
-
 class EventPredicateMotion3 : public EventPredicate
 {
 public:
@@ -65,9 +63,6 @@ public:
 
 	stem = fileName;
 	stem = stem.substr (0, stem.find_last_of ('.'));
-
-	pid = noThread;
-	pthread_mutex_init (&mutexPlaying, 0);
   }
 
   /// Single-step. Assumes streaming (if applicable) is paused.
@@ -166,7 +161,7 @@ public:
 	  }
       case KeyPress:
 	  {
-		KeySym keysym = XLookupKeysym ((XKeyEvent *) &event, event.xkey.state);
+		KeySym keysym = XLookupKeysym ((XKeyEvent *) &event, 0);
 		switch (keysym)
 		{
 		  case 'j':
@@ -220,12 +215,6 @@ public:
 	return SlideShow::processEvent (event);
   }
 
-  static void * playThread (void * data)
-  {
-	((VideoShow *) data)->playLoop ();
-	return 0;
-  }
-
   void playLoop ()
   {
 	playing = true;
@@ -257,37 +246,25 @@ public:
 	  vin.setTimestampMode (useFrames);
 	}
 
-	pthread_mutex_lock (&mutexPlaying);
-	if (! pthread_equal (pid, noThread))
-	{
-	  pthread_detach (pid);  // Our thread structures will self-destruct when we exit this function.
-	  pid = noThread;
-	}
-	pthread_mutex_unlock (&mutexPlaying);
+	mutexPlaying.lock ();
+	if (pid.joinable ()) pid.detach ();
+	mutexPlaying.unlock ();
   }
 
   void play ()
   {
-	if (pthread_create (&pid, NULL, playThread, this) != 0)
-	{
-	  throw "Failed to start play thread.";
-	}
+	pid = thread (&VideoShow::playLoop, this);
   }
 
   void pause ()
   {
 	playing = false;
-	pthread_t join = noThread;
 
-	pthread_mutex_lock (&mutexPlaying);
-	if (! pthread_equal (pid, noThread))
-	{
-	  join = pid;
-	  pid = noThread;
-	}
-	pthread_mutex_unlock (&mutexPlaying);
+	mutexPlaying.lock ();
+	thread temp (move (pid));
+	mutexPlaying.unlock ();
 
-	if (! pthread_equal (join, noThread)) pthread_join (join, 0);
+	if (temp.joinable ()) temp.join ();
   }
 
   VideoIn vin;
@@ -297,8 +274,8 @@ public:
   double duration;
   double framePeriod;
   string stem;
-  pthread_t pid;
-  pthread_mutex_t mutexPlaying;
+  thread pid;
+  mutex mutexPlaying;
   bool playing;
   bool sizeSet;
 };
@@ -324,8 +301,6 @@ main (int argc, char * argv[])
 	ImageFileFormatPGM   ::use ();
 	ImageFileFormatJPEG  ::use ();
 	VideoFileFormatFFMPEG::use ();
-
-	noThread = pthread_self ();
 
 	VideoShow window (parms.fileNames[0]);
 	if (frame > 0)

@@ -16,9 +16,7 @@ for details.
 #include "fl/time.h"
 
 #include <string.h>
-#ifdef HAVE_PTHREAD
-#  include <pthread.h>
-#endif
+#include <thread>
 
 
 using namespace fl;
@@ -91,12 +89,6 @@ Listener::listen (int port, int lastPort, int scanTimeout)
 	throw "listen failed";
   }
 
-# ifdef HAVE_PTHREAD
-  pthread_attr_t attributes;
-  pthread_attr_init (&attributes);
-  pthread_attr_setdetachstate (&attributes, PTHREAD_CREATE_DETACHED);
-# endif
-
   fd_set readfds;
   timeval selectTimeout;
 
@@ -141,40 +133,30 @@ Listener::listen (int port, int lastPort, int scanTimeout)
 	  continue;  // Not fatal, so resume litening
 	}
 
-#   ifdef HAVE_PTHREAD
 	if (threaded)
 	{
 	  ThreadDataHolder * data = new ThreadDataHolder;
-	  data->me = this;
 	  data->ss.attach (connection);
 	  data->ss.setTimeout (timeout);
 	  data->ss.ownSocket = true;
 	  data->clientAddress = clientAddress;
 
-	  pthread_t pid;
-	  pthread_create (&pid, &attributes, processConnectionThread, data);
+	  thread (&Listener::processConnectionThread, this, data).detach ();
 
 	  continue;  // Don't fall through to the non-threaded processor below.
 	}
-#   endif
 
 	SocketStream ss (connection, timeout);
 	ss.ownSocket = true;
 	processConnection (ss, clientAddress);
   }
 
-# ifdef HAVE_PTHREAD
-  pthread_attr_destroy (&attributes);
-# endif
-
   CLOSESOCKET (sock);
 }
 
-void *
-Listener::processConnectionThread (void * param)
+void
+Listener::processConnectionThread (ThreadDataHolder * holder)
 {
-  ThreadDataHolder * holder = (ThreadDataHolder *) param;
-  holder->me->processConnection (holder->ss, holder->clientAddress);
+  processConnection (holder->ss, holder->clientAddress);
   delete holder;
-  return 0;
 }

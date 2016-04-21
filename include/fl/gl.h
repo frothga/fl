@@ -13,6 +13,8 @@ for details.
 
 #include "fl/glx.h"
 
+#include <condition_variable>
+
 // This header does not directly require keysym.h, but it makes using
 // GLShow easier for the developer.
 #include <X11/keysym.h>
@@ -49,8 +51,8 @@ namespace fl
 	int                lastX;  // Where the last button event occurred
 	int                lastY;
 
-	pthread_mutex_t    waitingMutex;
-	pthread_cond_t     waitingCondition;
+	std::mutex              waitingMutex;
+	std::condition_variable waitingCondition;
   };
 }
 

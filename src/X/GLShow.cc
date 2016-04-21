@@ -34,9 +34,6 @@ GLShow::GLShow (int width, int height)
   vector<Atom> protocols;
   protocols.push_back (WM_DELETE_WINDOW);
   setWMProtocols (protocols);
-
-  pthread_mutex_init (&waitingMutex, NULL);
-  pthread_cond_init (&waitingCondition, NULL);
 }
 
 GLShow::~GLShow ()
@@ -48,9 +45,6 @@ GLShow::~GLShow ()
   // directly.  If we are being destroyed directly by some thread, we should
   // release any waiting threads first.
   stopWaiting ();
-
-  pthread_cond_destroy (&waitingCondition);
-  pthread_mutex_destroy (&waitingMutex);
 }
 
 bool
@@ -138,18 +132,15 @@ GLShow::waitForClose ()
 {
   // Put thread to sleep.  Wake up on WM_DELETE_WINDOW, which casues call to
   // stopWaiting ().
-  pthread_mutex_lock (&waitingMutex);
-  pthread_cond_wait (&waitingCondition, &waitingMutex);
-  pthread_mutex_unlock (&waitingMutex);
+  unique_lock<mutex> lock (waitingMutex);
+  waitingCondition.wait (lock);
 }
 
 void
 GLShow::stopWaiting ()
 {
   // Release waiting threads
-  pthread_mutex_lock (&waitingMutex);
-  pthread_cond_broadcast (&waitingCondition);
-  pthread_mutex_unlock (&waitingMutex);
+  waitingCondition.notify_all ();
 }
 
 void

@@ -6,7 +6,7 @@ Distributed under the UIUC/NCSA Open Source License.  See the file LICENSE
 for details.
 
 
-Copyright 2009 Sandia Corporation.
+Copyright 2009, 2010 Sandia Corporation.
 Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
 the U.S. Government retains certain rights in this software.
 Distributed under the GNU Lesser General Public License.  See the file LICENSE
@@ -36,10 +36,6 @@ using namespace fl;
 SlideShow::SlideShow ()
 : fl::Window (fl::Display::getPrimary ()->defaultScreen (), 640, 480)
 {
-  pthread_mutex_init (&mutexImage, NULL);
-  pthread_mutex_init (&waitingMutex, NULL);
-  pthread_cond_init (&waitingCondition, NULL);
-
   visual = & screen->defaultVisual ();
 
   colormap = new fl::Colormap (*visual, AllocNone);
@@ -81,9 +77,6 @@ SlideShow::~SlideShow ()
 	XDestroyImage (ximage);
 	screen->display->unlock ();
   }
-  pthread_mutex_destroy (&mutexImage);
-  pthread_cond_destroy (&waitingCondition);
-  pthread_mutex_destroy (&waitingMutex);
   delete colormap;
   delete gc;
 }
@@ -187,7 +180,7 @@ SlideShow::processEvent (XEvent & event)
 		  toY = -deltaY;
 		}
 
-		pthread_mutex_lock (&mutexImage);
+		mutexImage.lock ();
 
 		copyArea (*gc, *this, toX, toY, fromX, fromY);
 
@@ -208,7 +201,7 @@ SlideShow::processEvent (XEvent & event)
 		  putImage (*gc, ximage, 0, 0, offsetX, offsetY, width, -deltaY);
 		}
 
-		pthread_mutex_unlock (&mutexImage);
+		mutexImage.unlock ();
 	  }
 
 	  return true;
@@ -227,24 +220,21 @@ void
 SlideShow::waitForClick ()
 {
   // Put thread to sleep.
-  pthread_mutex_lock (&waitingMutex);
-  pthread_cond_wait (&waitingCondition, &waitingMutex);
-  pthread_mutex_unlock (&waitingMutex);
+  unique_lock<mutex> lock (waitingMutex);
+  waitingCondition.wait (lock);
 }
 
 void
 SlideShow::stopWaiting ()
 {
   // Release waiting threads.
-  pthread_mutex_lock (&waitingMutex);
-  pthread_cond_broadcast (&waitingCondition);
-  pthread_mutex_unlock (&waitingMutex);
+  waitingCondition.notify_all ();
 }
 
 void
 SlideShow::show (const Image & image, int centerX, int centerY)
 {
-  pthread_mutex_lock (&mutexImage);
+  mutexImage.lock ();
   if (ximage)
   {
 	ximage->data = (char *) malloc (1);  // Will be freed immediately by XDestroyImage.
@@ -254,7 +244,7 @@ SlideShow::show (const Image & image, int centerX, int centerY)
 	ximage = NULL;
   }
   ximage = visual->createImage (image, this->image);
-  pthread_mutex_unlock (&mutexImage);
+  mutexImage.unlock ();
 
   if (! ximage)
   {
@@ -280,12 +270,12 @@ SlideShow::show (const Image & image, int centerX, int centerY)
 void
 SlideShow::paint ()
 {
-  pthread_mutex_lock (&mutexImage);
+  mutexImage.lock ();
   if (ximage)
   {
 	int w = min (width,  image.width  - offsetX);
 	int h = min (height, image.height - offsetY);
 	putImage (*gc, ximage, 0, 0, offsetX, offsetY, w, h);
   }
-  pthread_mutex_unlock (&mutexImage);
+  mutexImage.unlock ();
 }

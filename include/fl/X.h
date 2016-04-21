@@ -23,7 +23,8 @@ for details.
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
-#include <pthread.h>
+#include <thread>
+#include <mutex>
 #include <string>
 #include <map>
 #include <vector>
@@ -71,7 +72,7 @@ namespace fl
 
 	void addCallback (const fl::Window & window);
 	void removeCallback (const fl::Window & window);
-	static void * messagePump (void * arg);
+	void messagePump ();
 
 	fl::Screen & defaultScreen ();
 	Atom internAtom (const std::string & name, bool onlyIfExists = false);
@@ -84,10 +85,10 @@ namespace fl
 	::Display * display;
 
 	bool                        done;
-	pthread_t                   pidMessagePump;
-	pthread_mutex_t             mutexCallback;  ///< Serializes access to callbacks collection
+	std::thread                 threadMessagePump;
+	std::recursive_mutex        mutexCallback;  ///< Serializes access to callbacks collection
 	std::map<XID, fl::Window *> callbacks;
-	pthread_mutex_t             mutexDisplay;  ///< Serializes access to Xlib functions associated with this display
+	std::mutex                  mutexDisplay;  ///< Serializes access to Xlib functions associated with this display
 
 	std::vector<fl::Screen *> screens;
 

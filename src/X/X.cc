@@ -66,28 +66,11 @@ fl::Display::initialize (const string & name)
 	throw message;
   }
 
-  pthread_mutexattr_t attrCallback;
-  pthread_mutexattr_init (&attrCallback);
-  pthread_mutexattr_settype (&attrCallback, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init (&mutexCallback, &attrCallback);
-  pthread_mutexattr_destroy (&attrCallback);
-
-  pthread_mutex_init (&mutexDisplay, 0);
-
   int count = ScreenCount (display);
   screens.resize (count, (fl::Screen *) NULL);
 
   done = false;
-  if (pthread_create (&pidMessagePump, NULL, messagePump, this) == 0)
-  {
-	cerr << "Message pump started for " << XDisplayName (cname) << endl;
-  }
-  else
-  {
-	char message[256];
-	sprintf (message, "Message pump failed for %s", XDisplayName (cname));
-	throw message;
-  }
+  threadMessagePump = thread (&fl::Display::messagePump, this);
 }
 
 fl::Display::~Display ()
@@ -95,21 +78,15 @@ fl::Display::~Display ()
   if (display)
   {
 	done = true;
-	pthread_mutex_lock   (&mutexDisplay);
+	mutexDisplay.lock ();
 	XSync (display, true);
-	pthread_mutex_unlock (&mutexDisplay);
-	pthread_join (pidMessagePump, NULL);
-
-	pthread_mutex_destroy (&mutexCallback);
-	pthread_mutex_destroy (&mutexDisplay);
+	mutexDisplay.unlock ();
+	threadMessagePump.join ();
 
 	vector<fl::Screen *>::iterator i;
 	for (i = screens.begin (); i < screens.end (); i++)
 	{
-	  if (*i)
-	  {
-		delete *i;
-	  }
+	  if (*i) delete *i;
 	}
 
 	XCloseDisplay (display);
@@ -130,33 +107,31 @@ fl::Display::getPrimary ()
 void
 fl::Display::addCallback (const fl::Window & window)
 {
-  pthread_mutex_lock (&mutexCallback);
+  mutexCallback.lock ();
   callbacks.insert (make_pair (window.id, (fl::Window *) &window));
-  pthread_mutex_unlock (&mutexCallback);
+  mutexCallback.unlock ();
 }
 
 void
 fl::Display::removeCallback (const fl::Window & window)
 {
-  pthread_mutex_lock (&mutexCallback);
+  mutexCallback.lock ();
   callbacks.erase (window.id);
-  pthread_mutex_unlock (&mutexCallback);
+  mutexCallback.unlock ();
 }
 
-void *
-fl::Display::messagePump (void * arg)
+void
+fl::Display::messagePump ()
 {
-  fl::Display * me = (fl::Display *) arg;
-
   try
   {
-	int fd = ConnectionNumber (me->display);
-	while (! me->done)
+	int fd = ConnectionNumber (display);
+	while (! done)
 	{
-	  pthread_mutex_lock (& me->mutexDisplay);
-	  if (XPending (me->display) == 0)
+	  mutexDisplay.lock ();
+	  if (XPending (display) == 0)
 	  {
-		pthread_mutex_unlock (& me->mutexDisplay);
+		mutexDisplay.unlock ();
 
 		// Use select() to suspend until input is available
 		fd_set fds;
@@ -169,12 +144,12 @@ fl::Display::messagePump (void * arg)
 		continue;
 	  }
 	  XEvent event;
-	  XNextEvent (me->display, &event);
-	  pthread_mutex_unlock (& me->mutexDisplay);
+	  XNextEvent (display, &event);
+	  mutexDisplay.unlock ();
 
-	  pthread_mutex_lock (& me->mutexCallback);
-	  map<XID, fl::Window *>::iterator i = me->callbacks.find (event.xany.window);
-	  if (i != me->callbacks.end ())
+	  mutexCallback.lock ();
+	  map<XID, fl::Window *>::iterator i = callbacks.find (event.xany.window);
+	  if (i != callbacks.end ())
 	  {
 		// By actually processing the event inside this critical section, we
 		// open the possibility of the lock being held for a long time.
@@ -183,15 +158,13 @@ fl::Display::messagePump (void * arg)
 		// function call.
 		i->second->processEvent (event);
 	  }
-	  pthread_mutex_unlock (& me->mutexCallback);
+	  mutexCallback.unlock ();
 	}
   }
   catch (char * error)
   {
 	cerr << error << endl;
   }
-
-  return 0;
 }
 
 fl::Screen &
@@ -208,38 +181,36 @@ fl::Display::defaultScreen ()
 Atom
 fl::Display::internAtom (const std::string & name, bool onlyIfExists)
 {
-  pthread_mutex_lock   (&mutexDisplay);
-  Atom result = XInternAtom (display, name.c_str (), onlyIfExists);
-  pthread_mutex_unlock (&mutexDisplay);
-  return result;
+  lock_guard<mutex> lock (mutexDisplay);
+  return XInternAtom (display, name.c_str (), onlyIfExists);
 }
 
 void
 fl::Display::putBackEvent (XEvent & event)
 {
-  pthread_mutex_lock   (&mutexDisplay);
+  mutexDisplay.lock ();
   XPutBackEvent (display, &event);
-  pthread_mutex_unlock (&mutexDisplay);
+  mutexDisplay.unlock ();
 }
 
 void
 fl::Display::flush ()
 {
-  pthread_mutex_lock   (&mutexDisplay);
+  mutexDisplay.lock ();
   XFlush (display);
-  pthread_mutex_unlock (&mutexDisplay);
+  mutexDisplay.unlock ();
 }
 
 void
 fl::Display::lock ()
 {
-  pthread_mutex_lock (&mutexDisplay);
+  mutexDisplay.lock ();
 }
 
 void
 fl::Display::unlock ()
 {
-  pthread_mutex_unlock (&mutexDisplay);
+  mutexDisplay.unlock ();
 }
 
 int

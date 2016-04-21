@@ -132,13 +132,12 @@ namespace fl
 	bool stop;  ///< Indicates that listen() should terminate as soon as feasible.
 
 	// Machinery for spawning threads
-	static void * processConnectionThread (void * param);
 	struct ThreadDataHolder
 	{
-	  Listener * me;
 	  SocketStream ss;
 	  struct sockaddr_in clientAddress;
 	};
+	void processConnectionThread (ThreadDataHolder * holder);
   };
 
 # ifdef WIN32
