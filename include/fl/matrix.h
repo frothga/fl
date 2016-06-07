@@ -937,5 +937,12 @@ namespace fl
   SHARED T det (const MatrixFixed<T,3,3> & A);
 }
 
+namespace std
+{
+  // Adapters for common functions
+  // These are syntactic sugar for visit().
+  template<class T> fl::MatrixResult<T> abs (const fl::MatrixAbstract<T> & A) {return A.visit (abs);}
+}
+
 
 #endif

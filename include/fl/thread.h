@@ -46,7 +46,7 @@ namespace fl
 	 </ul>
 	 The derived class is a good place to store data shared by all threads.
   **/
-  template<typename I>
+  template<class I>
   class ParallelFor
   {
   public:

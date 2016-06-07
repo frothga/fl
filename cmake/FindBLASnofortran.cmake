@@ -7,6 +7,14 @@
 #   BLAS_LINKER_FLAGS  uncached list of required linker flags (excluding -l
 #                      and -L)
 
+# Author: Fred Rothganger
+# Copyright 2010 Sandia Corporation.
+# Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
+# the U.S. Government retains certain rights in this software.
+# Distributed under the GNU Leser General Public License.  See the file
+# LICENSE for details.
+
+
 find_library (BLAS_LIB blas)
 
 # handle the QUIETLY and REQUIRED arguments and set BLAS_FOUND to TRUE if 

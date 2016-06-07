@@ -12,7 +12,7 @@
 # LICENSE for details.
 
 
-set (FL_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/.. CACHE PATH "Base directory containing FL installation.  This would be the directory that contains bin, lib, include, etc., for FL.")
+set (FL_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/.. CACHE PATH "FL installation directory. Should contain include and lib subdirs.")
 
 set (CMAKE_CXX_STANDARD 11)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -117,20 +117,6 @@ if (MSVC)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP" CACHE STRING "C++ compiler flags" FORCE)
     set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   /MP" CACHE STRING "C compiler flags"   FORCE)
   endif (NOT CMAKE_CXX_FLAGS MATCHES /MP)
-
-else (MSVC)
-
-  # VC Express chokes on CMake's Fortran test, so only do it under a non-VC platform.
-  enable_language (Fortran OPTIONAL)
-
-  if     (CMAKE_Fortran_COMPILER MATCHES gfortran|f95)
-    set (FORTRAN_LIB gfortran)
-  elseif (CMAKE_Fortran_COMPILER MATCHES g77)
-    set (FORTRAN_LIB g2c)
-  endif  ()
-
-  set (GCC_LIBRARIES ${FORTRAN_LIB})
-
 endif (MSVC)
 
 # Under Linux, we want to link with librt in order to use finer grained timers.
@@ -140,145 +126,100 @@ else  (CMAKE_SYSTEM_NAME MATCHES Linux)
   set          (RT_LIBRARIES)
 endif (CMAKE_SYSTEM_NAME MATCHES Linux)
 
-# Preempt FindThreads to ensure that pthreads will be used under Windows
-find_library (CMAKE_THREAD_LIBS_INIT pthread)
-find_package (Threads)
+if    (FL_USE_BLAS)
+  find_package (BLAS)
 
-if    (FL_USE_LAPACK)
-  get_property (LANGUAGES GLOBAL PROPERTY ENABLED_LANGUAGES)
-  if    (LANGUAGES MATCHES Fortran)
-    # Standard package finders, which depend on availability of Fortran...
+  if    (FL_USE_LAPACK)
     find_package (LAPACK)
-  else  (LANGUAGES MATCHES Fortran)
-    # ...but Fortran really isn't necessary for finding these packages.
-    find_package (LAPACKnofortran)
-  endif (LANGUAGES MATCHES Fortran)
-else  (FL_USE_LAPACK)
-  unset (LAPACK_FOUND)
-endif (FL_USE_LAPACK)
+    if    (LAPACK_FOUND)
+      add_definitions (-DHAVE_LAPACK)
+      set (FL_LIBRARIES ${FL_LIBRARIES} ${LAPACK_LIBRARIES})
+    endif (LAPACK_FOUND)
+  endif (FL_USE_LAPACK)
 
-if    (NOT FL_USE_BLAS)
-  unset (BLAS_FOUND)
-  unset (LAPACK_FOUND)
-endif (NOT FL_USE_BLAS)
+  if    (BLAS_FOUND)
+    add_definitions (-DHAVE_BLAS)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${BLAS_LIBRARIES})
+  endif (BLAS_FOUND)
+endif (FL_USE_BLAS)
 
 if    (FL_USE_FFTW)
   find_package (FFTW)
-else  (FL_USE_FFTW)
-  unset (FFTW_FOUND)
+  if    (FFTW_FOUND)
+    add_definitions (-DHAVE_FFTW)
+    # For the most part, include paths are standard and don't need to be
+    # added.  However, on HPC systems FFTW gets special treatment so needs
+    # special pathing.
+    set (FL_INCLUDE_DIRS ${FL_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS})
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${FFTW_LIBRARIES})
+  endif (FFTW_FOUND)
 endif (FL_USE_FFTW)
 
 if    (FL_USE_TIFF)
   find_package (TIFF)
-else  (FL_USE_TIFF)
-  unset (TIFF_FOUND)
+  if    (TIFF_FOUND)
+    add_definitions (-DHAVE_TIFF)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${TIFF_LIBRARIES})
+  endif (TIFF_FOUND)
 endif (FL_USE_TIFF)
 
 if    (FL_USE_GTIF)
   find_package (GTIF)
-else  (FL_USE_GTIF)
-  unset (GTIF_FOUND)
+  if    (GTIF_FOUND)
+    add_definitions (-DHAVE_GTIF)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${GTIF_LIBRARIES})
+  endif (GTIF_FOUND)
 endif (FL_USE_GTIF)
 
 if    (FL_USE_JPEG)
   find_package (JPEG)
-else  (FL_USE_JPEG)
-  unset (JPEG_FOUND)
+  if    (JPEG_FOUND)
+    add_definitions (-DHAVE_JPEG)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${JPEG_LIBRARIES})
+  endif (JPEG_FOUND)
 endif (FL_USE_JPEG)
 
 if    (FL_USE_PNG)
   find_package (PNG)
-else  (FL_USE_PNG)
-  unset (PNG_FOUND)
+  if    (PNG_FOUND)
+    add_definitions (-DHAVE_PNG)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${PNG_LIBRARIES})
+  endif (PNG_FOUND)
 endif (FL_USE_PNG)
 
 if    (FL_USE_Freetype)
   find_package (Freetype)
-else  (FL_USE_Freetype)
-  unset (FREETYPE_FOUND)
+  if    (FREETYPE_FOUND)
+    add_definitions (-DHAVE_FREETYPE)
+    set (FL_INCLUDE_DIRS ${FL_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${FREETYPE_LIBRARIES})
+  endif (FREETYPE_FOUND)
 endif (FL_USE_Freetype)
 
 if    (FL_USE_X11)
   find_package (X11)
-else  (FL_USE_X11)
-  unset (X11_FOUND)
+  if    (X11_FOUND)
+    add_definitions (-DHAVE_X11)
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${X11_LIBRARIES})
+  endif (X11_FOUND)
 endif (FL_USE_X11)
 
 if    (FL_USE_OpenGL)
   find_package (OpenGL)
-else  (FL_USE_OpenGL)
-  unset (OpenGL_FOUND)
 endif (FL_USE_OpenGL)
 
 if    (FL_USE_FFMPEG)
   find_package (FFMPEG)
-else  (FL_USE_FFMPEG)
-  unset (FFMPEG_FOUND)
+  if    (FFMPEG_FOUND)
+    add_definitions (-DHAVE_FFMPEG)
+    set (FL_INCLUDE_DIRS ${FL_INCLUDE_DIRS} ${FFMPEG_INCLUDE_DIRS})
+    set (FL_LIBRARIES ${FL_LIBRARIES} ${FFMPEG_LIBRARIES})
+  endif (FFMPEG_FOUND)
 endif (FL_USE_FFMPEG)
 
 if    (CMAKE_USE_PTHREADS_INIT)
   add_definitions (-DHAVE_PTHREAD)
 endif (CMAKE_USE_PTHREADS_INIT)
-
-if    (LAPACK_FOUND)
-  add_definitions (-DHAVE_LAPACK)
-  # The standard FindLAPACK and FindBLAS leave a "FALSE" in LIBRARIES
-  # so they can't be used directly above.
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${LAPACK_LIBRARIES})
-endif (LAPACK_FOUND)
-
-if    (BLAS_FOUND)
-  add_definitions (-DHAVE_BLAS)
-  if    (NOT LAPACK_FOUND)
-    set (FL_LIBRARIES ${FL_LIBRARIES} ${BLAS_LIBRARIES})
-  endif (NOT LAPACK_FOUND)
-endif (BLAS_FOUND)
-
-if    (FFTW_FOUND)
-  add_definitions (-DHAVE_FFTW)
-  # For the most part, include paths are standard and don't need to be
-  # added.  However, on HPC systems FFTW gets special treatment so needs
-  # special pathing.
-  set (FL_INCLUDE_DIRS ${FL_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS})
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${FFTW_LIBRARIES})
-endif (FFTW_FOUND)
-
-if    (TIFF_FOUND)
-  add_definitions (-DHAVE_TIFF)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${TIFF_LIBRARIES})
-endif (TIFF_FOUND)
-
-if    (GTIF_FOUND)
-  add_definitions (-DHAVE_GTIF)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${GTIF_LIBRARIES})
-endif (GTIF_FOUND)
-
-if    (JPEG_FOUND)
-  add_definitions (-DHAVE_JPEG)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${JPEG_LIBRARIES})
-endif (JPEG_FOUND)
-
-if    (PNG_FOUND)
-  add_definitions (-DHAVE_PNG)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${PNG_LIBRARIES})
-endif (PNG_FOUND)
-
-if    (FREETYPE_FOUND)
-  add_definitions (-DHAVE_FREETYPE)
-  set (FL_INCLUDE_DIRS ${FL_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${FREETYPE_LIBRARIES})
-endif (FREETYPE_FOUND)
-
-if    (X11_FOUND)
-  add_definitions (-DHAVE_X11)
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${X11_LIBRARIES})
-endif (X11_FOUND)
-
-if    (FFMPEG_FOUND)
-  add_definitions (-DHAVE_FFMPEG)
-  set (FL_INCLUDE_DIRS ${FL_INCLUDE_DIRS} ${FFMPEG_INCLUDE_DIRS})
-  set (FL_LIBRARIES ${FL_LIBRARIES} ${FFMPEG_LIBRARIES})
-endif (FFMPEG_FOUND)
 
 set (FL_LIBRARIES ${FL_LIBRARIES}
   ${OPENGL_LIBRARIES}
