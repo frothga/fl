@@ -104,6 +104,7 @@ namespace fl
   {
   public:
 	SocketStream (const std::string & hostname, const std::string & port, int timeout = 0);
+	SocketStream (const std::string & hostname, int portNumber, int timeout = 0);
 	SocketStream (SOCKET socket = INVALID_SOCKET, int timeout = 0);
 	~SocketStream ();  ///< Destroy the socket if we own it.
 

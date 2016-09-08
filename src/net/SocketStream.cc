@@ -181,6 +181,15 @@ SocketStream::SocketStream (const string & hostname, const string & port, int ti
   connect (hostname, port);
 }
 
+SocketStream::SocketStream (const string & hostname, int portNumber, int timeout)
+: buffer (INVALID_SOCKET, timeout), iostream (&buffer)
+{
+  ownSocket = false;
+  char portName[16];
+  sprintf (portName, "%i", portNumber);
+  connect (hostname, portName);
+}
+
 SocketStream::SocketStream (SOCKET socket, int timeout)
 : buffer (socket, timeout), iostream (&buffer)
 {
