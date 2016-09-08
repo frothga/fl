@@ -134,7 +134,7 @@ namespace fl
 
 	// Higher level functions
 	virtual void            clear           (const T scalar = (T) 0);  ///< Set all elements to given value.
-	virtual T               norm            (float n) const;  ///< Generalized Frobenius norm: (sum_elements (element^n))^(1/n).  Effectively: INFINITY is max, 1 is sum, 2 is standard Frobenius norm.  n==0 is technically undefined, but we treat is as the count of non-zero elements.
+	virtual double          norm            (double n) const;  ///< Generalized Frobenius norm: (sum_elements (element^n))^(1/n).  Effectively: INFINITY is max, 1 is sum, 2 is standard Frobenius norm.  n==0 is technically undefined, but we treat is as the count of non-zero elements.
 	virtual T               sumSquares      () const;  ///< Similar to norm(2), but without taking the square root.
 	virtual MatrixResult<T> transposeSquare () const;  ///< Returns the upper-triangular part of the symmetric matrix (~this * this).  Lower-triangular part is undefined.
 	virtual MatrixResult<T> transposeTimes  (const MatrixAbstract  & B) const;  ///< Return full result of ~this * B
@@ -309,7 +309,7 @@ namespace fl
 	virtual void resize (const int rows, const int columns = 1)                {       result->resize (rows, columns);}
 
 	virtual void clear (const T scalar = (T) 0)                                {       result->clear (scalar);}
-	virtual T norm (float n) const                                             {return result->norm (n);}
+	virtual double norm (double n) const                                       {return result->norm (n);}
 	virtual T sumSquares () const                                              {return result->sumSquares ();}
 	virtual MatrixResult transposeSquare () const                              {return result->transposeSquare ();}
 	virtual MatrixResult transposeTimes (const MatrixAbstract<T> & B) const    {return result->transposeTimes  (B);}
@@ -435,7 +435,7 @@ namespace fl
 	virtual void resize (const int rows, const int columns = 1);  ///< Always sets strideC = rows.
 
 	virtual void clear (const T scalar = (T) 0);
-	virtual T norm (float n) const;
+	virtual double norm (double n) const;
 	virtual T sumSquares () const;
 	virtual MatrixResult<T> transposeSquare () const;
 	virtual MatrixResult<T> visit (T (*function) (const T &)) const;
@@ -613,7 +613,7 @@ namespace fl
 	virtual void resize (const int rows, const int columns = 1);  ///< Changing number of rows has no effect at all.  Changing number of columns resizes column list.
 
 	virtual void clear (const T scalar = (T) 0);  ///< Completely ignore the value of scalar, and simply delete all data.
-	virtual T norm (float n) const;
+	virtual double norm (double n) const;
 	virtual MatrixResult<T> transposeSquare () const;
 	virtual MatrixResult<T> transposeTimes (const MatrixAbstract<T> & B) const;
 	using MatrixAbstract<T>::transposeTimes;
@@ -671,7 +671,7 @@ namespace fl
 	virtual void resize (const int rows, const int columns = 1);  ///< On reduction, trims any existing blocks that boundary cuts through. On expansion, extends any existing blocks at perimeter.
 
 	virtual void clear                      (const T scalar = (T) 0);  ///< Calls clear() on all blocks. If scalar is anything besides zero, only clears blocks that exist.
-	virtual T norm                          (float n) const;  ///< Calls norm() on all blocks, and combines results using proper norm.
+	virtual double norm                     (double n) const;  ///< Calls norm() on all blocks, and combines results using proper norm.
 	virtual MatrixResult<T> transposeSquare () const;
 	virtual MatrixResult<T> transposeTimes  (const MatrixAbstract<T> & B) const;
 	using MatrixAbstract<T>::transposeTimes;

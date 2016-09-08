@@ -484,16 +484,16 @@ namespace fl
   }
 
   template<class T>
-  T
-  MatrixBlock<T>::norm (float n) const
+  double
+  MatrixBlock<T>::norm (double n) const
   {
-	if (data.size () <= 0) return (T) 0;
+	if (data.size () <= 0) return 0;
 	MatrixAbstract<T> ** p   = (MatrixAbstract<T> **) data;
 	MatrixAbstract<T> ** end = p + data.size () / sizeof (MatrixAbstract<T> *);
 
 	if (n == INFINITY)
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  while (p < end)
 	  {
 		if (*p) result = std::max ((*p)->norm (n), result);
@@ -501,7 +501,7 @@ namespace fl
 	  }
 	  return result;
 	}
-	else if (n == 0.0f)
+	else if (n == 0)
 	{
 	  unsigned int result = 0;
 	  while (p < end)
@@ -509,11 +509,11 @@ namespace fl
 		if (*p) result += (*p)->norm (n);
 		p++;
 	  }
-	  return (T) result;
+	  return result;
 	}
-	else if (n == 1.0f)
+	else if (n == 1)
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  while (p < end)
 	  {
 		if (*p) result += (*p)->norm (n);
@@ -521,9 +521,9 @@ namespace fl
 	  }
 	  return result;
 	}
-	else if (n == 2.0f)
+	else if (n == 2)
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  while (p < end)
 	  {
 		if (*p)
@@ -533,17 +533,17 @@ namespace fl
 		}
 		p++;
 	  }
-	  return (T) std::sqrt (result);
+	  return std::sqrt (result);
 	}
 	else
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  while (p < end)
 	  {
-		if (*p) result += (T) std::pow ((*p)->norm (n), (T) n);
+		if (*p) result += std::pow ((*p)->norm (n), n);
 		p++;
 	  }
-	  return (T) std::pow (result, (T) (1.0f / n));
+	  return std::pow (result, 1 / n);
 	}
   }
 

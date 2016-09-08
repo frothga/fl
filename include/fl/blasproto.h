@@ -333,19 +333,20 @@ namespace fl
   }
 
   template<class T>
-  inline T
+  inline double
   nrm2 (const int & n,
 		T           x[],
 		const int & incx)
   {
-	T result = (T) 0;
+	double result = 0;
 	T * end = x + n * incx;
 	while (x != end)
 	{
-	  result += *x * *x;
+	  double t = std::abs (*x);
+	  result += t * t;
 	  x += incx;
 	}
-	return (T) std::sqrt (result);
+	return std::sqrt (result);
   }
 
   template<>
@@ -358,7 +359,7 @@ namespace fl
   }
 
   template<>
-  inline float
+  inline double
   nrm2 (const int & n,
 		float       x[],
 		const int & incx)

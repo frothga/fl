@@ -105,24 +105,24 @@ namespace fl
   }
 
   template<class T>
-  T
-  MatrixAbstract<T>::norm (float n) const
+  double
+  MatrixAbstract<T>::norm (double n) const
   {
 	int h = rows ();
 	int w = columns ();
 	if (n == INFINITY)
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  result = std::max (std::abs ((*this)(r,c)), result);
+		  result = std::max ((double) std::abs ((*this)(r,c)), result);
 		}
 	  }
 	  return result;
 	}
-	else if (n == 0.0f)
+	else if (n == 0)
 	{
 	  unsigned int result = 0;
 	  for (int c = 0; c < w; c++)
@@ -132,11 +132,11 @@ namespace fl
 		  if ((*this)(r,c) != (T) 0) result++;
 		}
 	  }
-	  return (T) result;
+	  return result;
 	}
-	else if (n == 1.0f)
+	else if (n == 1)
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
@@ -146,30 +146,30 @@ namespace fl
 	  }
 	  return result;
 	}
-	else if (n == 2.0f)
+	else if (n == 2)
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  T t = (*this) (r, c);
+		  double t = std::abs ((*this) (r, c));
 		  result += t * t;
 		}
 	  }
-	  return (T) std::sqrt (result);
+	  return std::sqrt (result);
 	}
 	else
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  for (int c = 0; c < w; c++)
 	  {
 		for (int r = 0; r < h; r++)
 		{
-		  result += (T) std::pow (std::abs ((*this) (r, c)), (T) n);
+		  result += std::pow ((double) std::abs ((*this) (r, c)), n);
 		}
 	  }
-	  return (T) std::pow (result, (T) (1.0 / n));
+	  return std::pow (result, 1 / n);
 	}
   }
 
@@ -965,28 +965,28 @@ namespace fl
   }
 
   template<class T>
-  T
-  MatrixStrided<T>::norm (float n) const
+  double
+  MatrixStrided<T>::norm (double n) const
   {
 	T * i = (T *) data + offset;
 	T * end = i + columns_ * strideC;
 	const int stepC = strideC - rows_ * strideR;
 	if (n == INFINITY)
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  while (i != end)
 	  {
 		T * columnEnd = i + rows_ * strideR;
 		while (i != columnEnd)
 		{
-		  result = std::max (std::abs (*i), result);
+		  result = std::max ((double) std::abs (*i), result);
 		  i += strideR;
 		}
 		i += stepC;
 	  }
 	  return result;
 	}
-	else if (n == 0.0f)
+	else if (n == 0)
 	{
 	  unsigned int result = 0;
 	  while (i != end)
@@ -999,11 +999,11 @@ namespace fl
 		}
 		i += stepC;
 	  }
-	  return (T) result;
+	  return result;
 	}
-	else if (n == 1.0f)
+	else if (n == 1)
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  while (i != end)
 	  {
 		T * columnEnd = i + rows_ * strideR;
@@ -1016,7 +1016,7 @@ namespace fl
 	  }
 	  return result;
 	}
-	else if (n == 2.0f)
+	else if (n == 2)
 	{
 #     ifdef HAVE_BLAS
 	  if (columns_ == 1)                 return nrm2 (rows_,            i, strideR);
@@ -1025,33 +1025,34 @@ namespace fl
 	  if (strideR == columns_ * strideC) return nrm2 (rows_ * columns_, i, strideC);
 #     endif
 
-	  T result = (T) 0;
+	  double result = 0;
 	  while (i != end)
 	  {
 		T * columnEnd = i + rows_ * strideR;
 		while (i != columnEnd)
 		{
-		  result += (*i) * (*i);
+		  double t = std::abs (*i);  // abs() is for complex numbers
+		  result += t * t;
 		  i += strideR;
 		}
 		i += stepC;
 	  }
-	  return (T) std::sqrt (result);
+	  return std::sqrt (result);
 	}
 	else
 	{
-	  T result = (T) 0;
+	  double result = 0;
 	  while (i != end)
 	  {
 		T * columnEnd = i + rows_ * strideR;
 		while (i != columnEnd)
 		{
-		  result += (T) std::pow (std::abs (*i), (T) n);
+		  result += std::pow ((double) std::abs (*i), n);
 		  i += strideR;
 		}
 		i += stepC;
 	  }
-	  return (T) std::pow (result, (T) (1.0 / n));
+	  return std::pow (result, 1 / n);
 	}
   }
 

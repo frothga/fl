@@ -75,7 +75,7 @@ namespace fl
 	 but allows A to be reused in other calculations.
   **/
   template<class T>
-  SHARED void geev (const MatrixAbstract<T> & A, Matrix<std::complex<T> > & eigenvalues, Matrix<T> & eigenvectors, bool destroyA = false);
+  SHARED void geev (const MatrixAbstract<T> & A, Matrix<std::complex<T>> & eigenvalues, Matrix<std::complex<T>> & eigenvectors, bool destroyA = false);
 
   /**
 	 Compute eigenvalues and right eigenvectors for general (non-symmetric)

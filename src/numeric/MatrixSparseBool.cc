@@ -14,7 +14,7 @@ for details.
 */
 
 
-#include "fl/MatrixSparseBool.tcc"
+#include "fl/MatrixSparse.tcc"
 
 
 using namespace fl;

@@ -15,7 +15,7 @@ for details.
 
 
 #define flNumeric_MS_EVIL
-#include "fl/MatrixBool.tcc"
+#include "fl/Matrix.tcc"
 
 
 using namespace fl;

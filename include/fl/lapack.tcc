@@ -216,7 +216,7 @@ namespace fl
 
   template<class T>
   void
-  geev (const MatrixAbstract<T> & A, Matrix<std::complex<T> > & eigenvalues, Matrix<T> & eigenvectors, bool destroyA)
+  geev (const MatrixAbstract<T> & A, Matrix<std::complex<T>> & eigenvalues, Matrix<std::complex<T>> & eigenvectors, bool destroyA)
   {
 	int n = std::min (A.rows (), A.columns ());
 
@@ -230,11 +230,9 @@ namespace fl
 	  tempA.copyFrom (A);
 	}
 
-	eigenvalues.resize (n);
 	Matrix<T> wr (n);
 	Matrix<T> wi (n);
-
-	eigenvectors.resize (n, n);
+	Matrix<T> tempEigenvectors (n, n);
 
 	int lwork = -1;
 	T optimalLwork;
@@ -249,8 +247,8 @@ namespace fl
 		  & wi[0],
 		  0,
 		  1,  // ldvl >= 1.  A lie to make lapack happy.
-		  & eigenvectors[0],
-		  eigenvectors.strideC,
+		  & tempEigenvectors[0],
+		  tempEigenvectors.strideC,
 		  &optimalLwork,
 		  lwork,
 		  info);
@@ -268,8 +266,8 @@ namespace fl
 		  & wi[0],
 		  0,
 		  1,
-		  & eigenvectors[0],
-		  eigenvectors.strideC,
+		  & tempEigenvectors[0],
+		  tempEigenvectors.strideC,
 		  work,
 		  lwork,
 		  info);
@@ -278,9 +276,24 @@ namespace fl
 
 	if (info) throw info;
 
-	for (int i = 0; i < n; i++)
+	eigenvalues.resize (n);
+	eigenvectors.resize (n, n);
+	for (int c = 0; c < n; c++)
 	{
-	  eigenvalues[i] = std::complex<T> (wr[i], wi[i]);
+	  T wic = wi[c];
+	  eigenvalues[c] = std::complex<T> (wr[c], wic);
+	  if (wic > 0) // first member of a conjugate pair
+	  {
+		for (int r = 0; r < n; r++) eigenvectors(r,c) = std::complex<T> (tempEigenvectors(r,c), tempEigenvectors(r,c+1));
+	  }
+	  else if (wic < 0)
+	  {
+		for (int r = 0; r < n; r++) eigenvectors(r,c) = std::complex<T> (tempEigenvectors(r,c-1), -tempEigenvectors(r,c));
+	  }
+	  else  // wic == 0, so simply a real eigenvalue
+	  {
+		eigenvectors.column (c) = tempEigenvectors.column (c);
+	  }
 	}
   }
 

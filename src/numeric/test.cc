@@ -906,16 +906,17 @@ testLAPACK ()
   A.column (2) = z;
 
   //   geev with (right) eigenvectors and complex eigenvalues
-  Matrix<T> eigenvectors;
-  Matrix<complex<T> > zeigenvalues;
-  geev (A, zeigenvalues, eigenvectors);
+  Matrix<complex<T>> zeigenvalues;
+  Matrix<complex<T>> zeigenvectors;
+  geev (A, zeigenvalues, zeigenvectors);
   if (zeigenvalues.rows () != 3  ||  zeigenvalues.columns () != 1) throw "unexpected size of eigenvalues";
   for (int i = 0; i < 3; i++) if (abs (abs (zeigenvalues[i]) - 1) > epsilon) throw "geev unexpected magnitude of eigenvalue";
-  //     don't bother checking actual values of eigenvectors
-  if (eigenvectors.rows () != 3  ||  eigenvectors.columns () != 3) throw "geev unexpected size of eigenvectors";
+  //     TODO: check if A*zeigenvectors.column(i) == zeigenvalues[i] * zeigenvectors.column(i)
+  if (zeigenvectors.rows () != 3  ||  zeigenvectors.columns () != 3) throw "geev unexpected size of eigenvectors";
 
   //   geev with eigenvectors and real eigenvalues
   Matrix<T> eigenvalues;
+  Matrix<T> eigenvectors;
   geev (A, eigenvalues, eigenvectors);  // preserve A
   if (eigenvalues.rows () != 3  ||  eigenvalues.columns () != 1) throw "unexpected size of eigenvalues";
   for (int i = 0; i < 3; i++) if (abs (eigenvalues[i] - zeigenvalues[i].real ()) > epsilon) throw "geev unexpected eigenvalue";
