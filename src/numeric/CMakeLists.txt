@@ -117,8 +117,6 @@ add_library (flNumeric
   #   Complex Float
   MatrixComplexFloat.cc
   #   Boolean
-  ../../include/fl/MatrixBool.tcc
-  ../../include/fl/MatrixSparseBool.tcc
   MatrixBool.cc
   VectorBool.cc
   MatrixSparseBool.cc
