@@ -66,6 +66,7 @@ namespace fl
 	virtual void drawCircle (const Point & center, float radius, uint32_t color = WHITE, float startAngle = 0, float endAngle = TWOPIf);
 	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1.0f, uint32_t color = WHITE, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);  ///< Draws the set ~x * !shape * x == radius^2.  shape has same semantics as a covariance matrix.  It transforms a circle into an ellipse.  radius, startAngle and endAngle are relative to that circle before it is transformed.
 	virtual void drawEllipse (const Matrix<double> & S, float radius = 1.0f, uint32_t color = WHITE);  ///< S projects a unit circle centered at the origin into the image.  radius scales up the unit circle.  This is a convenience function for marking affine-adapted patches.
+	virtual void drawEllipse (const PointAffine & p,    float radius = 1.0f, uint32_t color = WHITE);
 	virtual void drawMSER (const PointMSER & p, const Image & image, uint32_t colorFill = GRAY50, uint32_t colorBorder = WHITE);
 	virtual void drawText (const std::string & text, const Point & point, uint32_t color = WHITE, float angle = 0);
 	virtual void drawImage (const Image & image, Point & p, float width = -1, float height = -1);  ///< width or height == -1 means size is same number of units as pixels in image
@@ -98,6 +99,7 @@ namespace fl
 	virtual void drawFilledPolygon (const std::vector<Point> & points, uint32_t color = WHITE);
 	virtual void drawFilledRectangle (const Point & corner0, const Point & corner1, uint32_t colorFill = WHITE);
 	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, uint32_t color = WHITE, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);
+	using Canvas::drawEllipse;
 	virtual void drawMSER (const PointMSER & p, const Image & image, uint32_t colorFill = GRAY50, uint32_t colorBorder = WHITE);
 	virtual void drawText (const std::string & text, const Point & point, uint32_t color = WHITE, float angle = 0);
 
@@ -144,6 +146,7 @@ namespace fl
 	virtual void drawPolygon (const std::vector<Point> & points, uint32_t color = BLACK);
 	virtual void drawCircle (const Point & center, float radius, uint32_t color = BLACK, float startAngle = 0, float endAngle = TWOPIf);
 	virtual void drawEllipse (const Point & center, const MatrixFixed<double,2,2> & shape, float radius = 1, uint32_t color = BLACK, float startAngle = 0, float endAngle = TWOPIf, bool inverse = false);
+	using Canvas::drawEllipse;
 	virtual void drawImage (const Image & image, Point & p, float width = -1, float height = -1);
 
 	virtual void setTranslation (float x, float y);

@@ -155,6 +155,12 @@ Canvas::drawEllipse (const Matrix<double> & S, float radius, uint32_t color)
   drawEllipse (center, shape, radius, color);
 }
 
+void
+Canvas::drawEllipse (const PointAffine & p, float radius, uint32_t color)
+{
+  drawEllipse (p, p.A * ~p.A, radius, color);
+}
+
 /**
    Paints the pixels inside the region with colorFill, and the pixels just
    outside the region with colorBorder.
