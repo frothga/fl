@@ -1658,7 +1658,7 @@ testMatch ()
   testMatch (8);
   cout << "Match framework passes" << endl;
 # else
-  cout << "Match framework not tested due to lack of LAPACK" << endl;
+  cout << "WARNING: Match framework not tested due to lack of LAPACK" << endl;
 # endif
 }
 
