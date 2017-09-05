@@ -288,7 +288,7 @@ Image::bitblt (const Image & from, int toX, int toY, int fromX, int fromY, int w
   }
   else if (PixelBufferGroups * fromBuffer = (PixelBufferGroups *) source.buffer)
   {
-	if (fromBuffer->bytes == 1  &&  fromBuffer->pixels == 1)
+	if (fromBuffer->bytes == 1  &&  fromBuffer->pixelsH == 1  &&  (PixelBufferBlocks *) source.buffer == 0)
 	{
 	  fromBase   = (char *) fromBuffer->memory;
 	  fromStride =          fromBuffer->stride;
@@ -306,7 +306,7 @@ Image::bitblt (const Image & from, int toX, int toY, int fromX, int fromY, int w
   }
   else if (PixelBufferGroups * toBuffer = (PixelBufferGroups *) this->buffer)
   {
-	if (toBuffer->bytes == 1  &&  toBuffer->pixels == 1)
+	if (toBuffer->bytes == 1  &&  toBuffer->pixelsH == 1  &&  (PixelBufferBlocks *) this->buffer == 0)
 	{
 	  toBase   = (char *) toBuffer->memory;
 	  toStride =          toBuffer->stride;

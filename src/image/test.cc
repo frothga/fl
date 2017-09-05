@@ -37,6 +37,35 @@ using namespace fl;
 
 string dataDir;  ///< Path to working directory where test.jpg resides and where output will go
 
+// This YUV format is unlikely to ever be used in practice, but it is good
+// for exercising the code.
+// This consists of 4x4 pixels with 16 Y values and 4 (2x2) UV samples.
+// Each block of 4 Y samples is followed by its associated UV sample.
+// The sequence in the table follows a row-major pattern for the entire
+// macropixel, not just one group of Y samples. This is the pattern
+// required by PixelFormatPackedYUV.
+PixelFormatPackedYUV::YUVindex tableFunkyYUV[] =
+{
+  { 0,  4,  5},
+  { 1,  4,  5},
+  { 6, 10, 11},
+  { 7, 10, 11},
+  { 2,  4,  5},
+  { 3,  4,  5},
+  { 8, 10, 11},
+  { 9, 10, 11},
+  {12, 16, 17},
+  {13, 16, 17},
+  {18, 22, 23},
+  {19, 22, 23},
+  {14, 16, 17},
+  {15, 16, 17},
+  {20, 22, 23},
+  {21, 22, 23},
+  {-1}
+};
+PixelFormatPackedYUV FunkyYUV (tableFunkyYUV, 2, 4);
+
 void
 testAbsoluteValue (Image & image)
 {
@@ -401,7 +430,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 			u = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
 			v = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
 		  }
-		  int tu = u - 128;
+		  int tu = u - 128;  // temp UV, for computing position in RGB space in clip check below
 		  int tv = v - 128;
 
 		  // Check for clipping
@@ -449,7 +478,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 
 			  int cu = (cyuv & 0xFF00) >> 8;
 			  int cv = (cyuv &   0xFF);
-			  error = max (abs (u - cu), abs (v - cv));
+			  error = max (abs (u - cu), abs (v - cv));  // Compare with the average UV value computed above.
 			  if (error > tChroma)
 			  {
 				cout << "    " << xx << " " << yy << " unexpected change in chroma: " << error << " = |(" << u << " " << v << ") - (" << cu << " " << cv << ")|  clip=" << clip << endl;
@@ -954,6 +983,7 @@ testPixelFormat ()
   formats.push_back (&YUYV);
   formats.push_back (&UYYVYY);
   formats.push_back (&UYVYUYVYYYYY);
+  formats.push_back (&FunkyYUV);
   formats.push_back (&YUV420);
   formats.push_back (&YUV411);
   formats.push_back (&HSLFloat);
@@ -1802,7 +1832,8 @@ testBitblt (Image & test, fl::PixelFormat & format)
   int quantumY = 1;
   if (const Macropixel * f = dynamic_cast<const Macropixel *> (&format))
   {
-	quantumX = f->pixels;
+	quantumX = f->pixelsH;
+	quantumY = f->pixelsV;
   }
   if (const PixelFormatYUV * f = dynamic_cast<const PixelFormatYUV *> (&format))
   {
@@ -1909,6 +1940,7 @@ testBitblt ()
   testBitblt (test,  YUYV);
   testBitblt (test,  UYYVYY);
   testBitblt (test,  UYVYUYVYYYYY);
+  testBitblt (test,  FunkyYUV);
   testBitblt (test,  YUV420);
   testBitblt (test,  YUV411);
   testBitblt (test,  HSLFloat);
@@ -2091,6 +2123,8 @@ testAlpha ()
 int
 main (int argc, char * argv[])
 {
+  FunkyYUV.PointerPolyReferenceCount++;
+
   try
   {
 #   ifdef HAVE_JPEG

@@ -203,7 +203,8 @@ FormatMapping formatMap[] =
   {&GrayShortSigned,  B8(1110000), 1, 16, 2, 0, 1, 0, 0},
   {&GrayFloat,        B8(1110000), 1, 32, 3, 0, 1, 0, 0},
   {&GrayDouble,       B8(1110000), 1, 64, 3, 0, 1, 0, 0},
-  {&RGBChar,          B8(1110100), 3,  8, 1, 2, 1, 0, 0},
+  {&RGBChar,          B8(1111100), 3,  8, 1, 2, 1, 0, 0},
+  {(PixelFormat *) 4, B8(1111100), 3,  8, 1, 6, 1, 0, 0},
   {&RGBShort,         B8(1110100), 3, 16, 1, 2, 1, 0, 0},
   {&RGBAChar,         B8(1110100), 4,  8, 1, 2, 1, 1, 2},  // No-care on alpha channel type.  We always treat it as unassociated.
   {&RGBAShort,        B8(1110100), 4, 16, 1, 2, 1, 1, 2},
@@ -297,6 +298,28 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		case 3:
 		{
 		  format = new PixelFormatGrayBits (bitsPerSample);
+		  break;
+		}
+		case 4:
+		{
+		  uint16 ratioH;
+		  uint16 ratioV;
+		  TIFFGetFieldDefaulted (tif, TIFFTAG_YCBCRSUBSAMPLING, &ratioH, &ratioV);
+		  PixelFormatPackedYUV::YUVindex * table = new PixelFormatPackedYUV::YUVindex[ratioH * ratioV + 1];
+		  PixelFormatPackedYUV::YUVindex * t = table;
+		  for (int v = 0; v < ratioV; v++)
+		  {
+			for (int h = 0; h < ratioH; h++)
+			{
+			  t->y = v * ratioH + h;
+			  t->u = ratioV * ratioH;
+			  t->v = ratioV * ratioH + 1;
+			  t++;
+			}
+		  }
+		  t->y = -1;
+		  format = new PixelFormatPackedYUV (table, ratioV);
+		  delete[] table;  // format ctor makes a deep copy of the table
 		  break;
 		}
 		default:

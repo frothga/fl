@@ -84,7 +84,7 @@ DescriptorColorHistogram2D::clear ()
   histogram.clear ();
 }
 
-union YUV
+union YUVholder
 {
   unsigned int all;
   struct
@@ -98,7 +98,7 @@ union YUV
 inline void
 DescriptorColorHistogram2D::addToHistogram (const Image & image, const int x, const int y)
 {
-  YUV yuv;
+  YUVholder yuv;
   yuv.all = image.getYUV (x, y);
   //float weight = yuv.y / 255.0f;
   float weight = 1.0f;  // All pixels count the same, regardless of intensity.  This is the right way to collapse the intensity dimension of a 3D histogram.
@@ -243,7 +243,7 @@ DescriptorColorHistogram2D::patch (const Vector<float> & value)
 
   float maximum = value.norm (INFINITY);
 
-  YUV yuv;
+  YUVholder yuv;
   yuv.all = 0;
   int i = 0;
   for (int u = 0; u < width; u++)

@@ -113,7 +113,7 @@ DescriptorColorHistogram3D::clear ()
   memset (histogram, 0, width * width * height * sizeof (float));
 }
 
-union YUV
+union YUVholder
 {
   unsigned int all;
   struct
@@ -127,7 +127,7 @@ union YUV
 inline void
 DescriptorColorHistogram3D::addToHistogram (const Image & image, const int x, const int y)
 {
-  YUV yuv;
+  YUVholder yuv;
   yuv.all = image.getYUV (x, y);
   float yf = yuv.y * height / 256.0f - 0.5f;
   float uf = yuv.u * width  / 256.0f - 0.5f;
@@ -304,7 +304,7 @@ DescriptorColorHistogram3D::patch (const Vector<float> & value)
 
   float maximum = value.norm (INFINITY);
 
-  YUV yuv;
+  YUVholder yuv;
   yuv.all = 0;
   int i = 0;
   bool * vi = valid;

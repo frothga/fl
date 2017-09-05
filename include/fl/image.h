@@ -305,9 +305,9 @@ namespace fl
   class SHARED PixelBufferGroups : public PixelBuffer
   {
   public:
-	PixelBufferGroups (int pixels, int bytes);
-	PixelBufferGroups (int stride, int height, int pixels, int bytes);
-	PixelBufferGroups (void * buffer, int stride, int height, int pixels, int bytes);
+	PixelBufferGroups (int pixelsH, int bytes);
+	PixelBufferGroups (int stride, int height, int pixelsH, int bytes);
+	PixelBufferGroups (void * buffer, int stride, int height, int pixelsH, int bytes);
 	virtual ~PixelBufferGroups ();
 
 	virtual void * pixel (int x, int y);
@@ -317,16 +317,31 @@ namespace fl
 	virtual bool operator == (const PixelBuffer & that) const;
 
 	int stride;
-	int pixels;  ///< Pixels per group.
+	int pixelsH;  ///< Horizontal pixels per group. If vertical pixels is greater than 1, then use subclass PixelBufferBlocks instead.
 	int bytes;  ///< Bytes per group.
 	Pointer memory;
 
 	struct PixelData
 	{
 	  uint8_t * address;  ///< Pointer to first byte of pixel group.
-	  int       index;  ///< Indicates which pixel in group to select.  Defined simply as x % groupPixels.
+	  int       index;  ///< Indicates which pixel in group to select. Pixel format is responsible for extracting relevant bytes from group.
 	};
 	PixelData pixelData;
+  };
+
+  class SHARED PixelBufferBlocks : public PixelBufferGroups
+  {
+  public:
+	PixelBufferBlocks (int pixelsH, int pixelsV, int bytes);
+	PixelBufferBlocks (int stride, int height, int pixelsH, int pixelsV, int bytes);
+	PixelBufferBlocks (void * buffer, int stride, int height, int pixelsH, int pixelsV, int bytes);
+
+	virtual void * pixel (int x, int y);
+	virtual void resize (int width, int height, const PixelFormat & format, bool preserve = false);  ///< stride will be set to ceil (width * groupBytes / groupPixels).
+	virtual PixelBuffer * duplicate () const;
+	virtual bool operator == (const PixelBuffer & that) const;
+
+	int pixelsV;  ///< Vertical pixels per group.
   };
 
   /**
@@ -587,7 +602,8 @@ namespace fl
   class SHARED Macropixel
   {
   public:
-	int pixels;  ///< Pixels per group.
+	int pixelsH;  ///< Height of one group in pixels.
+	int pixelsV;  ///< Width of one group in pixels.
 	int bytes;  ///< Bytes per group.
   };
 
@@ -959,7 +975,7 @@ namespace fl
 	  int v;
 	};
 
-	PixelFormatPackedYUV (YUVindex * table = 0);
+	PixelFormatPackedYUV (YUVindex * table = 0, int ratioV = 1, int pixelsV = 0);  // 0 means assign pixelsV=ratioV
 	virtual ~PixelFormatPackedYUV ();
 
 	void serialize (Archive & archive, uint32_t version);
@@ -978,6 +994,11 @@ namespace fl
 	virtual void     setRGBA (void * pixel, uint32_t rgba) const;
 	virtual void     setYUV  (void * pixel, uint32_t yuv ) const;
 
+	YUVindex * reorder () const;  ///< @return A table blocked into ratioH x ratioV groups, suitable for UV averaging in from*() functions. Caller is responsible to dispose of pointer.
+
+	/**
+	   The table must be arranged in row-major order, left-to-right, top-down.
+	**/
 	YUVindex * table;
   };
 
@@ -1297,7 +1318,7 @@ namespace fl
   };
 
   /**
-	 \todo Add a mutex around the static variable formats.
+	 \todo Add a mutex around the static variable "formats".
   **/
   class SHARED ImageFileFormat
   {

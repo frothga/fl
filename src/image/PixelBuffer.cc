@@ -342,29 +342,29 @@ PixelBufferPlanar::operator == (const PixelBuffer & that) const
 
 // class PixelBufferGroups ----------------------------------------------------
 
-PixelBufferGroups::PixelBufferGroups (int pixels, int bytes)
+PixelBufferGroups::PixelBufferGroups (int pixelsH, int bytes)
 {
-  planes       = -1;
-  this->pixels = pixels;
-  this->bytes  = bytes;
-  stride       = 0;
+  planes        = -1;
+  this->pixelsH = pixelsH;
+  this->bytes   = bytes;
+  stride        = 0;
 }
 
-PixelBufferGroups::PixelBufferGroups (int stride, int height, int pixels, int bytes)
+PixelBufferGroups::PixelBufferGroups (int stride, int height, int pixelsH, int bytes)
 {
-  planes       = -1;
-  this->pixels = pixels;
-  this->bytes  = bytes;
-  this->stride = stride;
+  planes        = -1;
+  this->pixelsH = pixelsH;
+  this->bytes   = bytes;
+  this->stride  = stride;
   memory.grow (stride * height);
 }
 
-PixelBufferGroups::PixelBufferGroups (void * buffer, int stride, int height, int pixels, int bytes)
+PixelBufferGroups::PixelBufferGroups (void * buffer, int stride, int height, int pixelsH, int bytes)
 {
-  planes       = -1;
-  this->pixels = pixels;
-  this->bytes  = bytes;
-  this->stride = stride;
+  planes        = -1;
+  this->pixelsH = pixelsH;
+  this->bytes   = bytes;
+  this->stride  = stride;
   memory.attach (buffer, stride * height);
 }
 
@@ -375,8 +375,8 @@ PixelBufferGroups::~PixelBufferGroups ()
 void *
 PixelBufferGroups::pixel (int x, int y)
 {
-  pixelData.address = (unsigned char *) memory + (y * stride + (x / pixels) * bytes);
-  pixelData.index   = x % pixels;
+  pixelData.address = (unsigned char *) memory + (y * stride + (x / pixelsH) * bytes);
+  pixelData.index   = x % pixelsH;
   return & pixelData;
 }
 
@@ -392,13 +392,16 @@ PixelBufferGroups::resize (int width, int height, const PixelFormat & format, bo
 
   const Macropixel * f = dynamic_cast<const Macropixel *> (&format);
   if (!f) throw "Need PixelFormat that specifies macropixel parameters.";
-  int newStride = (int) ceil ((float) width / f->pixels) * f->bytes;  // Always allocate a stride that can contain a whole number of groups and also the full width.  It is permissable to use part of a group for the last few pixels of the line, provided there is storage for the full group.
+  // Always allocate a stride that can contain a whole number of groups and
+  // also the full width.  It is permissable to use part of a group for the
+  // last few pixels of the line, provided there is storage for the full group.
+  int newStride = (int) ceil ((float) width / f->pixelsH) * f->bytes;
 
-  if (! preserve  ||  f->pixels != pixels  ||  f->bytes != bytes)
+  if (! preserve  ||  f->pixelsH != pixelsH  ||  f->bytes != bytes)
   {
-	pixels = f->pixels;
-	bytes  = f->bytes;
-	stride = newStride;
+	pixelsH = f->pixelsH;
+	bytes   = f->bytes;
+	stride  = newStride;
 	memory.grow (newStride * height);
 	return;
   }
@@ -410,7 +413,7 @@ PixelBufferGroups::resize (int width, int height, const PixelFormat & format, bo
 PixelBuffer *
 PixelBufferGroups::duplicate () const
 {
-  PixelBufferGroups * result = new PixelBufferGroups (pixels, bytes);
+  PixelBufferGroups * result = new PixelBufferGroups (pixelsH, bytes);
   result->memory.copyFrom (memory);
   result->stride = stride;
   return result;
@@ -427,10 +430,99 @@ PixelBufferGroups::operator == (const PixelBuffer & that) const
 {
   const PixelBufferGroups * p = dynamic_cast<const PixelBufferGroups *> (&that);
   return    p
-         && stride == p->stride
-         && pixels == p->pixels
-         && bytes  == p->bytes
-         && memory == p->memory;
+         && stride  == p->stride
+         && pixelsH == p->pixelsH
+         && bytes   == p->bytes
+         && memory  == p->memory;
+}
+
+
+// class PixelBufferBlocks ----------------------------------------------------
+
+PixelBufferBlocks::PixelBufferBlocks (int pixelsH, int pixelsV, int bytes)
+: PixelBufferGroups (pixelsH, bytes)
+{
+  this->pixelsV = pixelsV;
+}
+
+PixelBufferBlocks::PixelBufferBlocks (int stride, int height, int pixelsH, int pixelsV, int bytes)
+: PixelBufferGroups (pixelsH, bytes)
+{
+  this->pixelsV = pixelsV;
+  this->stride  = stride;
+  if (height % pixelsV) height = height / pixelsV + 1;  // round up for partial pixel block
+  else                  height /= pixelsV;
+  memory.grow (stride * height);
+}
+
+PixelBufferBlocks::PixelBufferBlocks (void * buffer, int stride, int height, int pixelsH, int pixelsV, int bytes)
+: PixelBufferGroups (pixelsH, bytes)
+{
+  this->pixelsV = pixelsV;
+  this->stride  = stride;
+  if (height % pixelsV) height = height / pixelsV + 1;
+  else                  height /= pixelsV;
+  memory.attach (buffer, stride * height);
+}
+
+void *
+PixelBufferBlocks::pixel (int x, int y)
+{
+  pixelData.address = (unsigned char *) memory + (y / pixelsV * stride + (x / pixelsH) * bytes);
+  pixelData.index   = y % pixelsV * pixelsH + x % pixelsH;
+  return & pixelData;
+}
+
+void
+PixelBufferBlocks::resize (int width, int height, const PixelFormat & format, bool preserve)
+{
+  if (width <= 0  ||  height <= 0)
+  {
+	stride = 0;
+	memory.detach ();
+	return;
+  }
+
+  const Macropixel * f = dynamic_cast<const Macropixel *> (&format);
+  if (!f) throw "Need PixelFormat that specifies macropixel parameters.";
+  int newStride = (int) ceil ((float) width / f->pixelsH) * f->bytes;
+
+  if (height % f->pixelsV) height = height / f->pixelsV + 1;
+  else                     height /= f->pixelsV;
+
+  if (! preserve  ||  f->pixelsH != pixelsH  ||  f->pixelsV != pixelsV  ||  f->bytes != bytes)
+  {
+	pixelsH = f->pixelsH;
+	pixelsV = f->pixelsV;
+	bytes   = f->bytes;
+	stride  = newStride;
+	memory.grow (newStride * height);
+	return;
+  }
+
+  reshapeBuffer (memory, stride, newStride, height);
+  stride = newStride;
+}
+
+PixelBuffer *
+PixelBufferBlocks::duplicate () const
+{
+  PixelBufferBlocks * result = new PixelBufferBlocks (pixelsH, pixelsV, bytes);
+  result->memory.copyFrom (memory);
+  result->stride = stride;
+  return result;
+}
+
+bool
+PixelBufferBlocks::operator == (const PixelBuffer & that) const
+{
+  const PixelBufferBlocks * p = dynamic_cast<const PixelBufferBlocks *> (&that);
+  return    p
+         && stride  == p->stride
+         && pixelsH == p->pixelsH
+         && pixelsV == p->pixelsV
+         && bytes   == p->bytes
+         && memory  == p->memory;
 }
 
 

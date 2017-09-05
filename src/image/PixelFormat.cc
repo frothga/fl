@@ -457,7 +457,8 @@ PixelFormat::buffer () const
   {
 	const Macropixel * m = dynamic_cast<const Macropixel *> (this);
 	if (!m) throw "Specified a 'groups' style buffer, but not a Macropixel format.";
-	return new PixelBufferGroups (m->pixels, m->bytes);
+	if (m->pixelsV == 1) return new PixelBufferGroups (m->pixelsH, m->bytes);
+	return new PixelBufferBlocks (m->pixelsH, m->pixelsV, m->bytes);
   }
   else
   {
@@ -719,13 +720,14 @@ PixelFormatPalette::PixelFormatPalette (uint8_t * r, uint8_t * g, uint8_t * b, i
   hasAlpha   = false;
   this->bits = bits;
   bytes      = 1;
-  pixels     = 8 / bits;
+  pixelsH    = 8 / bits;
+  pixelsV    = 1;
 
   // build masks
   uint8_t mask = 0x1;
   for (int i = 1; i < bits; i++) mask |= mask << 1;
 
-  int i = bigendian ? pixels - 1 : 0;
+  int i = bigendian ? pixelsH - 1 : 0;
   int step = bigendian ? -1 : 1;
   int shift = 0;
   while (mask)
@@ -757,8 +759,9 @@ void
 PixelFormatPalette::serialize (Archive & archive, uint32_t version)
 {
   archive & *((PixelFormat *) this);
-  archive & pixels;
-  archive & bytes;
+  archive & pixelsH;
+  pixelsV = 1;  // on read
+  bytes   = 1;
   archive & bits;
   for (int i = 0; i < 8;   i++) archive & masks[i];
   for (int i = 0; i < 8;   i++) archive & shifts[i];
@@ -768,7 +771,7 @@ PixelFormatPalette::serialize (Archive & archive, uint32_t version)
 PixelBuffer *
 PixelFormatPalette::attach (void * block, int width, int height, bool copy) const
 {
-  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil ((float) width / pixels), height, pixels, bytes);
+  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil ((float) width / pixelsH), height, pixelsH, 1);
   if (copy) result->memory.copyFrom (result->memory);
   return result;
 }
@@ -847,14 +850,15 @@ PixelFormatGrayBits::PixelFormatGrayBits (int bits, bool bigendian)
   hasAlpha   = false;
   this->bits = bits;
   bytes      = 1;
-  pixels     = 8 / bits;
+  pixelsH    = 8 / bits;
+  pixelsV    = 1;
 
   // build masks
 
   uint8_t mask = 0x1;
   for (int i = 1; i < bits; i++) mask |= mask << 1;
 
-  int i = bigendian ? pixels - 1 : 0;
+  int i = bigendian ? pixelsH - 1 : 0;
   int step = bigendian ? -1 : 1;
   int shift = 8 - bits;
   while (mask)
@@ -871,8 +875,9 @@ void
 PixelFormatGrayBits::serialize (Archive & archive, uint32_t version)
 {
   archive & *((PixelFormat *) this);
-  archive & pixels;
-  archive & bytes;
+  archive & pixelsH;
+  pixelsV = 1;
+  bytes   = 1;
   archive & bits;
   for (int i = 0; i < 8; i++) archive & masks[i];
   for (int i = 0; i < 8; i++) archive & shifts[i];
@@ -881,7 +886,7 @@ PixelFormatGrayBits::serialize (Archive & archive, uint32_t version)
 PixelBuffer *
 PixelFormatGrayBits::attach (void * block, int width, int height, bool copy) const
 {
-  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil ((float) width / pixels), height, pixels, 1);
+  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil ((float) width / pixelsH), height, pixelsH, 1);
   if (copy) result->memory.copyFrom (result->memory);
   return result;
 }
@@ -895,7 +900,7 @@ PixelFormatGrayBits::operator == (const PixelFormat & that) const
 
   const uint8_t * o   = other->masks;
   const uint8_t * m   = masks;
-  const uint8_t * end = m + pixels;
+  const uint8_t * end = m + pixelsH;
   while (m < end)
   {
 	if (*o++ != *m++) return false;
@@ -4040,44 +4045,101 @@ PixelFormatRGBAChar::fromPackedYUV (const Image & image, Image & result) const
   PixelFormatPackedYUV::YUVindex * table        = sourceFormat->table;
   uint8_t *                        fromPixel    = (uint8_t *) i->memory;
   const int                        bytes        = i->bytes;
-  const int                        fromStep     = i->stride - (int) floor ((image.width + 0.5) / i->pixels) * bytes;
+  int                              groupsH      = image.width / i->pixelsH + ((image.width % i->pixelsH) ? 1 : 0);
+  const int                        fromStep     = i->stride - groupsH * bytes;
 
   PixelBufferPacked * o = (PixelBufferPacked *) result.buffer;
   assert (o);
-  uint32_t *       toPixel  = (uint32_t *) o->base ();
-  const uint32_t * end      = (uint32_t *) ((char *) toPixel + o->stride * result.height);
-  const int        rowWidth = (int) roundp (result.width * depth);
-  const int        toStep   = o->stride - rowWidth;
+  int       quantizedWidth = groupsH * i->pixelsH;  // Output buffer must have exactly this pixel capacity to accomodate the quantization in the source.
+  const int rowWidth       = (int) roundp (quantizedWidth * depth);
 
-  while (toPixel < end)
+  PixelFormatPackedYUV::YUVindex * index = table;
+
+  PixelBufferBlocks * b = (PixelBufferBlocks *) image.buffer;  // returns null if buffer cannot be cast
+  if (b)  // Complex case: pixel blocks with multiple rows
   {
-	PixelFormatPackedYUV::YUVindex * index = table;
-	const uint32_t * rowEnd = (uint32_t *) ((char *) toPixel + rowWidth);
-	while (toPixel < rowEnd)
+	// Ensure memory block is big enough to write full quantized size, both vertical and horizontal.
+	if (result.width != quantizedWidth  ||  result.height % b->pixelsV) o->resize (quantizedWidth, (result.height / b->pixelsV + 1) * b->pixelsV, *this);  // Note: height of output image does not change.
+	uint32_t *       toPixel = (uint32_t *) o->base ();
+	const uint32_t * end     = (uint32_t *) ((char *) toPixel + o->stride * result.height);
+	const int        toStep  = o->stride * b->pixelsV - rowWidth;
+
+	const int blockWidth  = (int) roundp (b->pixelsH * depth);
+	const int blockStep   = o->stride - blockWidth;
+	const int blockResume = blockWidth - b->pixelsV * o->stride;
+
+	while (toPixel < end)
 	{
-	  int y = fromPixel[index->y] << 16;
-	  int u = fromPixel[index->u] - 128;
-	  int v = fromPixel[index->v] - 128;
-
-	  uint32_t r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
-	  uint32_t g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
-	  uint32_t b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
-
-#     if BYTE_ORDER == LITTLE_ENDIAN
-	  *toPixel++ = (b & 0xFF0000) | ((g >> 8) & 0xFF00) | ((r >> 16) & 0xFF) | 0xFF000000;
-#     elif BYTE_ORDER == BIG_ENDIAN
-	  *toPixel++ = ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF;
-#     endif
-
-	  index++;
-	  if (index->y < 0)
+	  const uint32_t * rowEnd = (uint32_t *) ((char *) toPixel + rowWidth);
+	  while (toPixel < rowEnd)
 	  {
+		// the inner loops will walk over one block
 		index = table;
+		while (index->y >= 0)
+		{
+		  const uint32_t * blockRowEnd = (uint32_t *) ((char *) toPixel + blockWidth);
+		  while (toPixel < blockRowEnd)
+		  {
+			int y = fromPixel[index->y] << 16;
+			int u = fromPixel[index->u] - 128;
+			int v = fromPixel[index->v] - 128;
+
+			uint32_t r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
+			uint32_t g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
+			uint32_t b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
+
+#           if BYTE_ORDER == LITTLE_ENDIAN
+			*toPixel++ = (b & 0xFF0000) | ((g >> 8) & 0xFF00) | ((r >> 16) & 0xFF) | 0xFF000000;
+#           elif BYTE_ORDER == BIG_ENDIAN
+			*toPixel++ = ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF;
+#           endif
+
+			index++;
+		  }
+		  toPixel = (uint32_t *) ((char *) toPixel + blockStep);
+		}
 		fromPixel += bytes;
+		toPixel = (uint32_t *) ((char *) toPixel + blockResume);
 	  }
+	  fromPixel += fromStep;
+	  toPixel = (uint32_t *) ((char *) toPixel + toStep);
 	}
-	fromPixel += fromStep;
-	toPixel = (uint32_t *) ((char *) toPixel + toStep);
+  }
+  else  // Simple case: single-row pixel groups
+  {
+	if (result.width != quantizedWidth) o->resize (quantizedWidth, result.height, *this);
+	uint32_t *       toPixel  = (uint32_t *) o->base ();
+	const uint32_t * end      = (uint32_t *) ((char *) toPixel + o->stride * result.height);
+	const int        toStep   = o->stride - rowWidth;
+	while (toPixel < end)
+	{
+	  const uint32_t * rowEnd = (uint32_t *) ((char *) toPixel + rowWidth);
+	  while (toPixel < rowEnd)
+	  {
+		int y = fromPixel[index->y] << 16;
+		int u = fromPixel[index->u] - 128;
+		int v = fromPixel[index->v] - 128;
+
+		uint32_t r = min (max (y               + 0x166F7 * v + 0x8000, 0), 0xFFFFFF);
+		uint32_t g = min (max (y -  0x5879 * u -  0xB6E9 * v + 0x8000, 0), 0xFFFFFF);
+		uint32_t b = min (max (y + 0x1C560 * u               + 0x8000, 0), 0xFFFFFF);
+
+#       if BYTE_ORDER == LITTLE_ENDIAN
+		*toPixel++ = (b & 0xFF0000) | ((g >> 8) & 0xFF00) | ((r >> 16) & 0xFF) | 0xFF000000;
+#       elif BYTE_ORDER == BIG_ENDIAN
+		*toPixel++ = ((r << 8) & 0xFF000000) | (g & 0xFF0000) | ((b >> 8) & 0xFF00) | 0xFF;
+#       endif
+
+		index++;
+		if (index->y < 0)
+		{
+		  index = table;
+		  fromPixel += bytes;
+		}
+	  }
+	  fromPixel += fromStep;
+	  toPixel = (uint32_t *) ((char *) toPixel + toStep);
+	}
   }
 }
 
@@ -4624,8 +4686,8 @@ PixelFormatYUV::serialize (Archive & archive, uint32_t version)
 
 // class PixelFormatPackedYUV -------------------------------------------------
 
-PixelFormatPackedYUV::PixelFormatPackedYUV (YUVindex * table)
-: PixelFormatYUV (1, 1)
+PixelFormatPackedYUV::PixelFormatPackedYUV (YUVindex * table, int ratioV, int pixelsV)
+: PixelFormatYUV (1, ratioV)
 {
   planes     = -1;
   precedence = 1;
@@ -4633,20 +4695,22 @@ PixelFormatPackedYUV::PixelFormatPackedYUV (YUVindex * table)
   hasAlpha   = false;
 
   // Analyze table to initialize remaining members
-  this->table = table;
-  pixels = 0;
+  pixelsH = 1;
+  if (pixelsV == 0) this->pixelsV = ratioV;
+  else              this->pixelsV = pixelsV;
+  int pixelsTotal = 0;
   bytes = 0;
   depth = 0;
-  if (table)
+  if (table)  // may only be null for serialization
   {
 	// Count number of entries in table, which is same as pixels in macropixel.
 	YUVindex * i = table;
 	while (i->y >= 0)
 	{
 	  i++;
-	  pixels++;
+	  pixelsTotal++;
 	}
-	this->table = new YUVindex[pixels + 1];
+	this->table = new YUVindex[pixelsTotal + 1];
 
 	set<int> Usamples;
 	set<int> Vsamples;
@@ -4660,23 +4724,29 @@ PixelFormatPackedYUV::PixelFormatPackedYUV (YUVindex * table)
 	  *j++ = *i++;
 	}
 	j->y = -1;
+
 	bytes++;  // Up to now, bytes is the index of highest byte in group.  Must convert to quantity of bytes.
-	depth = (float) bytes / pixels;
-	ratioH = pixels / min (Usamples.size (), Vsamples.size ());
+	depth = (float) bytes / pixelsTotal;
+
+	int UVsamples = min (Usamples.size (), Vsamples.size ());
+	ratioH  = pixelsTotal / (ratioV * UVsamples);  // ratioH*ratioV = totalPixels / UVsamples
+	pixelsH = pixelsTotal / this->pixelsV;
   }
 }
 
 PixelFormatPackedYUV::~PixelFormatPackedYUV ()
 {
-  delete [] table;
+  delete[] table;
 }
 
 void
 PixelFormatPackedYUV::serialize (Archive & archive, uint32_t version)
 {
   archive & *((PixelFormatYUV *) this);
-  archive & pixels;
+  archive & pixelsH;
+  archive & pixelsV;
   archive & bytes;
+  int pixels = pixelsH * pixelsV;
   if (archive.in) table = new YUVindex[pixels + 1];
   for (int i = 0; i < pixels; i++)
   {
@@ -4723,93 +4793,163 @@ PixelFormatPackedYUV::fromAny (const Image & image, Image & result) const
 
   PixelBufferPacked * i = (PixelBufferPacked *) image.buffer;
   PixelBufferGroups * o = (PixelBufferGroups *) result.buffer;
+  PixelBufferBlocks * b = (PixelBufferBlocks *) result.buffer;
   assert (o);
 
-  uint8_t *       address  = (uint8_t *) o->memory;
-  const uint8_t * end      = address + o->stride * result.height;
-  const int       rowWidth = (int) (result.width * depth);
-  const int       toStep   = o->stride - rowWidth;
+  const int groupsH        = result.width / o->pixelsH + ((result.width % o->pixelsH) ? 1 : 0);
+  const int quantizedWidth = groupsH * o->pixelsH;
+  const int rowWidth       = groupsH * o->bytes;
 
-  const uint32_t  shift    = 16 + (int) roundp (log ((double) ratioH) / log (2.0));
-  const int       bias     = 0x808 << (shift - 4);  // include both bias and rounding in single constant
-  const int       maximum  = (~(uint32_t) 0) >> (24 - shift);
+  const uint32_t shift   = 16 + (int) roundp (log ((double) ratioH * ratioV) / log (2.0));
+  const int      bias    = 0x808 << (shift - 4);  // include both bias and rounding in single constant
+  const int      maximum = (~(uint32_t) 0) >> (24 - shift);
 
-  if (i)
+  if (b)  // Complex case: target has multi-row blocks
   {
-	uint8_t * source = (uint8_t *) i->base ();
-	const int fromStep = i->stride - image.width * sourceDepth;
+	const int groupsV         = result.height / b->pixelsV + ((result.height % b->pixelsV) ? 1 : 0);
+	const int quantizedHeight = groupsV * b->pixelsV;
+	if (result.width != quantizedWidth  ||  result.height != quantizedHeight) o->resize (quantizedWidth, quantizedHeight, *this);
 
-	while (address < end)
+	uint8_t *       toGroup = (uint8_t *) o->memory;
+	const uint8_t * end     = toGroup + o->stride * groupsV;
+	const int       toStep  = o->stride - rowWidth;
+
+	YUVindex * reorderedTable = reorder ();
+	int blockY = 0;
+	while (toGroup < end)
 	{
-	  const uint8_t * rowEnd = address + rowWidth;
-	  while (address < rowEnd)
+	  int blockX = 0;
+	  const uint8_t * rowEnd = toGroup + rowWidth;
+	  while (toGroup < rowEnd)
 	  {
-		YUVindex * index = table;
-		while (index->y >= 0)
+		YUVindex * index = reorderedTable;
+		for (int sampleY = blockY; sampleY < blockY + pixelsV; sampleY += ratioV)
 		{
-		  int r = 0;
-		  int g = 0;
-		  int b = 0;
-		  for (int p = 0; p < ratioH; p++)
+		  for (int sampleX = blockX; sampleX < blockX + pixelsH; sampleX += ratioH)
 		  {
-			uint32_t rgba = sourceFormat->getRGBA (source);
-			source += sourceDepth;
-			int sr =  rgba             >> 24;  // assumes 32-bit int
-			int sg = (rgba & 0xFF0000) >> 16;
-			int sb = (rgba &   0xFF00) >>  8;
-			r += sr;
-			g += sg;
-			b += sb;
-			address[(*index++).y] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			// Average RGB values from source, and convert to UV in destination.
+			// For each pixel position, convert to luminance (Y) values in destination.
+			int r = 0;
+			int g = 0;
+			int b = 0;
+			uint32_t rgba = 0;  // Keeping this outside the loop lets us re-use the previous value if we go out of bounds.
+			for (int y = sampleY; y < sampleY + ratioV; y++)
+			{
+			  for (int x = sampleX; x < sampleX + ratioH; x++)
+			  {
+				if (x < image.width  &&  y < image.height) rgba = sourceFormat->getRGBA (sourceBuffer->pixel (x, y));
+				int sr =  rgba             >> 24;
+				int sg = (rgba & 0xFF0000) >> 16;
+				int sb = (rgba &   0xFF00) >>  8;
+				r += sr;
+				g += sg;
+				b += sb;
+				toGroup[(index++)->y] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			  }
+			}
+			index--;
+			toGroup[index->u] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
+			toGroup[index->v] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
+			index++;
 		  }
-		  // This assumes that all ratioH pixels share the same U and V values,
-		  // and that ratioH accurately represents the structure of the group.
-		  index--;
-		  address[index->u] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
-		  address[index->v] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
-		  index++;
 		}
-		address += bytes;
+		toGroup += bytes;
+		blockX += pixelsH;
 	  }
-	  address += toStep;
-	  source += fromStep;
+	  toGroup += toStep;
+	  blockY += pixelsV;
 	}
+	delete[] reorderedTable;
   }
-  else
+  else   // destination pixel groups occupy a single row (equivalent to pixelsV==1)
   {
-	int y = 0;
-	while (address < end)
+	if (result.width != quantizedWidth) o->resize (quantizedWidth, result.height, *this);
+	uint8_t *       toGroup = (uint8_t *) o->memory;
+	const uint8_t * end     = toGroup + o->stride * result.height;
+	const int       toStep  = o->stride - rowWidth;
+
+	if (i)  // Most efficient case: source can be scanned directly using a pointer
 	{
-	  int x = 0;
-	  const uint8_t * rowEnd = address + rowWidth;
-	  while (address < rowEnd)
+	  uint8_t * fromPixel    = (uint8_t *) i->base ();
+	  const int fromRowWidth = image.width * sourceDepth;
+	  const int fromStep     = i->stride - fromRowWidth;
+
+	  while (toGroup < end)
 	  {
-		YUVindex * index = table;
-		while (index->y >= 0)
+		const uint8_t * rowEnd = toGroup + rowWidth;
+		const uint8_t * fromRowEnd = fromPixel + fromRowWidth;
+		while (toGroup < rowEnd)
 		{
-		  int r = 0;
-		  int g = 0;
-		  int b = 0;
-		  for (int p = 0; p < ratioH; p++)
+		  YUVindex * index = table;
+		  while (index->y >= 0)
 		  {
-			uint32_t rgba = sourceFormat->getRGBA (sourceBuffer->pixel (x++, y));
-			int sr =  rgba             >> 24;
-			int sg = (rgba & 0xFF0000) >> 16;
-			int sb = (rgba &   0xFF00) >>  8;
-			r += sr;
-			g += sg;
-			b += sb;
-			address[(*index++).y] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			int r = 0;
+			int g = 0;
+			int b = 0;
+			uint32_t rgba = 0;
+			for (int p = 0; p < ratioH; p++)
+			{
+			  if (fromPixel < fromRowEnd) rgba = sourceFormat->getRGBA (fromPixel);
+			  int sr =  rgba             >> 24;  // assumes 32-bit int
+			  int sg = (rgba & 0xFF0000) >> 16;
+			  int sb = (rgba &   0xFF00) >>  8;
+			  r += sr;
+			  g += sg;
+			  b += sb;
+			  toGroup[(*index++).y] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			  fromPixel += sourceDepth;
+			}
+			// This assumes that all ratioH pixels share the same U and V values,
+			// and that ratioH accurately represents the structure of the group.
+			index--;
+			toGroup[index->u] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
+			toGroup[index->v] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
+			index++;
 		  }
-		  index--;
-		  address[index->u] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
-		  address[index->v] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
-		  index++;
+		  toGroup += bytes;
 		}
-		address += bytes;
+		toGroup += toStep;
+		fromPixel += fromStep;
 	  }
-	  address += toStep;
-	  y++;
+	}
+	else  // Must use pixel buffer accessor
+	{
+	  int y = 0;
+	  while (toGroup < end)
+	  {
+		int x = 0;
+		const uint8_t * rowEnd = toGroup + rowWidth;
+		while (toGroup < rowEnd)
+		{
+		  YUVindex * index = table;
+		  while (index->y >= 0)
+		  {
+			int r = 0;
+			int g = 0;
+			int b = 0;
+			uint32_t rgba = 0;
+			for (int p = 0; p < ratioH; p++)
+			{
+			  if (x < image.width) rgba = sourceFormat->getRGBA (sourceBuffer->pixel (x, y));
+			  int sr =  rgba             >> 24;
+			  int sg = (rgba & 0xFF0000) >> 16;
+			  int sb = (rgba &   0xFF00) >>  8;
+			  r += sr;
+			  g += sg;
+			  b += sb;
+			  toGroup[(*index++).y] = min (max (0x4C84 * sr + 0x962B * sg + 0x1D4F * sb + 0x8000, 0), 0xFFFFFF) >> 16;
+			  x++;
+			}
+			index--;
+			toGroup[index->u] = min (max (- 0x2B2F * r - 0x54C9 * g + 0x8000 * b + bias, 0), maximum) >> shift;
+			toGroup[index->v] = min (max (  0x8000 * r - 0x6B15 * g - 0x14E3 * b + bias, 0), maximum) >> shift;
+			index++;
+		  }
+		  toGroup += bytes;
+		}
+		toGroup += toStep;
+		y++;
+	  }
 	}
   }
 }
@@ -4822,50 +4962,117 @@ PixelFormatPackedYUV::fromYUV (const Image & image, Image & result) const
   const int           sourceDepth  = (int) sourceFormat->depth;
 
   PixelBufferGroups * o = (PixelBufferGroups *) result.buffer;
+  PixelBufferBlocks * b = (PixelBufferBlocks *) result.buffer;
   assert (o);
-  uint8_t *       address  = (uint8_t *) o->memory;
-  const uint8_t * end      = address + o->stride * result.height;
-  const int       rowWidth = (int) (result.width * depth);
-  const int       toStep   = o->stride - rowWidth;
 
-  const uint32_t shift = 8 + (int) roundp (log ((double) ratioH) / log (2.0));
+  const int groupsH        = result.width / o->pixelsH + ((result.width % o->pixelsH) ? 1 : 0);
+  const int quantizedWidth = groupsH * o->pixelsH;
+  const int rowWidth       = groupsH * o->bytes;
+
+  const uint32_t shift   = 8 + (int) roundp (log ((double) ratioH * ratioV) / log (2.0));
   const uint32_t roundup = 0x80 << (shift - 8);
 
-  int y = 0;
-  while (address < end)
+  if (b)  // Complex case: multi-row blocks of pixels
   {
-	int x = 0;
-	const uint8_t * rowEnd = address + rowWidth;
-	while (address < rowEnd)
+	const int groupsV         = result.height / b->pixelsV + ((result.height % b->pixelsV) ? 1 : 0);
+	const int quantizedHeight = groupsV * b->pixelsV;
+	if (result.width != quantizedWidth  ||  result.height != quantizedHeight) o->resize (quantizedWidth, quantizedHeight, *this);
+
+	uint8_t *       toGroup  = (uint8_t *) o->memory;
+	const uint8_t * end      = toGroup + o->stride * groupsV;
+	const int       toStep   = o->stride - rowWidth;
+
+	YUVindex * reorderedTable = reorder ();
+	int blockY = 0;
+	while (toGroup < end)
 	{
-	  YUVindex * index = table;
-	  while (index->y >= 0)
+	  int blockX = 0;
+	  const uint8_t * rowEnd = toGroup + rowWidth;
+	  while (toGroup < rowEnd)
 	  {
-		uint32_t u = 0;
-		uint32_t v = 0;
-		for (int p = 0; p < ratioH; p++)
+		YUVindex * index = reorderedTable;
+		for (int sampleY = blockY; sampleY < blockY + pixelsV; sampleY += ratioV)
 		{
-		  uint32_t yuv = sourceFormat->getYUV (sourceBuffer->pixel (x++, y));
-		  u +=  yuv & 0xFF00;
-		  v += (yuv &   0xFF) << 8;
-		  address[(*index++).y] = yuv >> 16;  // don't mask, on assumption that higher order bits of yuv are 0
+		  for (int sampleX = blockX; sampleX < blockX + pixelsH; sampleX += ratioH)
+		  {
+			uint32_t u = 0;
+			uint32_t v = 0;
+			uint32_t yuv = 0;
+			for (int y = sampleY; y < sampleY + ratioV; y++)
+			{
+			  for (int x = sampleX; x < sampleX + ratioH; x++)
+			  {
+				if (x < image.width  &&  y < image.height) yuv = sourceFormat->getYUV (sourceBuffer->pixel (x, y));
+				u +=  yuv & 0xFF00;
+				v += (yuv &   0xFF) << 8;
+				toGroup[(index++)->y] = yuv >> 16;  // don't mask, on assumption that higher order bits of yuv are 0
+			  }
+			}
+			index--;
+			toGroup[index->u] = (u + roundup) >> shift;
+			toGroup[index->v] = (v + roundup) >> shift;
+			index++;
+		  }
 		}
-		index--;
-		address[index->u] = (u + roundup) >> shift;
-		address[index->v] = (v + roundup) >> shift;
-		index++;
+		toGroup += bytes;
+		blockX += pixelsH;
 	  }
-	  address += bytes;
+	  toGroup += toStep;
+	  blockY += pixelsV;
 	}
-	address += toStep;
-	y++;
+	delete[] reorderedTable;
+  }
+  else  // Simple case: one-row group of pixels
+  {
+	if (result.width != quantizedWidth) o->resize (quantizedWidth, result.height, *this);
+	uint8_t *       toGroup  = (uint8_t *) o->memory;
+	const uint8_t * end      = toGroup + o->stride * result.height;
+	const int       toStep   = o->stride - rowWidth;
+
+	int y = 0;
+	while (toGroup < end)
+	{
+	  int x = 0;
+	  const uint8_t * rowEnd = toGroup + rowWidth;
+	  while (toGroup < rowEnd)
+	  {
+		YUVindex * index = table;
+		while (index->y >= 0)
+		{
+		  uint32_t u = 0;
+		  uint32_t v = 0;
+		  uint32_t yuv = 0;
+		  for (int p = 0; p < ratioH; p++)
+		  {
+			if (x < image.width) yuv = sourceFormat->getYUV (sourceBuffer->pixel (x, y));
+			u +=  yuv & 0xFF00;
+			v += (yuv &   0xFF) << 8;
+			toGroup[(*index++).y] = yuv >> 16;  // don't mask, on assumption that higher order bits of yuv are 0
+			x++;
+		  }
+		  index--;
+		  toGroup[index->u] = (u + roundup) >> shift;
+		  toGroup[index->v] = (v + roundup) >> shift;
+		  index++;
+		}
+		toGroup += bytes;
+	  }
+	  toGroup += toStep;
+	  y++;
+	}
   }
 }
 
+/**
+   @param block The user is responsible to ensure that enough memory is
+   allocated to contain a full pixelsV quantum based on the given height.
+**/
 PixelBuffer *
 PixelFormatPackedYUV::attach (void * block, int width, int height, bool copy) const
 {
-  PixelBufferGroups * result = new PixelBufferGroups (block, (int) ceil ((float) width / pixels) * bytes, height, pixels, bytes);
+  PixelBufferGroups * result;
+  if (pixelsV == 1) result = new PixelBufferGroups (block, (int) ceil ((float) width / pixelsH) * bytes, height, pixelsH, bytes);
+  else              result = new PixelBufferBlocks (block, (int) ceil ((float) width / pixelsH) * bytes, height, pixelsH, pixelsV, bytes);
   if (copy) result->memory.copyFrom (result->memory);
   return result;
 }
@@ -4874,7 +5081,8 @@ bool
 PixelFormatPackedYUV::operator == (const PixelFormat & that) const
 {
   const PixelFormatPackedYUV * p = dynamic_cast<const PixelFormatPackedYUV *> (&that);
-  if (! p  ||  p->pixels != pixels) return false;
+  if (! p  ||  p->pixelsH != pixelsH  ||  p->pixelsV != pixelsV  ||  p->bytes != bytes) return false;
+  int pixels = pixelsH * pixelsV;
   for (int i = 0; i < pixels; i++)
   {
 	YUVindex & me = table[i];
@@ -4949,6 +5157,34 @@ PixelFormatPackedYUV::setYUV (void * pixel, uint32_t yuv) const
   address[index.y] =  yuv           >> 16;
   address[index.u] = (yuv & 0xFF00) >>  8;
   address[index.v] =  yuv &   0xFF;
+}
+
+PixelFormatPackedYUV::YUVindex *
+PixelFormatPackedYUV::reorder () const
+{
+  YUVindex * t = table;
+  while ((t++)->y >= 0);
+  int count = t - table;  // Because t post-increments, t will be one past the y=-1 entry in the table.
+
+  YUVindex * result = new YUVindex[count];
+  YUVindex * r = result;
+
+  for (int gy = 0; gy < pixelsV; gy += ratioV)
+  {
+	for (int gx = 0; gx < pixelsH; gx += ratioH)
+	{
+	  for (int y = gy; y < gy + ratioV; y++)
+	  {
+		for (int x = gx; x < gx + ratioH; x++)
+		{
+		  *r++ = table[y * pixelsH + x];
+		}
+	  }
+	}
+  }
+  r->y = -1;
+
+  return result;
 }
 
 
