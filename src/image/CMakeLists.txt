@@ -54,6 +54,7 @@ add_library (flImage
   PixelFormat.cc
   PixelBuffer.cc
   Point.cc
+  Rectangle.cc
 
   # Image cache
   ../../include/fl/imagecache.h

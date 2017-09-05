@@ -238,6 +238,35 @@ namespace fl
 	unsigned char threshold;  ///< gray-level value
 	bool sign;  ///< true means threshold is upper bound on intensity (ie: this is an MSER+); false means lower bound (MSER-)
   };
+
+  class SHARED Rectangle
+  {
+  public:
+	Rectangle (int D);
+	Rectangle (const Vector<double> & a, const Vector<double> & b);
+	Rectangle (const std::string & Astring);  ///< For convenience initialization.  Specify vectors a and b as first and second rows of a matrix in string form.
+	void clear ();  ///< Set empty
+
+	void copyFrom (const Rectangle & that);
+
+	void serialize (Archive & archive, uint32_t version);
+	static uint32_t serializeVersion;
+
+	Rectangle intersect (const Rectangle & that) const;
+	Rectangle unite (const Rectangle & that) const;
+	bool empty () const;
+	bool contains (const MatrixAbstract<double> & point) const;
+	MatrixResult<double> size () const;
+
+	Vector<double> a;
+	Vector<double> b;
+
+	const char * toString (std::string & buffer) const;
+  };
+  inline std::ostream & operator << (std::ostream & out, const Rectangle & rect)
+  {
+	return out << rect.a << " " << rect.b;
+  }
 }
 
 
