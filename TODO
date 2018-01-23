@@ -2,20 +2,12 @@ TODO
 ----
 
 * Sparse matrices using contigs rather than linked lists.
-* Add MatrixBlock which consists of pointers to MatrixAbstract at each cell.
-
-* Add a separate start address from memory block base in PixelFormatPacked.  This would allow ROI style processing.
+* In lapack.h, change destroyA to preserveA, and make default false (destroy unless asked to preserve).
+  - Change callers in old 3d software from PhD.
 
 * Ability to return directory of metadata tags from ImageFile.
-* Error trapping in ImageFileFormatJPEG.
 
-* Improve image cache mechanism: store multiple types and scales.  Create new class to manage caching, and add interface to take it instead of image.  Make static cache shared by all image processors.  Make it TLS if possible.  Sources that currently do caching:
-		DescriptorCombo.cc
-		DescriptorLBP.cc
-		DescriptorOrientationHistogram.cc
-		DescriptorSIFT.cc
-		DescriptorTextonScale.cc
-* Use scale pyramid in HarrisLaplacian and Hessian.  Need to finish image cacheing to do this is in the nicest fashion.
+* Use scale pyramid in HarrisLaplacian and Hessian.
 
 * Replace PixelFormat::precedence with comparison operators.  Base comparisons on bit-capacities for respective channels.
 
@@ -24,8 +16,8 @@ TODO
 
 * Hunt down memory error in CanvasImage::drawText() and companions.  Also, after using setFont() for a while, ceases to work.  Probably related.
 * Create true MetricEuclidean and rename current one to ComparisonEuclidean.
-* Add FLSB generic web server to net.
 * Deepen template specialization for bool, to get rid of warnings in MSVC.
 * Make filters simple to use on large images without loosing performance on small images.
 * Consider adding hint back into video out interface, and use it to guide selection of format when underlying codec supports several.
-* Fix Image::bitblt() to handle arbitrary packed pixel formats by treating rows in an ROI as opaque lines of bytes.
+* add color to Convolution1D, BlurDecimate, and DoubleSize (maybe Decimate too)
+* use BlurDecimate filter in KLT (study if BlurDecimate is doing more harm than the speed gain merits)
