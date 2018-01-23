@@ -97,6 +97,7 @@ PixelFormatPlanarYCbCr        fl::YUV420 (2, 2);
 PixelFormatPlanarYCbCr        fl::YUV411 (4, 1);
 PixelFormatHSLFloat           fl::HSLFloat;
 PixelFormatHSVFloat           fl::HSVFloat;
+PixelFormatCMYK               fl::CMYK;
 
 // These "bits" formats must be endian independent.
 #if BYTE_ORDER == LITTLE_ENDIAN
@@ -140,6 +141,7 @@ static int incrementRefcount ()
   YUV411         .PointerPolyReferenceCount++;
   HSLFloat       .PointerPolyReferenceCount++;
   HSVFloat       .PointerPolyReferenceCount++;
+  CMYK           .PointerPolyReferenceCount++;
   B5G5R5         .PointerPolyReferenceCount++;
   BGRChar        .PointerPolyReferenceCount++;
   BGRChar4       .PointerPolyReferenceCount++;
@@ -6117,4 +6119,61 @@ PixelFormatHSVFloat::setHSV (void * pixel, float values[]) const
   ((float *) pixel)[0] = values[0];
   ((float *) pixel)[1] = values[1];
   ((float *) pixel)[2] = values[2];
+}
+
+
+// class PixelFormatCMYK ------------------------------------------------------
+
+PixelFormatCMYK::PixelFormatCMYK ()
+{
+  planes     = 1;
+  depth      = 4;
+  precedence = 3;  // on par with RGB
+  monochrome = false;
+  hasAlpha   = false;
+}
+
+void
+PixelFormatCMYK::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+}
+
+uint32_t
+PixelFormatCMYK::getRGBA (void * pixel) const
+{
+  uint32_t c = (((uint8_t *) pixel)[0] << 15) / 0xFF;
+  uint32_t m = (((uint8_t *) pixel)[1] << 15) / 0xFF;
+  uint32_t y = (((uint8_t *) pixel)[2] << 15) / 0xFF;
+  uint32_t k = (((uint8_t *) pixel)[3] << 15) / 0xFF;
+
+  uint32_t r = (c * k >> 6) * 0xFF       & 0xFF000000;
+  uint32_t g = (m * k >> 6) * 0xFF >> 8  &   0xFF0000;
+  uint32_t b = (y * k >> 6) * 0xFF >> 16 &     0xFF00;
+
+  return r | g | b | 0xFF;
+}
+
+void
+PixelFormatCMYK::setRGBA (void * pixel, uint32_t rgba) const
+{
+  uint32_t r =  (rgba & 0xFF000000)        / 0xFF;  // 0.32 / 0.8 -> 1.24
+  uint32_t g = ((rgba &   0xFF0000) << 8 ) / 0xFF;
+  uint32_t b = ((rgba &     0xFF00) << 16) / 0xFF;
+
+  uint32_t k = max (r, max (g, b)) >> 12;  // 1.12
+  if (k)
+  {
+	((uint8_t *) pixel)[0] = 0xFF * r / k >> 12;  // 8 * 1.24 / 1.12 -> 8.12
+	((uint8_t *) pixel)[1] = 0xFF * g / k >> 12;
+	((uint8_t *) pixel)[2] = 0xFF * b / k >> 12;
+	((uint8_t *) pixel)[3] = 0xFF * k     >> 12;
+  }
+  else
+  {
+	((uint8_t *) pixel)[0] = 0;
+	((uint8_t *) pixel)[1] = 0;
+	((uint8_t *) pixel)[2] = 0;
+	((uint8_t *) pixel)[3] = 0;
+  }
 }

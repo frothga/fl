@@ -192,7 +192,7 @@ struct FormatMapping
   uint16 extraFormat;     // In general, should be an array, but we will only examine first element.
 };
 
-FormatMapping formatMap[] =
+static FormatMapping formatMap[] =
 {
   {(PixelFormat *) 2, B8(0001000), 1,  0, 1, 3, 1, 0, 0},  // palette
   {(PixelFormat *) 3, B8(1110000), 1,  1, 1, 0, 1, 0, 0},  // GrayBits

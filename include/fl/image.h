@@ -1085,6 +1085,23 @@ namespace fl
 	virtual void     setHSV  (void * pixel, float    values[]) const;
   };
 
+  /**
+	 This is specific to JPEG, where values appear to be stored in reversed
+	 form. That is, larger CMYK values indicate lighter colors (less ink).
+	 Conversions in this form are much simpler to compute, which may be
+	 why JPEG does it that way.
+  **/
+  class SHARED PixelFormatCMYK : public PixelFormat
+  {
+  public:
+	PixelFormatCMYK ();
+
+	void serialize (Archive & archive, uint32_t version);
+
+	virtual uint32_t getRGBA (void * pixel               ) const;
+	virtual void     setRGBA (void * pixel, uint32_t rgba) const;
+  };
+
   extern SHARED PixelFormatGrayChar           GrayChar;
   extern SHARED PixelFormatGrayAlphaChar      GrayAlphaChar;
   extern SHARED PixelFormatGrayShort          GrayShort;
@@ -1110,6 +1127,7 @@ namespace fl
   extern SHARED PixelFormatPlanarYCbCr        YUV411;
   extern SHARED PixelFormatHSLFloat           HSLFloat;
   extern SHARED PixelFormatHSVFloat           HSVFloat;
+  extern SHARED PixelFormatCMYK               CMYK;
 
   // Naming convention for RGBABits:
   // R<red bits>G<green bits>B<blue bits>

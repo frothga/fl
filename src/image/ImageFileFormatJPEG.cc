@@ -40,11 +40,15 @@ static void
 output_message (j_common_ptr cinfo)
 {
   char buffer[JMSG_LENGTH_MAX];
-
   (*cinfo->err->format_message) (cinfo, buffer);
+  fprintf (stderr, "%s\n", buffer);  // better to use printf than cerr, because printf is thread-safe (avoids intermixed characters in stderr)
+}
 
-  //fprintf(stderr, "%s\n", buffer);
-  cerr << buffer << endl;
+static void
+error_exit (j_common_ptr cinfo)
+{
+  output_message (cinfo);
+  throw "Fatal error in JPEG";
 }
 
 
@@ -175,10 +179,13 @@ ImageFileDelegateJPEG::ImageFileDelegateJPEG (istream * in, ostream * out, bool 
   this->ownStream = ownStream;
   quality = 75;
 
+  jpeg_std_error (&jerr);
+  jerr.output_message = output_message;
+  jerr.error_exit     = error_exit;
+  
   if (in)
   {
-	dinfo.err = jpeg_std_error (&jerr);
-	jerr.output_message = output_message;
+	dinfo.err = &jerr;
 	jpeg_create_decompress (&dinfo);
 
 	sm.jsm.init_source       = init_source;
@@ -198,7 +205,7 @@ ImageFileDelegateJPEG::ImageFileDelegateJPEG (istream * in, ostream * out, bool 
 
   if (out)
   {
-	cinfo.err = jpeg_std_error (&jerr);
+	cinfo.err = &jerr;
 	jpeg_create_compress (&cinfo);
 
 	dm.jdm.init_destination    = init_destination;
@@ -249,6 +256,34 @@ ImageFileDelegateJPEG::parseComments (jpeg_saved_marker_ptr marker)
   }
 }
 
+struct FormatMapping
+{
+  PixelFormat * format;   // Which pre-fab format to use. A value of zero ends the format map.
+  J_COLOR_SPACE colorspace;
+  int           components;
+};
+
+static FormatMapping formatMap[] =
+{
+  {&GrayChar,         JCS_GRAYSCALE, 1},
+  {&RGBChar,          JCS_RGB,       3},
+  //{&YUV,              JCS_YCbCr,     3},
+  {&CMYK,             JCS_CMYK,      4},
+  //{&YUVK,             JCS_YCCK,      4},
+  {&RGBChar,          JCS_EXT_RGB,   3},
+  //{&RGBChar4,         JCS_EXT_RGBX,  4},
+  {&BGRChar,          JCS_EXT_BGR,   3},
+  {&BGRChar4,         JCS_EXT_BGRX,  4},
+  //{&BGRChar4,         JCS_EXT_XBGR,  4},  // and offset base of buffer by 1 byte
+  //{&RGBChar4,         JCS_EXT_XRGB,  4},  // ditto
+  {&RGBAChar,         JCS_EXT_RGBA,  4},
+  {&BGRAChar,         JCS_EXT_BGRA,  4},
+  //{&ABGRChar,         JCS_EXT_ABGR,  4},
+  //{&ARGBChar,         JCS_EXT_ARGB,  4},
+  //{&R5G6B5,           JCS_RGB565,    3},
+  {0}
+};
+
 void
 ImageFileDelegateJPEG::read (Image & image, int x, int y, int width, int height)
 {
@@ -259,16 +294,18 @@ ImageFileDelegateJPEG::read (Image & image, int x, int y, int width, int height)
   PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer;
   if (! buffer) image.buffer = buffer = new PixelBufferPacked;
 
-  // Should do something more sophisticated here, like handle different color
-  // spaces or different number of components.
-  if (dinfo.output_components == 1)
+  // Select pixel format
+  PixelFormat * format = 0;
+  for (FormatMapping * m = formatMap; m->format; m++)
   {
-	image.format = &GrayChar;
+	if (m->colorspace == dinfo.out_color_space)
+	{
+	  format = m->format;
+	  break;
+	}
   }
-  else
-  {
-	image.format = &RGBChar;
-  }
+  if (format == 0) throw "No PixelFormat available that matches file contents";
+  image.format = format;
   image.resize (dinfo.output_width, dinfo.output_height);
 
   // Read image
@@ -292,27 +329,39 @@ ImageFileDelegateJPEG::write (const Image & image, int x, int y)
 {
   if (! out) throw "ImageFileDelegateJPEG not open for writing";
 
-  PixelFormat * format;
-  if (image.format->monochrome) format = &GrayChar;
-  else                          format = &RGBChar;
+  PixelFormat * format = 0;
+  for (FormatMapping * m = formatMap; m->format; m++)
+  {
+	if (*m->format == *image.format)
+	{
+	  format = m->format;
+	  cinfo.input_components = m->components;
+	  cinfo.in_color_space   = m->colorspace;
+	  break;
+	}
+  }
+  if (format == 0)
+  {
+	if (image.format->monochrome)
+	{
+	  format = &GrayChar;
+	  cinfo.input_components = 1;
+	  cinfo.in_color_space   = JCS_GRAYSCALE;
+	}
+	else
+	{
+	  format = &RGBChar;
+	  cinfo.input_components = 3;
+	  cinfo.in_color_space   = JCS_RGB;
+	}
+  }
   Image work = image * *format;
 
   PixelBufferPacked * buffer = (PixelBufferPacked *) work.buffer;
   if (! buffer) throw "JPEG only handles packed buffers for now.";
 
-  cinfo.image_width      = work.width;
-  cinfo.image_height     = work.height;
-  if (*format == GrayChar)
-  {
-	cinfo.input_components = 1;
-	cinfo.in_color_space   = JCS_GRAYSCALE;
-  }
-  else
-  {
-	cinfo.input_components = 3;
-	cinfo.in_color_space   = JCS_RGB;
-  }
-  // It would also be possible to support YCbCr, but currently this is only a planar format.
+  cinfo.image_width  = work.width;
+  cinfo.image_height = work.height;
   jpeg_set_defaults (&cinfo);
   jpeg_set_quality (&cinfo, quality, TRUE);
 
@@ -448,13 +497,11 @@ ImageFileFormatJPEG::isIn (std::istream & stream) const
   // EXIF header: OxFF 0xD8 0xFF 0xE1 <skip 2 bytes> "Exif" 0x00
   string magic = "          ";  // 10 spaces
   getMagic (stream, magic);
-  if (magic.substr (0, 4) == "\xFF\xD8\xFF\xE0"  &&  magic.substr (6, 4) == "JFIF")
+  if (magic.substr (0, 3) == "\xFF\xD8\xFF")
   {
-	return 1;
-  }
-  if (magic.substr (0, 4) == "\xFF\xD8\xFF\xE1"  &&  magic.substr (6, 4) == "Exif")
-  {
-	return 1;
+	if (magic[3] == '\xE0'  &&  magic.substr (6, 4) == "JFIF") return 1;
+	if (magic[3] == '\xE1'  &&  magic.substr (6, 4) == "Exif") return 1;
+	if (magic[3] >= 0xE0  &&  magic[3] <= 0xEF) return 0.8;
   }
   return 0;
 }
@@ -462,13 +509,9 @@ ImageFileFormatJPEG::isIn (std::istream & stream) const
 float
 ImageFileFormatJPEG::handles (const std::string & formatName) const
 {
-  if (strcasecmp (formatName.c_str (), "jpg") == 0)
-  {
-	return 0.8;
-  }
-  if (strcasecmp (formatName.c_str (), "jpeg") == 0)
-  {
-	return 1;
-  }
+  if (strcasecmp (formatName.c_str (), "jif" ) == 0) return 0.7;
+  if (strcasecmp (formatName.c_str (), "jfif") == 0) return 0.7;
+  if (strcasecmp (formatName.c_str (), "jpg" ) == 0) return 0.8;
+  if (strcasecmp (formatName.c_str (), "jpeg") == 0) return 0.8;
   return 0;
 }

@@ -285,7 +285,7 @@ testConvolutionDiscrete1D (const Image & image, const ConvolutionDiscrete1D & ke
   //cerr << endl;
 }
 
-const float thresholdRatio         = 1.01f;
+const float thresholdRatio         = 1.03f;
 const float thresholdDifference    = 0.013f;
 const int   thresholdLuma          = 1;
 const int   thresholdChroma        = 1;
@@ -743,6 +743,7 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	int tBlue         = thresholdChroma;
 	Vector<float> tDifference (7);  // RGBAXYZ
 	tDifference.clear (thresholdDifference);
+	tDifference[3] = tAlpha / 255.0;
 
 	if (PixelFormatPlanarYCbCr * pfycbcr = dynamic_cast<PixelFormatPlanarYCbCr *> (targetFormat))
 	{
@@ -793,6 +794,16 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 	  //cerr << "difference: " << tDifference << endl;
 	  //cerr << "bits: " << rbits << " " << gbits << " " << bbits << " " << xbits << " " << ybits << " " << zbits << endl;
 	}
+	else if (PixelFormatCMYK * pfcmyk = dynamic_cast<PixelFormatCMYK *> (targetFormat))
+	{
+	  tChroma = max (tChroma, 2);
+	  tRed    = tChroma;
+	  tGreen  = tChroma;
+	  tBlue   = tChroma;
+	  tLuma   = max (tLuma, 3);
+	  tDifference.clear (max (thresholdDifference, 0.015f));
+	  tDifference[3] = tAlpha / 255.0;
+	}
 
 	Vector<float> rgbaFloatIn (4);
 	rgbaFloatIn[3] = 1.0f;
@@ -820,8 +831,8 @@ testFormat (const Image & test, const vector<fl::PixelFormat *> & formats, fl::P
 		  int ea = abs (0xFF - ca);
 		  if (er > tRed  ||  eg > tGreen  ||  eb > tBlue  ||  ea > tAlpha)
 		  {
-			cout << r << " " << g << " " << b << " getRGBA returned unexpected value: {";
-			cout << er << " " << eg << " " << eb << " " << ea << "} > {" << tRed << " " << tGreen << " " << tBlue << " " << tAlpha << "} ";
+			cout << r << " " << g << " " << b << " getRGBA returned unexpected value: ";
+			cout << "{" << er << " " << eg << " " << eb << " " << ea << "} > {" << tRed << " " << tGreen << " " << tBlue << " " << tAlpha << "} ";
 			cout << hex << " " << rgbaIn << " -> " << rgbaOut << dec << endl;
 			throw "PixelFormat fails";
 		  }
@@ -992,6 +1003,7 @@ testPixelFormat ()
   formats.push_back (&BGRChar);
   formats.push_back (&BGRChar4);
   formats.push_back (&BGRAChar);
+  formats.push_back (&CMYK);
   formats.push_back ( R2G3B2A0);
   formats.push_back ( R5G6B5A0);
   formats.push_back ( R8G8B8A0);
