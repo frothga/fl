@@ -133,6 +133,7 @@ namespace fl
 # define NAN fl::nan.f
 # endif
 
+# ifndef issubnormal
   inline bool
   issubnormal (float a)
   {
@@ -151,6 +152,7 @@ namespace fl
 	       && ((*(uint64_t *) &a) &    0xFFFFFFFFFFFFFll) != 0;
 #   endif
   }
+# endif
 
   /**
 	 Same as round(), but when <code>|a - roundp(a)| = 0.5</code> the result will
