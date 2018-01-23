@@ -109,6 +109,7 @@ namespace fl
 	~SocketStream ();  ///< Destroy the socket if we own it.
 
 	void connect (const std::string & hostname, const std::string & port);
+    void connect (const std::string & hostname, int portNumber);
 	void attach (SOCKET socket);
 	void detach ();
 	void setTimeout (int timeout = 0);
