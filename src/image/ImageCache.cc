@@ -389,16 +389,16 @@ EntryPyramid::resample (ImageCache & cache, const EntryPyramid * source)
 	return;
   }
 
-  float ratio = (float) sourceWidth / targetWidth;  // downsampling ratio; values < 1 mean upsampling
-  float decimal = abs (ratio - roundp (ratio));
-
   double a = targetScale * targetWidth / originalWidth;  // native scale after
   double b = sourceScale * sourceWidth / originalWidth;  // native scale before
 
+  float ratio    = (float) sourceWidth / targetWidth;  // downsampling ratio; values < 1 mean upsampling
+  int   decimate = (int) roundp (ratio);
+
   // BlurDecimate if applicable
-  if (fast  &&  ratio > 2 - FLT_EPSILON  &&  decimal < FLT_EPSILON)  // integer downsample, so decimate is appropriate
+  if (fast  &&  decimate >= 2  &&  abs (ratio - decimate) < FLT_EPSILON)  // exact integer downsample, so decimate is appropriate
   {
-	image = source->image * BlurDecimate ((int) roundp (ratio), b, a) * *image.format;
+	image = source->image * BlurDecimate (decimate, b, a) * *image.format;
 	return;
   }
 
@@ -419,17 +419,27 @@ EntryPyramid::resample (ImageCache & cache, const EntryPyramid * source)
   // Resample if needed
   if (abs (ratio - 1) > FLT_EPSILON)
   {
+	int sourceHeight = source->image.height;
+	double h = (double) sourceHeight * targetWidth / sourceWidth;
+	int targetHeight = (int) h;  // truncate
+	if (h - targetHeight > FLT_EPSILON) targetHeight++;  // Essentially a ceiling operator, but with epsilon tolerance at the low end.
+
+	bool done = false;
 	if (fast)
 	{
-	  float ratio1 = (float) source->image.width / (image.width - 1);
+	  float ratio1 = (float) sourceWidth / (targetWidth - 1);
 	  if (abs (ratio - 0.5) < FLT_EPSILON  ||  abs (ratio1 - 0.5) < FLT_EPSILON)
 	  {
-		int targetHeight = (int) roundp ((float) source->image.height * image.width / source->image.width);
-		work *= DoubleSize (image.width % 2, targetHeight % 2);
+		work *= DoubleSize (targetWidth % 2, targetHeight % 2);
+		done = true;
 	  }
-	  else work *= Transform (1 / ratio, 1 / ratio);
 	}
-	else work *= Transform (1 / ratio, 1 / ratio);
+	if (! done)
+	{
+	  Transform t (1 / ratio, 1 / ratio);
+	  if (image.width) t.setWindowEdges (0, 0, targetWidth - 1, targetHeight - 1);
+	  work *= t;
+	}
   }
 
   image = work * *image.format;

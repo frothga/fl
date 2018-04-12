@@ -26,6 +26,7 @@ for details.
 #include "fl/archive.h"
 #include "fl/imagecache.h"
 #include "fl/cluster.h"
+#include "fl/interest.h"
 
 #include <iostream>
 #include <vector>
@@ -611,7 +612,7 @@ namespace fl
   class SHARED DescriptorSpatialPyramid : public Descriptor
   {
   public:
-	DescriptorSpatialPyramid (int levels = 1, Descriptor * descriptor = 0, ClusterMethod * cluster = 0);
+	DescriptorSpatialPyramid (int levels = 1, Descriptor * descriptor = 0, ClusterMethod * cluster = 0, InterestOperator * detector = 0);
 	~DescriptorSpatialPyramid ();
 
 	virtual Vector<float> value (ImageCache & cache, const PointAffine & point);
@@ -625,6 +626,7 @@ namespace fl
 	int levels;
 	Descriptor * descriptor;
 	ClusterMethod * cluster;
+	InterestOperator * detector;  ///< If null, then use built-in tessalation method instead.
 	float firstScale;
 	float lastScale;
 	int substeps;

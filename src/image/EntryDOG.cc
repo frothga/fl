@@ -34,7 +34,7 @@ EntryDOG::generate (ImageCache & cache)
   Image imageMinus = cache.get (new EntryPyramid (GrayFloat, sigmaMinus, image.width))->image;
   int w = imageMinus.width;
   int h = imageMinus.height;
-  Image imagePlus  = cache.get (new EntryPyramid (GrayFloat, sigmaPlus,  w          ))->image;  // imagePlus *must* match width of imageMinus.
+  Image imagePlus  = cache.get (new EntryPyramid (GrayFloat, sigmaPlus,  image.width))->image;  // imagePlus *must* match width of imageMinus.
 
   image.format = &GrayFloat;
   image.resize (w, h);

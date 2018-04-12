@@ -377,9 +377,6 @@ ImageFileFormatPNG::isIn (std::istream & stream) const
 float
 ImageFileFormatPNG::handles (const std::string & formatName) const
 {
-  if (strcasecmp (formatName.c_str (), "png") == 0)
-  {
-	return 1;
-  }
+  if (strcasecmp (formatName.c_str (), "png") == 0) return 0.8;
   return 0;
 }
