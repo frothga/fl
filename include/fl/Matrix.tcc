@@ -22,9 +22,6 @@ for details.
 #include "fl/string.h"
 #include "fl/blasproto.h"
 
-#include <algorithm>
-#include <typeinfo>
-
 
 namespace fl
 {
