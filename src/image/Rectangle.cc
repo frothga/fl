@@ -78,6 +78,18 @@ Rectangle::unite (const Rectangle & that) const
   return result;
 }
 
+void
+Rectangle::stretch (const MatrixAbstract<double> & point)
+{
+  const int D = a.rows ();
+  for (int i = 0; i < D; i++)
+  {
+	double & x = point[i];
+	a[i] = min (a[i], x);
+	b[i] = max (b[i], x);
+  }
+}
+
 bool
 Rectangle::empty () const
 {

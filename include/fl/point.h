@@ -254,6 +254,7 @@ namespace fl
 
 	Rectangle intersect (const Rectangle & that) const;
 	Rectangle unite (const Rectangle & that) const;
+	void stretch (const MatrixAbstract<double> & point);  ///< Extends bounds to contain the given point
 	bool empty () const;
 	bool contains (const MatrixAbstract<double> & point) const;
 	MatrixResult<double> size () const;
