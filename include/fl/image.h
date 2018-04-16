@@ -954,6 +954,17 @@ namespace fl
 	virtual void     blend    (void * pixel, float    values[]) const;
   };
 
+  class SHARED PixelFormatPlanarRGB : public PixelFormat
+  {
+  public:
+	PixelFormatPlanarRGB ();
+
+	void serialize (Archive & archive, uint32_t version);
+
+	virtual uint32_t getRGBA  (void * pixel) const;
+	virtual void     setRGBA  (void * pixel, uint32_t rgba) const;
+  };
+
   class SHARED PixelFormatYUV : public PixelFormat
   {
   public:
@@ -1113,6 +1124,7 @@ namespace fl
   extern SHARED PixelFormatRGBAShort          RGBAShort;
   extern SHARED PixelFormatRGBAFloat          RGBAFloat;
   extern SHARED PixelFormatRGBChar            RGBChar;
+  extern SHARED PixelFormatPlanarRGB          RGBPlanar;  // Implicitly char
   extern SHARED PixelFormatRGBShort           RGBShort;
   extern SHARED PixelFormatRGBABits           B5G5R5;
   extern SHARED PixelFormatRGBABits           BGRChar;

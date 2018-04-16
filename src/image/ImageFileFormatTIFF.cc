@@ -204,6 +204,7 @@ static FormatMapping formatMap[] =
   {&GrayFloat,        B8(1110000), 1, 32, 3, 0, 1, 0, 0},
   {&GrayDouble,       B8(1110000), 1, 64, 3, 0, 1, 0, 0},
   {&RGBChar,          B8(1111100), 3,  8, 1, 2, 1, 0, 0},
+  {&RGBPlanar,        B8(1111100), 3,  8, 1, 2, 2, 0, 0},
   {(PixelFormat *) 4, B8(1111100), 3,  8, 1, 6, 1, 0, 0},
   {&RGBShort,         B8(1110100), 3, 16, 1, 2, 1, 0, 0},
   {&RGBAChar,         B8(1110100), 4,  8, 1, 2, 1, 1, 2},  // No-care on alpha channel type.  We always treat it as unassociated.
@@ -228,17 +229,17 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   if (format == 0)
   {
 	uint16 samplesPerPixel;
-	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLESPERPIXEL, &samplesPerPixel);
 	uint16 bitsPerSample;
-	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_BITSPERSAMPLE, &bitsPerSample);
 	uint16 sampleFormat;
-	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
 	uint16 photometric;
-	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PHOTOMETRIC, &photometric);
 	uint16 planarConfig;
-	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PLANARCONFIG, &planarConfig);
 	uint16 extraCount;
 	uint16 * extraFormat;
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLESPERPIXEL, &samplesPerPixel);
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_BITSPERSAMPLE, &bitsPerSample);
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PHOTOMETRIC, &photometric);
+	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_PLANARCONFIG, &planarConfig);
 	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_EXTRASAMPLES, &extraCount, &extraFormat);
 	if (! ok) throw "Unable to get needed tag values.";
 	//cerr << "tif pix fmt info: " << samplesPerPixel << " " << bitsPerSample << " " << sampleFormat << " " << photometric << " " << planarConfig << " " << extraCount;
@@ -354,17 +355,27 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   image.resize (width, height);
   if (! width  ||  ! height) return;
 
-  unsigned char * imageMemory;
-  int stride;
+  // TODO: Size of memory arrays below should be the number of planes. For now, we hard-code to 3.
+  uint8_t * imageMemory[3];
+  int stride[3];
   if (PixelBufferPacked * buffer = (PixelBufferPacked *) image.buffer)
   {
-	imageMemory = (unsigned char *) buffer->base ();
-	stride = buffer->stride;
+	imageMemory[0] = (uint8_t *) buffer->base ();
+	stride[0] = buffer->stride;
   }
   else if (PixelBufferGroups * buffer = (PixelBufferGroups *) image.buffer)
   {
-	imageMemory = (unsigned char *) buffer->memory;
-	stride = buffer->stride;
+	imageMemory[0] = (uint8_t *) buffer->memory;
+	stride[0] = buffer->stride;
+  }
+  else if (PixelBufferPlanar * buffer = (PixelBufferPlanar *) image.buffer)
+  {
+	imageMemory[0] = (uint8_t *) buffer->plane0;
+	imageMemory[1] = (uint8_t *) buffer->plane1;
+	imageMemory[2] = (uint8_t *) buffer->plane2;
+	stride[0] = buffer->stride0;
+	stride[1] = buffer->stride12;
+	stride[2] = buffer->stride12;
   }
   else throw "We don't handle this type of buffer.";
 
@@ -372,7 +383,8 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   // vertical set of blocks in the file, then must use temporary storage
   // to read in blocks.
   Image block (*image.format);
-  tdata_t blockBuffer = 0;
+  tdata_t blockBuffer[3];
+  blockBuffer[0] = 0;
 
   if (TIFFIsTiled (tif))
   {
@@ -381,7 +393,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	uint32 blockHeight;
 	TIFFGetField (tif, TIFFTAG_TILELENGTH, &blockHeight);
 
-	tsize_t blockSize = (int) roundp (blockWidth * blockHeight * image.format->depth);
+	tsize_t blockSize = TIFFTileSize (tif);
 
 	for (int oy = 0; oy < height;)  // output y: position in output image
 	{
@@ -395,27 +407,40 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		int ix = rx % blockWidth;
 		int w = min ((int) blockWidth - ix, width - ox);
 
-		ttile_t tile = TIFFComputeTile (tif, rx, ry, 0, 0);
 		if (w == width  &&  w == blockWidth  &&  h == blockHeight)
 		{
-		  TIFFReadEncodedTile (tif, tile, imageMemory + oy * stride, blockSize);
+		  for (int p = 0; p < format->planes; p++)
+		  {
+			ttile_t tile = TIFFComputeTile (tif, rx, ry, 0, p);
+			TIFFReadEncodedTile (tif, tile, imageMemory[p] + oy * stride[p], blockSize);
+		  }
 		}
 		else
 		{
-		  if (! blockBuffer)
+		  if (! blockBuffer[0])
 		  {
 			block.resize (blockWidth, blockHeight);
 			if (PixelBufferPacked * buffer = (PixelBufferPacked *) block.buffer)
 			{
-			  blockBuffer = (tdata_t) buffer->base ();
+			  blockBuffer[0] = (tdata_t) buffer->base ();
 			}
 			else if (PixelBufferGroups * buffer = (PixelBufferGroups *) block.buffer)
 			{
-			  blockBuffer = (tdata_t) buffer->memory;
+			  blockBuffer[0] = (tdata_t) buffer->memory;
 			}
-			assert (blockBuffer);
+			else if (PixelBufferPlanar * buffer = (PixelBufferPlanar *) block.buffer)
+			{
+			  blockBuffer[0] = (tdata_t) buffer->plane0;
+			  blockBuffer[1] = (tdata_t) buffer->plane1;
+			  blockBuffer[2] = (tdata_t) buffer->plane2;
+			}
+			assert (blockBuffer[0]);
 		  }
-		  TIFFReadEncodedTile (tif, tile, blockBuffer, blockSize);
+		  for (int p = 0; p < format->planes; p++)
+		  {
+			ttile_t tile = TIFFComputeTile (tif, rx, ry, 0, p);
+			TIFFReadEncodedTile (tif, tile, blockBuffer[p], blockSize);
+		  }
 		  image.bitblt (block, ox, oy, ix, iy, w, h);
 		}
 
@@ -430,35 +455,48 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 	uint32 rowsPerStrip;
 	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
 
-	tsize_t blockSize = (int) roundp (imageWidth * rowsPerStrip * image.format->depth);
+	tsize_t blockSize = TIFFStripSize (tif);
 
 	for (int oy = 0; oy < height;)
 	{
 	  int ry = oy + y;
 	  int iy = ry % rowsPerStrip;
-	  int strip = ry / rowsPerStrip;
 	  int h = min ((int) rowsPerStrip - iy, height - oy);
 
 	  if (width == imageWidth  &&  iy == 0)
 	  {
-		TIFFReadEncodedStrip (tif, strip, imageMemory + oy * stride, h * stride);
+		for (int p = 0; p < format->planes; p++)
+		{
+		  tstrip_t strip = TIFFComputeStrip (tif, ry, p);
+		  TIFFReadEncodedStrip (tif, strip, imageMemory[p] + oy * stride[p], h * stride[p]);
+		}
 	  }
 	  else
 	  {
-		if (! blockBuffer)
+		if (! blockBuffer[0])
 		{
 		  block.resize (imageWidth, rowsPerStrip);
 		  if (PixelBufferPacked * buffer = (PixelBufferPacked *) block.buffer)
 		  {
-			blockBuffer = (tdata_t) buffer->base ();
+			blockBuffer[0] = (tdata_t) buffer->base ();
 		  }
 		  else if (PixelBufferGroups * buffer = (PixelBufferGroups *) block.buffer)
 		  {
-			blockBuffer = (tdata_t) buffer->memory;
+			blockBuffer[0] = (tdata_t) buffer->memory;
 		  }
-		  assert (blockBuffer);
+		  else if (PixelBufferPlanar * buffer = (PixelBufferPlanar *) block.buffer)
+		  {
+			blockBuffer[0] = (tdata_t) buffer->plane0;
+			blockBuffer[1] = (tdata_t) buffer->plane1;
+			blockBuffer[2] = (tdata_t) buffer->plane2;
+		  }
+		  assert (blockBuffer[0]);
 		}
-		TIFFReadEncodedStrip (tif, strip, blockBuffer, blockSize);
+		for (int p = 0; p < format->planes; p++)
+		{
+		  tstrip_t strip = TIFFComputeStrip (tif, ry, p);
+		  TIFFReadEncodedStrip (tif, strip, blockBuffer[p], blockSize);
+		}
 		image.bitblt (block, 0, oy, x, iy, width, h);
 	  }
 

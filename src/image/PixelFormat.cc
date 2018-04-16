@@ -87,6 +87,7 @@ PixelFormatRGBAChar           fl::RGBAChar;
 PixelFormatRGBAShort          fl::RGBAShort;
 PixelFormatRGBAFloat          fl::RGBAFloat;
 PixelFormatRGBChar            fl::RGBChar;
+PixelFormatPlanarRGB          fl::RGBPlanar;
 PixelFormatRGBShort           fl::RGBShort;
 PixelFormatPackedYUV          fl::UYVY         (tableUYVY);
 PixelFormatPackedYUV          fl::YUYV         (tableYUYV);
@@ -131,6 +132,7 @@ static int incrementRefcount ()
   RGBAShort      .PointerPolyReferenceCount++;
   RGBAFloat      .PointerPolyReferenceCount++;
   RGBChar        .PointerPolyReferenceCount++;
+  RGBPlanar      .PointerPolyReferenceCount++;
   RGBShort       .PointerPolyReferenceCount++;
   UYVY           .PointerPolyReferenceCount++;
   YUYV           .PointerPolyReferenceCount++;
@@ -4683,6 +4685,41 @@ PixelFormatYUV::serialize (Archive & archive, uint32_t version)
   archive & *((PixelFormat *) this);
   archive & ratioH;
   archive & ratioV;
+}
+
+
+// class PixelFormatPlanarRGB -------------------------------------------------
+
+PixelFormatPlanarRGB::PixelFormatPlanarRGB ()
+{
+  planes     = 3;
+  depth      = sizeof (char);
+  precedence = 3;  // Same as RGBbits, and most other RGB formats
+  monochrome = false;
+  hasAlpha   = false;
+}
+
+void
+PixelFormatPlanarRGB::serialize (Archive & archive, uint32_t version)
+{
+  archive & *((PixelFormat *) this);
+}
+
+uint32_t
+PixelFormatPlanarRGB::getRGBA (void * pixel) const
+{
+  uint32_t r = *((uint8_t **) pixel)[0];
+  uint32_t g = *((uint8_t **) pixel)[1];
+  uint32_t b = *((uint8_t **) pixel)[2];
+  return r << 24 | g << 16 | b << 8;
+}
+
+void
+PixelFormatPlanarRGB::setRGBA (void * pixel, uint32_t rgba) const
+{
+  *((uint8_t **) pixel)[0] = rgba >> 24;
+  *((uint8_t **) pixel)[1] = rgba >> 16 & 0xFF;
+  *((uint8_t **) pixel)[2] = rgba >>  8 & 0xFF;
 }
 
 
