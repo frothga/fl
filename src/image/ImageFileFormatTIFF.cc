@@ -182,14 +182,14 @@ ImageFileDelegateTIFF::~ImageFileDelegateTIFF ()
 struct FormatMapping
 {
   PixelFormat * format;   // Which pre-fab format to use.  A value of zero ends the format map.  If this casts to a low-valued integer, it selectes a special construction method.
-  uint16 exact;           // A 1 in a bit position indicates the associated field is necessary for matching the format, while a 0 indicates wild-card.  Bit position 6 refers to the first field below, and lower positions refer to subsequent fields in order.
-  uint16 samplesPerPixel;
-  uint16 bitsPerSample;
-  uint16 sampleFormat;
-  uint16 photometric;
-  uint16 planarConfig;
-  uint16 extraCount;
-  uint16 extraFormat;     // In general, should be an array, but we will only examine first element.
+  uint16_t exact;           // A 1 in a bit position indicates the associated field is necessary for matching the format, while a 0 indicates wild-card.  Bit position 6 refers to the first field below, and lower positions refer to subsequent fields in order.
+  uint16_t samplesPerPixel;
+  uint16_t bitsPerSample;
+  uint16_t sampleFormat;
+  uint16_t photometric;
+  uint16_t planarConfig;
+  uint16_t extraCount;
+  uint16_t extraFormat;     // In general, should be an array, but we will only examine first element.
 };
 
 static FormatMapping formatMap[] =
@@ -220,21 +220,21 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 
   bool ok = true;
 
-  uint32 imageWidth;
-  uint32 imageHeight;
+  uint32_t imageWidth;
+  uint32_t imageHeight;
   ok &= TIFFGetField (tif, TIFFTAG_IMAGEWIDTH, &imageWidth);
   ok &= TIFFGetField (tif, TIFFTAG_IMAGELENGTH, &imageHeight);
   if (! ok) throw "Unable to get needed tag values.";
 
   if (format == 0)
   {
-	uint16 samplesPerPixel;
-	uint16 bitsPerSample;
-	uint16 sampleFormat;
-	uint16 photometric;
-	uint16 planarConfig;
-	uint16 extraCount;
-	uint16 * extraFormat;
+	uint16_t samplesPerPixel;
+	uint16_t bitsPerSample;
+	uint16_t sampleFormat;
+	uint16_t photometric;
+	uint16_t planarConfig;
+	uint16_t extraCount;
+	uint16_t * extraFormat;
 	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLESPERPIXEL, &samplesPerPixel);
 	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_BITSPERSAMPLE, &bitsPerSample);
 	ok &= TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
@@ -293,7 +293,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 #           error This endian is not currently handled.
 #         endif
 
-		  format = new PixelFormatPalette (reds, greens, blues, sizeof (uint16), bitsPerSample);
+		  format = new PixelFormatPalette (reds, greens, blues, sizeof (uint16_t), bitsPerSample);
 		  break;
 		}
 		case 3:
@@ -303,8 +303,8 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 		}
 		case 4:
 		{
-		  uint16 ratioH;
-		  uint16 ratioV;
+		  uint16_t ratioH;
+		  uint16_t ratioV;
 		  TIFFGetFieldDefaulted (tif, TIFFTAG_YCBCRSUBSAMPLING, &ratioH, &ratioV);
 		  PixelFormatPackedYUV::YUVindex * table = new PixelFormatPackedYUV::YUVindex[ratioH * ratioV + 1];
 		  PixelFormatPackedYUV::YUVindex * t = table;
@@ -388,9 +388,9 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
 
   if (TIFFIsTiled (tif))
   {
-	uint32 blockWidth;
+	uint32_t blockWidth;
 	TIFFGetField (tif, TIFFTAG_TILEWIDTH, &blockWidth);
-	uint32 blockHeight;
+	uint32_t blockHeight;
 	TIFFGetField (tif, TIFFTAG_TILELENGTH, &blockHeight);
 
 	tsize_t blockSize = TIFFTileSize (tif);
@@ -452,7 +452,7 @@ ImageFileDelegateTIFF::read (Image & image, int x, int y, int width, int height)
   }
   else  // strip organization
   {
-	uint32 rowsPerStrip;
+	uint32_t rowsPerStrip;
 	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
 
 	tsize_t blockSize = TIFFStripSize (tif);
@@ -642,8 +642,8 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
   if (! buffer) throw "TIFF only handles packed buffers for now";
   unsigned char * workBuffer = (unsigned char *) buffer->base ();
 
-  uint32 imageWidth  = 0;
-  uint32 imageHeight = 0;
+  uint32_t imageWidth  = 0;
+  uint32_t imageHeight = 0;
   TIFFGetField (tif, TIFFTAG_IMAGEWIDTH, &imageWidth);
   TIFFGetField (tif, TIFFTAG_IMAGELENGTH, &imageHeight);
   if (! imageWidth)
@@ -666,8 +666,8 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
 
   if (TIFFIsTiled (tif)  ||  imageWidth > work.width)  // non-clamped width, since it is the hint for block size
   {
-	uint32 blockWidth = 0;
-	uint32 blockHeight = 0;
+	uint32_t blockWidth = 0;
+	uint32_t blockHeight = 0;
 	TIFFGetField (tif, TIFFTAG_TILEWIDTH, &blockWidth);
 	TIFFGetField (tif, TIFFTAG_TILELENGTH, &blockHeight);
 	if (! blockWidth  ||  ! blockHeight)
@@ -719,7 +719,7 @@ ImageFileDelegateTIFF::write (const Image & image, int x, int y)
   }
   else  // strip organization
   {
-	uint32 rowsPerStrip = 0;
+	uint32_t rowsPerStrip = 0;
 	TIFFGetField (tif, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
 	if (! rowsPerStrip)
 	{
@@ -808,7 +808,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 
   if (name == "GeoTransformationMatrix")
   {
-	uint16 count;
+	uint16_t count;
 	double * v;
 	bool found = TIFFGetField (tif, 34264, &count, &v);  // GeoTransformationMatrix
 	if (! found)
@@ -960,7 +960,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	if (name == "Compression")
 	{
 	  // Attempt to look up codec name
-	  uint16 v;
+	  uint16_t v;
 	  if (TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &v))
 	  {
 		TIFFCodec * codec = TIFFGetConfiguredCODECs ();
@@ -1008,18 +1008,18 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	  switch (fieldType)
 	  {
 		case TIFF_BYTE:
-		  grabSingle (uint8);
+		  grabSingle (uint8_t);
 		case TIFF_SBYTE:
-		  grabSingle (int8);
+		  grabSingle (int8_t);
 		case TIFF_SHORT:
-		  grabSingle (uint16);
+		  grabSingle (uint16_t);
 		case TIFF_SSHORT:
-		  grabSingle (int16);
+		  grabSingle (int16_t);
 		case TIFF_LONG:
 		case TIFF_IFD:
-		  grabSingle (uint32);
+		  grabSingle (uint32_t);
 		case TIFF_SLONG:
-		  grabSingle (int32);
+		  grabSingle (int32_t);
 		case TIFF_RATIONAL:
 		case TIFF_SRATIONAL:
 		case TIFF_FLOAT:
@@ -1033,7 +1033,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	int rows = 1;
 	if (TIFFFieldReadCount (fi) == TIFF_SPP)
 	{
-	  uint16 spp;
+	  uint16_t spp;
 	  TIFFGetFieldDefaulted (tif, TIFFTAG_SAMPLESPERPIXEL, &spp);
 	  rows = spp;
 	}
@@ -1049,13 +1049,13 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	{
 	  if (TIFFFieldReadCount (fi) == TIFF_VARIABLE2)
 	  {
-		uint32 c;
+		uint32_t c;
 		found = TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &c, &data);
 		count = c;
 	  }
 	  else
 	  {
-		uint16 c;
+		uint16_t c;
 		found = TIFFGetFieldDefaulted (tif, TIFFFieldTag (fi), &c, &data);
 		count = c;
 	  }
@@ -1069,23 +1069,23 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	switch (fieldType)
 	{
 	  case TIFF_BYTE:
-		for (int i = 0; i < count; i++) temp[i] = ((uint8 * ) data)[i];
+		for (int i = 0; i < count; i++) temp[i] = ((uint8_t * ) data)[i];
 		break;
 	  case TIFF_SBYTE:
-		for (int i = 0; i < count; i++) temp[i] = ((int8 *  ) data)[i];
+		for (int i = 0; i < count; i++) temp[i] = ((int8_t *  ) data)[i];
 		break;
 	  case TIFF_SHORT:
-		for (int i = 0; i < count; i++) temp[i] = ((uint16 *) data)[i];
+		for (int i = 0; i < count; i++) temp[i] = ((uint16_t *) data)[i];
 		break;
 	  case TIFF_SSHORT:
-		for (int i = 0; i < count; i++) temp[i] = ((int16 * ) data)[i];
+		for (int i = 0; i < count; i++) temp[i] = ((int16_t * ) data)[i];
 		break;
 	  case TIFF_LONG:
 	  case TIFF_IFD:
-		for (int i = 0; i < count; i++) temp[i] = ((uint32 *) data)[i];
+		for (int i = 0; i < count; i++) temp[i] = ((uint32_t *) data)[i];
 		break;
 	  case TIFF_SLONG:
-		for (int i = 0; i < count; i++) temp[i] = ((int32 * ) data)[i];
+		for (int i = 0; i < count; i++) temp[i] = ((int32_t * ) data)[i];
 		break;
 	  case TIFF_RATIONAL:
 	  case TIFF_SRATIONAL:
@@ -1115,7 +1115,7 @@ ImageFileDelegateTIFF::get (const string & name, string & value)
 	{
 	  case TYPE_SHORT:
 	  {
-		uint16 v;
+		uint16_t v;
 		if (GTIFKeyGet (gtif, (geokey_t) key, &v, 0, 1))
 		{
 		  value = GTIFValueName ((geokey_t) key, v);
@@ -1269,7 +1269,7 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
   if (name == "GeoTransformationMatrix")
   {
 	Matrix<double> v = ~Matrix<double> (value);
-	TIFFSetField (tif, 34264, (uint16) 16, &v(0,0));
+	TIFFSetField (tif, 34264, (uint16_t) 16, &v(0,0));
 	return;
   }
 
@@ -1326,18 +1326,18 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 	switch (TIFFFieldDataType (fi))
 	{
 	  case TIFF_BYTE:
-		writeVector (uint8);
+		writeVector (uint8_t);
 	  case TIFF_SBYTE:
-		writeVector (int8);
+		writeVector (int8_t);
 	  case TIFF_SHORT:
-		writeVector (uint16);
+		writeVector (uint16_t);
 	  case TIFF_SSHORT:
-		writeVector (int16);
+		writeVector (int16_t);
 	  case TIFF_LONG:
 	  case TIFF_IFD:
-		writeVector (uint32);
+		writeVector (uint32_t);
 	  case TIFF_SLONG:
-		writeVector (int32);
+		writeVector (int32_t);
 	  case TIFF_RATIONAL:
 	  case TIFF_SRATIONAL:
 	  case TIFF_FLOAT:
@@ -1356,11 +1356,11 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 	{
 	  if (TIFFFieldWriteCount (fi) == TIFF_VARIABLE2)
 	  {
-		TIFFSetField (tif, TIFFFieldTag (fi), (uint32) count, data);
+		TIFFSetField (tif, TIFFFieldTag (fi), (uint32_t) count, data);
 	  }
 	  else
 	  {
-		TIFFSetField (tif, TIFFFieldTag (fi), (uint16) count, data);
+		TIFFSetField (tif, TIFFFieldTag (fi), (uint16_t) count, data);
 	  }
 	}
 	else
@@ -1370,23 +1370,23 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 		switch (TIFFFieldDataType (fi))
 		{
 		  case TIFF_BYTE:
-			TIFFSetField (tif, TIFFFieldTag (fi), *(uint8 * ) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(uint8_t * ) data);
 			break;
 		  case TIFF_SBYTE:
-			TIFFSetField (tif, TIFFFieldTag (fi), *(int8 *  ) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(int8_t *  ) data);
 			break;
 		  case TIFF_SHORT:
-			TIFFSetField (tif, TIFFFieldTag (fi), *(uint16 *) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(uint16_t *) data);
 			break;
 		  case TIFF_SSHORT:
-			TIFFSetField (tif, TIFFFieldTag (fi), *(int16 * ) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(int16_t * ) data);
 			break;
 		  case TIFF_LONG:
 		  case TIFF_IFD:
-			TIFFSetField (tif, TIFFFieldTag (fi), *(uint32 *) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(uint32_t *) data);
 			break;
 		  case TIFF_SLONG:
-			TIFFSetField (tif, TIFFFieldTag (fi), *(int32 * ) data);
+			TIFFSetField (tif, TIFFFieldTag (fi), *(int32_t * ) data);
 			break;
 		  case TIFF_RATIONAL:
 		  case TIFF_SRATIONAL:
@@ -1418,7 +1418,7 @@ ImageFileDelegateTIFF::set (const string & name, const string & value)
 	  {
 		int v = GTIFValueCode ((geokey_t) key, (char *) value.c_str ());
 		if (v < 0) v = atoi (value.c_str ());
-		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, (uint16) v);
+		GTIFKeySet (gtif, (geokey_t) key, TYPE_SHORT, 1, (uint16_t) v);
 		break;
 	  }
 	  case TYPE_DOUBLE:
