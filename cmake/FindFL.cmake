@@ -205,6 +205,7 @@ if    (FL_USE_X11)
 endif (FL_USE_X11)
 
 if    (FL_USE_OpenGL)
+  set (OpenGL_GL_PREFERENCE GLVND)  # allows compatibility with pre-3.10 versions of CMake
   find_package (OpenGL)
 endif (FL_USE_OpenGL)
 
