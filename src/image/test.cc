@@ -1355,18 +1355,10 @@ testDescriptors ()
   }
   cout << "DescriptorSIFT passes" << endl;
 
+# ifdef HAVE_LAPACK
   DescriptorLBP lbp;
   value = lbp.value (image, pa);
   cerr << "DescriptorLBP completed, but result is unverified" << endl;
-
-  DescriptorPatch patch (10, 1);
-  value = patch.value (image, pa);
-  if (value.rows () != 100  ||  value[0] != 0  ||  value[78] < 0.9)
-  {
-	cout << "unexpected value: " << value << endl;
-	throw "DescriptorPatch fails";
-  } 
-  cout << "DescriptorPatch passes" << endl;
 
   DescriptorTextonScale ts;
   value = ts.value (image, pa);
@@ -1377,6 +1369,18 @@ testDescriptors ()
   if (value.rows () != 1) throw "Unexpected default size for orientation descriptor.";
   if (abs (value[0] - M_PI / 4) > 1e-4) throw "Unexpected orientation";
   cout << "DescriptorOrientation passes" << endl;
+# else
+  cout << "WARNING: DescriptorLBP, DescriptorTextonScale and DescriptorOrientation not tested due to lack of LAPACK" << endl;
+# endif
+
+  DescriptorPatch patch (10, 1);
+  value = patch.value (image, pa);
+  if (value.rows () != 100  ||  value[0] != 0  ||  value[78] < 0.9)
+  {
+	cout << "unexpected value: " << value << endl;
+	throw "DescriptorPatch fails";
+  } 
+  cout << "DescriptorPatch passes" << endl;
 
   image.clear ();
   image.drawFilledRectangle (Point (180, 0), Point (320, 240));
@@ -1700,7 +1704,7 @@ testMatch ()
   testMatch (8);
   cout << "Match framework passes" << endl;
 # else
-  cout << "WARNING: Match framework not tested due to lack of LAPACK" << endl;
+  cout << "Match framework not tested due to lack of LAPACK" << endl;
 # endif
 }
 
