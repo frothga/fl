@@ -198,7 +198,7 @@ Point3::print (ostream & stream) const
 MatrixResult<double>
 Point3::homogeneous () const
 {
-  Vector<double> * result = new Vector<double> (3);
+  Vector<double> * result = new Vector<double> (4);
   (*result)[0] = x;
   (*result)[1] = y;
   (*result)[2] = z;
