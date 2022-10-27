@@ -113,6 +113,9 @@ CanvasImage::initialize ()
 
 CanvasImage::~CanvasImage ()
 {
+# ifdef HAVE_FREETYPE
+  if (face) FT_Done_Face ((FT_Face) face);
+# endif
 }
 
 inline Point
@@ -951,7 +954,7 @@ CanvasImage::drawMSER (const PointMSER & point, const Image & image, uint32_t co
    \todo Take into account current transformation when computing matrix.
    Also, CanvasImage and CanvasPS should be interchangeable in all regards.
    However, not sure that is the case right now.
- **/
+**/
 void
 CanvasImage::drawText (const string & text, const Point & point, uint32_t color, float angle)
 {
@@ -991,7 +994,6 @@ CanvasImage::drawText (const string & text, const Point & point, uint32_t color,
 	{
 	  case FT_PIXEL_MODE_MONO:
 	  {
-		cerr << "mono" << endl;
 		for (int y = yl; y <= yh; y++)
 		{
 		  int x = xl;
@@ -1013,7 +1015,6 @@ CanvasImage::drawText (const string & text, const Point & point, uint32_t color,
 	  }
 	  default:  // Assume gray
 	  {
-		cerr << "gray" << endl;
 		for (int y = yl; y <= yh; y++)
 		{
 		  int x = xl;
@@ -1062,7 +1063,6 @@ CanvasImage::setPointSize (float radius)
 {
   pointRadius = radius;
 }
-
 
 void
 CanvasImage::setFont (const std::string & name, float size)
@@ -1172,12 +1172,7 @@ CanvasImage::initFontLibrary ()
   scanFontDirectory ("/WINDOWS/Fonts");
 #   else
   scanFontDirectory ("/cygdrive/c/WINDOWS/Fonts");
-  scanFontDirectory ("/usr/X11R6/lib/X11/fonts/TTF");
-  scanFontDirectory ("/usr/X11R6/lib/X11/fonts/Type1");
-  scanFontDirectory ("/usr/share/fonts/default/Type1");
-  // Do these once scanFontDirectory looks for "fonts.dir".  Otherwise, takes too long.
-  //scanFontDirectory ("/usr/X11R6/lib/X11/fonts/100dpi");
-  //scanFontDirectory ("/usr/X11R6/lib/X11/fonts/75dpi");
+  scanFontDirectory ("/usr/share/fonts");
 #   endif
 # endif
 }
@@ -1234,10 +1229,7 @@ CanvasImage::scanFontDirectory (const string & path)
 
   WIN32_FIND_DATA fd;
   HANDLE hFind = ::FindFirstFile ((path + "/*.*").c_str (), &fd);
-  if (hFind == INVALID_HANDLE_VALUE)
-  {
-	return;
-  }
+  if (hFind == INVALID_HANDLE_VALUE) return;
 
   do
   {
@@ -1253,17 +1245,26 @@ CanvasImage::scanFontDirectory (const string & path)
 #   else
 
   DIR * dirh = opendir (path.c_str ());
-  if (! dirh)
-  {
-	return;
-  }
+  if (! dirh) return;
 
   struct dirent * dirp = readdir (dirh);
   while (dirp != NULL)
   {
-	addFontFile (path + "/" + dirp->d_name);
+	if (dirp->d_type == DT_DIR)
+	{
+	  if (strcmp (dirp->d_name, ".") != 0  &&  strcmp (dirp->d_name, "..") != 0)
+	  {
+		scanFontDirectory (path + "/" + dirp->d_name);
+	  }
+	}
+	else
+	{
+	  addFontFile (path + "/" + dirp->d_name);
+	}
 	dirp = readdir (dirh);
   }
+
+  closedir (dirh);
 
 #   endif
 
